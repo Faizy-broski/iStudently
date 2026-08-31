@@ -441,12 +441,32 @@ export class IdCardTemplateService {
       .eq('id', student.profile_id)
       .single();
 
-    // Fetch section
-    const { data: section } = await supabase
-      .from('sections')
-      .select('*, grade_levels(*)')
-      .eq('id', student.section_id)
-      .single();
+    // Fetch section (students in a section-less grade have no section_id at
+    // all — see grade_levels/sections docs in academics.service.ts — so this
+    // can legitimately come back null; grade level is resolved separately
+    // below rather than solely through this join).
+    const { data: section } = student.section_id
+      ? await supabase
+          .from('sections')
+          .select('*, grade_levels(*)')
+          .eq('id', student.section_id)
+          .single()
+      : { data: null };
+
+    // Grade level: prefer the section's grade (keeps it consistent with
+    // whatever section the student is actually placed in), fall back to the
+    // student's own grade_level_id for section-less grades — without this
+    // fallback, a section-less student's ID card/profile always showed a
+    // blank grade level even though students.grade_level_id was set.
+    let gradeLevelName = section?.grade_levels?.name || '';
+    if (!gradeLevelName && student.grade_level_id) {
+      const { data: gradeLevel } = await supabase
+        .from('grade_levels')
+        .select('name')
+        .eq('id', student.grade_level_id)
+        .single();
+      gradeLevelName = gradeLevel?.name || '';
+    }
 
     // Fetch campus (campus is also a school record)
     const { data: campus } = await supabase
@@ -496,7 +516,7 @@ export class IdCardTemplateService {
       admission_number: student.admission_number || '',
       admission_date: student.created_at ? new Date(student.created_at).toLocaleDateString() : '',
       section: section?.name || '',
-      grade_level: section?.grade_levels?.name || '',
+      grade_level: gradeLevelName,
       roll_number: student.roll_number || '',
       blood_group: student.blood_group || '',
       parent_name: firstParentProfile

@@ -84,6 +84,7 @@ export default function FeeStructuresPage() {
     }, [currentAcademicYear])
     const [editingStructure, setEditingStructure] = useState<FeeStructure | null>(null)
     const [isAddingNew, setIsAddingNew] = useState(false)
+    const formCardRef = useRef<HTMLDivElement>(null)
 
     // Form state
     // grade_level_id: used when editing an existing structure (one row = one grade)
@@ -281,6 +282,10 @@ export default function FeeStructuresPage() {
             due_date: structure.due_date.split('T')[0]
         })
         setIsAddingNew(true)
+        // The form card sits above the structures table — without this, clicking
+        // Edit while scrolled down to the table silently opens the form off-screen,
+        // which reads as "the edit button doesn't do anything."
+        requestAnimationFrame(() => formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
     }
 
     const resetForm = () => {
@@ -324,7 +329,10 @@ export default function FeeStructuresPage() {
                     <h1 className="text-2xl font-bold">{t('title')}</h1>
                     <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
-                <Button onClick={() => setIsAddingNew(true)}>
+                <Button onClick={() => {
+                    setIsAddingNew(true)
+                    requestAnimationFrame(() => formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+                }}>
                     <IconPlus className="h-4 w-4 mr-2" />
                     {t('addNew')}
                 </Button>
@@ -358,7 +366,7 @@ export default function FeeStructuresPage() {
 
             {/* Add/Edit Form */}
             {isAddingNew && (
-                <Card>
+                <Card ref={formCardRef}>
                     <CardHeader>
                         <CardTitle>{editingStructure ? t('editStructure') : t('addStructure')}</CardTitle>
                         <CardDescription>{t('structureDetails')}</CardDescription>
@@ -384,7 +392,28 @@ export default function FeeStructuresPage() {
                                 ) : (
                                     <div className="border rounded-md p-2 max-h-48 overflow-auto space-y-1">
                                         {gradeLevels && gradeLevels.length > 0 ? (
-                                            gradeLevels.map((grade) => (
+                                            <>
+                                                <div
+                                                    className="flex items-center gap-2 p-1.5 hover:bg-accent rounded cursor-pointer border-b mb-1"
+                                                    onClick={() => setFormData((prev) => ({
+                                                        ...prev,
+                                                        grade_level_ids: prev.grade_level_ids.length === gradeLevels.length
+                                                            ? []
+                                                            : gradeLevels.map((g) => g.id)
+                                                    }))}
+                                                >
+                                                    <Checkbox
+                                                        checked={formData.grade_level_ids.length === gradeLevels.length}
+                                                        onCheckedChange={() => setFormData((prev) => ({
+                                                            ...prev,
+                                                            grade_level_ids: prev.grade_level_ids.length === gradeLevels.length
+                                                                ? []
+                                                                : gradeLevels.map((g) => g.id)
+                                                        }))}
+                                                    />
+                                                    <label className="flex-1 cursor-pointer text-sm font-medium">{t('selectAll') || 'Select All'}</label>
+                                                </div>
+                                            {gradeLevels.map((grade) => (
                                                 <div
                                                     key={grade.id}
                                                     className="flex items-center gap-2 p-1.5 hover:bg-accent rounded cursor-pointer"
@@ -396,7 +425,8 @@ export default function FeeStructuresPage() {
                                                     />
                                                     <label className="flex-1 cursor-pointer text-sm">{grade.name}</label>
                                                 </div>
-                                            ))
+                                            ))}
+                                            </>
                                         ) : (
                                             <p className="text-sm text-muted-foreground p-1.5">{t('notAvailable')}</p>
                                         )}

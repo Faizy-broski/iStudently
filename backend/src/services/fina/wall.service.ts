@@ -30,6 +30,20 @@ const PAGE_SIZE = 20
 export interface WallFilters {
   cursor?: string
   type?: string
+  q?: string
+}
+
+// Escapes a user search string for safe embedding in a PostgREST `.or()`
+// filter value: first the SQL ILIKE meta-characters (so a search for e.g.
+// "50%" or "a_b" matches literally instead of acting as a wildcard), then
+// the backslash/quote characters PostgREST itself requires quoting for
+// (its filter grammar treats `,` `(` `)` as syntax, so the whole value is
+// wrapped in double quotes).
+function ilikeOrFilter(columns: string[], q: string): string {
+  const likeEscaped = q.replace(/[\\%_]/g, '\\$&')
+  const pattern = `%${likeEscaped}%`
+  const quoted = `"${pattern.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+  return columns.map((col) => `${col}.ilike.${quoted}`).join(',')
 }
 
 export interface AudienceContext {
@@ -112,6 +126,7 @@ export async function listWall(caller: CallerContext, filters: WallFilters) {
 
   if (filters.type) query = query.eq('type', filters.type)
   if (filters.cursor) query = query.lt('published_at', filters.cursor)
+  if (filters.q?.trim()) query = query.or(ilikeOrFilter(['title', 'body'], filters.q.trim()))
 
   const { data, error } = await query
   if (error) throw new Error(`Failed to load wall: ${error.message}`)

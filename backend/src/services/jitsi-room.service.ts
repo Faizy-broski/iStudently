@@ -320,6 +320,19 @@ export const deleteRoom = async (roomId: string, caller: CallerContext): Promise
   if (error) throw new Error(`Failed to delete room: ${error.message}`)
 }
 
+/**
+ * Returns true only for a plausible hostname: must contain at least one dot
+ * and have no empty segments.  Rejects placeholder values like "test" or
+ * ".example.com" that would cause the @jitsi/react-sdk to try loading
+ * https://test/external_api.js and fail.
+ */
+function isValidJitsiDomain(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed.includes('.')) return false
+  if (trimmed.split('.').some((seg) => seg.length === 0)) return false
+  return true
+}
+
 export const getRoom = async (
   roomId: string,
   caller: CallerContext
@@ -333,6 +346,8 @@ export const getRoom = async (
   // against the right server. Null means fall back to meet.jit.si client-side.
   // school_settings rows may be campus-specific or school-wide (campus_id
   // null) — prefer the campus-specific row, fall back to the school-wide one.
+  // Only a syntactically valid hostname is forwarded; placeholders like "test"
+  // are silently treated as null so the client defaults to meet.jit.si.
   let jitsiDomain: string | null = null
   const { data: campusRow } = await supabase
     .from('school_settings')
@@ -340,7 +355,8 @@ export const getRoom = async (
     .eq('school_id', room.school_id)
     .eq('campus_id', room.campus_id)
     .maybeSingle()
-  jitsiDomain = campusRow?.jitsi_domain || null
+  const rawCampus = campusRow?.jitsi_domain || null
+  jitsiDomain = rawCampus && isValidJitsiDomain(rawCampus) ? rawCampus : null
 
   if (!jitsiDomain) {
     const { data: schoolRow } = await supabase
@@ -349,7 +365,8 @@ export const getRoom = async (
       .eq('school_id', room.school_id)
       .is('campus_id', null)
       .maybeSingle()
-    jitsiDomain = schoolRow?.jitsi_domain || null
+    const rawSchool = schoolRow?.jitsi_domain || null
+    jitsiDomain = rawSchool && isValidJitsiDomain(rawSchool) ? rawSchool : null
   }
 
   // Audience target names, for display — fetched separately rather than

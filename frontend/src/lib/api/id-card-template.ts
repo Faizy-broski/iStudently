@@ -18,7 +18,11 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || 'API request failed');
+    // Backend controllers here respond with { error: "..." }, not { message: "..." }
+    // (see id-card-template.controller.ts) — reading error.message always came back
+    // undefined, so every failure showed the generic fallback and hid the real cause
+    // (e.g. "No active student ID card template found for this campus").
+    throw new Error(error.error || error.message || 'API request failed');
   }
 
   return response.json();

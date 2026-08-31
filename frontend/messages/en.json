@@ -214,6 +214,8 @@
     }
   },
   "common": {
+    "username": "Username",
+    "done": "Done",
     "students": "Students",
     "showInactive": "Show inactive",
     "save": "Save",
@@ -3927,6 +3929,7 @@
           "msg_update_failed": "Failed to update student status"
         },
         "add_student": {
+          "help_email_optional": "Leave blank — student will log in with an auto-generated username.",
           "title": "Add New Student",
           "personal_tab": "Personal Information",
           "personal_desc": "Student's personal details and contact information",
@@ -4149,6 +4152,9 @@
         "msg_delete_failed": "Failed to delete students"
       },
       "add_student": {
+        "credentials_title": "Student Login Credentials",
+        "credentials_desc": "No email was provided, so a username and password were auto-generated. Share these with the student — they won't be shown again.",
+        "help_email_optional": "Leave blank — student will log in with an auto-generated username.",
         "title": "Add New Student",
         "subtitle": "Complete the form below to onboard a new student",
         "back_to_students": "Back to Students",
@@ -6342,6 +6348,7 @@
       "editStructure": "Edit Fee Structure",
       "structureDetails": "Define the fee amount for a specific grade level and category",
       "selectGrade": "Select Grade",
+      "selectAll": "Select All",
       "selectMultipleGradesHint": "Select multiple grades to apply the same fee to all of them at once.",
       "selectCategory": "Select Category",
       "periodType": "Period Type",
@@ -12324,6 +12331,9 @@
     },
     "wall": {
       "empty_wall": "No posts yet. School activities will appear here.",
+      "search_placeholder": "Search the wall…",
+      "clear_search": "Clear search",
+      "no_search_results": "No posts match your search.",
       "load_more": "Load more",
       "loading": "Loading…",
       "pinned_label": "Pinned",

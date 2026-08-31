@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Link2, Copy, Check, Trash2, Power, PowerOff, Share2, RefreshCw } from 'lucide-react'
+import { Plus, Link2, Copy, Check, Trash2, Power, PowerOff, Share2, RefreshCw, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -290,6 +290,16 @@ export default function SignupLinksPage() {
                       {/* Share */}
                       <Button size="sm" variant="outline" className="h-8" onClick={() => setShowShareDialog(link)}>
                         <Share2 className="h-3.5 w-3.5" />
+                      </Button>
+                      {/* Edit — token/URL stay the same, only the field config/limits change */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => router.push(`/admin/signup-links/${link.id}/edit`)}
+                        title={isAr ? 'تعديل' : 'Edit'}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       {/* Toggle active */}
                       <Button

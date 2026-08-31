@@ -16,6 +16,12 @@ router.get('/', requireAdmin, signupLinksController.getLinks)
 // GET /api/signup-links/profile-fields?role=parent — existing profile columns that can be mapped
 router.get('/profile-fields', requireAdmin, signupLinksController.getProfileFields)
 
+// GET /api/signup-links/:id — fetch one link for editing
+router.get('/:id', requireAdmin, signupLinksController.getLink)
+
+// PUT /api/signup-links/:id — update a link's config (label/campus/limits/meta) — token is fixed
+router.put('/:id', requireAdmin, signupLinksController.updateLink)
+
 // PUT /api/signup-links/:id/deactivate — deactivate a link
 router.put('/:id/deactivate', requireAdmin, signupLinksController.deactivateLink)
 

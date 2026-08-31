@@ -47,6 +47,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { AcademicCalendarExportButton } from "@/components/academic-calendar/AcademicCalendarExportButton"
+
 
 export default function MarkingPeriodsPage() {
   const t = useTranslations('school.marking_periods')
@@ -377,14 +379,25 @@ export default function MarkingPeriodsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          {t('title')}
-        </h1>
-        <p className="text-muted-foreground">
-          {t('subtitle', { campus: selectedCampus ? ` — ${selectedCampus.name}` : "" })}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
+            {t('title')}
+          </h1>
+          <p className="text-muted-foreground">
+            {t('subtitle', { campus: selectedCampus ? ` — ${selectedCampus.name}` : "" })}
+          </p>
+        </div>
+        <AcademicCalendarExportButton
+          markingPeriods={[
+            ...grouped.FY,
+            ...grouped.SEM,
+            ...grouped.QTR,
+            ...grouped.PRO,
+          ]}
+        />
       </div>
+
 
       {/* Group selector (plugin-gated) */}
       {mpGroupsActive && mpGroups.length > 0 && (

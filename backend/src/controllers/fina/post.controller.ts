@@ -126,6 +126,7 @@ export const listWall = async (req: AuthRequest, res: Response) => {
     const data = await wall.listWall(await callerFrom(req), {
       cursor: req.query.cursor as string | undefined,
       type: req.query.type as string | undefined,
+      q: req.query.q as string | undefined,
     })
     return res.json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }

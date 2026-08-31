@@ -60,6 +60,27 @@ export const PROFILE_FIELD_REGISTRY: ProfileFieldDef[] = [
   },
   {
     table: 'profiles',
+    column: 'father_name',
+    label_en: "Father's Name",
+    label_ar: 'اسم الأب',
+    type: 'text',
+    // profiles.father_name/grandfather_name only exist for student profiles
+    // (see schema-template.sql column comments) — previously missing from
+    // this registry entirely, which is why they never appeared as a
+    // toggle-able signup-link field despite being configurable on the
+    // Custom Fields admin page.
+    appliesToRoles: ['student'],
+  },
+  {
+    table: 'profiles',
+    column: 'grandfather_name',
+    label_en: "Grandfather's Name",
+    label_ar: 'اسم الجد',
+    type: 'text',
+    appliesToRoles: ['student'],
+  },
+  {
+    table: 'profiles',
     column: 'address',
     label_en: 'Address',
     label_ar: 'العنوان',

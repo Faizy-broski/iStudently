@@ -51,6 +51,7 @@ import { getGradeLevels } from "@/lib/api/academics";
 import { LibraryCategory } from "@/types";
 import { toast } from "sonner";
 import { useTranslations } from 'next-intl'
+import { useCampus } from "@/context/CampusContext";
 
 const PRESET_COLORS = [
     "#EF4444", "#F97316", "#F59E0B", "#EAB308",
@@ -70,6 +71,8 @@ export default function BookCategoriesPage() {
     const t = useTranslations('admin.library.categories')
     const tCommon = useTranslations('common')
     const { user } = useAuth();
+    const campusCtx = useCampus();
+    const campusId = campusCtx?.selectedCampus?.id;
     const [categories, setCategories] = useState<LibraryCategory[]>([]);
     const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +89,8 @@ export default function BookCategoriesPage() {
 
     useEffect(() => {
         loadData();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [campusId]);
 
     const loadData = async () => {
         if (!user?.access_token) return;
@@ -94,7 +98,7 @@ export default function BookCategoriesPage() {
             setIsLoading(true);
             const [catRes, gradeRes] = await Promise.all([
                 getCategories(user.access_token),
-                getGradeLevels(),
+                getGradeLevels(campusId),
             ]);
             if (catRes.success && catRes.data) setCategories(catRes.data);
             if (gradeRes.success && gradeRes.data) setGradeLevels(gradeRes.data);

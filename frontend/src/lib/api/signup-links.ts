@@ -86,6 +86,26 @@ export async function getSignupLinks(campusId?: string) {
   return apiRequest<SignupLink[]>(`/signup-links${qs}`)
 }
 
+export async function getSignupLink(id: string) {
+  return apiRequest<SignupLink>(`/signup-links/${id}`)
+}
+
+export interface UpdateSignupLinkDTO {
+  label?: string | null
+  max_uses?: number | null
+  expires_at?: string | null
+  campus_id?: string | null
+  meta?: SignupLinkMeta
+}
+
+// role/token are not editable — see backend/src/services/signup-links.service.ts updateSignupLink.
+export async function updateSignupLink(id: string, data: UpdateSignupLinkDTO) {
+  return apiRequest<SignupLink>(`/signup-links/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
 export async function deactivateSignupLink(id: string) {
   return apiRequest<void>(`/signup-links/${id}/deactivate`, { method: 'PUT' })
 }

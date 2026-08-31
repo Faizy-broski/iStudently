@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Loader2, Newspaper, WifiOff } from 'lucide-react'
+import { Loader2, Newspaper, Search, WifiOff, X } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { listWall, type FinaPost } from '@/lib/api/fina-posts'
 import { PostCard } from './PostCard'
 import { NotificationBell } from './NotificationBell'
@@ -23,18 +25,20 @@ export function FinaWall() {
   const [cursor, setCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
+  const debouncedSearch = useDebouncedValue(searchInput, 400)
   const wentOffline = useRef(false)
 
-  const loadFirstPage = useCallback(() => {
+  const loadFirstPage = useCallback((q: string) => {
     setPosts(null)
     setCursor(null)
-    listWall().then((res) => {
+    listWall({ q: q || undefined }).then((res) => {
       setPosts(res.data?.posts ?? [])
       setCursor(res.data?.nextCursor ?? null)
     })
   }, [])
 
-  useEffect(() => { loadFirstPage() }, [loadFirstPage])
+  useEffect(() => { loadFirstPage(debouncedSearch) }, [debouncedSearch, loadFirstPage])
 
   // AT-12 ("disconnect then reconnect -> clean sync, no duplication") and
   // spec §21's offline copy verbatim. The wall is read-only for every role
@@ -48,7 +52,7 @@ export function FinaWall() {
       setIsOffline(false)
       if (wentOffline.current) {
         wentOffline.current = false
-        loadFirstPage()
+        loadFirstPage(debouncedSearch)
       }
     }
     setIsOffline(!navigator.onLine)
@@ -58,13 +62,13 @@ export function FinaWall() {
       window.removeEventListener('offline', handleOffline)
       window.removeEventListener('online', handleOnline)
     }
-  }, [loadFirstPage])
+  }, [loadFirstPage, debouncedSearch])
 
   const loadMore = async () => {
     if (!cursor) return
     setLoadingMore(true)
     try {
-      const res = await listWall({ cursor })
+      const res = await listWall({ cursor, q: debouncedSearch || undefined })
       setPosts((prev) => [...(prev ?? []), ...(res.data?.posts ?? [])])
       setCursor(res.data?.nextCursor ?? null)
     } finally {
@@ -80,7 +84,28 @@ export function FinaWall() {
           {t('offline_banner')}
         </div>
       )}
-      <div className="flex justify-end">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={t('search_placeholder')}
+            aria-label={t('search_placeholder')}
+            className="ps-10 pe-9"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput('')}
+              aria-label={t('clear_search')}
+              className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
         <NotificationBell />
       </div>
       <StoriesBar />
@@ -93,7 +118,7 @@ export function FinaWall() {
         <Card>
           <CardContent className="py-14 text-center text-sm text-gray-500 flex flex-col items-center gap-2">
             <Newspaper className="h-6 w-6 text-gray-300" />
-            {t('empty_wall')}
+            {debouncedSearch ? t('no_search_results') : t('empty_wall')}
           </CardContent>
         </Card>
       ) : (

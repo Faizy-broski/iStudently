@@ -175,6 +175,64 @@ export async function validateSignupToken(token: string): Promise<ValidateTokenR
   }
 }
 
+export async function getSignupLinkById(id: string, schoolId: string): Promise<SignupLink | null> {
+  const { data, error } = await supabase
+    .from('signup_links')
+    .select(`
+      *,
+      campus:campus_id ( name ),
+      creator:created_by ( first_name, last_name )
+    `)
+    .eq('id', id)
+    .eq('school_id', schoolId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+
+  return {
+    ...data,
+    meta: (data as any).meta ?? {},
+    campus_name: (data as any).campus?.name ?? null,
+    creator_name: (data as any).creator
+      ? `${(data as any).creator.first_name ?? ''} ${(data as any).creator.last_name ?? ''}`.trim()
+      : null,
+    campus: undefined,
+    creator: undefined,
+  }
+}
+
+export interface UpdateSignupLinkDTO {
+  campusId?: string | null
+  label?: string | null
+  maxUses?: number | null
+  expiresAt?: Date | null
+  meta?: SignupLinkMeta
+}
+
+// role and token are deliberately not editable here — role drives which
+// fields even make sense on the form, and token is the shared URL itself;
+// changing either belongs to "make a new link," not "edit this one."
+export async function updateSignupLink(id: string, schoolId: string, dto: UpdateSignupLinkDTO): Promise<SignupLink> {
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (dto.campusId !== undefined) updates.campus_id = dto.campusId
+  if (dto.label !== undefined) updates.label = dto.label
+  if (dto.maxUses !== undefined) updates.max_uses = dto.maxUses
+  if (dto.expiresAt !== undefined) updates.expires_at = dto.expiresAt?.toISOString() ?? null
+  if (dto.meta !== undefined) updates.meta = dto.meta
+
+  const { data, error } = await supabase
+    .from('signup_links')
+    .update(updates)
+    .eq('id', id)
+    .eq('school_id', schoolId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return { ...data, meta: (data as any).meta ?? {} }
+}
+
 export async function deactivateSignupLink(id: string, schoolId: string): Promise<void> {
   const { error } = await supabase
     .from('signup_links')

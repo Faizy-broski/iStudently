@@ -92,10 +92,11 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<Api
 
 // ── Wall ─────────────────────────────────────────────────────────────────
 
-export const listWall = (params?: { cursor?: string | null; type?: string }) => {
+export const listWall = (params?: { cursor?: string | null; type?: string; q?: string }) => {
   const qs = new URLSearchParams()
   if (params?.cursor) qs.set('cursor', params.cursor)
   if (params?.type) qs.set('type', params.type)
+  if (params?.q?.trim()) qs.set('q', params.q.trim())
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return apiFetch<{ posts: FinaPost[]; nextCursor: string | null }>(`/fina/posts/wall${suffix}`)
 }
