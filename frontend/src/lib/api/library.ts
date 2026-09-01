@@ -340,8 +340,10 @@ export interface Student {
   phone?: string;
 }
 
-export async function searchStudents(query: string, token: string): Promise<ApiResponse<Student[]>> {
-  const res = await fetch(`${API_URL}/library/students/search?q=${encodeURIComponent(query)}`, {
+export async function searchStudents(query: string, token: string, campusId?: string | null): Promise<ApiResponse<Student[]>> {
+  const qs = new URLSearchParams({ q: query });
+  if (campusId) qs.set('campus_id', campusId);
+  const res = await fetch(`${API_URL}/library/students/search?${qs.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();

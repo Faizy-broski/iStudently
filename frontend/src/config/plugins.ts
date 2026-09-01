@@ -45,6 +45,7 @@ import {
   MessageSquareWarning,
   Video,
   Languages,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -95,6 +96,21 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: MessageSquareWarning,
     category: 'Communication',
     settingsHref: '/admin/grievances/settings',
+    sidebarInjections: [],
+  },
+
+  // ── Hifzi (Quran Memorization) ───────────────────────────────────────────
+  // Standalone module with its own top-level sidebar entry per role (added
+  // directly in sidebar.ts, gated by pluginRequired: 'hifzi'), mirroring
+  // grievance_portal's pattern — no sidebarInjections needed here.
+  {
+    id: 'hifzi',
+    name: 'Hifzi — Quran Memorization',
+    description:
+      'Quran memorization management: circles, recitation tracking with error taxonomy and auto-grading, spaced-repetition review, daily assignments, attendance, and progress reports/heatmap.',
+    icon: BookOpen,
+    category: 'Academics',
+    settingsHref: '/admin/hifzi/settings',
     sidebarInjections: [],
   },
 

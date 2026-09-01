@@ -1369,6 +1369,62 @@ export const createPackageSchema = z.object({
 });
 
 // =============================================================
+// TEXTBOOK DISTRIBUTION & TRACKING MODULE
+// =============================================================
+
+export const createTextbookSchema = z.object({
+  title: z.string().min(1),
+  grade_level_id: z.string().uuid(),
+  subject: z.string().optional(),
+  stock_quantity: z.number().int().min(0).optional(),
+  campus_id: z.string().uuid().optional(),
+});
+
+export const updateTextbookSchema = z.object({
+  title: z.string().min(1).optional(),
+  grade_level_id: z.string().uuid().optional(),
+  subject: z.string().optional(),
+  is_active: z.boolean().optional(),
+});
+
+export const restockTextbookSchema = z.object({
+  amount: z.number().int().refine((n) => n !== 0, 'amount must not be zero'),
+});
+
+export const syncTextbookDeliverySchema = z.object({
+  student_id: z.string().uuid(),
+  book_id: z.string().uuid(),
+  is_delivered: z.boolean(),
+  condition: z.enum(['new', 'good', 'damaged']).optional(),
+  override: z.boolean().optional(),
+});
+
+export const bulkSyncTextbookDeliverySchema = z.object({
+  items: z.array(z.object({
+    student_id: z.string().uuid(),
+    book_id: z.string().uuid(),
+    is_delivered: z.boolean(),
+    condition: z.enum(['new', 'good', 'damaged']).optional(),
+  })).min(1).max(500),
+  override: z.boolean().optional(),
+});
+
+export const returnTextbookDeliverySchema = z.object({
+  return_status: z.enum(['returned', 'lost']),
+  condition: z.enum(['new', 'good', 'damaged']).optional(),
+  notes: z.string().optional(),
+});
+
+export const bulkReturnTextbookDeliverySchema = z.object({
+  items: z.array(z.object({
+    id: z.string().uuid(),
+    return_status: z.enum(['returned', 'lost']),
+    condition: z.enum(['new', 'good', 'damaged']).optional(),
+    notes: z.string().optional(),
+  })).min(1).max(500),
+});
+
+// =============================================================
 // HOSTEL MODULE
 // =============================================================
 

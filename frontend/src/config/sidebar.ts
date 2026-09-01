@@ -542,6 +542,20 @@ const adminMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "hifzi",
+    href: "/admin/hifzi",
+    icon: BookOpen,
+    pluginRequired: "hifzi",
+    subItems: [
+      { title: "circles", href: "/admin/hifzi/circles", icon: Users },
+      { title: "students", href: "/admin/hifzi/students", icon: UserCheck },
+      { title: "plans", href: "/admin/hifzi/plans", icon: Calendar },
+      { title: "attendance", href: "/admin/hifzi/attendance", icon: CalendarCheck },
+      { title: "reports", href: "/admin/hifzi/reports", icon: BarChart3 },
+      { title: "settings", href: "/admin/hifzi/settings", icon: Settings },
+    ],
+  },
+  {
     title: "grievances",
     href: "/admin/grievances",
     icon: MessageSquareWarning,
@@ -821,6 +835,17 @@ const teacherMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "hifzi",
+    href: "/teacher/hifzi",
+    icon: BookOpen,
+    pluginRequired: "hifzi",
+    subItems: [
+      { title: "recite", href: "/teacher/hifzi/recite", icon: Mic },
+      { title: "attendance", href: "/teacher/hifzi/attendance", icon: CalendarCheck },
+      { title: "plans", href: "/teacher/hifzi/plans", icon: Calendar },
+    ],
+  },
+  {
     title: "grievances",
     href: "/teacher/grievances",
     icon: MessageSquareWarning,
@@ -983,6 +1008,16 @@ const studentMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "hifzi",
+    href: "/student/hifzi",
+    icon: BookOpen,
+    pluginRequired: "hifzi",
+    subItems: [
+      { title: "recitation", href: "/student/hifzi", icon: Mic },
+      { title: "reports", href: "/student/hifzi/heatmap", icon: BarChart3 },
+    ],
+  },
+  {
     title: "grievances",
     href: "/student/grievances",
     icon: MessageSquareWarning,
@@ -1106,6 +1141,16 @@ const parentMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "inbox", href: "/parent/messaging", icon: Send },
       { title: "write", href: "/parent/messaging/write", icon: Mail },
+    ],
+  },
+  {
+    title: "hifzi",
+    href: "/parent/hifzi",
+    icon: BookOpen,
+    pluginRequired: "hifzi",
+    subItems: [
+      { title: "recitation", href: "/parent/hifzi", icon: Mic },
+      { title: "reports", href: "/parent/hifzi/heatmap", icon: BarChart3 },
     ],
   },
   {

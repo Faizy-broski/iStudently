@@ -1001,17 +1001,35 @@ export class LibraryService {
 
       if (rpcError) {
         console.error('searchStudents rpc error, falling back to direct query', { schoolId, q, rpcError });
-        // Fallback: search only by student_number (safe, no foreign table OR needed)
-        const { data, error } = await supabase
-          .from('students')
-          .select('id, student_number, grade_level, profile_id, profile:profiles(id, first_name, last_name, email)')
-          .eq('school_id', schoolId)
-          .ilike('student_number', `%${q}%`)
-          .limit(20);
+        // Fallback: two queries run concurrently — by student_number (base
+        // table, no join needed) and by name/email (via an inner join to
+        // profiles, filtered with .or({foreignTable}) since PostgREST can't
+        // OR-combine a base-table column with a joined-table column in one
+        // filter) — then merge and dedupe. Previously this fallback only
+        // ever searched student_number, so any RPC failure made every
+        // name-based search silently return nothing.
+        const [byNumber, byName] = await Promise.all([
+          supabase
+            .from('students')
+            .select('id, student_number, grade_level, profile_id, profile:profiles(id, first_name, last_name, email)')
+            .eq('school_id', schoolId)
+            .ilike('student_number', `%${q}%`)
+            .limit(20),
+          supabase
+            .from('students')
+            .select('id, student_number, grade_level, profile_id, profile:profiles!inner(id, first_name, last_name, email)')
+            .eq('school_id', schoolId)
+            .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`, { foreignTable: 'profiles' })
+            .limit(20),
+        ]);
 
-        if (error) throw error;
+        if (byNumber.error) throw byNumber.error;
+        if (byName.error) throw byName.error;
 
-        return (data || []).map((s: any) => ({
+        const merged = new Map<string, any>();
+        for (const s of [...(byNumber.data || []), ...(byName.data || [])]) merged.set(s.id, s);
+
+        return Array.from(merged.values()).slice(0, 20).map((s: any) => ({
           id: s.id,
           student_number: s.student_number || null,
           grade_level: s.grade_level || null,

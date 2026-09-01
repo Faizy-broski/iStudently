@@ -50,7 +50,8 @@ export type EntityType =
     | 'teacher'
     | 'staff'
     | 'hostel_room'
-    | 'hostel_building';
+    | 'hostel_building'
+    | 'school';
 
 export interface DefaultFieldOrder {
   id: string;

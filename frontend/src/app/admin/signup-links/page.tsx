@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Link2, Copy, Check, Trash2, Power, PowerOff, Share2, RefreshCw, Pencil } from 'lucide-react'
+import { Plus, Link2, Copy, Check, Trash2, Power, PowerOff, Share2, RefreshCw, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -54,6 +54,9 @@ function getLinkStatus(link: SignupLink): 'active' | 'inactive' | 'expired' {
   return 'active'
 }
 
+type SortField = 'created_at' | 'use_count' | 'expires_at'
+type SortDir = 'asc' | 'desc'
+
 export default function SignupLinksPage() {
   const t = useTranslations('signupLinks')
   const locale = useLocale()
@@ -68,6 +71,17 @@ export default function SignupLinksPage() {
   const [showShareDialog, setShowShareDialog] = React.useState<SignupLink | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<SignupLink | null>(null)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
+  const [sortField, setSortField] = React.useState<SortField>('created_at')
+  const [sortDir, setSortDir] = React.useState<SortDir>('desc')
+
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('desc')
+    }
+  }
 
   const fetchData = React.useCallback(async () => {
     setLoading(true)
@@ -159,6 +173,41 @@ export default function SignupLinksPage() {
   const activeCount = links.filter(l => getLinkStatus(l) === 'active').length
   const totalUses = links.reduce((sum, l) => sum + l.use_count, 0)
 
+  const sortedLinks = React.useMemo(() => {
+    const dirMul = sortDir === 'asc' ? 1 : -1
+    return [...links].sort((a, b) => {
+      if (sortField === 'use_count') {
+        return (a.use_count - b.use_count) * dirMul
+      }
+      if (sortField === 'expires_at') {
+        // Treat "Never" (null) as farthest in the future, so it always sorts last regardless of direction.
+        const aTime = a.expires_at ? new Date(a.expires_at).getTime() : Infinity
+        const bTime = b.expires_at ? new Date(b.expires_at).getTime() : Infinity
+        if (aTime === Infinity && bTime === Infinity) return 0
+        if (aTime === Infinity) return 1
+        if (bTime === Infinity) return -1
+        return (aTime - bTime) * dirMul
+      }
+      // created_at
+      return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dirMul
+    })
+  }, [links, sortField, sortDir])
+
+  const SortHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <button
+      type="button"
+      onClick={() => handleSort(field)}
+      className="flex items-center gap-1 hover:text-foreground transition-colors"
+    >
+      {children}
+      {sortField === field ? (
+        sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-40" />
+      )}
+    </button>
+  )
+
   return (
     <div className="space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
       {/* Header */}
@@ -223,7 +272,21 @@ export default function SignupLinksPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {links.map((link) => {
+          {/* Column headers (desktop only — cards stack on mobile) */}
+          <div className="hidden lg:grid lg:grid-cols-12 lg:items-center gap-3 px-4 text-[10px] uppercase tracking-wide text-gray-400">
+            <div className="lg:col-span-4">
+              <SortHeader field="created_at">{isAr ? 'تم الإنشاء' : 'Created'}</SortHeader>
+            </div>
+            <div className="lg:col-span-2">
+              <SortHeader field="use_count">{t('tableUses')}</SortHeader>
+            </div>
+            <div className="lg:col-span-2">
+              <SortHeader field="expires_at">{t('tableExpires')}</SortHeader>
+            </div>
+            <div className="lg:col-span-2">URL</div>
+            <div className="lg:col-span-2 lg:text-end">{isAr ? 'الإجراءات' : 'Actions'}</div>
+          </div>
+          {sortedLinks.map((link) => {
             const status = getLinkStatus(link)
             const url = buildSignupUrl(link.token)
             return (

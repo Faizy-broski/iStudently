@@ -15,6 +15,8 @@ import parentRoutes from "./routes/parent.routes";
 import quotesRoutes from './routes/quotes.routes';
 import eventRoutes from "./routes/event.routes";
 import libraryRoutes from "./routes/library.routes";
+import textbooksRoutes from "./routes/textbooks.routes";
+import textbookDeliveriesRoutes from "./routes/textbook-deliveries.routes";
 import academicsRoutes from "./routes/academics.routes";
 import teacherRoutes from "./routes/teacher.routes";
 import timetableRoutes from "./routes/timetable.routes";
@@ -109,6 +111,23 @@ import { startMonthlyReportCron } from "./services/fina/monthly-report.service";
 import { startRetentionPurgeCron } from "./services/fina/retention.service";
 import "./services/fina/media-variants.service"; // side effect: registers the 'generate_media_variants' fina_jobs handler
 import "./services/fina/consent-withdrawal.service"; // side effect: registers the 'reprocess_student_archive' fina_jobs handler
+
+// Hifzi (Quran memorization) module — Phase 0 + Phase 1.
+import quranReferenceRoutes from "./routes/quran/reference.routes";
+import hifziSettingsRoutes from "./routes/hifzi/settings.routes";
+import hifziCirclesRoutes from "./routes/hifzi/circles.routes";
+import hifziStudentsRoutes from "./routes/hifzi/students.routes";
+import hifziPlansRoutes from "./routes/hifzi/plans.routes";
+import hifziSessionsRoutes from "./routes/hifzi/sessions.routes";
+import hifziAttendanceRoutes from "./routes/hifzi/attendance.routes";
+import hifziReportsRoutes from "./routes/hifzi/reports.routes";
+import { startHifziJobsRunner } from "./services/hifzi/jobs";
+import { startHifziAbsenceAlertCron } from "./services/hifzi/attendance-alert.service";
+// Also registers the 'generate_daily_assignments' hifzi_jobs handler as a
+// side effect of being loaded (see backend/src/services/fina/stories.service.ts
+// for the equivalent fina_jobs precedent this mirrors).
+import { startHifziNightlyAssignmentCron } from "./services/hifzi/plans.service";
+
 import icalRoutes from "./routes/ical.routes";
 import publicPagesRoutes from "./routes/public-pages.routes";
 import socialAuthRoutes from "./routes/social-auth.routes";
@@ -302,6 +321,8 @@ registerRoutes("/students", studentRoutes);
 registerRoutes("/parents", parentRoutes);
 registerRoutes("/events", eventRoutes);
 registerRoutes("/library", libraryRoutes);
+registerRoutes("/textbooks", textbooksRoutes);
+registerRoutes("/textbook-deliveries", textbookDeliveriesRoutes);
 registerRoutes("/academics", academicsRoutes);
 registerRoutes("/teachers", teacherRoutes);
 registerRoutes("/timetable", timetableRoutes);
@@ -418,6 +439,14 @@ registerRoutes("/fina/threads", finaThreadRoutes);
 registerRoutes("/fina/supervisor", finaSupervisorRoutes);
 registerRoutes("/fina/audit", finaAuditRoutes);
 registerRoutes("/fina/reports", finaReportRoutes);
+registerRoutes("/quran", quranReferenceRoutes);
+registerRoutes("/hifzi/settings", hifziSettingsRoutes);
+registerRoutes("/hifzi/circles", hifziCirclesRoutes);
+registerRoutes("/hifzi/students", hifziStudentsRoutes);
+registerRoutes("/hifzi/plans", hifziPlansRoutes);
+registerRoutes("/hifzi/sessions", hifziSessionsRoutes);
+registerRoutes("/hifzi/attendance", hifziAttendanceRoutes);
+registerRoutes("/hifzi", hifziReportsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -475,6 +504,9 @@ app.listen(PORT, () => {
   startAuditChainVerifyCron();
   startMonthlyReportCron();
   startRetentionPurgeCron();
+  startHifziJobsRunner();
+  startHifziAbsenceAlertCron();
+  startHifziNightlyAssignmentCron();
 
   // Reconcile any timetable generation jobs left 'running'/'queued' from
   // before a restart (crash-safety — see timetable-generation.service.ts).

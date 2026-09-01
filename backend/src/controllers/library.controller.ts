@@ -388,7 +388,14 @@ export class LibraryController {
 
   async searchStudents(req: AuthRequest, res: Response) {
     try {
-      const schoolId = libSchoolId(req);
+      // Explicit campus_id (sent by callers like EnrollStudentDialog.tsx
+      // that already know which campus they're scoped to) always wins over
+      // libSchoolId()'s profile-derived fallback — an org-wide admin's
+      // profile.school_id is the PARENT school, under which no students are
+      // ever stored (students.school_id is always a campus id), so without
+      // this override this endpoint could never find anyone for such an
+      // admin regardless of query.
+      const schoolId = (req.query.campus_id as string | undefined) || libSchoolId(req);
       const { q: query } = req.query;
 
       if (!schoolId) {
