@@ -91,13 +91,16 @@ export const startGenerationSchema = z.object({
   section_ids: z.array(z.string().uuid()).optional(),
   /** Section-less grades to include as generation targets alongside section_ids. */
   grade_level_ids: z.array(z.string().uuid()).optional(),
+  /** Hifzi circles (bell_schedule mode only) — Ministerial Decree 1205 compliance, Phase 4. Always explicit, never swept in by scope='all'. */
+  circle_ids: z.array(z.string().uuid()).optional(),
   created_by: z.string().uuid().optional(),
 }).refine(
   (v) =>
     v.scope === 'all' ||
     (Array.isArray(v.section_ids) && v.section_ids.length > 0) ||
-    (Array.isArray(v.grade_level_ids) && v.grade_level_ids.length > 0),
-  { message: 'section_ids and/or grade_level_ids is required and must be non-empty when scope is "sections"', path: ['section_ids'] }
+    (Array.isArray(v.grade_level_ids) && v.grade_level_ids.length > 0) ||
+    (Array.isArray(v.circle_ids) && v.circle_ids.length > 0),
+  { message: 'section_ids, grade_level_ids, and/or circle_ids is required and must be non-empty when scope is "sections"', path: ['section_ids'] }
 )
 
 // ----------------------------------------------------------------------------

@@ -23,6 +23,21 @@ export const enrollStudent = async (req: AuthRequest, res: Response) => {
   } catch (error: any) { return handleError(res, error) }
 }
 
+export const enrollStudentsBulk = async (req: AuthRequest, res: Response) => {
+  try {
+    const circleId = req.body.circle_id
+    const studentIds: string[] = Array.isArray(req.body.student_ids) ? req.body.student_ids : []
+    if (!circleId) return res.status(400).json({ success: false, error: 'circle_id is required' })
+    if (studentIds.length === 0) return res.status(400).json({ success: false, error: 'student_ids array is required and must not be empty' })
+    // A halaqah roster, not a whole-school import — smaller than the
+    // general students bulk-import's 500-row cap.
+    if (studentIds.length > 200) return res.status(400).json({ success: false, error: 'Maximum 200 students per bulk enrollment' })
+
+    const data = await hifziEnrollmentsService.enrollBulk(circleId, studentIds)
+    return res.status(200).json({ success: true, data, message: `Enrolled ${data.success_count} student(s) with ${data.error_count} error(s)` })
+  } catch (error: any) { return handleError(res, error) }
+}
+
 export const withdrawEnrollment = async (req: AuthRequest, res: Response) => {
   try {
     const data = await hifziEnrollmentsService.withdraw(req.params.id)
@@ -42,6 +57,9 @@ export const getStudentProfile = async (req: AuthRequest, res: Response) => {
 
 export const updateStudentProfile = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessStudent(req, req.params.id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziStudentProfilesService.updateProfile(req.params.id, {
       riwayahId: req.body.riwayah_id,
       currentJuzTarget: req.body.current_juz_target,
@@ -55,6 +73,9 @@ export const updateStudentProfile = async (req: AuthRequest, res: Response) => {
 
 export const addStudentNote = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessStudent(req, req.params.id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziStudentProfilesService.addNote(req.params.id, req.profile.id, req.body.note, req.body.visibility)
     return res.status(201).json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }

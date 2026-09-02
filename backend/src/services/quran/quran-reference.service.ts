@@ -183,6 +183,38 @@ class QuranReferenceService {
     return { riwayahCode, startAyahId: ayahs[0].id, endAyahId: ayahs[ayahs.length - 1].id }
   }
 
+  /**
+   * Resolves a *range* of consecutive divisions (e.g. thumn 470 through thumn
+   * 472 — the Ministerial Compliance spec's sample payload shape) into one
+   * ayah range. resolveRange only resolves a single division number at a
+   * time; this spans several by resolving the first division's start-ayah
+   * and the last division's end-ayah (two resolveRange calls), then
+   * defensively re-validates ordering via global_ayah_index — the same
+   * guard used throughout this file (e.g. countAyat) — rather than trusting
+   * startNumber<=endNumber alone.
+   */
+  async resolveDivisionRange(riwayahCode: string, unitType: 'juz' | 'hizb' | 'rub' | 'thumn', startNumber: number, endNumber: number): Promise<AyahRange> {
+    if (endNumber < startNumber) {
+      throw new Error(`resolveDivisionRange: end ${unitType} (${endNumber}) precedes start ${unitType} (${startNumber})`)
+    }
+
+    const [startRange, endRange] = await Promise.all([
+      this.resolveRange(riwayahCode, { unitType, number: startNumber }),
+      this.resolveRange(riwayahCode, { unitType, number: endNumber }),
+    ])
+
+    const [{ data: start, error: startError }, { data: end, error: endError }] = await Promise.all([
+      supabase.from('quran_ayahs').select('global_ayah_index').eq('id', startRange.startAyahId).single(),
+      supabase.from('quran_ayahs').select('global_ayah_index').eq('id', endRange.endAyahId).single(),
+    ])
+    if (startError || !start || endError || !end) throw new Error('resolveDivisionRange: resolved ayah not found')
+    if (end.global_ayah_index < start.global_ayah_index) {
+      throw new Error(`resolveDivisionRange: resolved range end precedes start (check ${unitType} numbering)`)
+    }
+
+    return { riwayahCode, startAyahId: startRange.startAyahId, endAyahId: endRange.endAyahId }
+  }
+
   /** All ayat that appear on a given page of a given edition, in Quran order. */
   async ayatOnPage(editionCode: string, pageNumber: number): Promise<AyahRef[]> {
     const edition = await this.getEdition(editionCode)

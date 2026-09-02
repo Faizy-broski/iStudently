@@ -2,6 +2,7 @@ import { supabase } from '../../config/supabase'
 import { computeRawScore, resolveGradeCode, ErrorTally } from './grading-engine.service'
 import { applySm2, scoreToQuality, UnitState as Sm2UnitState } from './srs-engine.service'
 import { hifziSettingsService } from './settings.service'
+import { hifziMilestonesService } from './milestones.service'
 
 // ============================================================================
 // The recitation core write path (spec §8.5 / §6.5). hifzi_sessions is
@@ -126,10 +127,23 @@ class HifziSessionsService {
 
     // 5. Update SRS state for the recited range — best-effort: a failure here
     //    must not undo the already-saved session (the teacher's work is not lost).
+    let wasNewlyMemorized = false
     try {
-      await this.updateUnitStateForRange(dto.studentId, dto.startAyahId, dto.endAyahId, finalScore, settings)
+      wasNewlyMemorized = await this.updateUnitStateForRange(dto.studentId, dto.startAyahId, dto.endAyahId, finalScore, settings)
     } catch (err) {
       console.error('Failed to update SRS unit state after session save:', err)
+    }
+
+    // 6. Ministerial Decree 1205 compliance: check for a newly-completed
+    //    structural unit or syllabus-grade milestone — only on an actual
+    //    first-time memorization, never a review. Best-effort, same
+    //    fail-open reasoning as step 5 (see milestones.service.ts).
+    if (wasNewlyMemorized) {
+      try {
+        await hifziMilestonesService.checkAndRecordMilestones(dto.studentId, schoolId, { startAyahId: dto.startAyahId, endAyahId: dto.endAyahId })
+      } catch (err) {
+        console.error('Failed to check Hifzi milestones after session save:', err)
+      }
     }
 
     return session
@@ -174,16 +188,21 @@ class HifziSessionsService {
    * as one SRS unit keyed by (student, start_ayah, end_ayah) — a session
    * spanning a different range than any prior review creates a new unit.
    */
-  private async updateUnitStateForRange(studentId: string, startAyahId: string, endAyahId: string, rawScore: number, settings: Awaited<ReturnType<typeof hifziSettingsService.getEffectiveSettings>>) {
-    const hasSimilar = await this.rangeHasSimilarPassage(startAyahId)
-
-    const { data: existing } = await supabase
-      .from('hifzi_unit_states')
-      .select('*')
-      .eq('student_id', studentId)
-      .eq('start_ayah_id', startAyahId)
-      .eq('end_ayah_id', endAyahId)
-      .maybeSingle()
+  /** Returns true iff this call is the moment the unit's first_memorized_at transitioned from unset to set — i.e. this is a first-time memorization, not a review — the signal milestones.service.ts's cascade check is gated on. */
+  private async updateUnitStateForRange(studentId: string, startAyahId: string, endAyahId: string, rawScore: number, settings: Awaited<ReturnType<typeof hifziSettingsService.getEffectiveSettings>>): Promise<boolean> {
+    // Independent reads — neither depends on the other's result — run concurrently
+    // instead of sequentially to save one round trip off this write path.
+    const [hasSimilar, existingResult] = await Promise.all([
+      this.rangeHasSimilarPassage(startAyahId),
+      supabase
+        .from('hifzi_unit_states')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('start_ayah_id', startAyahId)
+        .eq('end_ayah_id', endAyahId)
+        .maybeSingle(),
+    ])
+    const { data: existing } = existingResult
 
     const now = new Date()
     const state: Sm2UnitState = existing
@@ -228,11 +247,14 @@ class HifziSessionsService {
 
     const { error } = await supabase.from('hifzi_unit_states').upsert(payload, { onConflict: 'student_id,start_ayah_id,end_ayah_id' })
     if (error) throw new Error(`Failed to persist SRS unit state: ${error.message}`)
+
+    return !existing?.first_memorized_at
   }
 
   private async rangeHasSimilarPassage(startAyahId: string): Promise<boolean> {
-    const { data: ayah } = await supabase.from('quran_ayahs').select('id').eq('id', startAyahId).maybeSingle()
-    if (!ayah) return false
+    // No separate ayah-existence check: startAyahId is FK-constrained onto
+    // quran_ayahs by the hifzi_unit_states table itself, so it's guaranteed
+    // to exist — that lookup was a redundant round trip on every save.
     const { count } = await supabase.from('quran_similar_members').select('id', { count: 'exact', head: true }).eq('ayah_id', startAyahId)
     return (count ?? 0) > 0
   }

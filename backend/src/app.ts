@@ -121,6 +121,9 @@ import hifziPlansRoutes from "./routes/hifzi/plans.routes";
 import hifziSessionsRoutes from "./routes/hifzi/sessions.routes";
 import hifziAttendanceRoutes from "./routes/hifzi/attendance.routes";
 import hifziReportsRoutes from "./routes/hifzi/reports.routes";
+import hifziCurriculumRoutes from "./routes/hifzi/curriculum.routes";
+import hifziGradebookBridgeRoutes from "./routes/hifzi/gradebook-bridge.routes";
+import hifziComplianceRoutes from "./routes/hifzi/compliance.routes";
 import { startHifziJobsRunner } from "./services/hifzi/jobs";
 import { startHifziAbsenceAlertCron } from "./services/hifzi/attendance-alert.service";
 // Also registers the 'generate_daily_assignments' hifzi_jobs handler as a
@@ -446,6 +449,9 @@ registerRoutes("/hifzi/students", hifziStudentsRoutes);
 registerRoutes("/hifzi/plans", hifziPlansRoutes);
 registerRoutes("/hifzi/sessions", hifziSessionsRoutes);
 registerRoutes("/hifzi/attendance", hifziAttendanceRoutes);
+registerRoutes("/hifzi/curriculum", hifziCurriculumRoutes);
+registerRoutes("/hifzi/gradebook", hifziGradebookBridgeRoutes);
+registerRoutes("/hifzi/compliance", hifziComplianceRoutes);
 registerRoutes("/hifzi", hifziReportsRoutes);
 
 // 404 handler

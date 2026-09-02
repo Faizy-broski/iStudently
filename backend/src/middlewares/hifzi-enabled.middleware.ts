@@ -1,6 +1,15 @@
 import { Response, NextFunction } from 'express'
 import { AuthRequest } from './auth.middleware'
 import { supabase } from '../config/supabase'
+import { TtlCache } from '../utils/ttl-cache'
+
+// Whether Hifzi is enabled for a (school, campus) pair changes only when an
+// admin toggles the module — cached with a short TTL so this check, which
+// runs on every single Hifzi request, doesn't cost a Supabase round trip
+// (or two) each time. No invalidation hook: a ~60s staleness window after a
+// toggle is an explicit, acceptable trade-off (see settings.service.ts for
+// the equivalent, invalidated cache where staleness isn't acceptable).
+const pluginGateCache = new TtlCache<boolean>(60_000)
 
 /**
  * Gates every Hifzi route behind school_settings.active_plugins.hifzi —
@@ -29,21 +38,26 @@ export async function requireHifziEnabled(req: AuthRequest, res: Response, next:
     return res.status(401).json({ success: false, error: 'Unauthorized: No school context' })
   }
 
+  const cacheKey = `${schoolId}:${campusId ?? ''}`
   try {
-    // Both rows are independent reads (campus-level override vs. the
-    // school-wide default) — fetching them concurrently instead of
-    // sequentially (campus check, then only-if-that-missed school check)
-    // saves one full round trip per request. Each round trip to this
-    // project's Supabase instance measured ~150-500ms, so on a
-    // request path already chained through several middleware checks,
-    // this is a real, cheap win.
-    const [campusResult, schoolResult] = await Promise.all([
-      campusId
-        ? supabase.from('school_settings').select('active_plugins').eq('school_id', schoolId).eq('campus_id', campusId).maybeSingle()
-        : Promise.resolve({ data: null }),
-      supabase.from('school_settings').select('active_plugins').eq('school_id', schoolId).is('campus_id', null).maybeSingle(),
-    ])
-    const pluginActive = !!campusResult.data?.active_plugins?.hifzi || !!schoolResult.data?.active_plugins?.hifzi
+    let pluginActive = pluginGateCache.get(cacheKey)
+    if (pluginActive === undefined) {
+      // Both rows are independent reads (campus-level override vs. the
+      // school-wide default) — fetching them concurrently instead of
+      // sequentially (campus check, then only-if-that-missed school check)
+      // saves one full round trip per request. Each round trip to this
+      // project's Supabase instance measured ~150-500ms, so on a
+      // request path already chained through several middleware checks,
+      // this is a real, cheap win.
+      const [campusResult, schoolResult] = await Promise.all([
+        campusId
+          ? supabase.from('school_settings').select('active_plugins').eq('school_id', schoolId).eq('campus_id', campusId).maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase.from('school_settings').select('active_plugins').eq('school_id', schoolId).is('campus_id', null).maybeSingle(),
+      ])
+      pluginActive = !!campusResult.data?.active_plugins?.hifzi || !!schoolResult.data?.active_plugins?.hifzi
+      pluginGateCache.set(cacheKey, pluginActive)
+    }
 
     if (!pluginActive) {
       return res.status(403).json({ success: false, error: 'The Hifzi module is not enabled for this school' })

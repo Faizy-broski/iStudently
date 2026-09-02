@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase'
+import { isTeacherAssignedToStudent } from '../../utils/hifzi-access'
 
 // ============================================================================
 // Hifzi student domain — enrollment into circles, and the Hifzi-specific
@@ -53,6 +54,46 @@ class HifziEnrollmentsService {
     return data
   }
 
+  /**
+   * Bulk version of enroll() — enrolls many existing students into one
+   * circle at once. Reuses enroll() per student rather than reimplementing
+   * its duplicate-active-enrollment check / hifzi_student_profiles lazy-
+   * upsert; bounded concurrency (batches of 10, matching
+   * student.service.ts::bulkImportStudents and this session's earlier
+   * plans.service.ts nightly-assignment batching) with a per-student
+   * try/catch so one failure can't abort the batch.
+   */
+  async enrollBulk(circleId: string, studentIds: string[]): Promise<{
+    success_count: number
+    error_count: number
+    errors: { student_id: string; error: string }[]
+    enrolled: any[]
+  }> {
+    let success_count = 0
+    let error_count = 0
+    const errors: { student_id: string; error: string }[] = []
+    const enrolled: any[] = []
+
+    const CONCURRENCY = 10
+    for (let i = 0; i < studentIds.length; i += CONCURRENCY) {
+      const batch = studentIds.slice(i, i + CONCURRENCY)
+      await Promise.all(
+        batch.map(async (studentId) => {
+          try {
+            const row = await this.enroll({ circleId, studentId })
+            success_count++
+            enrolled.push(row)
+          } catch (err: any) {
+            error_count++
+            errors.push({ student_id: studentId, error: err?.message || String(err) })
+          }
+        })
+      )
+    }
+
+    return { success_count, error_count, errors, enrolled }
+  }
+
   async withdraw(enrollmentId: string) {
     const { data, error } = await supabase
       .from('hifzi_enrollments')
@@ -73,16 +114,9 @@ class HifziStudentProfilesService {
     if (LEARNING_NEEDS_ALLOWED_ROLES.includes(callerRole)) return true
     if (callerRole !== 'teacher') return false
 
-    const { data } = await supabase
-      .from('hifzi_enrollments')
-      .select('circle_id, hifzi_circles!inner(hifzi_circle_teachers!inner(teacher_profile_id, active_to))')
-      .eq('student_id', studentId)
-      .eq('status', 'active')
-      .eq('hifzi_circles.hifzi_circle_teachers.teacher_profile_id', callerProfileId)
-      .is('hifzi_circles.hifzi_circle_teachers.active_to', null)
-      .limit(1)
-
-    return !!data && data.length > 0
+    // Shared with hifzi-access.ts's assertCanAccessStudent — single source
+    // of truth for "is this teacher assigned to this student's circle".
+    return isTeacherAssignedToStudent(studentId, callerProfileId)
   }
 
   async getProfile(studentId: string, callerRole: string, callerProfileId: string) {

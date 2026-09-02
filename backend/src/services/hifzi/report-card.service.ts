@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer'
+import puppeteer, { Browser } from 'puppeteer'
 import { supabase } from '../../config/supabase'
 import { hifziHeatmapService } from './heatmap.service'
 import { createHifziMediaSignedUrl, HIFZI_MEDIA_BUCKET } from './signed-url.service'
@@ -114,19 +114,35 @@ function renderReportCardHtml(d: ReportCardData): string {
 </html>`
 }
 
-async function renderPdf(html: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
+// A cold Chromium launch is hundreds of ms to a few seconds by itself, so a
+// single browser process is launched lazily and reused across requests
+// instead of launched-and-closed on every PDF — only the (cheap) page is
+// per-request. Relaunched automatically if the shared process has died.
+let sharedBrowserPromise: Promise<Browser> | null = null
+
+async function getSharedBrowser(): Promise<Browser> {
+  if (sharedBrowserPromise) {
+    const browser = await sharedBrowserPromise
+    if (browser.connected) return browser
+    sharedBrowserPromise = null
+  }
+  sharedBrowserPromise = puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-gpu'],
     executablePath: process.env.HIFZI_PUPPETEER_EXECUTABLE_PATH || process.env.FINA_PUPPETEER_EXECUTABLE_PATH || undefined,
   })
+  return sharedBrowserPromise
+}
+
+async function renderPdf(html: string): Promise<Buffer> {
+  const browser = await getSharedBrowser()
+  const page = await browser.newPage()
   try {
-    const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'domcontentloaded' })
     const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20px', bottom: '20px' } })
     return Buffer.from(pdf)
   } finally {
-    await browser.close()
+    await page.close()
   }
 }
 

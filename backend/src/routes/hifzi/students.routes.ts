@@ -10,6 +10,7 @@ router.use(requireHifziEnabled)
 
 router.get('/enrollments', requireTeacher, ctrl.listEnrollments)
 router.post('/enrollments', requireAdmin, ctrl.enrollStudent)
+router.post('/enrollments/bulk', requireAdmin, ctrl.enrollStudentsBulk)
 router.patch('/enrollments/:id/withdraw', requireAdmin, ctrl.withdrawEnrollment)
 
 // Profile reads: self-scoping enforced in the controller via

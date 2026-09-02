@@ -1,6 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../../middlewares/auth.middleware'
 import { hifziAttendanceService } from '../../services/hifzi/attendance.service'
+import { assertCanAccessStudent, assertCanAccessCircle } from '../../utils/hifzi-access'
 
 function handleError(res: Response, error: any) {
   const msg = error?.message || 'Unexpected error'
@@ -9,6 +10,9 @@ function handleError(res: Response, error: any) {
 
 export const markAttendance = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessCircle(req, req.body.circle_id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     if (Array.isArray(req.body.entries)) {
       const data = await hifziAttendanceService.markBulk(req.body.circle_id, req.body.session_date, req.body.entries.map((e: any) => ({ studentId: e.student_id, status: e.status })), req.profile.school_id, req.profile.id)
       return res.status(201).json({ success: true, data })
@@ -20,6 +24,9 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
 
 export const getAttendance = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessCircle(req, req.query.circle_id as string))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziAttendanceService.getForCircleAndDate(req.query.circle_id as string, req.query.date as string)
     return res.json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }
@@ -27,6 +34,9 @@ export const getAttendance = async (req: AuthRequest, res: Response) => {
 
 export const createLeaveRequest = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessStudent(req, req.body.student_id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziAttendanceService.createLeaveRequest(req.body.student_id, req.body.circle_id, req.body.start_date, req.body.end_date, req.body.reason, req.profile.id)
     return res.status(201).json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }

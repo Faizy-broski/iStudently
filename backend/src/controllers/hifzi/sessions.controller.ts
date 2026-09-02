@@ -31,6 +31,9 @@ function dtoFromBody(req: AuthRequest) {
 
 export const createSession = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessStudent(req, req.body.student_id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziSessionsService.createSession(dtoFromBody(req), req.profile.school_id, req.profile.campus_id)
     return res.status(201).json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }
@@ -38,6 +41,14 @@ export const createSession = async (req: AuthRequest, res: Response) => {
 
 export const correctSession = async (req: AuthRequest, res: Response) => {
   try {
+    // Checked against the original record's real student_id, not the
+    // (spoofable) request body — a teacher could otherwise put an
+    // accessible student's id in the body while correcting a session that
+    // isn't actually theirs.
+    const existing = await hifziSessionsService.getSession(req.params.id)
+    if (!(await assertCanAccessStudent(req, existing.student_id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const dto = { ...dtoFromBody(req), idempotencyKey: req.body.client_uuid || req.body.idempotency_key }
     const data = await hifziSessionsService.correctSession(req.params.id, dto, req.profile.school_id, req.profile.campus_id)
     return res.json({ success: true, data })

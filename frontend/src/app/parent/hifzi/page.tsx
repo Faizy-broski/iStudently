@@ -5,12 +5,27 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Download } from 'lucide-react'
+import { Loader2, Download, Trophy } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getParentChildren } from '@/lib/api/parents'
-import { getHeatmap, getSessions, openReportCard, type HeatmapCell, type HifziSession } from '@/lib/api/hifzi'
+import { getHeatmap, getSessions, openReportCard, getMilestonesForStudent, type HeatmapCell, type HifziSession, type HifziMilestone } from '@/lib/api/hifzi'
 import { MushafHeatmap } from '@/components/hifzi/MushafHeatmap'
 import { toast } from 'sonner'
+
+// Ministerial Decree 1205 compliance, Phase 3: "your child completed X"
+// milestones (thumn/hizb/juz/syllabus-grade) — a parent-facing achievements
+// list, not just a push notification. hifzi_notifications has no read/list
+// API anywhere in this codebase yet, so milestones are read straight from
+// hifzi_milestones_log via getMilestonesForStudent() instead of a
+// notification feed.
+function milestoneLabel(m: HifziMilestone, t: (key: string, values?: Record<string, any>) => string): string {
+    switch (m.milestoneType) {
+        case 'thumn': return t('milestones.thumn', { n: m.unitNumber })
+        case 'hizb': return t('milestones.hizb', { n: m.unitNumber })
+        case 'juz': return t('milestones.juz', { n: m.unitNumber })
+        case 'syllabus_grade': return t('milestones.syllabusGrade', { n: m.unitNumber })
+    }
+}
 
 export default function ParentHifziPage() {
     const t = useTranslations('hifzi')
@@ -23,6 +38,7 @@ export default function ParentHifziPage() {
     const [selectedChildId, setSelectedChildId] = useState('')
     const [cells, setCells] = useState<HeatmapCell[]>([])
     const [sessions, setSessions] = useState<HifziSession[]>([])
+    const [milestones, setMilestones] = useState<HifziMilestone[]>([])
     const [loading, setLoading] = useState(true)
     const [generating, setGenerating] = useState(false)
 
@@ -41,9 +57,10 @@ export default function ParentHifziPage() {
     useEffect(() => {
         if (!selectedChildId) return
         setLoading(true)
-        Promise.all([getHeatmap(selectedChildId), getSessions(selectedChildId, 10)]).then(([heatmapRes, sessionsRes]) => {
+        Promise.all([getHeatmap(selectedChildId), getSessions(selectedChildId, 10), getMilestonesForStudent(selectedChildId)]).then(([heatmapRes, sessionsRes, milestonesRes]) => {
             if (heatmapRes.success && heatmapRes.data) setCells(heatmapRes.data)
             if (sessionsRes.success && sessionsRes.data) setSessions(sessionsRes.data)
+            if (milestonesRes.success && milestonesRes.data) setMilestones(milestonesRes.data)
             setLoading(false)
         })
     }, [selectedChildId])
@@ -92,6 +109,20 @@ export default function ParentHifziPage() {
                             <MushafHeatmap cells={cells} />
                         </CardContent>
                     </Card>
+
+                    {milestones.length > 0 && (
+                        <div>
+                            <h2 className="text-lg font-semibold mb-3">{t('milestones.title')}</h2>
+                            <div className="flex flex-wrap gap-2">
+                                {milestones.map((m) => (
+                                    <Badge key={m.id} variant="secondary" className="gap-1.5 py-1.5 px-3">
+                                        <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                                        {milestoneLabel(m, t)}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <h2 className="text-lg font-semibold mb-3">{t('recitation.title')}</h2>

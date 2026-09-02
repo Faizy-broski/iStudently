@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import Link from 'next/link'
-import { Plus, Users, RefreshCw, BookOpen } from 'lucide-react'
+import { Plus, Users, RefreshCw, BookOpen, CalendarClock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { getCircles, type HifziCircle } from '@/lib/api/hifzi'
+import { getCircles, setCircleSchedulingMode, type HifziCircle } from '@/lib/api/hifzi'
 import { CircleDialog } from '@/components/admin/hifzi/CircleDialog'
+import { AssignTeacherDialog } from '@/components/admin/hifzi/AssignTeacherDialog'
 import { useCampus } from '@/context/CampusContext'
 import { toast } from 'sonner'
 
@@ -29,6 +30,9 @@ export default function HifziCirclesPage() {
     const [circles, setCircles] = useState<HifziCircle[]>([])
     const [loading, setLoading] = useState(true)
     const [dialogOpen, setDialogOpen] = useState(false)
+    const [teacherDialogCircleId, setTeacherDialogCircleId] = useState<string | null>(null)
+    const teacherDialogCircle = circles.find((c) => c.id === teacherDialogCircleId) || null
+    const [togglingId, setTogglingId] = useState<string | null>(null)
 
     const fetchCircles = useCallback(async () => {
         setLoading(true)
@@ -39,6 +43,31 @@ export default function HifziCirclesPage() {
     }, [campusId])
 
     useEffect(() => { fetchCircles() }, [fetchCircles])
+
+    // Ministerial Decree 1205 compliance, Phase 4: freeform (the default,
+    // scheduled purely via each circle's own weekly slots) stays the norm —
+    // this only lets an admin explicitly opt a circle into the school's real
+    // bell-schedule/timetable generator, for circles that genuinely run
+    // inside a real period. See migration 277's header comment for why this
+    // is deliberately narrow and opt-in, not a default behavior change.
+    const handleToggleSchedulingMode = async (circle: HifziCircle) => {
+        const nextMode = circle.scheduling_mode === 'bell_schedule' ? 'freeform' : 'bell_schedule'
+        setTogglingId(circle.id)
+        try {
+            const res = await setCircleSchedulingMode(circle.id, nextMode, campusId)
+            if (res.success) {
+                toast.success(nextMode === 'bell_schedule' ? t('schedulingModeBellSuccess') : t('schedulingModeFreeformSuccess'))
+                if (nextMode === 'bell_schedule' && res.data && !res.data.synced) {
+                    toast.error(`${t('schedulingModeSyncIncomplete')}: ${res.data.reason}`)
+                }
+                fetchCircles()
+            } else {
+                toast.error(res.error || t('schedulingModeError'))
+            }
+        } finally {
+            setTogglingId(null)
+        }
+    }
 
     return (
         <div className="space-y-6 p-6" dir={isAr ? 'rtl' : 'ltr'}>
@@ -105,12 +134,37 @@ export default function HifziCirclesPage() {
                                     </div>
                                 )}
 
-                                <Link
-                                    href={`/admin/hifzi/students?circle_id=${circle.id}`}
-                                    className="text-xs text-primary hover:underline inline-block mt-1"
+                                <button
+                                    type="button"
+                                    onClick={() => handleToggleSchedulingMode(circle)}
+                                    disabled={togglingId === circle.id}
+                                    className={cn(
+                                        'flex items-center gap-1.5 text-xs rounded-md px-2 py-1 w-fit disabled:opacity-60',
+                                        circle.scheduling_mode === 'bell_schedule' ? 'bg-blue-50 text-blue-700' : 'bg-muted text-muted-foreground'
+                                    )}
+                                    title={t('schedulingModeToggleHint')}
                                 >
-                                    {t('title')} →
-                                </Link>
+                                    <CalendarClock className="h-3 w-3" />
+                                    {circle.scheduling_mode === 'bell_schedule' ? t('schedulingModeBellSchedule') : t('schedulingModeFreeform')}
+                                </button>
+
+                                <div className="flex items-center justify-between gap-2 mt-1">
+                                    <Link
+                                        href={`/admin/hifzi/students?circle_id=${circle.id}`}
+                                        className="text-xs text-primary hover:underline"
+                                    >
+                                        {t('title')} →
+                                    </Link>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 gap-1 text-xs"
+                                        onClick={() => setTeacherDialogCircleId(circle.id)}
+                                    >
+                                        <Users className="h-3 w-3" />
+                                        {t('teachers')}
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                     ))}
@@ -118,6 +172,16 @@ export default function HifziCirclesPage() {
             )}
 
             <CircleDialog open={dialogOpen} onOpenChange={setDialogOpen} onCreated={(c) => setCircles((prev) => [...prev, c])} campusId={campusId} />
+
+            {teacherDialogCircle && (
+                <AssignTeacherDialog
+                    open={!!teacherDialogCircleId}
+                    onOpenChange={(v) => setTeacherDialogCircleId(v ? teacherDialogCircleId : null)}
+                    circle={teacherDialogCircle}
+                    onChanged={fetchCircles}
+                    campusId={campusId}
+                />
+            )}
         </div>
     )
 }

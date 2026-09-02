@@ -202,6 +202,59 @@ describe('resolveRange', () => {
   })
 })
 
+describe('resolveDivisionRange', () => {
+  it('resolves a range spanning multiple divisions (start-of-first-division through end-of-last-division)', async () => {
+    queue('quran_riwayat', RIWAYAH_ROW) // start resolveRange's getRiwayahIdByCode
+    queue('quran_riwayat', RIWAYAH_ROW) // end resolveRange's getRiwayahIdByCode
+    queue('quran_ayahs', { data: [{ id: 'ayah-470-start', global_ayah_index: 100 }, { id: 'ayah-470-end', global_ayah_index: 105 }], error: null }) // thumn 470
+    queue('quran_ayahs', { data: [{ id: 'ayah-472-start', global_ayah_index: 106 }, { id: 'ayah-472-end', global_ayah_index: 112 }], error: null }) // thumn 472
+    queue('quran_ayahs', { data: { global_ayah_index: 100 }, error: null }) // re-check: resolved start ayah
+    queue('quran_ayahs', { data: { global_ayah_index: 112 }, error: null }) // re-check: resolved end ayah
+
+    const range = await quranReferenceService.resolveDivisionRange('hafs', 'thumn', 470, 472)
+    expect(range).toEqual({ riwayahCode: 'hafs', startAyahId: 'ayah-470-start', endAyahId: 'ayah-472-end' })
+  })
+
+  it('resolves a single-division range when startNumber === endNumber', async () => {
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_ayahs', { data: [{ id: 'a1', global_ayah_index: 1 }, { id: 'a8', global_ayah_index: 8 }], error: null })
+    queue('quran_ayahs', { data: [{ id: 'a1', global_ayah_index: 1 }, { id: 'a8', global_ayah_index: 8 }], error: null })
+    queue('quran_ayahs', { data: { global_ayah_index: 1 }, error: null })
+    queue('quran_ayahs', { data: { global_ayah_index: 8 }, error: null })
+
+    const range = await quranReferenceService.resolveDivisionRange('hafs', 'juz', 1, 1)
+    expect(range).toEqual({ riwayahCode: 'hafs', startAyahId: 'a1', endAyahId: 'a8' })
+  })
+
+  it('throws immediately when endNumber precedes startNumber, without querying anything', async () => {
+    await expect(quranReferenceService.resolveDivisionRange('hafs', 'thumn', 472, 470)).rejects.toThrow(/precedes start/)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('throws when a resolved endpoint ayah cannot be re-fetched (defensive not-found guard)', async () => {
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_ayahs', { data: [{ id: 'a1', global_ayah_index: 1 }], error: null })
+    queue('quran_ayahs', { data: [{ id: 'a2', global_ayah_index: 2 }], error: null })
+    queue('quran_ayahs', { data: null, error: { message: 'not found' } })
+    queue('quran_ayahs', { data: { global_ayah_index: 2 }, error: null })
+
+    await expect(quranReferenceService.resolveDivisionRange('hafs', 'thumn', 1, 2)).rejects.toThrow(/resolved ayah not found/)
+  })
+
+  it('throws when the resolved range end precedes the resolved start (numbering inconsistent with global_ayah_index)', async () => {
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_ayahs', { data: [{ id: 'a-high', global_ayah_index: 50 }], error: null })
+    queue('quran_ayahs', { data: [{ id: 'a-low', global_ayah_index: 10 }], error: null })
+    queue('quran_ayahs', { data: { global_ayah_index: 50 }, error: null }) // resolved start
+    queue('quran_ayahs', { data: { global_ayah_index: 10 }, error: null }) // resolved end — precedes start
+
+    await expect(quranReferenceService.resolveDivisionRange('hafs', 'thumn', 1, 2)).rejects.toThrow(/resolved range end precedes start/)
+  })
+})
+
 describe('the religious sign-off gate (getEdition, exercised via ayatOnPage)', () => {
   it('refuses to serve an unverified edition by default', async () => {
     queue('quran_editions', UNVERIFIED_EDITION_ROW)

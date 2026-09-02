@@ -37,6 +37,77 @@ export const DEFAULT_GRADING_WEIGHTS: GradingWeights = {
   performance: 0.0, // noted, not deducted
 }
 
+// ============================================================================
+// Ministerial Decree 1205 compliance: the ministry classifies recitation
+// errors into 4 rubric buckets (Pronunciation, Tajweed rules, Memory
+// retention, Fluency), distinct from this module's own 12 granular
+// error_type values. This is a pure READ-TIME classification layered on top
+// of the existing types — the write path, hifzi_session_errors' error_type
+// CHECK constraint, and computeRawScore/resolveGradeCode above are all
+// unchanged, so every already-saved row (old or new) is automatically
+// bucket-compatible with zero backfill.
+// ============================================================================
+
+export type MinistryTajweedBucket = 'pronunciation' | 'tajweed_rules' | 'memory_retention' | 'fluency'
+
+/**
+ * Default mapping from this module's 12 error types to the ministry's 4
+ * buckets. `major`/`minor`/`performance` are generic severity/note tags,
+ * not ministry-classified by default (null) — a school can override any
+ * mapping via hifzi_settings.ministry_bucket_map (settings.service.ts),
+ * same "every configurable value is a branch setting" rule as
+ * DEFAULT_GRADING_WEIGHTS/DEFAULT_GRADE_BANDS above.
+ */
+export const DEFAULT_MINISTRY_BUCKET_MAP: Record<string, MinistryTajweedBucket | null> = {
+  major: null,
+  minor: null,
+  performance: null,
+  substituted: 'pronunciation',
+  added: 'pronunciation',
+  bad_waqf: 'tajweed_rules',
+  skipped_ayah: 'memory_retention',
+  skipped_word: 'memory_retention',
+  prompt: 'memory_retention',
+  similar_jump: 'memory_retention',
+  hesitation: 'fluency',
+  repetition: 'fluency',
+}
+
+const MINISTRY_BUCKETS: MinistryTajweedBucket[] = ['pronunciation', 'tajweed_rules', 'memory_retention', 'fluency']
+
+/**
+ * Per-bucket sub-scores (0-10 each, same clamp/fails-open shape as
+ * computeRawScore), computed independently per bucket: only the errors
+ * mapped to a given bucket count against it. An error type absent from
+ * `bucketMap`, or explicitly mapped to null, is excluded from every bucket
+ * (but still counts toward the overall raw_score via computeRawScore,
+ * which this function does not affect or duplicate).
+ */
+export function computeMinistryBucketScores(
+  errors: ErrorTally[],
+  weights: GradingWeights,
+  bucketMap: Record<string, MinistryTajweedBucket | null>
+): Record<MinistryTajweedBucket, number> {
+  const penalties: Record<MinistryTajweedBucket, number> = {
+    pronunciation: 0,
+    tajweed_rules: 0,
+    memory_retention: 0,
+    fluency: 0,
+  }
+
+  for (const e of errors) {
+    const bucket = bucketMap[e.errorType]
+    if (!bucket) continue
+    penalties[bucket] += e.count * (weights[e.errorType] ?? 0)
+  }
+
+  const scores = {} as Record<MinistryTajweedBucket, number>
+  for (const bucket of MINISTRY_BUCKETS) {
+    scores[bucket] = Math.min(10, Math.max(0, 10 - penalties[bucket]))
+  }
+  return scores
+}
+
 export interface GradeBand {
   code: string
   minScore: number

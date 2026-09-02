@@ -10,7 +10,9 @@
     "start:passenger": "node app.js",
     "create-rsc-aliases": "node create-rsc-aliases.js",
     "test": "jest",
-    "lint": "eslint src/**/*.ts"
+    "lint": "eslint src/**/*.ts",
+    "seed:quran": "ts-node scripts/seed-quran-reference.ts",
+    "seed:quran:fixture": "ts-node scripts/seed-quran-reference.ts --fixture"
   },
   "keywords": [
     "school-management",

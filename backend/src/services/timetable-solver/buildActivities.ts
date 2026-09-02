@@ -73,8 +73,19 @@ export function buildActivities(
 // a placed activity is always resolved back from its originating
 // TimetableRequirement at write-back time (timetable-generation.service.ts),
 // never read off the Activity.
-export function classScopeKey(scope: { section_id: string | null; grade_level_id?: string | null }): string {
-  return scope.section_id ?? `grade:${scope.grade_level_id}`
+//
+// circle_id (a Hifzi bell_schedule-mode circle) is a third branch of the
+// exact same shape, checked before grade_level_id — a circle requirement
+// always has grade_level_id ALSO populated (an admin-picked representative
+// grade, for coverage bookkeeping only), so circle_id must win or every
+// circle would collide with its own bookkeeping grade's scope key. A
+// circle's roster is gender-homogeneous by construction at enrollment time,
+// so gender never needs to reach the solver at all — the circle-scoped key
+// alone is sufficient to stop a circle from double-booking itself.
+export function classScopeKey(scope: { section_id: string | null; grade_level_id?: string | null; circle_id?: string | null }): string {
+  if (scope.section_id) return scope.section_id
+  if (scope.circle_id) return `circle:${scope.circle_id}`
+  return `grade:${scope.grade_level_id}`
 }
 
 function makeActivity(req: TimetableRequirement, index: number, duration: 1 | 2): Activity {

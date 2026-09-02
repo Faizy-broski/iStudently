@@ -63,6 +63,19 @@ class HifziPlansService {
     return data || []
   }
 
+  /** Minimal fetch used to authorize an update/deactivate against the plan's real student_id before mutating — mirrors updatePlan's own school_id-scoped filter. */
+  async getPlanById(planId: string, schoolId: string): Promise<{ id: string; student_id: string } | null> {
+    const { data, error } = await supabase
+      .from('hifzi_plans')
+      .select('id, student_id')
+      .eq('id', planId)
+      .eq('school_id', schoolId)
+      .maybeSingle()
+
+    if (error) throw new Error(`Failed to fetch plan: ${error.message}`)
+    return data
+  }
+
   async updatePlan(planId: string, schoolId: string, updates: Partial<Omit<CreatePlanDTO, 'studentId'>>) {
     const payload: Record<string, any> = {}
     if (updates.circleId !== undefined) payload.circle_id = updates.circleId
@@ -122,17 +135,44 @@ class HifziPlansService {
    * the same day replaces that day's items rather than duplicating them,
    * so a manual "regenerate" admin action (spec's `assignments/generate`
    * endpoint) is safe to call repeatedly.
+   *
+   * `precomputedSettings` lets a caller looping over many students in the
+   * same school (the nightly job handler below) fetch settings once per
+   * school instead of once per student — settings don't vary by student.
+   * The single-student controller path omits it and gets the old
+   * fetch-per-call behavior (still a cache hit after the first call, per
+   * settings.service.ts's TTL cache).
    */
-  async generateDailyAssignmentForStudent(studentId: string, date: string, schoolId: string, campusId?: string | null) {
-    const settings = await hifziSettingsService.getEffectiveSettings(schoolId, campusId)
+  async generateDailyAssignmentForStudent(studentId: string, date: string, schoolId: string, campusId?: string | null, precomputedSettings?: Awaited<ReturnType<typeof hifziSettingsService.getEffectiveSettings>>) {
+    const settings = precomputedSettings ?? (await hifziSettingsService.getEffectiveSettings(schoolId, campusId))
     const now = new Date()
 
-    // Every unit_state for this student, with strength computed on read (never stored — retention.service.ts).
-    const { data: unitStateRows, error: unitStatesError } = await supabase
-      .from('hifzi_unit_states')
-      .select('*')
-      .eq('student_id', studentId)
+    // These three reads are independent of each other — fetch concurrently
+    // instead of one after another.
+    const [unitStatesResult, recentResult, planItemResult] = await Promise.all([
+      // Every unit_state for this student, with strength computed on read (never stored — retention.service.ts).
+      supabase.from('hifzi_unit_states').select('*').eq('student_id', studentId),
+      // "Last N memorized units" — the most recently first-memorized ones, per spec §7.4's mandatory near-review.
+      supabase
+        .from('hifzi_unit_states')
+        .select('id, start_ayah_id, end_ayah_id')
+        .eq('student_id', studentId)
+        .not('first_memorized_at', 'is', null)
+        .order('first_memorized_at', { ascending: false })
+        .limit(settings.assignmentNearReviewCount),
+      // Next not-yet-done plan item, from the student's active plan(s).
+      supabase
+        .from('hifzi_plan_items')
+        .select('start_ayah_id, end_ayah_id, hifzi_plans!inner(student_id, is_active)')
+        .eq('hifzi_plans.student_id', studentId)
+        .eq('hifzi_plans.is_active', true)
+        .neq('status', 'done')
+        .order('sequence_number', { ascending: true })
+        .limit(1)
+        .maybeSingle(),
+    ])
 
+    const { data: unitStateRows, error: unitStatesError } = unitStatesResult
     if (unitStatesError) throw new Error(`Failed to fetch unit states: ${unitStatesError.message}`)
 
     const withStrength = (unitStateRows || []).map((row) => ({
@@ -152,28 +192,10 @@ class HifziPlansService {
       hasSimilar: !!r.has_similar,
     }))
 
-    // "Last N memorized units" — the most recently first-memorized ones, per spec §7.4's mandatory near-review.
-    const { data: recentRows } = await supabase
-      .from('hifzi_unit_states')
-      .select('id, start_ayah_id, end_ayah_id')
-      .eq('student_id', studentId)
-      .not('first_memorized_at', 'is', null)
-      .order('first_memorized_at', { ascending: false })
-      .limit(settings.assignmentNearReviewCount)
-
+    const { data: recentRows } = recentResult
     const nearReviewUnits: NearReviewUnit[] = (recentRows || []).map((r) => ({ unitId: r.id, startAyahId: r.start_ayah_id, endAyahId: r.end_ayah_id }))
 
-    // Next not-yet-done plan item, from the student's active plan(s).
-    const { data: planItemRow } = await supabase
-      .from('hifzi_plan_items')
-      .select('start_ayah_id, end_ayah_id, hifzi_plans!inner(student_id, is_active)')
-      .eq('hifzi_plans.student_id', studentId)
-      .eq('hifzi_plans.is_active', true)
-      .neq('status', 'done')
-      .order('sequence_number', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-
+    const { data: planItemRow } = planItemResult
     const newMemorizationCandidate: NewMemorizationCandidate | null = planItemRow
       ? { startAyahId: planItemRow.start_ayah_id, endAyahId: planItemRow.end_ayah_id }
       : null
@@ -279,13 +301,28 @@ registerHifziJobHandler('generate_daily_assignments', async (payload) => {
   if (error) throw new Error(`Failed to fetch active students for school ${schoolId}: ${error.message}`)
 
   const studentIds = [...new Set((activeEnrollments || []).map((e) => e.student_id))]
-  for (const studentId of studentIds) {
-    try {
-      await hifziPlansService.generateDailyAssignmentForStudent(studentId, date, schoolId)
-    } catch (err) {
-      // One student's failure must not abort the whole school's batch.
-      console.error(`generate_daily_assignments: failed for student ${studentId} (school ${schoolId}):`, err)
-    }
+
+  // Fetched once for the whole school rather than once per student —
+  // settings don't vary by student, only by (school, campus).
+  const settings = await hifziSettingsService.getEffectiveSettings(schoolId)
+
+  // Bounded concurrency instead of one student fully sequentially: keeps the
+  // "one student's failure can't abort the batch" guarantee (each call is
+  // still individually try/caught) while not serializing hundreds of
+  // students' worth of round trips one at a time.
+  const CONCURRENCY = 10
+  for (let i = 0; i < studentIds.length; i += CONCURRENCY) {
+    const batch = studentIds.slice(i, i + CONCURRENCY)
+    await Promise.all(
+      batch.map(async (studentId) => {
+        try {
+          await hifziPlansService.generateDailyAssignmentForStudent(studentId, date, schoolId, undefined, settings)
+        } catch (err) {
+          // One student's failure must not abort the whole school's batch.
+          console.error(`generate_daily_assignments: failed for student ${studentId} (school ${schoolId}):`, err)
+        }
+      })
+    )
   }
 })
 

@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
-import { UserPlus, RefreshCw, LogOut, BookOpen, Plus, Loader2 } from 'lucide-react'
+import { UserPlus, Users, RefreshCw, LogOut, BookOpen, Plus, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getCircles, getEnrollments, withdrawEnrollment, type HifziCircle, type HifziEnrollment } from '@/lib/api/hifzi'
 import { EnrollStudentDialog } from '@/components/admin/hifzi/EnrollStudentDialog'
+import { BulkEnrollStudentsDialog } from '@/components/admin/hifzi/BulkEnrollStudentsDialog'
 import { useCampus } from '@/context/CampusContext'
 import { toast } from 'sonner'
 
@@ -28,6 +29,7 @@ function HifziStudentsContent() {
     const [enrollments, setEnrollments] = useState<HifziEnrollment[]>([])
     const [loading, setLoading] = useState(false)
     const [dialogOpen, setDialogOpen] = useState(false)
+    const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
 
     useEffect(() => {
         getCircles(campusId).then((res) => {
@@ -91,6 +93,15 @@ function HifziStudentsContent() {
                             <UserPlus className="h-4 w-4" />
                             {t('enroll')}
                         </Button>
+                        <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => setBulkDialogOpen(true)}
+                            disabled={!selectedCircleId}
+                        >
+                            <Users className="h-4 w-4" />
+                            Bulk Enroll
+                        </Button>
                     </div>
                 )}
             </div>
@@ -148,13 +159,22 @@ function HifziStudentsContent() {
             )}
 
             {selectedCircleId && (
-                <EnrollStudentDialog
-                    open={dialogOpen}
-                    onOpenChange={setDialogOpen}
-                    circleId={selectedCircleId}
-                    onEnrolled={fetchEnrollments}
-                    campusId={campusId}
-                />
+                <>
+                    <EnrollStudentDialog
+                        open={dialogOpen}
+                        onOpenChange={setDialogOpen}
+                        circleId={selectedCircleId}
+                        onEnrolled={fetchEnrollments}
+                        campusId={campusId}
+                    />
+                    <BulkEnrollStudentsDialog
+                        open={bulkDialogOpen}
+                        onOpenChange={setBulkDialogOpen}
+                        circleId={selectedCircleId}
+                        onEnrolled={fetchEnrollments}
+                        campusId={campusId}
+                    />
+                </>
             )}
         </div>
     )

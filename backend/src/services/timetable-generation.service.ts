@@ -19,6 +19,7 @@ import {
 } from './timetable-solver/types'
 import { getSettings } from './timetable-generation-settings.service'
 import { getMainSchoolId } from '../utils/campus.util'
+import { hifziTimetableConflictsService } from './hifzi/timetable-conflicts.service'
 
 // ============================================================================
 // TIMETABLE GENERATION ORCHESTRATOR (Phase 2)
@@ -69,6 +70,15 @@ export interface StartGenerationParams {
   section_ids?: string[]
   /** Section-less grades to target alongside section_ids. */
   grade_level_ids?: string[]
+  /**
+   * Hifzi circles (bell_schedule mode only) to target alongside section_ids/
+   * grade_level_ids — Ministerial Decree 1205 compliance, Phase 4. Only
+   * ever populated when scope='sections': circles are opt-in and always
+   * explicitly requested, never swept in by a scope='all' whole-school run
+   * (matching the existing bulk-import/manual-schedule pattern of an admin
+   * explicitly choosing what to generate for, not implicit inclusion).
+   */
+  circle_ids?: string[]
   created_by?: string
 }
 
@@ -157,8 +167,9 @@ export const startGeneration = async (
   try {
     const hasSections = !!params.section_ids && params.section_ids.length > 0
     const hasGrades = !!params.grade_level_ids && params.grade_level_ids.length > 0
-    if (params.scope === 'sections' && !hasSections && !hasGrades) {
-      return { success: false, error: 'section_ids and/or grade_level_ids is required when scope is "sections"' }
+    const hasCircles = !!params.circle_ids && params.circle_ids.length > 0
+    if (params.scope === 'sections' && !hasSections && !hasGrades && !hasCircles) {
+      return { success: false, error: 'section_ids, grade_level_ids, and/or circle_ids is required when scope is "sections"' }
     }
 
     // Normalize school_id/campus_id the same way createRequirement /
@@ -173,7 +184,7 @@ export const startGeneration = async (
     // ── Concurrency guard ──────────────────────────────────────────────────
     const { data: activeJobs, error: activeJobsError } = await supabase
       .from('timetable_generation_jobs')
-      .select('id, scope, section_ids, grade_level_ids')
+      .select('id, scope, section_ids, grade_level_ids, circle_ids')
       .eq('academic_year_id', params.academic_year_id)
       .in('status', ['queued', 'running'])
 
@@ -181,12 +192,14 @@ export const startGeneration = async (
 
     const newSections = new Set(params.section_ids || [])
     const newGrades = new Set(params.grade_level_ids || [])
+    const newCircles = new Set(params.circle_ids || [])
     for (const job of activeJobs || []) {
       const overlaps =
         params.scope === 'all' ||
         job.scope === 'all' ||
         (job.section_ids || []).some((id: string) => newSections.has(id)) ||
-        (job.grade_level_ids || []).some((id: string) => newGrades.has(id))
+        (job.grade_level_ids || []).some((id: string) => newGrades.has(id)) ||
+        (job.circle_ids || []).some((id: string) => newCircles.has(id))
       if (overlaps) {
         throw new GenerationConflictError(job.id)
       }
@@ -203,6 +216,7 @@ export const startGeneration = async (
         scope: params.scope,
         section_ids: params.scope === 'sections' ? params.section_ids : null,
         grade_level_ids: params.scope === 'sections' ? params.grade_level_ids : null,
+        circle_ids: params.scope === 'sections' ? params.circle_ids : null,
         created_by: params.created_by || null
       })
       .select('id')
@@ -278,18 +292,21 @@ export const runGeneration = async (jobId: string): Promise<void> => {
     const academicYearId: string = job.academic_year_id
     const scope: 'all' | 'sections' = job.scope
 
-    // ── Resolve target section + grade-level ids ───────────────────────────
+    // ── Resolve target section + grade-level + circle ids ──────────────────
     let targetSectionIds: string[]
     let targetGradeLevelIds: string[]
+    let targetCircleIds: string[]
     if (scope === 'sections') {
       targetSectionIds = job.section_ids || []
       targetGradeLevelIds = job.grade_level_ids || []
+      targetCircleIds = job.circle_ids || []
     } else {
       // scope === 'all': target every section AND every section-less grade
       // that already has at least one active requirement for this year
       // (targets with none simply have nothing to generate — not a failure,
       // unlike an explicit scope: 'sections' request naming a target with
-      // zero requirements).
+      // zero requirements). Circles are deliberately NEVER swept in here —
+      // opt-in and explicit-only, see StartGenerationParams.circle_ids.
       const { data: reqScopeRows, error: reqScopeErr } = await supabase
         .from('timetable_requirements')
         .select('section_id, grade_level_id')
@@ -299,29 +316,48 @@ export const runGeneration = async (jobId: string): Promise<void> => {
       if (reqScopeErr) throw reqScopeErr
       targetSectionIds = Array.from(new Set((reqScopeRows || []).filter((r: any) => r.section_id).map((r: any) => r.section_id)))
       targetGradeLevelIds = Array.from(new Set((reqScopeRows || []).filter((r: any) => !r.section_id && r.grade_level_id).map((r: any) => r.grade_level_id)))
+      targetCircleIds = []
     }
 
-    if (targetSectionIds.length === 0 && targetGradeLevelIds.length === 0) {
+    if (targetSectionIds.length === 0 && targetGradeLevelIds.length === 0 && targetCircleIds.length === 0) {
       await failJob(jobId, scope === 'all'
         ? 'No sections or grades with active requirements were found for this academic year — define requirements first.'
-        : 'No target sections or grades resolved for this job.')
+        : 'No target sections, grades, or circles resolved for this job.')
       return
     }
 
     // Applies an "in section_ids OR in grade_level_ids (with section_id
-    // NULL)" filter to a query — used for the two tables (timetable_
-    // requirements, timetable_entries) that can hold both section-based and
-    // grade-level rows. teacher_subject_assignments is deliberately NOT
-    // filtered this way: it has no grade_level_id column and every row is
-    // always section-scoped (see resolveRequirementTeachers's comment).
+    // NULL) OR in circle_ids (with section_id NULL)" filter to a query —
+    // used for the two tables (timetable_requirements, timetable_entries)
+    // that can hold section-based, grade-level, and circle rows.
+    // teacher_subject_assignments is deliberately NOT filtered this way: it
+    // has no grade_level_id/circle_id column and every row is always
+    // section-scoped (see resolveRequirementTeachers's comment) — a circle
+    // requirement always arrives with teacher_id already resolved by
+    // circle-timetable.service.ts, so it never needs auto-resolution here.
     const applyScopeFilter = (query: any) => {
-      if (targetSectionIds.length > 0 && targetGradeLevelIds.length > 0) {
-        return query.or(`section_id.in.(${targetSectionIds.join(',')}),grade_level_id.in.(${targetGradeLevelIds.join(',')})`)
+      if (targetCircleIds.length === 0) {
+        // Exactly the pre-existing logic, unchanged — zero behavior change
+        // for every caller that doesn't target circles (i.e. every caller
+        // except Hifzi's own generation trigger).
+        if (targetSectionIds.length > 0 && targetGradeLevelIds.length > 0) {
+          return query.or(`section_id.in.(${targetSectionIds.join(',')}),grade_level_id.in.(${targetGradeLevelIds.join(',')})`)
+        }
+        if (targetGradeLevelIds.length > 0) {
+          return query.is('section_id', null).in('grade_level_id', targetGradeLevelIds)
+        }
+        return query.in('section_id', targetSectionIds)
       }
-      if (targetGradeLevelIds.length > 0) {
-        return query.is('section_id', null).in('grade_level_id', targetGradeLevelIds)
-      }
-      return query.in('section_id', targetSectionIds)
+
+      // Circles involved: one explicit OR-branch per targeted dimension.
+      // The grade branch additionally excludes circle_id so a circle's own
+      // bookkeeping grade_level_id can never cause it to match the grade
+      // branch instead of (or in addition to) its own circle branch.
+      const clauses: string[] = []
+      if (targetSectionIds.length > 0) clauses.push(`section_id.in.(${targetSectionIds.join(',')})`)
+      if (targetGradeLevelIds.length > 0) clauses.push(`and(section_id.is.null,circle_id.is.null,grade_level_id.in.(${targetGradeLevelIds.join(',')}))`)
+      clauses.push(`and(section_id.is.null,circle_id.in.(${targetCircleIds.join(',')}))`)
+      return query.or(clauses.join(','))
     }
 
     // ── Fetch all inputs in parallel (batch-fetch pattern, like bulkImportTimetable) ──
@@ -369,7 +405,7 @@ export const runGeneration = async (jobId: string): Promise<void> => {
       applyScopeFilter(
         supabase
           .from('timetable_entries')
-          .select('id, section_id, grade_level_id, subject_id, teacher_id, period_id, day_of_week, room_id, locked')
+          .select('id, section_id, grade_level_id, circle_id, subject_id, teacher_id, period_id, day_of_week, room_id, locked')
           .eq('academic_year_id', academicYearId)
           .eq('is_active', true)
       ),
@@ -393,10 +429,12 @@ export const runGeneration = async (jobId: string): Promise<void> => {
       const scopesWithReq = new Set((requirementsRaw || []).map((r: any) => classScopeKey(r)))
       const missingSections = targetSectionIds.filter((id) => !scopesWithReq.has(id))
       const missingGrades = targetGradeLevelIds.filter((id) => !scopesWithReq.has(`grade:${id}`))
-      if (missingSections.length > 0 || missingGrades.length > 0) {
+      const missingCircles = targetCircleIds.filter((id) => !scopesWithReq.has(`circle:${id}`))
+      if (missingSections.length > 0 || missingGrades.length > 0 || missingCircles.length > 0) {
         const parts: string[] = []
         if (missingSections.length > 0) parts.push(`section(s): ${missingSections.join(', ')}`)
         if (missingGrades.length > 0) parts.push(`grade(s): ${missingGrades.join(', ')}`)
+        if (missingCircles.length > 0) parts.push(`circle(s): ${missingCircles.join(', ')} — sync each circle's requirement first (Hifzi circle settings)`)
         await failJob(
           jobId,
           `No requirements defined for ${parts.join(' and ')} — define them on the requirements page before generating.`
@@ -433,17 +471,17 @@ export const runGeneration = async (jobId: string): Promise<void> => {
     const days = await resolveSchoolDays(academicYearId)
     const availableSlotsPerWeek = periods.length * days.length
 
-    const coverageWarnings: Array<{ section_id: string | null; grade_level_id: string | null; required: number; available: number }> = []
-    const byScope = new Map<string, { section_id: string | null; grade_level_id: string | null; total: number }>()
+    const coverageWarnings: Array<{ section_id: string | null; grade_level_id: string | null; circle_id?: string | null; required: number; available: number }> = []
+    const byScope = new Map<string, { section_id: string | null; grade_level_id: string | null; circle_id?: string | null; total: number }>()
     for (const r of resolvedRequirements) {
       const key = classScopeKey(r)
-      const entry = byScope.get(key) || { section_id: r.section_id, grade_level_id: r.grade_level_id, total: 0 }
+      const entry = byScope.get(key) || { section_id: r.section_id, grade_level_id: r.grade_level_id, circle_id: r.circle_id ?? null, total: 0 }
       entry.total += r.periods_per_week
       byScope.set(key, entry)
     }
-    for (const { section_id, grade_level_id, total } of byScope.values()) {
+    for (const { section_id, grade_level_id, circle_id, total } of byScope.values()) {
       if (availableSlotsPerWeek > 0 && total > availableSlotsPerWeek) {
-        coverageWarnings.push({ section_id, grade_level_id, required: total, available: availableSlotsPerWeek })
+        coverageWarnings.push({ section_id, grade_level_id, circle_id, required: total, available: availableSlotsPerWeek })
       }
     }
 
@@ -547,6 +585,7 @@ export const runGeneration = async (jobId: string): Promise<void> => {
         // timetable_requirements itself, not mutually exclusive with
         // section_id.
         grade_level_id: req.grade_level_id,
+        circle_id: req.circle_id ?? null,
         subject_id: activity.subject_id,
         teacher_id: activity.teacher_id,
         period_id: asg.period_id,
@@ -568,12 +607,25 @@ export const runGeneration = async (jobId: string): Promise<void> => {
       p_academic_year_id: academicYearId,
       p_section_ids: targetSectionIds,
       p_new_entries: newEntries,
-      p_grade_level_ids: targetGradeLevelIds
+      p_grade_level_ids: targetGradeLevelIds,
+      p_circle_ids: targetCircleIds
     })
 
     if (applyError) throw applyError
 
     const applied = Array.isArray(applyResult) ? applyResult[0] : applyResult
+
+    // Ministerial Decree 1205 compliance, Phase 4: advisory-only, never
+    // affects job status — see timetable-conflicts.service.ts's own comment
+    // for why this can't be done inside the solver itself.
+    let hifziAssistantConflicts: unknown[] = []
+    if (targetCircleIds.length > 0) {
+      try {
+        hifziAssistantConflicts = await hifziTimetableConflictsService.checkAssistantTeacherConflicts(jobId)
+      } catch (err) {
+        console.error(`[timetable-generation] job ${jobId}: Hifzi assistant-conflict check failed (non-fatal):`, err)
+      }
+    }
 
     // Note: true mid-solve cancellation isn't achievable with the current
     // synchronous solver (see KNOWN LIMITATION at the top of this file) — by
@@ -594,7 +646,11 @@ export const runGeneration = async (jobId: string): Promise<void> => {
       known_limitations: [
         'progress_percent is not updated live during the solve (single synchronous CPU-bound call); it jumps from a small value to 100 on completion.',
         'cancellation is only observed before the solve call starts, not mid-search.'
-      ]
+      ],
+      // Ministerial Decree 1205 compliance, Phase 4 — only present when this
+      // job targeted circles; empty/omitted otherwise, zero change for every
+      // other caller's result_summary shape.
+      ...(targetCircleIds.length > 0 ? { hifzi_assistant_conflicts: hifziAssistantConflicts } : {})
     }
 
     await markJob(jobId, {

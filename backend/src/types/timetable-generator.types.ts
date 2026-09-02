@@ -22,6 +22,11 @@ export interface TimetableRequirement {
   /** Always present: populated from section.grade_level_id when section is set,
    *  or set directly for grade-level requirements */
   grade_level_id: string | null;
+  /** Set only for a Hifzi circle's opt-in bell-schedule requirement (section_id
+   *  is NULL, same convention as a grade-level requirement) — see
+   *  backend/src/services/hifzi/circle-timetable.service.ts. Never set together
+   *  with a real section_id. */
+  circle_id?: string | null;
   subject_id: string;
   teacher_id: string | null;
   periods_per_week: number;
@@ -160,6 +165,8 @@ export interface TimetableGenerationJob {
   section_ids: string[] | null;
   /** Section-less grades included as generation targets alongside section_ids. */
   grade_level_ids: string[] | null;
+  /** Hifzi circles (bell_schedule mode only) explicitly targeted — never swept in by scope='all', opt-in and explicit only. */
+  circle_ids?: string[] | null;
   progress_percent: number;
   total_activities: number | null;
   placed_activities: number | null;

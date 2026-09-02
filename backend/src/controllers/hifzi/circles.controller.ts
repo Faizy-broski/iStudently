@@ -1,6 +1,8 @@
 import { Response } from 'express'
 import { AuthRequest } from '../../middlewares/auth.middleware'
 import { circlesService } from '../../services/hifzi/circles.service'
+import { hifziCircleTimetableService } from '../../services/hifzi/circle-timetable.service'
+import { hifziWorkloadService } from '../../services/hifzi/workload.service'
 
 function handleErrorStatus(error: any): number {
   const msg = error?.message || 'Unexpected error'
@@ -96,5 +98,35 @@ export const getScheduleConflicts = async (req: AuthRequest, res: Response) => {
       endTime: req.query.end_time as string,
     })
     return res.json({ success: true, data })
+  } catch (error: any) { return handleError(res, error) }
+}
+
+// Ministerial Decree 1205 compliance, Phase 4 — bell-schedule opt-in.
+export const setSchedulingMode = async (req: AuthRequest, res: Response) => {
+  try {
+    const mode = req.body.scheduling_mode
+    if (mode !== 'freeform' && mode !== 'bell_schedule') {
+      return res.status(400).json({ success: false, error: "scheduling_mode must be 'freeform' or 'bell_schedule'" })
+    }
+    const schoolId = resolveCampusId(req) || req.profile.school_id
+    const data = await hifziCircleTimetableService.setSchedulingMode(req.params.id, schoolId, mode)
+    return res.json({ success: true, data })
+  } catch (error: any) { return handleError(res, error) }
+}
+
+export const syncSchedulingRequirement = async (req: AuthRequest, res: Response) => {
+  try {
+    const schoolId = resolveCampusId(req) || req.profile.school_id
+    const data = await hifziCircleTimetableService.syncRequirement(req.params.id, schoolId)
+    return res.json({ success: true, data })
+  } catch (error: any) { return handleError(res, error) }
+}
+
+export const getCircleWorkload = async (req: AuthRequest, res: Response) => {
+  try {
+    const teacherProfileId = req.query.teacher_profile_id as string
+    if (!teacherProfileId) return res.status(400).json({ success: false, error: 'teacher_profile_id is required' })
+    const minutes = await hifziWorkloadService.computeFreeformCircleWorkloadMinutes(teacherProfileId)
+    return res.json({ success: true, data: { minutes } })
   } catch (error: any) { return handleError(res, error) }
 }

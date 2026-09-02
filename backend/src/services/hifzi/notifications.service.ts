@@ -73,6 +73,18 @@ class HifziNotificationsService {
     })
   }
 
+  /** Ministerial Decree 1205 compliance: a structural-unit or syllabus-grade completion — see milestones.service.ts, which calls this once per newly-recorded row in hifzi_milestones_log (that table's UNIQUE constraint is what makes "once" true, not this method). */
+  async notifyMilestone(schoolId: string, guardianProfileId: string, studentName: string, milestoneLabel: string, milestoneId: string) {
+    return this.notify({
+      schoolId,
+      recipientProfileId: guardianProfileId,
+      title: 'إنجاز جديد',
+      body: `أتم ${studentName} حفظ ${milestoneLabel}`,
+      relatedEntityType: 'hifzi_milestone',
+      relatedEntityId: milestoneId,
+    })
+  }
+
   async listForProfile(profileId: string, limit = 30) {
     const { data, error } = await supabase
       .from('hifzi_notifications')

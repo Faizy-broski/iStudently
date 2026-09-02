@@ -20,18 +20,28 @@ export interface InspectorAssignment {
   subject_id: string | null
   grade_level_id: string | null
   is_active: boolean
+  program?: 'general' | 'hifzi_compliance'
 }
 
 /**
  * Returns every active campus (school_id) this inspector is currently
  * assigned to, regardless of subject/grade-level narrowing.
+ *
+ * `program` optionally narrows to a specific inspection program —
+ * 'general' (the original teacher-evaluation module every existing caller
+ * here means) or 'hifzi_compliance' (Ministerial Decree 1205 compliance,
+ * Phase 3). Omitted (the default) matches any program, so every pre-existing
+ * call site is unaffected by this column's addition.
  */
-export async function listAssignedSchoolIds(inspectorProfileId: string): Promise<string[]> {
-  const { data, error } = await supabase
+export async function listAssignedSchoolIds(inspectorProfileId: string, program?: 'general' | 'hifzi_compliance'): Promise<string[]> {
+  let query = supabase
     .from('inspector_school_assignments')
     .select('school_id')
     .eq('inspector_profile_id', inspectorProfileId)
     .eq('is_active', true)
+  if (program) query = query.eq('program', program)
+
+  const { data, error } = await query
 
   if (error) {
     console.error('Error listing inspector school assignments:', error)
@@ -68,17 +78,20 @@ export async function listAssignments(inspectorProfileId: string): Promise<Inspe
 export async function assertInspectorCanAccessSchool(
   inspectorProfileId: string,
   schoolId: string,
-  role?: string
+  role?: string,
+  program?: 'general' | 'hifzi_compliance'
 ): Promise<boolean> {
   if (role === 'super_admin') return true
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('inspector_school_assignments')
     .select('id')
     .eq('inspector_profile_id', inspectorProfileId)
     .eq('school_id', schoolId)
     .eq('is_active', true)
-    .limit(1)
+  if (program) query = query.eq('program', program)
+
+  const { data, error } = await query.limit(1)
 
   if (error) {
     console.error('Error checking inspector school access:', error)

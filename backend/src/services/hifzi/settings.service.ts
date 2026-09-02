@@ -1,6 +1,7 @@
 import { supabase } from '../../config/supabase'
-import { DEFAULT_GRADING_WEIGHTS, DEFAULT_GRADE_BANDS, GradingWeights, GradeBand } from './grading-engine.service'
+import { DEFAULT_GRADING_WEIGHTS, DEFAULT_GRADE_BANDS, DEFAULT_MINISTRY_BUCKET_MAP, GradingWeights, GradeBand, MinistryTajweedBucket } from './grading-engine.service'
 import { DEFAULT_ASSIGNMENT_BUILDER_CONFIG } from './assignment-builder.service'
+import { TtlCache } from '../../utils/ttl-cache'
 
 // ============================================================================
 // Hifzi settings — org default (campus_id NULL) + optional campus override,
@@ -23,6 +24,7 @@ export interface HifziSettings {
   assignmentNearReviewCount: number
   absenceAlertMinutes: number
   guardianNotifyAfterSession: boolean
+  ministryBucketMap: Record<string, MinistryTajweedBucket | null>
 }
 
 export const DEFAULT_HIFZI_SETTINGS: HifziSettings = {
@@ -39,6 +41,7 @@ export const DEFAULT_HIFZI_SETTINGS: HifziSettings = {
   assignmentNearReviewCount: DEFAULT_ASSIGNMENT_BUILDER_CONFIG.nearReviewCount,
   absenceAlertMinutes: 15,
   guardianNotifyAfterSession: true,
+  ministryBucketMap: DEFAULT_MINISTRY_BUCKET_MAP,
 }
 
 function rowToSettings(row: any): HifziSettings {
@@ -56,12 +59,31 @@ function rowToSettings(row: any): HifziSettings {
     assignmentNearReviewCount: row.assignment_near_review_count ?? DEFAULT_HIFZI_SETTINGS.assignmentNearReviewCount,
     absenceAlertMinutes: row.absence_alert_minutes ?? DEFAULT_HIFZI_SETTINGS.absenceAlertMinutes,
     guardianNotifyAfterSession: row.guardian_notify_after_session ?? DEFAULT_HIFZI_SETTINGS.guardianNotifyAfterSession,
+    ministryBucketMap: row.ministry_bucket_map ?? DEFAULT_MINISTRY_BUCKET_MAP,
   }
 }
+
+// Settings are admin-edited and read on nearly every Hifzi request/service
+// call (session save, heatmap, report card, assignment generation, absence
+// alerts) — a short TTL cache turns that into a cache hit almost always,
+// while upsertSettings() below invalidates immediately on a real change so
+// an admin's edit is still felt right away rather than waiting out the TTL.
+const settingsCache = new TtlCache<HifziSettings>(60_000)
+const settingsCacheKey = (schoolId: string, campusId?: string | null) => `${schoolId}:${campusId ?? ''}`
 
 class HifziSettingsService {
   /** Resolves effective settings: campus override if present, else the school-wide default, else hardcoded fallbacks. */
   async getEffectiveSettings(schoolId: string, campusId?: string | null): Promise<HifziSettings> {
+    const cacheKey = settingsCacheKey(schoolId, campusId)
+    const cached = settingsCache.get(cacheKey)
+    if (cached) return cached
+
+    const settings = await this.fetchEffectiveSettings(schoolId, campusId)
+    settingsCache.set(cacheKey, settings)
+    return settings
+  }
+
+  private async fetchEffectiveSettings(schoolId: string, campusId?: string | null): Promise<HifziSettings> {
     if (campusId) {
       const { data: campusRow } = await supabase
         .from('hifzi_settings')
@@ -97,6 +119,7 @@ class HifziSettingsService {
     if (updates.assignmentNearReviewCount !== undefined) payload.assignment_near_review_count = updates.assignmentNearReviewCount
     if (updates.absenceAlertMinutes !== undefined) payload.absence_alert_minutes = updates.absenceAlertMinutes
     if (updates.guardianNotifyAfterSession !== undefined) payload.guardian_notify_after_session = updates.guardianNotifyAfterSession
+    if (updates.ministryBucketMap !== undefined) payload.ministry_bucket_map = updates.ministryBucketMap
 
     const { data, error } = await supabase
       .from('hifzi_settings')
@@ -105,6 +128,7 @@ class HifziSettingsService {
       .single()
 
     if (error) throw new Error(`Failed to save Hifzi settings: ${error.message}`)
+    settingsCache.invalidate(settingsCacheKey(schoolId, campusId))
     return rowToSettings(data)
   }
 }

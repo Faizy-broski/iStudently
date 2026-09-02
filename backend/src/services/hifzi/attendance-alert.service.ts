@@ -85,21 +85,43 @@ export async function checkAbsenceAlerts(now: Date = new Date()): Promise<{ aler
 
       const attendanceByStudent = new Map((attendanceRows || []).map((r) => [r.student_id, r]))
 
-      for (const { student_id: studentId } of roster) {
-        const existing = attendanceByStudent.get(studentId)
-        const isPresent = existing?.status === 'present' || existing?.status === 'late'
-        if (isPresent || existing?.alert_sent_at) continue
+      const studentsNeedingAlert = roster
+        .map((r) => r.student_id)
+        .filter((studentId) => {
+          const existing = attendanceByStudent.get(studentId)
+          const isPresent = existing?.status === 'present' || existing?.status === 'late'
+          return !isPresent && !existing?.alert_sent_at
+        })
 
-        const { data: guardianLinks } = await supabase
+      if (studentsNeedingAlert.length === 0) continue
+
+      // Batched (one query each, scoped to exactly the students who need an
+      // alert) instead of a guardian-links query + a student-name query
+      // per student inside the loop below.
+      const [{ data: guardianLinkRows }, { data: studentRows }] = await Promise.all([
+        supabase
           .from('parent_student_links')
-          .select('parent:parents(profile_id)')
-          .eq('student_id', studentId)
-          .eq('is_active', true)
+          .select('student_id, parent:parents(profile_id)')
+          .in('student_id', studentsNeedingAlert)
+          .eq('is_active', true),
+        supabase.from('students').select('id, profile:profiles(first_name, last_name)').in('id', studentsNeedingAlert),
+      ])
 
-        const { data: studentRow } = await supabase.from('students').select('profile:profiles(first_name, last_name)').eq('id', studentId).single()
-        const studentName = studentRow?.profile ? `${(studentRow.profile as any).first_name ?? ''} ${(studentRow.profile as any).last_name ?? ''}`.trim() : 'الطالب'
+      const guardianLinksByStudent = new Map<string, any[]>()
+      for (const link of guardianLinkRows || []) {
+        const studentId = (link as any).student_id
+        const list = guardianLinksByStudent.get(studentId) ?? []
+        list.push(link)
+        guardianLinksByStudent.set(studentId, list)
+      }
+      const studentProfileById = new Map((studentRows || []).map((r: any) => [r.id, r.profile]))
 
-        for (const link of guardianLinks || []) {
+      for (const studentId of studentsNeedingAlert) {
+        const existing = attendanceByStudent.get(studentId)
+        const profile = studentProfileById.get(studentId)
+        const studentName = profile ? `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() : 'الطالب'
+
+        for (const link of guardianLinksByStudent.get(studentId) ?? []) {
           const guardianProfileId = (link as any).parent?.profile_id
           if (!guardianProfileId) continue
           await hifziNotificationsService.notifyAbsence(school.id, guardianProfileId, studentName, circle.name_ar)

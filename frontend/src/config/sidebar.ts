@@ -8,6 +8,7 @@ import {
   BookOpen,
   CalendarCheck,
   FileText,
+  RotateCcw,
   ClipboardList,
   Clock,
   Library,
@@ -457,6 +458,11 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "e_library", href: "/admin/library/e-library", icon: BookMarked },
       { title: "loan_directory", href: "/admin/library/loans", icon: ClipboardList },
       { title: "fines", href: "/admin/library/fines", icon: DollarSign },
+      { title: "textbooks", href: "#", icon: Table2, isLabel: true },
+      { title: "textbooks_overview", href: "/admin/textbooks", icon: BookOpen },
+      { title: "textbooks_matrix", href: "/admin/textbooks/matrix", icon: Table2 },
+      { title: "textbooks_dashboard", href: "/admin/textbooks/dashboard", icon: Gauge },
+      { title: "textbooks_return_mode", href: "/admin/textbooks/return-mode", icon: RotateCcw },
       { title: "setup", href: "#", icon: Settings, isLabel: true },
       { title: "document_categories", href: "/admin/library/categories", icon: FolderOpen },
       { title: "document_fields", href: "/admin/library/document-fields", icon: Sliders },
@@ -549,6 +555,9 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "circles", href: "/admin/hifzi/circles", icon: Users },
       { title: "students", href: "/admin/hifzi/students", icon: UserCheck },
+      { title: "curriculum", href: "/admin/hifzi/curriculum", icon: GraduationCap },
+      { title: "gradebook", href: "/admin/hifzi/gradebook", icon: Award },
+      { title: "compliance", href: "/admin/hifzi/compliance", icon: TrendingUp },
       { title: "plans", href: "/admin/hifzi/plans", icon: Calendar },
       { title: "attendance", href: "/admin/hifzi/attendance", icon: CalendarCheck },
       { title: "reports", href: "/admin/hifzi/reports", icon: BarChart3 },
@@ -1013,8 +1022,10 @@ const studentMenuItems: SidebarMenuItem[] = [
     icon: BookOpen,
     pluginRequired: "hifzi",
     subItems: [
+      // "reports" used to point to /student/hifzi/heatmap, a page that
+      // never existed — the single page below already shows the heatmap,
+      // so this was a dead duplicate link, not a missing feature.
       { title: "recitation", href: "/student/hifzi", icon: Mic },
-      { title: "reports", href: "/student/hifzi/heatmap", icon: BarChart3 },
     ],
   },
   {
@@ -1149,8 +1160,11 @@ const parentMenuItems: SidebarMenuItem[] = [
     icon: BookOpen,
     pluginRequired: "hifzi",
     subItems: [
+      // "reports" used to point to /parent/hifzi/heatmap, a page that never
+      // existed — the single page below already shows the heatmap, session
+      // history, milestones, and report-card download, so this was a dead
+      // duplicate link, not a missing feature.
       { title: "recitation", href: "/parent/hifzi", icon: Mic },
-      { title: "reports", href: "/parent/hifzi/heatmap", icon: BarChart3 },
     ],
   },
   {
@@ -1232,6 +1246,15 @@ const inspectorMenuItems: SidebarMenuItem[] = [
   { title: "visits", href: "/inspector/visits", icon: CalendarPlus },
   { title: "reports", href: "/inspector/reports", icon: FileText },
   { title: "community", href: "/inspector/community", icon: MessageSquare },
+  // Ministerial Decree 1205 compliance (Phase 3) — a separate inspection
+  // program (inspector_school_assignments.program='hifzi_compliance') from
+  // the teacher-evaluation items above. No pluginRequired gate: unlike the
+  // admin/teacher menus, isPluginActive() resolves against ONE school's
+  // settings — meaningless for an inspector spanning many schools with
+  // potentially differing Hifzi enablement, so this item stays unconditional
+  // (a backend safety net: the dashboard itself is empty if this inspector
+  // has no hifzi_compliance assignments — same as every other inspector item).
+  { title: "hifzi_compliance", href: "/inspector/hifzi-compliance", icon: GraduationCap },
 ];
 
 // Media Officer Menu Items — Al-Fina' module's first-review moderator role.

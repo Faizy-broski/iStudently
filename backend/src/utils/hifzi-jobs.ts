@@ -35,16 +35,24 @@ export async function claimNextHifziJobs(instanceId: string, limit = 5): Promise
   }
   if (!candidates || candidates.length === 0) return []
 
-  const claimed: HifziJobRow[] = []
-  for (const candidate of candidates) {
-    const { data: row, error: claimError } = await supabase
-      .from('hifzi_jobs')
-      .update({ status: 'processing', claimed_at: nowIso, claimed_by: instanceId })
-      .eq('id', candidate.id)
-      .eq('status', 'pending')
-      .select('id, kind, payload, priority, attempts')
-      .maybeSingle()
+  // Each candidate's claim is an independent conditionally-guarded UPDATE —
+  // Postgres row-level locking makes every single claim race-safe on its
+  // own, so there's no need to serialize the N claims in this batch behind
+  // one another; run them concurrently instead.
+  const results = await Promise.all(
+    candidates.map((candidate) =>
+      supabase
+        .from('hifzi_jobs')
+        .update({ status: 'processing', claimed_at: nowIso, claimed_by: instanceId })
+        .eq('id', candidate.id)
+        .eq('status', 'pending')
+        .select('id, kind, payload, priority, attempts')
+        .maybeSingle()
+    )
+  )
 
+  const claimed: HifziJobRow[] = []
+  for (const { data: row, error: claimError } of results) {
     if (claimError) {
       console.error('Error claiming hifzi_jobs row:', claimError)
       continue

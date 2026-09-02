@@ -10,6 +10,9 @@ function handleError(res: Response, error: any) {
 
 export const createPlan = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessStudent(req, req.body.student_id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     // Same campus_id resolution as circles.controller.ts's resolveCampusId —
     // req.profile.school_id alone is the PARENT org for an admin, but
     // students (and hifzi_circles) live under the campus id, so an explicit
@@ -35,6 +38,11 @@ export const createPlan = async (req: AuthRequest, res: Response) => {
 export const updatePlan = async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = (req.body.campus_id as string | undefined) || req.profile?.campus_id || req.profile.school_id
+    const existing = await hifziPlansService.getPlanById(req.params.id, schoolId)
+    if (!existing) return res.status(404).json({ success: false, error: 'Plan not found' })
+    if (!(await assertCanAccessStudent(req, existing.student_id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziPlansService.updatePlan(req.params.id, schoolId, {
       circleId: req.body.circle_id,
       planType: req.body.plan_type,
@@ -50,6 +58,11 @@ export const updatePlan = async (req: AuthRequest, res: Response) => {
 export const deactivatePlan = async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = (req.query.campus_id as string | undefined) || req.profile?.campus_id || req.profile.school_id
+    const existing = await hifziPlansService.getPlanById(req.params.id, schoolId)
+    if (!existing) return res.status(404).json({ success: false, error: 'Plan not found' })
+    if (!(await assertCanAccessStudent(req, existing.student_id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziPlansService.deactivatePlan(req.params.id, schoolId)
     return res.json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }
