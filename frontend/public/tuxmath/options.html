@@ -1,0 +1,219 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="js/jquery.min.js"></script>
+    <script src="js/options.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/Lang.js"></script>
+    <link rel="stylesheet" href="menuassets/css/menus.css">
+  </head>
+  <body>
+    <div class="o-title">
+      <img src="images/logoTm.svg">
+    </div>
+    <div class="o-bigtux">
+      <img src="menuassets/img/bigtux-anim.png">
+    </div>
+    <ul class="o-menu o-menu--options">
+    
+      <li class="o-menu__item o-menu__item--options">
+        <div class="u-w60 o-menu__box o-menu__box--nohover">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_option_lang.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="optionitem_lang" class="o-menuitemblock__txt">---</div>
+          </div>
+        </div>
+          
+        <div class=o-optchoices>
+          <input type=radio name=opt_lang value="en_en" id="opt_lang_en">
+          <label class="o-menu__box o-optchoices__choice" for="opt_lang_en">
+            <div class=o-menuitemblock__txt> English</div>
+          </label>
+          <input type=radio name=opt_lang value="es_es" id="opt_lang_es">
+          <label class="o-menu__box o-optchoices__choice " for="opt_lang_es">
+            <div class=o-menuitemblock__txt> Español</div>
+          </label>
+          <input type=radio name=opt_lang value="fr_fr" id="opt_lang_fr">
+          <label class="o-menu__box o-optchoices__choice " for="opt_lang_fr">
+            <div class=o-menuitemblock__txt> Français</div>
+          </label>
+          <input type=radio name=opt_lang value="pt_pt" id="opt_lang_pt">
+          <label class="o-menu__box o-optchoices__choice" for="opt_lang_pt">
+            <div class=o-menuitemblock__txt> Portugês</div>
+          </label>
+        <div>
+          
+      </li>
+      
+ 
+
+      <li class="o-menu__item o-menu__item--options">
+        <div class="u-w60 o-menu__box o-menu__box--nohover">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_option_theme.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="optionitem_theme" class="o-menuitemblock__txt">---</div>
+          </div>
+        </div>
+          
+        <div class=o-optchoices>
+          <input type=radio name=opt_theme value="classic" id="opt_theme_classic">
+          <label class="o-menu__box o-optchoices__choice" for="opt_theme_classic">
+            <div style="height: 85px; position: relative;"> <img src="menuassets/img/theme-classic.png" style="position: absolute; bottom: 0; transform: translate(-50%, 6px);"></div>
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_theme_classic">---</div>
+          </label>
+          <input type=radio name=opt_theme value="original" id="opt_theme_original">
+          <label class="o-menu__box o-optchoices__choice " for="opt_theme_original">
+            <div style="height: 85px; position: relative;"><img src="menuassets/img/theme-original.png"  style="position: absolute; bottom: 0; transform: translate(-50%, 6px);"></div>
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_theme_original">---</div>
+          </label>
+          <input type=radio name=opt_theme value="afrikalan" id="opt_theme_afrikalan">
+          <label class="o-menu__box o-optchoices__choice " for="opt_theme_afrikalan">
+            <div style="height: 85px; position: relative;"><img src="menuassets/img/theme-afrikalan.png"  style="position: absolute; bottom: 0; transform: translate(-50%, 9px);"></div>
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_theme_afrikalan">---</div>
+          </label>
+        <div>
+          
+      </li>
+
+      
+      <li class="o-menu__item o-menu__item--options">
+        <div class="u-w60 o-menu__box o-menu__box--nohover">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_option_autolevel.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="optionitem_autolevel" class="o-menuitemblock__txt">---</div>
+          </div>
+        </div>
+
+       <div class="o-menu__box o-menu__box--nohover u-mt1">
+          <div class="o-menuitemblock">
+            <div data-lang-item="optionitem_autolevel_description" class="o-menuitemblock__txt o-menuitemblock__txt--small">---</div>
+          </div>
+        </div>
+
+        
+        <div class=o-optchoices>
+          <input type=radio name=opt_autolevel value="1" id="opt_al_yes">
+          <label class="o-menu__box o-optchoices__choice " for="opt_al_yes">
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_yes"> ---</div>
+          </label>
+          <input type=radio name=opt_autolevel value="0" id="opt_al_no">
+          <label class="o-menu__box o-optchoices__choice" for="opt_al_no">
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_no"> ---</div>
+          </label>
+        <div>
+      </li>
+
+      
+
+      <li class="o-menu__item o-menu__item--options">
+        <div class="u-w60 o-menu__box o-menu__box--nohover">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_option_music.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="optionitem_music" class="o-menuitemblock__txt">---</div>
+          </div>
+        </div>
+
+        
+        <div class=o-optchoices>
+          <input type=radio name=opt_music value="1" id="opt_music_yes">
+          <label class="o-menu__box o-optchoices__choice " for="opt_music_yes">
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_yes"> ---</div>
+          </label>
+          <input type=radio name=opt_music value="0" id="opt_music_no">
+          <label class="o-menu__box o-optchoices__choice" for="opt_music_no">
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_no"> ---</div>
+          </label>
+        <div>
+      </li>
+
+      
+
+      <li class="o-menu__item o-menu__item--options">
+        <div class="u-w60 o-menu__box o-menu__box--nohover">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_option_sfx.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="optionitem_sfx" class="o-menuitemblock__txt">---</div>
+          </div>
+        </div>
+
+        
+        <div class=o-optchoices>
+          <input type=radio name=opt_sfx value="1" id="opt_sfx_yes">
+          <label class="o-menu__box o-optchoices__choice " for="opt_sfx_yes">
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_yes"> ---</div>
+          </label>
+          <input type=radio name=opt_sfx value="0" id="opt_osk_no">
+          <label class="o-menu__box o-optchoices__choice" for="opt_osk_no">
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_no"> ---</div>
+          </label>
+        <div>
+      </li>      
+      
+      <li class="o-menu__item o-menu__item--options">
+        <div class="u-w60 o-menu__box o-menu__box--nohover">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_option_osk.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="optionitem_osk" class="o-menuitemblock__txt">---</div>
+          </div>
+        </div>
+
+        
+        <div class=o-optchoices>
+          <input type=radio name=opt_osk value="1" id="opt_osk_yes">
+          <label class="o-menu__box o-optchoices__choice " for="opt_osk_yes">
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_show"> ---</div>
+          </label>
+          <input type=radio name=opt_osk value="0" id="opt_osk_no">
+          <label class="o-menu__box o-optchoices__choice" for="opt_osk_no">
+            <div class=o-menuitemblock__txt data-lang-item="optionchoice_hide"> ---</div>
+          </label>
+        <div>
+      </li>
+      
+      <a href="index.html" class="o-menu__item o-menu__box">
+        <li class="o-menuitemblock">
+          <div class="o-menuitemblock__imgcont">
+            <img height=100% src="menuassets/img/icon_option_back.svg" class="o-menuitemblock__imgcont__img">
+          </div>
+          <div data-lang-item="options_back" class="o-menuitemblock__txt">---</div>
+        </li>
+      </a>
+
+
+    </ul>
+    
+    <script>
+      $(function(){
+        tmGlob_Options=new TmOptions();
+        tmGlob_Lang=new Lang();
+        
+        new TmOptionsMenu();
+        
+        
+        //logic specific to some selectors
+        $("input[type=radio][name=opt_lang]").click(function(evt, boolFiredInternaly){
+          if ((typeof boolFiredInternaly) && (boolFiredInternaly===true))
+            return;
+          
+          console.log(evt.target.value);
+          tmGlob_Lang.applyLang(evt.target.value);
+        })
+        
+      });
+    </script>
+  </body>
+
+</html>

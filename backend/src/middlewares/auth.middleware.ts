@@ -1,10 +1,210 @@
 import { Request, Response, NextFunction } from 'express'
 import { supabaseAuth, supabase } from '../config/supabase'
 import { twoFAService } from '../services/two-fa.service'
+import { TtlCache } from '../utils/ttl-cache'
 
 export interface AuthRequest extends Request {
   user?: any
   profile?: any
+}
+
+interface AuthErrorResponse {
+  status: number
+  body: Record<string, any>
+}
+
+interface CachedAuthContext {
+  profile: any
+  errorResponse: AuthErrorResponse | null
+  twoFARequired: boolean
+}
+
+// Resolving req.profile (profile row + role-branch campus/school assignment
+// + suspension/trial status + whether 2FA is required for this role) took
+// 4-7 sequential Supabase round trips on EVERY authenticated request, even
+// though none of it changes between requests in the same short window —
+// this was the single biggest, most universal cost behind slow navigation
+// (every API call behind every click pays this tax). Cached per
+// (user, impersonated school) with a short TTL: short because, unlike
+// hifzi-enabled.middleware.ts's 60s plugin-gate cache, this gates
+// security-relevant state (account suspension, 2FA requirement). JWT
+// verification (getUser, below) is deliberately NOT part of this cache — it
+// must run on every request so a revoked/expired token is rejected
+// immediately rather than up to `ttlMs` late.
+const authContextCache = new TtlCache<CachedAuthContext>(20_000)
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Resolves everything derivable from the profile row alone: role-branch
+ * campus/school assignment (student vs. staff/teacher/librarian), super_admin
+ * impersonation override, account-active/agreement/suspension/trial checks,
+ * and whether 2FA is required for this role. Called only on a cache miss.
+ * Returns null when no profile exists for this user (not cached — see caller).
+ */
+async function buildAuthContext(
+  user: any,
+  impersonatedSchoolId: string | undefined
+): Promise<CachedAuthContext | null> {
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile) {
+    console.error('❌ Profile lookup failed:', {
+      error: profileError,
+      userId: user.id
+    })
+    return null
+  }
+
+  if (!profile.is_active) {
+    if (profile.agreement_status === 'rejected') {
+      return {
+        profile,
+        twoFARequired: false,
+        errorResponse: {
+          status: 403,
+          body: {
+            success: false,
+            error: 'Your account was deactivated because you rejected the school agreement. Visit the reactivation page to restore access.',
+            code: 'AGREEMENT_REJECTED',
+          }
+        }
+      }
+    }
+    return {
+      profile,
+      twoFARequired: false,
+      errorResponse: {
+        status: 403,
+        body: { success: false, error: 'Account is inactive. Please contact administrator.' }
+      }
+    }
+  }
+
+  // If user is a student, fetch their student record.
+  if (typeof profile.role === 'string' && profile.role.toLowerCase() === 'student') {
+    const { data: studentRecord, error: studentError } = await supabase
+      .from('students')
+      .select('id, school_id, section_id')
+      .or(`profile_id.eq.${profile.id},id.eq.${profile.id}`)
+      .single()
+
+    if (!studentError && studentRecord) {
+      profile.student_id = studentRecord.id
+      if (studentRecord.section_id) profile.section_id = studentRecord.section_id
+
+      if (studentRecord.school_id) {
+        profile.campus_id = studentRecord.school_id
+
+        // Resolve parent school so that getMarkingPeriods/getAcademicYears work.
+        // In this system, marking periods are linked to the main school.
+        const { data: campusRecord } = await supabase
+          .from('schools')
+          .select('id, parent_school_id')
+          .eq('id', studentRecord.school_id)
+          .single()
+
+        if (campusRecord?.parent_school_id) {
+          // The campus is a child school — set school_id to the parent
+          profile.school_id = campusRecord.parent_school_id
+        } else if (campusRecord) {
+          // If parent_school_id is null, the school_id is already the parent
+          profile.school_id = campusRecord.id
+        }
+      }
+    } else if (studentError && studentError.code !== 'PGRST116') {
+      console.warn('⚠️ Student record lookup failed for profile:', profile.id, studentError)
+    }
+  }
+
+  // For librarians, teachers and staff: fetch their campus assignment from the staff table.
+  // The staff.school_id column stores the CAMPUS id (child school).
+  // We also need to resolve the parent school so that getCampuses() works correctly.
+  if (profile.role === 'librarian' || profile.role === 'teacher' || profile.role === 'staff') {
+    const { data: staffRecord } = await supabase
+      .from('staff')
+      .select('id, school_id, user_profile_id')
+      .eq('profile_id', profile.id)
+      .single()
+
+    if (staffRecord?.school_id) {
+      profile.campus_id = staffRecord.school_id
+      profile.staff_id = staffRecord.id
+      profile.user_profile_id = staffRecord.user_profile_id ?? null
+
+      // Resolve parent school so that getCampuses(profile.school_id) works.
+      // If the profile already has the parent school_id, skip this lookup.
+      const { data: campusRecord } = await supabase
+        .from('schools')
+        .select('id, parent_school_id')
+        .eq('id', staffRecord.school_id)
+        .single()
+
+      if (campusRecord?.parent_school_id) {
+        // The campus is a child school — set school_id to the parent
+        profile.school_id = campusRecord.parent_school_id
+      }
+      // If parent_school_id is null, school_id is already the parent school — keep it.
+    }
+  }
+
+  // Super admin school impersonation via X-School-Id header.
+  // No DB lookup needed — super_admin is already fully verified.
+  if (profile.role === 'super_admin') {
+    if (impersonatedSchoolId) {
+      profile.school_id = impersonatedSchoolId
+      profile.campus_id = undefined
+      profile.impersonating_school_id = impersonatedSchoolId
+    }
+  }
+
+  // ── School suspension / trial-expiry check + 2FA-required lookup ──────────
+  // Independent of each other (both only depend on the profile resolved
+  // above) — run concurrently instead of sequentially. Super admins are
+  // never blocked by suspension — they need access to fix/investigate
+  // suspended or trial-expired schools (including while impersonating one).
+  const [school, twoFARequired] = await Promise.all([
+    profile.role !== 'super_admin' && profile.school_id
+      ? supabase.from('schools').select('status, is_trial, trial_ends_at').eq('id', profile.school_id).single().then(r => r.data)
+      : Promise.resolve(null),
+    twoFAService.isTwoFARequiredForRole(profile.role, profile.school_id, profile.campus_id ?? null),
+  ])
+
+  if (school?.status === 'suspended') {
+    return {
+      profile,
+      twoFARequired,
+      errorResponse: {
+        status: 403,
+        body: {
+          success: false,
+          error: 'This school account has been suspended. Please contact your administrator.',
+          code: 'SCHOOL_SUSPENDED'
+        }
+      }
+    }
+  }
+
+  if (school?.is_trial && school.trial_ends_at && new Date(school.trial_ends_at) < new Date()) {
+    return {
+      profile,
+      twoFARequired,
+      errorResponse: {
+        status: 403,
+        body: {
+          success: false,
+          error: 'Your trial period has ended. Please contact us to continue using the system.',
+          code: 'TRIAL_EXPIRED'
+        }
+      }
+    }
+  }
+
+  return { profile, twoFARequired, errorResponse: null }
 }
 
 /**
@@ -102,145 +302,36 @@ export const authenticate = async (
       })
     }
 
-    // Fetch user profile from database using service role (bypasses RLS)
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+    // Cache key includes the impersonation header so that a super_admin
+    // switching between schools never serves one school's cached
+    // profile/campus/suspension context for another school's requests.
+    const rawImpersonationHeader = req.headers['x-school-id'] as string | undefined
+    const impersonatedSchoolId = rawImpersonationHeader && UUID_RE.test(rawImpersonationHeader)
+      ? rawImpersonationHeader
+      : undefined
+    const cacheKey = `${user.id}:${impersonatedSchoolId ?? ''}`
 
-    if (profileError || !profile) {
-      console.error('❌ Profile lookup failed:', {
-        error: profileError,
-        userId: user.id
-      })
-      return res.status(401).json({
-        success: false,
-        error: 'User profile not found. Please contact administrator to set up your account.'
-      })
-    }
-
-    // Check if user is active
-    if (!profile.is_active) {
-      if (profile.agreement_status === 'rejected') {
-        return res.status(403).json({
+    let authContext = authContextCache.get(cacheKey)
+    if (authContext === undefined) {
+      const built = await buildAuthContext(user, impersonatedSchoolId)
+      if (!built) {
+        return res.status(401).json({
           success: false,
-          error: 'Your account was deactivated because you rejected the school agreement. Visit the reactivation page to restore access.',
-          code: 'AGREEMENT_REJECTED',
+          error: 'User profile not found. Please contact administrator to set up your account.'
         })
       }
-      return res.status(403).json({
-        success: false,
-        error: 'Account is inactive. Please contact administrator.'
-      })
+      authContext = built
+      authContextCache.set(cacheKey, authContext)
     }
 
-    // If user is a student, fetch their student record.
-    if (typeof profile.role === 'string' && profile.role.toLowerCase() === 'student') {
-      const { data: studentRecord, error: studentError } = await supabase
-        .from('students')
-        .select('id, school_id, section_id')
-        .or(`profile_id.eq.${profile.id},id.eq.${profile.id}`)
-        .single()
-
-      if (!studentError && studentRecord) {
-        profile.student_id = studentRecord.id
-        if (studentRecord.section_id) profile.section_id = studentRecord.section_id
-
-        if (studentRecord.school_id) {
-          profile.campus_id = studentRecord.school_id
-          
-          // Resolve parent school so that getMarkingPeriods/getAcademicYears work.
-          // In this system, marking periods are linked to the main school.
-          const { data: campusRecord } = await supabase
-            .from('schools')
-            .select('id, parent_school_id')
-            .eq('id', studentRecord.school_id)
-            .single()
-
-          if (campusRecord?.parent_school_id) {
-            // The campus is a child school — set school_id to the parent
-            profile.school_id = campusRecord.parent_school_id
-          } else if (campusRecord) {
-            // If parent_school_id is null, the school_id is already the parent
-            profile.school_id = campusRecord.id
-          }
-        }
-      } else if (studentError && studentError.code !== 'PGRST116') {
-        console.warn('⚠️ Student record lookup failed for profile:', profile.id, studentError)
-      }
+    if (authContext.errorResponse) {
+      return res.status(authContext.errorResponse.status).json(authContext.errorResponse.body)
     }
 
-    // For librarians, teachers and staff: fetch their campus assignment from the staff table.
-    // The staff.school_id column stores the CAMPUS id (child school).
-    // We also need to resolve the parent school so that getCampuses() works correctly.
-    if (profile.role === 'librarian' || profile.role === 'teacher' || profile.role === 'staff') {
-      const { data: staffRecord } = await supabase
-        .from('staff')
-        .select('id, school_id, user_profile_id')
-        .eq('profile_id', profile.id)
-        .single()
-
-      if (staffRecord?.school_id) {
-        profile.campus_id = staffRecord.school_id
-        profile.staff_id = staffRecord.id
-        profile.user_profile_id = staffRecord.user_profile_id ?? null
-
-        // Resolve parent school so that getCampuses(profile.school_id) works.
-        // If the profile already has the parent school_id, skip this lookup.
-        const { data: campusRecord } = await supabase
-          .from('schools')
-          .select('id, parent_school_id')
-          .eq('id', staffRecord.school_id)
-          .single()
-
-        if (campusRecord?.parent_school_id) {
-          // The campus is a child school — set school_id to the parent
-          profile.school_id = campusRecord.parent_school_id
-        }
-        // If parent_school_id is null, school_id is already the parent school — keep it.
-      }
-    }
-
-    // Super admin school impersonation via X-School-Id header
-    // No DB lookup needed — super_admin is already fully verified.
-    // UUID validation ensures invalid strings produce empty results downstream.
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (profile.role === 'super_admin') {
-      const impersonatedSchoolId = req.headers['x-school-id'] as string | undefined
-      if (impersonatedSchoolId && UUID_RE.test(impersonatedSchoolId)) {
-        profile.school_id = impersonatedSchoolId
-        profile.campus_id = undefined
-        profile.impersonating_school_id = impersonatedSchoolId
-      }
-    }
-
-    // ── School suspension / trial-expiry enforcement ────────────────────────
-    // Super admins are never blocked — they need access to fix/investigate
-    // suspended or trial-expired schools (including while impersonating one).
-    if (profile.role !== 'super_admin' && profile.school_id) {
-      const { data: school } = await supabase
-        .from('schools')
-        .select('status, is_trial, trial_ends_at')
-        .eq('id', profile.school_id)
-        .single()
-
-      if (school?.status === 'suspended') {
-        return res.status(403).json({
-          success: false,
-          error: 'This school account has been suspended. Please contact your administrator.',
-          code: 'SCHOOL_SUSPENDED'
-        })
-      }
-
-      if (school?.is_trial && school.trial_ends_at && new Date(school.trial_ends_at) < new Date()) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your trial period has ended. Please contact us to continue using the system.',
-          code: 'TRIAL_EXPIRED'
-        })
-      }
-    }
+    // Shallow-copy the cached profile per request — the cached object is
+    // shared across concurrent/future requests for this user, and downstream
+    // route handlers are not guaranteed not to mutate req.profile.
+    const profile = { ...authContext.profile }
 
     // Attach user and profile to request
     req.user = user
@@ -249,37 +340,33 @@ export const authenticate = async (
     // ── 2FA enforcement ──────────────────────────────────────────────────────
     // Integrated here so it runs for every authenticated route without modifying
     // individual route files. Skipped for 2FA action paths and other excluded paths.
+    // Session verification is deliberately NOT cached above — it's tied to this
+    // specific token/session and must be checked fresh every request.
     try {
       const path = req.originalUrl.split('?')[0]  // full path, no query string
       const skipPaths = ['/two-fa/', '/auth/change-password', '/auth/language',
         '/user-agreements/check', '/user-agreements/accept', '/user-agreements/reject']
       const should2FACheck = !skipPaths.some(p => path.includes(p))
 
-      if (should2FACheck) {
-        const isRequired = await twoFAService.isTwoFARequiredForRole(
-          profile.role, profile.school_id, profile.campus_id ?? null
-        )
+      if (should2FACheck && authContext.twoFARequired) {
+        // Check skip grace period
+        const skipUntil = profile.totp_skip_until ? new Date(profile.totp_skip_until) : null
+        const inGrace = skipUntil && skipUntil > new Date()
 
-        if (isRequired) {
-          // Check skip grace period
-          const skipUntil = profile.totp_skip_until ? new Date(profile.totp_skip_until) : null
-          const inGrace = skipUntil && skipUntil > new Date()
+        if (!inGrace) {
+          if (!profile.totp_enabled) {
+            return res.status(403).json({ success: false, code: 'TWO_FA_SETUP_REQUIRED', error: '2FA setup is required' })
+          }
 
-          if (!inGrace) {
-            if (!profile.totp_enabled) {
-              return res.status(403).json({ success: false, code: 'TWO_FA_SETUP_REQUIRED', error: '2FA setup is required' })
-            }
+          const bearerToken = (req.headers.authorization || '').replace('Bearer ', '')
+          const sessionId = twoFAService.extractSessionId(bearerToken)
+          if (!sessionId) {
+            return res.status(403).json({ success: false, code: 'TWO_FA_REQUIRED', error: '2FA verification required' })
+          }
 
-            const bearerToken = (req.headers.authorization || '').replace('Bearer ', '')
-            const sessionId = twoFAService.extractSessionId(bearerToken)
-            if (!sessionId) {
-              return res.status(403).json({ success: false, code: 'TWO_FA_REQUIRED', error: '2FA verification required' })
-            }
-
-            const verified = await twoFAService.isSessionVerified(profile.id, sessionId)
-            if (!verified) {
-              return res.status(403).json({ success: false, code: 'TWO_FA_REQUIRED', error: '2FA verification required' })
-            }
+          const verified = await twoFAService.isSessionVerified(profile.id, sessionId)
+          if (!verified) {
+            return res.status(403).json({ success: false, code: 'TWO_FA_REQUIRED', error: '2FA verification required' })
           }
         }
       }

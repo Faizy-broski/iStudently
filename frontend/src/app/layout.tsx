@@ -10,6 +10,7 @@ import { cookies } from "next/headers";
 import enMessages from "../../messages/en.json";
 import arMessages from "../../messages/ar.json";
 import { BodyPointerEventsGuard } from "@/components/BodyPointerEventsGuard";
+import NextTopLoader from "nextjs-toploader";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -81,6 +82,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <NextTopLoader color="var(--primary)" showSpinner={false} height={3} shadow={false} />
         <BodyPointerEventsGuard />
         <NextIntlClientProvider messages={messages} locale={locale}>
           <ThemeProvider>

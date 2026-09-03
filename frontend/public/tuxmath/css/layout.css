@@ -1,0 +1,353 @@
+/*
+ * TuxMath JS
+ * 
+ * Author: Julien Marin - projet Afrikalan  
+ * Contact: julien.marin@afrikalan.org
+ * Licence: AGPL-3.0-or-later, see COPYING file
+ */
+
+
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body.android .u-hide-on-android { display: none }
+body:not(.android) .u-show-on-android-only { display: none }
+
+
+.layout-overlay-buttons {
+  display: flex;
+  position: absolute;
+  z-index: 10;
+/*   top: .5rem; */
+/*   right: .5rem; */
+  top: -.5rem;
+  right: -.5rem;
+}
+
+.layout-overlay-buttons__button{
+  position: relative;
+/*   display: block; */
+  
+  /*Make it bigger, else doesn't well work on Chrome*/
+  width: 4rem;
+/*   text-align: right; */
+  height: 4rem;
+  
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.layout-overlay-buttons__icon
+{
+  width: 2rem;
+/*   padding-bottom: 1rem; */
+  margin: auto;
+}
+
+.layout-page {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  position: relative;
+  z-index: 5;
+}
+
+@media (orientation: portrait) {
+  .layout-page {
+    flex-direction: column;
+    
+  }}
+
+.layout-game {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.layout-game__overlay {
+  position: absolute;
+  z-index: 50;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-game__overlay__topline
+{
+  flex-grow: 0;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.layout-game__overlay__topline__cell {
+    flex-grow: 1;
+    flex-basis: 0px; /* make all elements same size. source: https://stackoverflow.com/questions/29503227/how-to-make-flexbox-items-the-same-size */
+    margin: .25rem;
+    font-size: 1.5rem;
+    color: #ececec;
+    font-family: sans;
+    font-weight: bold;
+    text-shadow: 3px 0px 2px #787878, -3px 0px 2px #787878, 0px 3px 2px #787878, 0px -3px 2px #787878;
+    white-space: nowrap;  
+}
+
+.layout-topline__image {
+    height: 25px;
+    vertical-align: sub;
+}
+
+.layout-topline_cell_counters
+{
+  display: flex;
+/*   justify-content: space-evenly; */
+  justify-content: center;
+}
+
+.layout-topline_cell_counters__cell
+{
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+
+.layout-game__tuxComand {
+  position: absolute;
+  z-index: 40;
+  height: 100%;
+  width: 100%;
+}
+
+
+
+.layout-game__overlay-anims {
+  position: absolute;
+  z-index: 30;
+  overflow: hidden;
+  width: 100%;
+  height: 100%; 
+}
+
+
+
+.layout-game__lasers {
+  position: absolute;
+  z-index: 20;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.layout-game__commetsIgloosColmuns {
+  position: absolute;
+  display: flex;
+  justify-content: space-around;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.layout-game__commetsIgloosColmuns__col {
+/*   overflow: hidden; */ /*inutile?*/
+}
+
+.layout-game__commetsIgloosColmuns__col > * {
+  transform: translate(-50%, 0%);
+}
+
+.layout-game__backgound {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position-y: bottom;
+  position: absolute;
+  z-index: 0;
+  background-color: #3c3c3c;
+}
+
+
+/* OSK */
+
+.layout-osk
+{
+  flex-basis: 25rem;
+}
+
+
+.obj-osk
+{
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  background: linear-gradient(110deg, #1e1e1e, #555, #1e1e1e);
+  justify-content: flex-end;
+}
+
+.obj-osk__block--keysblock {
+    display: flex;
+    flex-basis: 3rem;
+}
+
+.obj-osk__block--validcancel
+{
+    flex-basis: 4rem;
+}
+
+.obj-osk__block--margintopforbuttons {
+  flex-grow: 0;
+  flex-shrink: 25;
+  flex-basis: 2.25rem;
+}
+
+
+.obj-osk__block--logo {
+  display: none;
+  background: url("../images/logoTm.svg");
+  background-size: contain;
+  flex-grow: 1;
+  background-position: top center;
+  background-repeat: no-repeat;
+  margin: .5rem 1.5rem;
+  flex-basis: 7.5rem;
+}
+
+@media (orientation: landscape) {
+  .obj-osk__block--keysblock {
+    flex-basis: 5rem;
+  }
+  
+  .obj-osk__block--validcancel
+  {
+      flex-basis: 6rem;
+  }
+  
+  .obj-osk__block--logo {
+    display: block;
+  }
+}
+@media (orientation: portrait) {
+  .obj-osk__block--margintopforbuttons{
+    display: none;
+  }
+}
+
+.obj-osk__key {
+  flex-grow: 1;
+  text-align: center;
+  background: #ffce99;
+  margin: .1rem;
+  font-family: sans;
+  padding: .25rem;
+  font-size: 2rem;
+  
+  display: flex; /*vertical center*/
+  justify-content: center; /*vertical center*/
+  flex-direction: column; /*vertical center*/
+}
+
+.obj-osk__key:active {
+  background: #f48e21;
+}
+
+.osk__key--enter
+{
+  background: green;
+}
+
+.osk__key--enter
+{
+  background: #1d1;
+  flex-grow: 5;
+}
+
+.osk__key--backspace
+{
+  background: red;
+  flex-grow: 1;
+}
+
+
+@media (max-height: 400px), (max-width: 850px)
+{
+  .layout-game__overlay__topline__cell {
+    font-size: 1.15rem;
+  }
+  .layout-topline__image {
+  height: 1.15rem;
+  }
+}
+
+
+@media (max-height: 300px), (max-width: 650px)
+{
+  .layout-game__overlay__topline__cell {
+    font-size: 1rem;
+  }
+  .layout-topline__image {
+  height: 1rem;
+  }
+
+  .layout-topline_cell_counters__cell {
+    margin-left: .5rem;
+    margin-right: .5rem;
+  }
+}
+
+@media (max-width: 400px)
+{
+  .layout-overlay-buttons {
+    flex-direction: column;
+  }
+  
+  .layout-overlay-buttons__icon {
+    width: 1.5rem;
+    padding-left: .5rem;
+    padding-right: .2rem;
+  }
+
+}
+
+
+
+@media (max-height: 300px) and (orientation: landscape)
+{
+  .layout-osk {
+    padding-top: 2.5rem;
+  }
+  .obj-osk__block.obj-osk__block--logo {
+    display: none;
+  }
+  
+  .obj-osk__key {
+    font-size: 8vh;
+    padding: 1.25vh;
+  }
+  
+  .layout-overlay-buttons__button{
+    height: 2rem;
+  }
+}
+
+@media (max-height: 500px)  and  (orientation: portrait)
+{
+  .obj-osk__key {
+    font-size: 6vh;
+    padding: .5vh;
+  }
+
+  .obj-osk__block--keysblock {
+    flex-basis: auto;
+  }
+  .layout-osk {
+    flex-basis: 50vh;
+  }
+}
+

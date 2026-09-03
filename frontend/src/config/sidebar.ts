@@ -59,6 +59,9 @@ import {
   Globe,
   FlaskConical,
   Table2,
+  CircuitBoard,
+  Gamepad2,
+  Compass,
   Languages,
   Dna,
   Gauge,
@@ -69,6 +72,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
+import { SchoolKhalwaIcon } from "@/components/icons/SchoolKhalwaIcon";
 
 export interface SidebarMenuItem {
   title: string;
@@ -524,6 +528,9 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/admin/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/admin/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/admin/resources/jperiod", icon: Table2 },
+      { title: "circuit_simulator", href: "/admin/resources/circuit-simulator", icon: CircuitBoard },
+      { title: "calculators_arena", href: "/admin/resources/calculators-arena", icon: Gamepad2 },
+      { title: "interactive_geometry", href: "/admin/resources/interactive-geometry", icon: Compass },
       { title: "arabic_fluency", href: "/admin/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/admin/resources/anatomy-3d", icon: Dna },
     ],
@@ -550,7 +557,7 @@ const adminMenuItems: SidebarMenuItem[] = [
   {
     title: "hifzi",
     href: "/admin/hifzi",
-    icon: BookOpen,
+    icon: SchoolKhalwaIcon,
     pluginRequired: "hifzi",
     subItems: [
       { title: "circles", href: "/admin/hifzi/circles", icon: Users },
@@ -760,6 +767,9 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/teacher/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/teacher/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/teacher/resources/jperiod", icon: Table2 },
+      { title: "circuit_simulator", href: "/teacher/resources/circuit-simulator", icon: CircuitBoard },
+      { title: "calculators_arena", href: "/teacher/resources/calculators-arena", icon: Gamepad2 },
+      { title: "interactive_geometry", href: "/teacher/resources/interactive-geometry", icon: Compass },
       { title: "arabic_fluency", href: "/teacher/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/teacher/resources/anatomy-3d", icon: Dna },
     ],
@@ -846,7 +856,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
   {
     title: "hifzi",
     href: "/teacher/hifzi",
-    icon: BookOpen,
+    icon: SchoolKhalwaIcon,
     pluginRequired: "hifzi",
     subItems: [
       { title: "recite", href: "/teacher/hifzi/recite", icon: Mic },
@@ -988,6 +998,9 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "physics_labs", href: "/student/resources/physics-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/student/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/student/resources/jperiod", icon: Table2 },
+      { title: "circuit_simulator", href: "/student/resources/circuit-simulator", icon: CircuitBoard },
+      { title: "calculators_arena", href: "/student/resources/calculators-arena", icon: Gamepad2 },
+      { title: "interactive_geometry", href: "/student/resources/interactive-geometry", icon: Compass },
       { title: "arabic_fluency", href: "/student/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/student/resources/anatomy-3d", icon: Dna },
     ],
@@ -1019,7 +1032,7 @@ const studentMenuItems: SidebarMenuItem[] = [
   {
     title: "hifzi",
     href: "/student/hifzi",
-    icon: BookOpen,
+    icon: SchoolKhalwaIcon,
     pluginRequired: "hifzi",
     subItems: [
       // "reports" used to point to /student/hifzi/heatmap, a page that
@@ -1157,7 +1170,7 @@ const parentMenuItems: SidebarMenuItem[] = [
   {
     title: "hifzi",
     href: "/parent/hifzi",
-    icon: BookOpen,
+    icon: SchoolKhalwaIcon,
     pluginRequired: "hifzi",
     subItems: [
       // "reports" used to point to /parent/hifzi/heatmap, a page that never
@@ -1199,6 +1212,9 @@ const parentMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/parent/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/parent/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/parent/resources/jperiod", icon: Table2 },
+      { title: "circuit_simulator", href: "/parent/resources/circuit-simulator", icon: CircuitBoard },
+      { title: "calculators_arena", href: "/parent/resources/calculators-arena", icon: Gamepad2 },
+      { title: "interactive_geometry", href: "/parent/resources/interactive-geometry", icon: Compass },
       { title: "arabic_fluency", href: "/parent/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/parent/resources/anatomy-3d", icon: Dna },
     ],
@@ -1254,7 +1270,7 @@ const inspectorMenuItems: SidebarMenuItem[] = [
   // potentially differing Hifzi enablement, so this item stays unconditional
   // (a backend safety net: the dashboard itself is empty if this inspector
   // has no hifzi_compliance assignments — same as every other inspector item).
-  { title: "hifzi_compliance", href: "/inspector/hifzi-compliance", icon: GraduationCap },
+  { title: "hifzi_compliance", href: "/inspector/hifzi-compliance", icon: SchoolKhalwaIcon },
 ];
 
 // Media Officer Menu Items — Al-Fina' module's first-review moderator role.

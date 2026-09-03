@@ -760,6 +760,9 @@
     "virtual_labs": "Virtual Labs",
     "vlaby": "Virtual Labs",
     "periodic_table": "Periodic Table",
+    "circuit_simulator": "Circuit Simulator",
+    "calculators_arena": "Calculators Arena",
+    "interactive_geometry": "Interactive Geometry",
     "arabic_fluency": "Arabic Fluency",
     "my_profile": "My Profile",
     "school_information": "School Information",
@@ -770,11 +773,11 @@
     "inbox": "Inbox",
     "write": "Write",
     "teacher_messaging_permissions": "Teacher Messaging Permissions",
-    "hifzi": "Hifzi",
+    "hifzi": "School Khalwa",
     "circles": "Circles",
     "curriculum": "Curriculum",
     "compliance": "Compliance",
-    "hifzi_compliance": "Hifzi Compliance",
+    "hifzi_compliance": "School Khalwa Compliance",
     "recitation": "Recitation",
     "recite": "Recite",
     "plans": "Plans",
@@ -4289,7 +4292,15 @@
         "age": "Age",
         "years": "Years",
         "months": "Months",
-        "days": "Days"
+        "days": "Days",
+        "unassigned": "Unassigned",
+        "reassign_button": "Reassign",
+        "reassign_helper": "Manually move this student to a different grade level or section.",
+        "reassign_title": "Reassign Grade & Section",
+        "reassign_desc": "Choose a new grade level and section for this student.",
+        "reassign_success": "Student reassigned successfully",
+        "reassign_error_generic": "Failed to reassign student",
+        "seats_available": "seats available"
       },
       "edit_student": {
         "title": "Edit Student",
@@ -8918,7 +8929,7 @@
       "no_results": "No plugins match your search.",
       "grievance_portal_name": "Compliances & Grievances",
       "grievance_portal_desc": "A Ministry-of-Education-compliant complaints/grievances portal for students, parents, teachers, and staff — submission, assignment, SLA tracking, escalation, confidential/anonymous handling, and reporting.",
-      "hifzi_name": "Hifzi — Quran Memorization",
+      "hifzi_name": "School Khalwa — Quran Memorization",
       "hifzi_desc": "Quran memorization management: circles, recitation tracking with error taxonomy and auto-grading, spaced-repetition review, daily assignments, attendance, and progress reports/heatmap.",
       "online_classes_name": "Online Learning",
       "online_classes_desc": "Video class sessions — either bound to a course period (teachers start directly, or request approval for a new open-enrollment course) or ad-hoc meetings targeted to a campus/grade/section or the whole school — each with a co-editable Excalidraw whiteboard and live in-class polls.",
@@ -12663,9 +12674,9 @@
     }
   },
   "hifzi": {
-    "moduleName": "Hifzi",
+    "moduleName": "School Khalwa",
     "overview": {
-      "title": "Hifzi — Quran Memorization",
+      "title": "School Khalwa — Quran Memorization",
       "subtitle": "Circles, recitation, plans and progress tracking."
     },
     "circles": {
@@ -12835,7 +12846,7 @@
     "compliance": {
       "title": "Compliance",
       "subtitle": "Syllabus-completion percentage against the ministry-mandated Quran range, per circle.",
-      "inspectorTitle": "Hifzi Compliance",
+      "inspectorTitle": "School Khalwa Compliance",
       "inspectorSubtitle": "Syllabus-completion percentage across every school you're assigned to.",
       "studentsTracked": "Students Tracked",
       "avgCompletion": "Avg. Completion",
@@ -12893,7 +12904,7 @@
       "generateError": "Failed to generate report card"
     },
     "settings": {
-      "title": "Hifzi Settings",
+      "title": "School Khalwa Settings",
       "gradingWeights": "Grading Weights",
       "gradeBands": "Grade Bands",
       "srsSettings": "Spaced Repetition Settings",
@@ -12904,7 +12915,7 @@
       "saveError": "Failed to save settings"
     },
     "plugin": {
-      "enable": "Enable Hifzi Module",
+      "enable": "Enable School Khalwa Module",
       "description": "Quran memorization management: circles, recitation tracking, spaced-repetition review, and progress reports."
     }
   }

@@ -897,7 +897,18 @@ export class SchoolSettingsController {
 
       res.json({ success: true, message: `Test email sent to ${toEmail}` })
     } catch (error: any) {
-      res.status(400).json({ success: false, error: error.message })
+      // Was previously silent server-side — the real nodemailer error (bad
+      // host, blocked port, auth failure, TLS mismatch) only ever reached
+      // the browser's network tab, with nothing in the backend's own logs
+      // to grep. code/command/responseCode are nodemailer/SMTP-specific
+      // fields error.message alone often omits (e.g. auth failures).
+      console.error('[school-settings] SMTP test failed:', {
+        code: error.code,
+        command: error.command,
+        responseCode: error.responseCode,
+        message: error.message,
+      })
+      res.status(400).json({ success: false, error: error.message, code: error.code })
     }
   }
 

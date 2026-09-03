@@ -60,12 +60,14 @@ export async function requireHifziEnabled(req: AuthRequest, res: Response, next:
     }
 
     if (!pluginActive) {
-      return res.status(403).json({ success: false, error: 'The Hifzi module is not enabled for this school' })
+      // Display name only ("School Khalwa") — active_plugins.hifzi, every
+      // hifzi_* table, and this module's routes/identifiers are unchanged.
+      return res.status(403).json({ success: false, error: 'The School Khalwa module is not enabled for this school' })
     }
 
     return next()
   } catch (err) {
     console.error('requireHifziEnabled check failed:', err)
-    return res.status(500).json({ success: false, error: 'Failed to verify Hifzi module status' })
+    return res.status(500).json({ success: false, error: 'Failed to verify School Khalwa module status' })
   }
 }

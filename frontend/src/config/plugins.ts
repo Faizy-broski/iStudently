@@ -45,11 +45,11 @@ import {
   MessageSquareWarning,
   Video,
   Languages,
-  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
 import type { UserRole } from '@/types'
+import { SchoolKhalwaIcon } from '@/components/icons/SchoolKhalwaIcon'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -99,16 +99,19 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     sidebarInjections: [],
   },
 
-  // ── Hifzi (Quran Memorization) ───────────────────────────────────────────
+  // ── School Khalwa (Quran Memorization) ───────────────────────────────────
   // Standalone module with its own top-level sidebar entry per role (added
   // directly in sidebar.ts, gated by pluginRequired: 'hifzi'), mirroring
-  // grievance_portal's pattern — no sidebarInjections needed here.
+  // grievance_portal's pattern — no sidebarInjections needed here. `id`
+  // stays 'hifzi' (matches active_plugins.hifzi in school_settings, every
+  // hifzi_* DB table, and every backend/frontend route — display-name-only
+  // rebrand, not a schema/route rename) — only `name`/`icon` are user-facing.
   {
     id: 'hifzi',
-    name: 'Hifzi — Quran Memorization',
+    name: 'School Khalwa — Quran Memorization',
     description:
       'Quran memorization management: circles, recitation tracking with error taxonomy and auto-grading, spaced-repetition review, daily assignments, attendance, and progress reports/heatmap.',
-    icon: BookOpen,
+    icon: SchoolKhalwaIcon,
     category: 'Academics',
     settingsHref: '/admin/hifzi/settings',
     sidebarInjections: [],

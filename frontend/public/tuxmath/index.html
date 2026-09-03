@@ -1,0 +1,127 @@
+<html>
+  <head>
+    
+      <title data-lang-item="index_title">Play tuxMath online</title>
+    
+    <meta charset="utf-8">
+    <meta http-equiv="Content-type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta data-lang-item="meta_desc" name="description" content="Tuxmath is a math game to practice additions subtractions or to learn multiplications tables. Tux Math has been rewritten in javascript to be playable on the web without having to be installed. Tux math is free educational software under an open source license.">
+    <meta data-lang-item="meta_keywords" name="keywords" content="tux math javascript free educative game gnu gpl agpl tables addition additions subtractions multiplications divisions">
+    <meta name="author" content="Julien Marin - Projet Afrikalan">
+    <link rel="shortcut icon" href="images/favicon-small.png" sizes="32x32">
+    <link rel="shortcut icon" href="images/favicon.png" sizes="64x64 96x96 128x128 192x192">
+
+    <script src="js/jquery.min.js"></script>
+    <script src="js/options.js"></script>
+    <script src="js/Lang.js"></script>
+    <script src="js/utils.js"></script>
+    <link rel="stylesheet" href="menuassets/css/menus.css">
+  </head>
+  <body>
+    <div class="o-announce js-announce" style="display: none;">
+      <div class="o-announce__icon"><img src="menuassets/img/announce-icon.svg" height=65></div>
+      <div class="o-announce__message js-announce__message"></div>
+      <div class="o-announce__close"><a class="js-announce-close" href=#><img src="menuassets/img/announce-close.svg" height=20 ></a></div>
+    </div>
+    <div class="o-title">
+      <img src="images/logoTm.svg">
+    </div>
+    <div class="o-bigtux">
+      <img src="menuassets/img/bigtux-anim.png">
+    </div>
+    <nav class="o-menu">
+    
+              
+        <a href="index_sum.html" class="o-menu__item o-menu__box u-w100">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_lvlgroup_sum.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="lgroup_sum" class="o-menuitemblock__txt">Additions</div>
+          </div>
+        </a>
+              
+        <a href="index_sub.html" class="o-menu__item o-menu__box u-w100">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_lvlgroup_sub.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="lgroup_sub" class="o-menuitemblock__txt">Subtractions</div>
+          </div>
+        </a>
+              
+        <a href="index_mul.html" class="o-menu__item o-menu__box u-w100">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_lvlgroup_mul.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="lgroup_mul" class="o-menuitemblock__txt">Multiplications</div>
+          </div>
+        </a>
+              
+        <a href="index_div.html" class="o-menu__item o-menu__box u-w100">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_lvlgroup_div.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="lgroup_div" class="o-menuitemblock__txt">Divisions</div>
+          </div>
+        </a>
+              
+        <a href="index_relatives.html" class="o-menu__item o-menu__box u-w100">
+          <div class="o-menuitemblock">
+            <div class="o-menuitemblock__imgcont">
+              <img height=100% src="menuassets/img/icon_lvlgroup_relatives.svg" class="o-menuitemblock__imgcont__img">
+            </div>
+            <div data-lang-item="lgroup_relatives" class="o-menuitemblock__txt">Relative numbers</div>
+          </div>
+        </a>
+      
+    
+    
+    
+    
+    
+      <a href="options.html" class="o-menu__item o-menu__box u-w100">
+        <div class="o-menuitemblock">
+          <div class="o-menuitemblock__imgcont">
+            <img height=100% src="menuassets/img/icon_options.svg" class="o-menuitemblock__imgcont__img">
+          </div>
+          <div data-lang-item="menuitem_options" class="o-menuitemblock__txt">Options</div>
+        </div>
+      </a>
+      <a data-lang-target="menuitem_infos__url" href="#" class="o-menu__item o-menu__box u-w100">
+        <li class="o-menuitemblock">
+          <div class="o-menuitemblock__imgcont">
+            <img height=100% src="menuassets/img/icon_helpinfo.svg" class="o-menuitemblock__imgcont__img">
+          </div>
+          <div data-lang-item="menuitem_infos" class="o-menuitemblock__txt">Help and informations</div>
+        </li>
+      </a>
+    
+    
+    
+    </nav>
+
+    <div style="text-align:center; font-size:11px; color:#888; padding:6px 0;">
+      TuxMath &mdash; Projet Afrikalan (AGPL-3.0) &middot; <a href="https://tuxmath.org" target="_blank" rel="noopener noreferrer">tuxmath.org</a>
+    </div>
+    
+    <script>
+      $(function(){
+        tmGlob_Options=new TmOptions();
+        tmGlob_Lang=new Lang();
+        
+        $(".js-announce-close").click(function(){ $(".js-announce").hide(); });
+        let announces={};
+        if (Object.hasOwn(announces, tmGlob_Lang.appliedLang))
+        {
+          $(".js-announce__message").html(announces[tmGlob_Lang.appliedLang]);
+          $(".js-announce").show();
+        }
+      });
+    </script>
+  </body>
+
+</html>

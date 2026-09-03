@@ -151,7 +151,7 @@ export interface UpdateStudentDTO {
   student_number?: string
   grade_level?: string
   grade_level_id?: string
-  section_id?: string
+  section_id?: string | null
   first_name?: string
   father_name?: string // NEW
   grandfather_name?: string // NEW

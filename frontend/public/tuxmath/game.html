@@ -1,0 +1,133 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  
+  <script src="js/jquery.min.js"></script>
+  <script src="js/game.js?v=1.1"></script>
+  <script src="js/gameElements.js?v=1.1"></script>
+  <script src="js/mathcards.js?v=1.1"></script>
+  <script src="js/levels.js?v=1.1"></script>
+  <script src="js/keyboardManager.js?v=1.1"></script>
+  <script src="js/soundplayer.js?v=1.1"></script>
+  <script src="js/theme.js?v=1.1"></script>
+  <script src="js/options.js?v=1.1"></script>
+  <script src="js/Lang.js?v=1.1"></script>
+  <script src="js/utils.js?v=1.1"></script>
+  
+  <link rel="stylesheet" href="css/layout.css?v=1.1">
+  <link rel="stylesheet" href="css/objects.css?v=1.1">
+</head>
+
+<body>
+  <div class="layout-overlay-buttons">
+    <a class="layout-overlay-buttons__button js-icon-back">
+      <img src="images/icons/back.svg" class="layout-overlay-buttons__icon">
+    </a>
+    <a class="layout-overlay-buttons__button js-fullscreenswitch u-hide-on-android">
+      <img src="images/icons/expand.svg" class="layout-overlay-buttons__icon js-icon-fs-off">
+      <img src="images/icons/minimise.svg" class="layout-overlay-buttons__icon js-icon-fs-on" style="display: none;">
+    </a>
+  </div>
+  <div class="layout-page">
+    <div class="layout-game" id="layout-game">
+      <div class="layout-game__overlay">
+        <div class="layout-game__overlay__topline">
+          <div class="layout-game__overlay__topline__cell layout-topline_cell_level">
+            <span data-lang-item=counters_level></span> <span class="js-level"></span>
+          </div>
+          <div class="layout-game__overlay__topline__cell layout-topline_cell_counters">
+            <div class="layout-topline_cell_counters__cell">
+              <img class="layout-topline__image" src="images/icons/fireball.png"> <span class="js-cometsleft"></span>
+            </div>
+            <div class="layout-topline_cell_counters__cell">
+              <img class="layout-topline__image" src="images/icons/answer_correct.png"> <span class="js-anwsers-goods"></span>
+            </div>
+            <div class="layout-topline_cell_counters__cell">
+              <img class="layout-topline__image" src="images/icons/answer_incorrect.png"> <span class="js-anwsers-wrongs"></span>
+            </div>
+          </div>
+          <div class="layout-game__overlay__topline__cell layout-topline_cell_buttons">
+          </div>
+        </div>
+      </div>
+<!--      <div class="layout-game__overlay-message" id="layout-game__overlay-message">
+        <div class="layout-game__overlay-message__msg-container">
+          <div class="layout-game__overlay-message__main-text js-overlay-message__main-text" ></div>
+          <div class="layout-game__overlay-message__main-subtext overlay-message__main-subtext" ></div>
+        </div>
+      </div>-->
+      <div class="layout-game__overlay-anims"></div>
+      <div class="layout-game__tuxComand"></div>
+      <div class="layout-game__lasers"></div>
+      <div class="layout-game__commetsIgloosColmuns">
+        <div class="layout-game__commetsIgloosColmuns__col layout-col--1"></div>
+        <div class="layout-game__commetsIgloosColmuns__col layout-col--2"></div>
+        <div class="layout-game__commetsIgloosColmuns__col layout-col--console"></div>
+        <div class="layout-game__commetsIgloosColmuns__col layout-col--3"></div>
+        <div class="layout-game__commetsIgloosColmuns__col layout-col--4"></div>
+      </div>
+      <div class="layout-game__backgound js-background"></div>
+    </div>
+    
+    <div class="layout-osk obj-osk js-osk" style="display: none;">
+      <div class="obj-osk__block--margintopforbuttons"></div>
+      <div class="obj-osk__block obj-osk__block--logo"></div>
+      <div class="obj-osk__block obj-osk__block--keysblock">
+        <a class="obj-osk__key" data-osk-kcode=103>7</a>
+        <a class="obj-osk__key" data-osk-kcode=104>8</a>
+        <a class="obj-osk__key" data-osk-kcode=105>9</a>
+      </div>
+      <div class="obj-osk__block obj-osk__block--keysblock">
+        <a class="obj-osk__key" data-osk-kcode=100>4</a>
+        <a class="obj-osk__key" data-osk-kcode=101>5</a>
+        <a class="obj-osk__key" data-osk-kcode=102>6</a>
+      </div>
+      <div class="obj-osk__block obj-osk__block--keysblock">
+        <a class="obj-osk__key" data-osk-kcode=97>1</a>
+        <a class="obj-osk__key" data-osk-kcode=98>2</a>
+        <a class="obj-osk__key" data-osk-kcode=99>3</a>
+      </div>
+      <div class="obj-osk__block obj-osk__block--keysblock">
+        <a class="obj-osk__key" data-osk-kcode=96>0</a>
+        <a class="obj-osk__key" data-osk-kcode=109>+ / -</a>
+      </div>
+      <div class="obj-osk__block  obj-osk__block--keysblock obj-osk__block--validcancel">
+        <a class="obj-osk__key osk__key--enter" data-osk-kcode=13 data-lang-item=kp_enter>Enter</a>
+        <a class="obj-osk__key osk__key--backspace" data-osk-kcode=8>x</a>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+  $(function(){
+    tmGlob_Options=new TmOptions();
+    let boolPlayMusic=(tmGlob_Options.get(OPT_MUSIC)==1);
+    let boolPlaySfx=(tmGlob_Options.get(OPT_SFX)==1);
+    
+    tmGlob_Lang=new Lang();
+    let idtheme=tmGlob_Options.get(OPT_THEME);
+    tmGlob_objTheme=new THEMES[idtheme]();
+    tmGlob_objSfxPlayer=new SfxPlayer(tmGlob_objTheme, boolPlaySfx);
+    MusicPlayer=new MusicPlayer(tmGlob_objTheme, boolPlayMusic);
+  
+    const urlParams = new URLSearchParams(window.location.search);
+    window.objGame=new Game($(".layout-game"));
+    $("body").addClass("theme-"+idtheme);    
+    
+    if (tmGlob_Options.get(OPT_OSK)=="1") $(".js-osk").show();
+    
+    objGame.startGame(urlParams.get("lvlId"));
+    
+    window.dumpCards=function(){ objGame.mathCardsCollection.dump(); }
+    window.fullscreenSwitcher=new FullscreenSwitcher($(".js-fullscreenswitch"));
+    $(".js-icon-back").on("touchend click", handleBackClickEvt);
+    if (typeof externalEvtHandler!="undefined") $("body").addClass("android");
+  });
+  
+  
+  </script>
+
+</body>
+</html>

@@ -45,6 +45,7 @@ import { formatDateWithPreference } from "@/lib/utils/dateFormat";
 import { ar, enUS } from "date-fns/locale";
 import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
 import RelativesTab from "@/components/admin/RelativesTab";
+import { ReassignGradeSectionDialog } from "@/components/admin/ReassignGradeSectionDialog";
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { useTranslations, useLocale } from "next-intl";
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
@@ -85,8 +86,9 @@ export default function StudentDetailsPage() {
   const [loadingParent, setLoadingParent] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
+  const [reassignOpen, setReassignOpen] = useState(false);
 
-  const { students, total, loading: studentsLoading } = useStudents(
+  const { students, total, loading: studentsLoading, updateStudent, refresh } = useStudents(
     prevNextEnabled ? { page: 1, limit: 1000 } : { page: 1, limit: 0 }
   );
 
@@ -342,7 +344,7 @@ export default function StudentDetailsPage() {
                 <div>
                   <h2 className="text-2xl font-bold">{fullName || tCommon("noData")}</h2>
                   <p className="text-muted-foreground">
-                    {currentStudent.student_number} • {sectionName || t("no_section")}
+                    {currentStudent.student_number} • {currentStudent.section?.name || sectionName || t("no_section")}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -370,10 +372,16 @@ export default function StudentDetailsPage() {
                     {currentStudent.profile.phone}
                   </span>
                 )}
-                {currentStudent.grade_level && (
+                {(currentStudent.grade?.name || currentStudent.grade_level) && (
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <GraduationCap className="h-4 w-4" />
-                    {currentStudent.grade_level}
+                    {currentStudent.grade?.name || currentStudent.grade_level}
+                  </span>
+                )}
+                {currentStudent.grade && (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Building className="h-4 w-4" />
+                    {currentStudent.section?.name || t("unassigned")}
                   </span>
                 )}
               </div>
@@ -478,10 +486,29 @@ export default function StudentDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">{t("reassign_helper")}</p>
+                <Button variant="outline" size="sm" onClick={() => setReassignOpen(true)}>
+                  <Edit className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+                  {t("reassign_button")}
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <InfoRow label={t("student_number")} value={currentStudent.student_number} />
-                <InfoRow label={t("grade_level")} value={currentStudent.grade_level} icon={BookOpen} />
-                <InfoRow label={t("section")} value={sectionName} icon={Building} />
+                <InfoRow
+                  label={t("grade_level")}
+                  value={currentStudent.grade?.name || currentStudent.grade_level}
+                  icon={BookOpen}
+                />
+                <InfoRow
+                  label={t("section")}
+                  value={
+                    currentStudent.grade
+                      ? (currentStudent.section?.name || sectionName || <span className="italic">{t("unassigned")}</span>)
+                      : (sectionName || null)
+                  }
+                  icon={Building}
+                />
                 <InfoRow label={t("campus")} value={campusName} icon={Building} />
                 <InfoRow
                   label={tFields("admission_date")}
@@ -739,6 +766,14 @@ export default function StudentDetailsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ReassignGradeSectionDialog
+        open={reassignOpen}
+        onOpenChange={setReassignOpen}
+        student={currentStudent}
+        updateStudent={updateStudent}
+        refresh={refresh}
+      />
     </div>
   );
 }

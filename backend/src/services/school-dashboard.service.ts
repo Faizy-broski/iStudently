@@ -89,108 +89,115 @@ export class SchoolDashboardService {
         }
       }
 
-      let totalStudents: number
-      let studentsError: unknown = null
-      if (eligibleStudentIds !== null) {
-        totalStudents = eligibleStudentIds.length
-      } else {
-        const res = await supabase
-          .from('students')
-          .select('*, profile:profiles!inner(is_active)', { count: 'exact', head: true })
-          .eq('school_id', effectiveId)
-          .eq('profile.is_active', true)
-        totalStudents = res.count || 0
-        studentsError = res.error
-      }
-
-      if (studentsError) {
-        console.error('Students query error:', studentsError)
-      }
-
-      // Get teacher/staff count
-      const { count: totalStaff, error: staffError } = await supabase
-        .from('staff')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', effectiveId)
-
-      if (staffError) {
-        console.error('Staff query error:', staffError)
-      }
-
-      // Get teachers count by joining with profiles table
-      const { data: staffWithProfiles, error: teachersError } = await supabase
-        .from('staff')
-        .select(`
-          id,
-          profile:profiles!staff_profile_id_fkey(role)
-        `)
-        .eq('school_id', effectiveId)
-
-      if (teachersError) {
-        console.error('Teachers query error:', teachersError)
-      }
-
-      // Filter to only count staff where profile.role = 'teacher'
-      const totalTeachers = staffWithProfiles?.filter((staff: any) =>
-        staff.profile?.role === 'teacher'
-      ).length || 0
-
-      // Get active courses/sections
-      const { count: activeCourses, error: coursesError } = await supabase
-        .from('sections')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', effectiveId)
-
-      if (coursesError) {
-        console.error('Sections query error:', coursesError)
-      }
-
-      // Get active events
-      const { count: activeEvents, error: eventsError } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', effectiveId)
-        .gte('end_date', new Date().toISOString())
-
-      if (eventsError) {
-        console.error('Events query error:', eventsError)
-      }
-
-      // Get library statistics
-      const { count: libraryBooks, error: booksError } = await supabase
-        .from('books')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', effectiveId)
-
-      if (booksError) {
-        console.error('Books query error:', booksError)
-      }
-
-      const { count: borrowedBooks, error: transactionsError } = await supabase
-        .from('book_transactions')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', effectiveId)
-        .eq('status', 'borrowed')
-
-      if (transactionsError) {
-        console.error('Transactions query error:', transactionsError)
-      }
-
       // Calculate attendance rate (last 30 days) and today's present count
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
       const todayStr = new Date().toISOString().split('T')[0]
 
-      const { data: attendanceRecords, error: attendanceError } = await supabase
-        .from('attendance_records')
-        .select('status, attendance_date')
-        .eq('school_id', effectiveId)
-        .gte('attendance_date', thirtyDaysAgo.toISOString().split('T')[0])
+      // The remaining ~10 lookups below have no data dependency on each other
+      // (only on eligibleStudentIds, already resolved above) — running them
+      // sequentially was pure added latency. Fired concurrently instead.
+      const [
+        studentsRes,
+        staffCountRes,
+        staffWithProfilesRes,
+        coursesRes,
+        eventsRes,
+        booksRes,
+        transactionsRes,
+        attendanceRes,
+        studentGenderRes,
+        staffGenderRes,
+        parentsRes,
+      ] = await Promise.all([
+        eligibleStudentIds !== null
+          ? Promise.resolve({ count: eligibleStudentIds.length, error: null as unknown })
+          : supabase
+              .from('students')
+              .select('*, profile:profiles!inner(is_active)', { count: 'exact', head: true })
+              .eq('school_id', effectiveId)
+              .eq('profile.is_active', true),
+        supabase
+          .from('staff')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', effectiveId),
+        supabase
+          .from('staff')
+          .select(`
+            id,
+            profile:profiles!staff_profile_id_fkey(role)
+          `)
+          .eq('school_id', effectiveId),
+        supabase
+          .from('sections')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', effectiveId),
+        supabase
+          .from('events')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', effectiveId)
+          .gte('end_date', new Date().toISOString()),
+        supabase
+          .from('books')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', effectiveId),
+        supabase
+          .from('book_transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', effectiveId)
+          .eq('status', 'borrowed'),
+        supabase
+          .from('attendance_records')
+          .select('status, attendance_date')
+          .eq('school_id', effectiveId)
+          .gte('attendance_date', thirtyDaysAgo.toISOString().split('T')[0]),
+        eligibleStudentIds !== null
+          ? (eligibleStudentIds.length === 0
+              ? Promise.resolve({ data: [] as { custom_fields: any }[], error: null as unknown })
+              : supabase.from('students').select('custom_fields').in('id', eligibleStudentIds))
+          : supabase
+              .from('students')
+              .select('custom_fields, profile:profiles!inner(is_active)')
+              .eq('school_id', effectiveId)
+              .eq('profile.is_active', true),
+        supabase
+          .from('staff')
+          .select('custom_fields, profile:profiles!staff_profile_id_fkey(gender)')
+          .eq('school_id', effectiveId),
+        // Parents belong to the main school, so we count all registered parents (schoolId, not effectiveId)
+        supabase
+          .from('parents')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId),
+      ])
 
-      if (attendanceError) {
-        console.error('Attendance query error:', attendanceError)
-      }
+      if (studentsRes.error) console.error('Students query error:', studentsRes.error)
+      if (staffCountRes.error) console.error('Staff query error:', staffCountRes.error)
+      if (staffWithProfilesRes.error) console.error('Teachers query error:', staffWithProfilesRes.error)
+      if (coursesRes.error) console.error('Sections query error:', coursesRes.error)
+      if (eventsRes.error) console.error('Events query error:', eventsRes.error)
+      if (booksRes.error) console.error('Books query error:', booksRes.error)
+      if (transactionsRes.error) console.error('Transactions query error:', transactionsRes.error)
+      if (attendanceRes.error) console.error('Attendance query error:', attendanceRes.error)
+      if (studentGenderRes.error) console.error('Student gender query error:', studentGenderRes.error)
+      if (staffGenderRes.error) console.error('Staff gender query error:', staffGenderRes.error)
+      if (parentsRes.error) console.error('Parents query error:', parentsRes.error)
 
+      const totalStudents = studentsRes.count || 0
+      const totalStaff = staffCountRes.count || 0
+
+      // Filter to only count staff where profile.role = 'teacher'
+      const staffWithProfiles = (staffWithProfilesRes as any).data as { id: string; profile: { role: string } | null }[] | null
+      const totalTeachers = staffWithProfiles?.filter((staff: any) =>
+        staff.profile?.role === 'teacher'
+      ).length || 0
+
+      const activeCourses = coursesRes.count || 0
+      const activeEvents = eventsRes.count || 0
+      const libraryBooks = booksRes.count || 0
+      const borrowedBooks = transactionsRes.count || 0
+
+      const attendanceRecords = (attendanceRes as any).data as { status: string; attendance_date: string }[] | null
       const presentCount = attendanceRecords?.filter(r => r.status === 'present').length || 0
       const totalRecords = attendanceRecords?.length || 1
       const attendanceRate = (presentCount / totalRecords) * 100
@@ -198,49 +205,14 @@ export class SchoolDashboardService {
         r => r.status === 'present' && r.attendance_date === todayStr
       ).length || 0
 
-      // Get student gender breakdown — same eligible-student set as
-      // totalStudents above (see the grandfathering note there), reusing the
-      // id list already resolved rather than repeating the enrollment join.
-      let studentCustomFields: { custom_fields: any }[] | null
-      let studentGenderError: unknown = null
-      if (eligibleStudentIds !== null) {
-        if (eligibleStudentIds.length === 0) {
-          studentCustomFields = []
-        } else {
-          const res = await supabase
-            .from('students')
-            .select('custom_fields')
-            .in('id', eligibleStudentIds)
-          studentCustomFields = res.data
-          studentGenderError = res.error
-        }
-      } else {
-        const res = await supabase
-          .from('students')
-          .select('custom_fields, profile:profiles!inner(is_active)')
-          .eq('school_id', effectiveId)
-          .eq('profile.is_active', true)
-        studentCustomFields = res.data
-        studentGenderError = res.error
-      }
-
-      if (studentGenderError) {
-        console.error('Student gender query error:', studentGenderError)
-      }
-
+      // Student gender breakdown — same eligible-student set as totalStudents
+      // above (see the grandfathering note there).
+      const studentCustomFields = (studentGenderRes as any).data as { custom_fields: any }[] | null
       const maleStudents = studentCustomFields?.filter((s: any) => s.custom_fields?.personal?.gender === 'male').length || 0
       const femaleStudents = studentCustomFields?.filter((s: any) => s.custom_fields?.personal?.gender === 'female').length || 0
 
-      // Get staff gender breakdown
-      const { data: staffProfiles, error: staffGenderError } = await supabase
-        .from('staff')
-        .select('custom_fields, profile:profiles!staff_profile_id_fkey(gender)')
-        .eq('school_id', effectiveId)
-
-      if (staffGenderError) {
-        console.error('Staff gender query error:', staffGenderError)
-      }
-
+      // Staff gender breakdown
+      const staffProfiles = (staffGenderRes as any).data as { custom_fields: any; profile: { gender: string } | null }[] | null
       const maleStaff = staffProfiles?.filter((s: any) =>
         (s.profile?.gender || s.custom_fields?.personal?.gender) === 'male'
       ).length || 0
@@ -248,16 +220,7 @@ export class SchoolDashboardService {
         (s.profile?.gender || s.custom_fields?.personal?.gender) === 'female'
       ).length || 0
 
-      // Get total parents count — parents belong to the main school, so we count all registered parents
-      const { count, error: parentsError } = await supabase
-        .from('parents')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-
-      if (parentsError) {
-        console.error('Parents query error:', parentsError)
-      }
-      const totalParents = count || 0
+      const totalParents = parentsRes.count || 0
 
       const result = {
         totalStudents: totalStudents || 0,

@@ -1,8 +1,14 @@
 import { supabase } from '../config/supabase'
+import { TtlCache } from '../utils/ttl-cache'
 
 // ============================================================================
 // Types
 // ============================================================================
+
+// Same shape/rationale as hifzi-enabled.middleware.ts's pluginGateCache: this
+// plugin-gate check ran two fully sequential queries on every call with no
+// caching at all — worse than Hifzi's already-fixed pattern.
+const pluginGateCache = new TtlCache<boolean>(60_000)
 
 export interface DisciplineScoreBreakdown {
   referral_id: string
@@ -32,26 +38,17 @@ export async function getStudentDisciplineScore(params: {
   const { studentId, schoolId, campusId, academicYearId } = params
 
   // ── 1. Plugin check ──────────────────────────────────────────────────────
-  let pluginActive = false
-
-  if (campusId) {
-    const { data: campusSettings } = await supabase
-      .from('school_settings')
-      .select('active_plugins')
-      .eq('school_id', schoolId)
-      .eq('campus_id', campusId)
-      .maybeSingle()
-    pluginActive = !!campusSettings?.active_plugins?.discipline_score
-  }
-
-  if (!pluginActive) {
-    const { data: schoolSettings } = await supabase
-      .from('school_settings')
-      .select('active_plugins')
-      .eq('school_id', schoolId)
-      .is('campus_id', null)
-      .maybeSingle()
-    pluginActive = !!schoolSettings?.active_plugins?.discipline_score
+  const cacheKey = `${schoolId}:${campusId ?? ''}`
+  let pluginActive = pluginGateCache.get(cacheKey)
+  if (pluginActive === undefined) {
+    const [campusResult, schoolResult] = await Promise.all([
+      campusId
+        ? supabase.from('school_settings').select('active_plugins').eq('school_id', schoolId).eq('campus_id', campusId).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from('school_settings').select('active_plugins').eq('school_id', schoolId).is('campus_id', null).maybeSingle(),
+    ])
+    pluginActive = !!campusResult.data?.active_plugins?.discipline_score || !!schoolResult.data?.active_plugins?.discipline_score
+    pluginGateCache.set(cacheKey, pluginActive)
   }
 
   if (!pluginActive) throw new Error('PLUGIN_INACTIVE')

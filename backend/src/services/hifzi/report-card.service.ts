@@ -99,7 +99,7 @@ function renderReportCardHtml(d: ReportCardData): string {
   .meta { color: #666; font-size: 12px; }
 </style></head>
 <body>
-  <h1>تقرير حفظي — ${escapeHtml(d.studentName)}</h1>
+  <h1>تقرير الخلوة المدرسية — ${escapeHtml(d.studentName)}</h1>
   <div class="meta">${escapeHtml(d.schoolName)} · حلقة ${escapeHtml(d.circleName)} · ${escapeHtml(d.generatedAt)}</div>
   <div>
     <span class="stat">نسبة الحضور: ${d.attendanceRate.toFixed(0)}٪</span>
