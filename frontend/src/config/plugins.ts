@@ -45,6 +45,7 @@ import {
   MessageSquareWarning,
   Video,
   Languages,
+  FileStack,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -114,6 +115,23 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: SchoolKhalwaIcon,
     category: 'Academics',
     settingsHref: '/admin/hifzi/settings',
+    sidebarInjections: [],
+  },
+
+  // ── Qirtasi قرطاسي (My Worksheet) ────────────────────────────────────────
+  // Standalone module with its own top-level sidebar entry per role (added
+  // directly in sidebar.ts under Library/Resources, gated by
+  // pluginRequired: 'qirtasi'), mirroring hifzi's pattern — no
+  // sidebarInjections needed here. Entitlements are per-school (this
+  // toggle), not per-user — see the plan's entitlements decision.
+  {
+    id: 'qirtasi',
+    name: 'Qirtasi قرطاسي — My Worksheet',
+    description:
+      'A curriculum-mapped worksheet library: upload, categorize by grade/subject/unit/lesson and pedagogical facets, browse, and download. Foundation slice — curriculum tree and faceted search only; AI generation, scan-and-grade, and marketplace are future phases.',
+    icon: FileStack,
+    category: 'Resources',
+    settingsHref: '/admin/qirtasi/curriculum',
     sidebarInjections: [],
   },
 

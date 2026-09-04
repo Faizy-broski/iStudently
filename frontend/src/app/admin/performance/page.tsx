@@ -17,14 +17,16 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import {
   Plus, Trash2, Loader2, Search, BookOpen, AlertCircle, ChevronLeft, ChevronRight,
-  FileText, TrendingDown, TrendingUp, Settings2,
+  FileText, TrendingDown, TrendingUp, Settings2, Users, X,
 } from "lucide-react"
 import { format } from "date-fns"
 import {
-  getCatalog, getLogs, createLog, deleteLog,
+  getCatalog, getAllLogs, createLog, deleteLog,
   type PerformanceActionLookup, type StaffPerformanceLog,
 } from "@/lib/api/performance"
 import { useStaff } from "@/hooks/useStaff"
@@ -64,7 +66,6 @@ export default function PerformanceAdminPage() {
   const activeCampusId = campusCtx?.selectedCampus?.id
 
   const [logs, setLogs]         = useState<StaffPerformanceLog[]>([])
-  const [total, setTotal]       = useState(0)
   const [page, setPage]         = useState(1)
   const [loadingLogs, setLoadingLogs] = useState(true)
 
@@ -73,6 +74,22 @@ export default function PerformanceAdminPage() {
   // Filters
   const [searchStaff, setSearchStaff] = useState("")
   const [filterType,  setFilterType]  = useState("all")
+
+  // Staff filter (multi-select) on the incident list
+  const [staffFilterOpen, setStaffFilterOpen]     = useState(false)
+  const [staffFilterSearch, setStaffFilterSearch] = useState("")
+  const [selectedStaffIds, setSelectedStaffIds]   = useState<string[]>([])
+  const [selectedStaffMap, setSelectedStaffMap]   = useState<Record<string, Staff>>({})
+  const { staff: staffFilterOptions, isLoading: staffFilterLoading } =
+    useStaff(1, 50, staffFilterSearch || undefined, 'all', activeCampusId)
+
+  const toggleStaffFilter = (s: Staff) => {
+    setSelectedStaffIds(prev =>
+      prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+    )
+    setSelectedStaffMap(prev => ({ ...prev, [s.id]: s }))
+  }
+  const clearStaffFilter = () => { setSelectedStaffIds([]); setStaffFilterSearch("") }
 
   // Staff search for record dialog — scope to active campus
   const [staffSearch, setStaffSearch] = useState("")
@@ -89,18 +106,20 @@ export default function PerformanceAdminPage() {
 
   const LIMIT = 20
 
-  // Reset to page 1 when campus changes
-  useEffect(() => { setPage(1) }, [activeCampusId])
+  // Reset to page 1 when campus or any filter changes
+  useEffect(() => { setPage(1) }, [activeCampusId, searchStaff, filterType, selectedStaffIds])
 
+  // Load unpaginated (mirrors report pages' getAllLogs pattern) so the staff
+  // multi-select filter can search across every incident, not just the
+  // current server-side page.
   const loadLogs = useCallback(async () => {
     setLoadingLogs(true)
     try {
-      const r = await getLogs({ page, limit: LIMIT, campusId: activeCampusId })
+      const r = await getAllLogs({ campusId: activeCampusId })
       setLogs(r.data)
-      setTotal(r.total)
     } catch { toast.error("Failed to load incidents") }
     finally  { setLoadingLogs(false) }
-  }, [page, activeCampusId])
+  }, [activeCampusId])
 
   useEffect(() => { loadLogs() }, [loadLogs])
 
@@ -165,17 +184,20 @@ export default function PerformanceAdminPage() {
     }
   }
 
-  // Client-side filter on loaded data for instant UX
-  const displayed = logs.filter(log => {
+  // Client-side filter on the full loaded set
+  const filtered = logs.filter(log => {
     const nameMatch = searchStaff
       ? logStaffName(log).toLowerCase().includes(searchStaff.toLowerCase()) ||
         (log.staff?.employee_number || "").toLowerCase().includes(searchStaff.toLowerCase())
       : true
     const typeMatch = filterType === "all" || log.action?.action_type === filterType
-    return nameMatch && typeMatch
+    const staffMatch = selectedStaffIds.length === 0 || selectedStaffIds.includes(log.staff_id)
+    return nameMatch && typeMatch && staffMatch
   })
 
+  const total = filtered.length
   const totalPages = Math.ceil(total / LIMIT)
+  const displayed = filtered.slice((page - 1) * LIMIT, page * LIMIT)
 
   return (
     <div className="p-6 space-y-6">
@@ -218,6 +240,58 @@ export default function PerformanceAdminPage() {
             <SelectItem value="reward_redemption">Rewards only</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Staff filter — multi-select: pick any number of staff, empty = all */}
+        <Popover open={staffFilterOpen} onOpenChange={setStaffFilterOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-56 justify-start font-normal">
+              <Users className="mr-2 h-4 w-4 text-muted-foreground" />
+              {selectedStaffIds.length === 0
+                ? "All staff"
+                : selectedStaffIds.length === 1
+                  ? staffName(selectedStaffMap[selectedStaffIds[0]] ?? ({} as Staff)) || "1 staff selected"
+                  : `${selectedStaffIds.length} staff selected`}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-2" align="start">
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9 h-8" placeholder="Search staff…"
+                value={staffFilterSearch}
+                onChange={e => setStaffFilterSearch(e.target.value)}
+              />
+            </div>
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {staffFilterLoading ? (
+                <div className="p-2 text-sm text-muted-foreground">Loading…</div>
+              ) : staffFilterOptions.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground">No staff found</div>
+              ) : staffFilterOptions.map((s: Staff) => (
+                <label
+                  key={s.id}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
+                >
+                  <Checkbox
+                    checked={selectedStaffIds.includes(s.id)}
+                    onCheckedChange={() => toggleStaffFilter(s)}
+                  />
+                  <span className="font-medium">{staffName(s)}</span>
+                  <span className="text-muted-foreground">#{s.employee_number}</span>
+                </label>
+              ))}
+            </div>
+            {selectedStaffIds.length > 0 && (
+              <div className="flex items-center justify-between pt-2 mt-2 border-t">
+                <span className="text-xs text-muted-foreground">{selectedStaffIds.length} selected</span>
+                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={clearStaffFilter}>
+                  <X className="mr-1 h-3 w-3" />
+                  Clear
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Table */}
@@ -449,6 +523,11 @@ export default function PerformanceAdminPage() {
                   onChange={e => setCustomPoints(e.target.value)}
                   placeholder="Leave as catalog default"
                 />
+                <p className="text-xs text-muted-foreground">
+                  {selectedAction
+                    ? `Catalog default: ${selectedAction.default_points} pts`
+                    : "Select an action to see its default"}
+                </p>
               </div>
               <div className="space-y-1">
                 <Label>Fine Override</Label>
@@ -458,6 +537,11 @@ export default function PerformanceAdminPage() {
                   onChange={e => setCustomFine(e.target.value)}
                   placeholder="Leave as catalog default"
                 />
+                <p className="text-xs text-muted-foreground">
+                  {selectedAction
+                    ? `Catalog default: ${selectedAction.default_fine}`
+                    : "Select an action to see its default"}
+                </p>
               </div>
             </div>
 

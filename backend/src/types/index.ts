@@ -1425,6 +1425,77 @@ export const bulkReturnTextbookDeliverySchema = z.object({
 });
 
 // =============================================================
+// QIRTASI (MY WORKSHEET) MODULE
+// =============================================================
+// Metadata fields for a worksheet arrive as multipart form fields alongside
+// the file(s) (see qirtasi/worksheets.controller.ts), so this schema
+// validates the already-coerced object the controller builds from req.body —
+// not req.body directly, since multer puts every non-file field on req.body
+// as a string.
+
+export const WORKSHEET_TYPES = [
+  'drill', 'diagnostic', 'remedial', 'enrichment', 'lab_sheet', 'flashcards',
+  'graphic_organizer', 'project', 'kindergarten', 'handwriting', 'quiz',
+  'unit_review', 'family_activity',
+] as const;
+
+export const createQirtasiWorksheetSchema = z.object({
+  title_ar: z.string().min(1),
+  title_en: z.string().optional(),
+  description: z.string().optional(),
+  worksheet_type: z.enum(WORKSHEET_TYPES),
+  grade_id: z.string().uuid(),
+  subject_id: z.string().uuid(),
+  track_id: z.string().uuid().nullable().optional(),
+  term_id: z.string().uuid().nullable().optional(),
+  unit_id: z.string().uuid().nullable().optional(),
+  lesson_id: z.string().uuid().nullable().optional(),
+  visibility_scope: z.enum(['private', 'school', 'public']).optional(), // marketplace excluded — no payment system yet
+  facet_value_ids: z.array(z.string().uuid()).optional(),
+});
+
+export const updateQirtasiWorksheetSchema = z.object({
+  title_ar: z.string().min(1).optional(),
+  title_en: z.string().optional(),
+  description: z.string().optional(),
+  worksheet_type: z.enum(WORKSHEET_TYPES).optional(),
+  grade_id: z.string().uuid().optional(),
+  subject_id: z.string().uuid().optional(),
+  track_id: z.string().uuid().nullable().optional(),
+  term_id: z.string().uuid().nullable().optional(),
+  unit_id: z.string().uuid().nullable().optional(),
+  lesson_id: z.string().uuid().nullable().optional(),
+  visibility_scope: z.enum(['private', 'school', 'public']).optional(),
+  status: z.enum(['draft', 'pending_review', 'published', 'rejected', 'archived']).optional(),
+  facet_value_ids: z.array(z.string().uuid()).optional(),
+});
+
+const curriculumNodeSchema = z.object({
+  code: z.string().min(1),
+  name_ar: z.string().min(1),
+  name_en: z.string().optional(),
+  sort_order: z.number().int().optional(),
+});
+
+export const createQirtasiStageSchema = z.object({
+  key: z.enum(['kindergarten', 'basic', 'secondary', 'university', 'vocational']),
+  name_ar: z.string().min(1),
+  name_en: z.string().optional(),
+  sort_order: z.number().int().optional(),
+});
+export const createQirtasiGradeSchema = curriculumNodeSchema.extend({ stage_id: z.string().uuid() });
+export const createQirtasiTrackSchema = curriculumNodeSchema.extend({ grade_id: z.string().uuid() });
+export const createQirtasiSubjectSchema = curriculumNodeSchema.extend({ grade_id: z.string().uuid(), track_id: z.string().uuid().nullable().optional() });
+export const createQirtasiUnitSchema = curriculumNodeSchema.extend({ subject_id: z.string().uuid(), term_id: z.string().uuid().nullable().optional() });
+export const createQirtasiLessonSchema = curriculumNodeSchema.extend({ unit_id: z.string().uuid() });
+export const updateQirtasiNodeSchema = z.object({
+  code: z.string().min(1).optional(),
+  name_ar: z.string().min(1).optional(),
+  name_en: z.string().optional(),
+  sort_order: z.number().int().optional(),
+});
+
+// =============================================================
 // HOSTEL MODULE
 // =============================================================
 
