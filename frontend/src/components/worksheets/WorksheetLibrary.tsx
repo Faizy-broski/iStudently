@@ -79,22 +79,35 @@ function WorksheetCard({
   }, [worksheet.id, campusId])
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900">
-      <div className={cn("relative flex h-44 items-center justify-center overflow-hidden", typeInfo ? typeInfo.bg : "bg-blue-50 dark:bg-blue-950")}>
-        {thumbUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbUrl} alt={worksheet.title_ar} className="h-full w-full object-cover" />
-        ) : (
-          typeInfo
-            ? <typeInfo.icon className={cn("h-14 w-14 opacity-30", typeInfo.color)} />
-            : <FileText className="h-14 w-14 text-blue-200" />
-        )}
+    <div className="group flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-all hover:shadow-md dark:bg-gray-900">
+      {/* A4 Portrait preview container (exact 210x297 A4 ratio) */}
+      <div className={cn("relative flex aspect-[210/297] w-full items-center justify-center overflow-hidden p-3", typeInfo ? typeInfo.bg : "bg-slate-100 dark:bg-slate-800")}>
+        {/* Paper sheet frame */}
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-sm border border-slate-200/80 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900">
+          {thumbUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={thumbUrl}
+              alt={worksheet.title_ar}
+              className="h-full w-full object-contain p-1 transition-transform duration-200 group-hover:scale-[1.02]"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2 p-4 text-center text-slate-400">
+              {typeInfo
+                ? <typeInfo.icon className={cn("h-14 w-14 opacity-50", typeInfo.color)} />
+                : <FileText className="h-14 w-14 text-blue-300" />
+              }
+              <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">A4 Worksheet</span>
+            </div>
+          )}
+        </div>
         {typeInfo && (
-          <span className={cn("absolute right-2 top-2 rounded-full border px-2 py-0.5 text-[10px] font-semibold", typeInfo.bg, typeInfo.color)}>
+          <span className={cn("absolute right-4 top-4 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold shadow-xs z-10", typeInfo.bg, typeInfo.color)}>
             {tt(typeInfo.en, typeInfo.ar)}
           </span>
         )}
       </div>
+
       <div className="flex flex-1 flex-col gap-2 p-3">
         <h3 className="line-clamp-2 text-sm font-semibold leading-snug" dir="rtl">{worksheet.title_ar}</h3>
         <div className="flex flex-wrap gap-1">
