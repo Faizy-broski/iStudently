@@ -40,7 +40,7 @@ export class StudentService {
     limit: number = 10,
     search?: string,
     gradeLevel?: string | string[],
-    sectionId?: string,
+    sectionIds?: string[],
     isActive?: boolean
   ) {
     const offset = (page - 1) * limit
@@ -70,8 +70,14 @@ export class StudentService {
       }
     }
 
-    // Use optimized database search function for library operations when searching
-    if (search && search.trim()) {
+    // Use optimized database search function for library operations when searching.
+    // Skipped entirely when a section filter is active: search_students_for_library's
+    // RETURNS TABLE has no section_id column in any deployed version of this function
+    // (confirmed against both the migration file and the live schema), so a section
+    // filter can't be honored here — falling through to the standard query below
+    // (which does support .in('section_id', ...)) is safer than silently ignoring
+    // the filter or matching nothing.
+    if (search && search.trim() && !sectionIds?.length) {
       try {
         const { data: searchResults, error: searchError } = await supabase.rpc(
           'search_students_for_library',
@@ -221,8 +227,8 @@ export class StudentService {
     }
 
     // Apply section filter
-    if (sectionId) {
-      query = query.eq('section_id', sectionId)
+    if (sectionIds?.length) {
+      query = query.in('section_id', sectionIds)
     }
 
     // Apply active/inactive filter (requires inner join on profile, added above)

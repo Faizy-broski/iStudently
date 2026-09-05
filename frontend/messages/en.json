@@ -782,6 +782,7 @@
     "hifzi_compliance": "School Khalwa Compliance",
     "recitation": "Recitation",
     "recite": "Recite",
+    "quran": "Quran",
     "plans": "Plans",
     "grievances": "Grievances",
     "inspections": "Educational Inspection",
@@ -12746,6 +12747,19 @@
       "exam": "Exam",
       "nextStudent": "Next Student",
       "timer": "Time"
+    },
+    "quranReader": {
+      "title": "Quran",
+      "subtitle": "Browse and read all 114 surahs.",
+      "surah": "Surah",
+      "ayahCount": "{count} ayat",
+      "meccan": "Meccan",
+      "medinan": "Medinan",
+      "previousSurah": "Previous Surah",
+      "nextSurah": "Next Surah",
+      "notVerifiedTitle": "Not yet available",
+      "notVerifiedBody": "This text has been sourced from the Tanzil Project but hasn't been signed off by a qualified reviewer yet. It will appear here once that review is complete.",
+      "loadError": "Failed to load this surah"
     },
     "plans": {
       "title": "Plans",

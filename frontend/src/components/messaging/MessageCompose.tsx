@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
@@ -9,8 +9,7 @@ import { uploadMessageAttachment, type MessageAttachmentUploadResult } from "@/l
 import { playMessageSentSound } from "@/lib/utils/notification-sound"
 import { useCampus } from "@/context/CampusContext"
 import { useAuth } from "@/context/AuthContext"
-import { useGradeLevels } from "@/hooks/useAcademics"
-import { getSections, type Section } from "@/lib/api/academics"
+import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
@@ -20,6 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { MultiSelectPopover } from "@/components/shared/MultiSelectPopover"
+import { PaginationWrapper } from "@/components/ui/pagination"
 import { Send, Search, Users, GraduationCap, Save, X, Paperclip, FileText } from "lucide-react"
 
 const MAX_ATTACHMENTS = 10
@@ -49,17 +50,21 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   // too (messaging.service.ts), this is just keeping the UI in sync with it.
   const isTeacher = profile?.role === "teacher"
   const { gradeLevels } = useGradeLevels()
+  const { sections: allSections } = useSections()
 
   const [subject, setSubject] = useState("")
   const [body, setBody] = useState("")
   const [recipientTab, setRecipientTab] = useState<"teachers" | "staff" | "parents" | "students">("teachers")
   const [search, setSearch] = useState("")
-  const [gradeFilter, setGradeFilter] = useState("all")
-  const [sectionFilter, setSectionFilter] = useState("all")
-  const [sections, setSections] = useState<Section[]>([])
-  const [sectionsLoading, setSectionsLoading] = useState(false)
+  const [selectedGradeIds, setSelectedGradeIds] = useState<string[]>([])
+  const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([])
+  const [gradePopoverOpen, setGradePopoverOpen] = useState(false)
+  const [sectionPopoverOpen, setSectionPopoverOpen] = useState(false)
   const [recipientOptions, setRecipientOptions] = useState<MessageRecipientOption[]>([])
   const [loadingRecipients, setLoadingRecipients] = useState(false)
+  const [recipientPage, setRecipientPage] = useState(1)
+  const [recipientTotal, setRecipientTotal] = useState(0)
+  const [recipientTotalPages, setRecipientTotalPages] = useState(0)
   const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set())
   const [replyToMessageId, setReplyToMessageId] = useState<string | undefined>(undefined)
   const [attachments, setAttachments] = useState<MessageAttachmentUploadResult[]>([])
@@ -102,37 +107,54 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
     })
   }, [])
 
+  const RECIPIENT_PAGE_SIZE = 25
+
   const fetchRecipients = useCallback(async () => {
     setLoadingRecipients(true)
     try {
+      const filterApplies = recipientTab === "students" || recipientTab === "parents"
       const res = await messagingApi.listRecipients(
         recipientTab,
         search.trim() || undefined,
         selectedCampusId,
-        recipientTab === "students" && gradeFilter !== "all" ? gradeFilter : undefined,
-        recipientTab === "students" && sectionFilter !== "all" ? sectionFilter : undefined
+        filterApplies && selectedGradeIds.length > 0 ? selectedGradeIds : undefined,
+        filterApplies && selectedSectionIds.length > 0 ? selectedSectionIds : undefined,
+        recipientPage,
+        RECIPIENT_PAGE_SIZE
       )
       const options = res.success && res.data ? res.data : []
       setRecipientOptions(options)
+      setRecipientTotal(res.pagination?.total ?? 0)
+      setRecipientTotalPages(res.pagination?.totalPages ?? 0)
     } finally {
       setLoadingRecipients(false)
     }
-  }, [recipientTab, search, selectedCampusId, gradeFilter, sectionFilter])
+  }, [recipientTab, search, selectedCampusId, selectedGradeIds, selectedSectionIds, recipientPage])
 
-  // Load sections for the selected grade (Students tab only)
+  // Any filter/tab/search change should restart pagination from page 1.
   useEffect(() => {
-    if (gradeFilter === "all") {
-      setSections([])
-      setSectionFilter("all")
-      return
-    }
-    setSectionsLoading(true)
-    getSections(gradeFilter)
-      .then((res) => { if (res.success && res.data) setSections(res.data) })
-      .catch(() => {})
-      .finally(() => setSectionsLoading(false))
-    setSectionFilter("all")
-  }, [gradeFilter])
+    setRecipientPage(1)
+  }, [recipientTab, search, selectedCampusId, selectedGradeIds, selectedSectionIds])
+
+  // Sections belonging to any currently-selected grade — purely client-side,
+  // useSections() already fetches every campus section unconditionally.
+  // Grade-name-prefixed once 2+ grades are selected, since two different
+  // grades can each have a same-named section (e.g. "Section A").
+  const sections = useMemo(() => {
+    const filtered = selectedGradeIds.length > 0
+      ? allSections.filter((s) => selectedGradeIds.includes(s.grade_level_id))
+      : []
+    if (selectedGradeIds.length <= 1) return filtered
+    return filtered.map((s) => {
+      const gradeName = gradeLevels.find((g) => g.id === s.grade_level_id)?.name
+      return { ...s, name: gradeName ? `${gradeName} - ${s.name}` : s.name }
+    })
+  }, [allSections, selectedGradeIds, gradeLevels])
+
+  // Drop any selected sections that no longer belong to a currently selected grade.
+  useEffect(() => {
+    setSelectedSectionIds((prev) => prev.filter((id) => sections.some((s) => s.id === id)))
+  }, [sections])
 
   useEffect(() => {
     const timer = setTimeout(fetchRecipients, 300)
@@ -394,8 +416,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
             onValueChange={(v) => {
               setRecipientTab(v as "teachers" | "staff" | "parents" | "students")
               setSearch("")
-              setGradeFilter("all")
-              setSectionFilter("all")
+              setSelectedGradeIds([])
+              setSelectedSectionIds([])
             }}
           >
             <TabsList>
@@ -421,30 +443,29 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               />
             </div>
 
-            {recipientTab === "students" && (
+            {(recipientTab === "students" || recipientTab === "parents") && (
               <div className="flex flex-wrap gap-2 mt-3">
-                <Select value={gradeFilter} onValueChange={setGradeFilter}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder={t('allGrades')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('allGrades')}</SelectItem>
-                    {gradeLevels.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={sectionFilter} onValueChange={setSectionFilter} disabled={gradeFilter === "all" || sectionsLoading}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder={t('allSections')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('allSections')}</SelectItem>
-                    {sections.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelectPopover
+                  options={gradeLevels.map((g) => ({ id: g.id, label: g.name }))}
+                  selectedIds={selectedGradeIds}
+                  onChange={setSelectedGradeIds}
+                  placeholder={t('allGrades')}
+                  emptyMessage={t('allGrades')}
+                  open={gradePopoverOpen}
+                  onOpenChange={setGradePopoverOpen}
+                  className="w-55"
+                />
+                <MultiSelectPopover
+                  options={sections.map((s) => ({ id: s.id, label: s.name }))}
+                  selectedIds={selectedSectionIds}
+                  onChange={setSelectedSectionIds}
+                  placeholder={t('allSections')}
+                  emptyMessage={t('allSections')}
+                  disabled={selectedGradeIds.length === 0}
+                  open={sectionPopoverOpen}
+                  onOpenChange={setSectionPopoverOpen}
+                  className="w-55"
+                />
               </div>
             )}
 
@@ -495,6 +516,16 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               </TabsContent>
             )}
           </Tabs>
+
+          {!loadingRecipients && recipientTotal > 0 && (
+            <PaginationWrapper
+              currentPage={recipientPage}
+              totalPages={recipientTotalPages}
+              totalItems={recipientTotal}
+              itemsPerPage={RECIPIENT_PAGE_SIZE}
+              onPageChange={setRecipientPage}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

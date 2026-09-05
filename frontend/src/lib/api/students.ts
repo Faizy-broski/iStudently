@@ -179,8 +179,8 @@ export async function getStudents(params?: {
   search?: string
   grade_level?: string | string[]
   campus_id?: string
-  /** Scope results to a specific section (used by teacher dashboard) */
-  section_id?: string
+  /** Scope results to specific section(s) (used by teacher dashboard and messaging/bulk-email filters) */
+  section_id?: string | string[]
   /** Filter by active status. Omit to include both active and inactive students. */
   is_active?: boolean
 }) {
@@ -196,7 +196,13 @@ export async function getStudents(params?: {
     }
   }
   if (params?.campus_id) queryParams.append('campus_id', params.campus_id)
-  if (params?.section_id) queryParams.append('section_id', params.section_id)
+  if (params?.section_id) {
+    if (Array.isArray(params.section_id)) {
+      params.section_id.forEach((id) => queryParams.append('section_id', id))
+    } else {
+      queryParams.append('section_id', params.section_id)
+    }
+  }
   if (params?.is_active !== undefined) queryParams.append('is_active', String(params.is_active))
 
   const query = queryParams.toString()

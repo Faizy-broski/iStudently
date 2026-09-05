@@ -29,7 +29,7 @@ export class StudentController {
       const search = req.query.search as string
       const gradeLevelParam = req.query.grade_level
       const campusId = req.query.campus_id as string
-      const sectionId = req.query.section_id as string
+      const sectionIdParam = req.query.section_id
       const isActiveParam = req.query.is_active as string | undefined
       const isActive = isActiveParam === undefined ? undefined : isActiveParam === 'true'
 
@@ -37,6 +37,12 @@ export class StudentController {
         ? (gradeLevelParam as string[])
         : gradeLevelParam
           ? String(gradeLevelParam).split(',').map((value) => value.trim()).filter(Boolean)
+          : undefined
+
+      const sectionIds = Array.isArray(sectionIdParam)
+        ? (sectionIdParam as string[])
+        : sectionIdParam
+          ? String(sectionIdParam).split(',').map((value) => value.trim()).filter(Boolean)
           : undefined
 
       // Use campus_id if provided and not empty, otherwise use admin's school_id
@@ -48,7 +54,7 @@ export class StudentController {
         limit,
         search,
         gradeLevels,
-        sectionId,
+        sectionIds,
         isActive
       )
 

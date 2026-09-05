@@ -141,7 +141,6 @@ describe('checkDivisionAssignments', () => {
     ['rubNumber', null, /rub_number/],
     ['rubNumber', 0, /rub_number/],
     ['rubNumber', 241, /rub_number/],
-    ['thumnNumber', null, /thumn_number/],
     ['thumnNumber', 0, /thumn_number/],
     ['thumnNumber', 481, /thumn_number/],
   ])('fails when %s is %p', (field, value, expectedMessage) => {
@@ -154,6 +153,11 @@ describe('checkDivisionAssignments', () => {
   it('accepts the boundary values 30/60/240/480', () => {
     const boundary = { globalAyahIndex: 1, juzNumber: 30, hizbNumber: 60, rubNumber: 240, thumnNumber: 480 }
     expect(checkDivisionAssignments([boundary])).toEqual({ ok: true })
+  })
+
+  it('passes when thumnNumber is null — not every riwayah marks eighths of a hizb (e.g. Hafs)', () => {
+    const ayah = { ...valid, thumnNumber: null }
+    expect(checkDivisionAssignments([ayah])).toEqual({ ok: true })
   })
 })
 
@@ -169,7 +173,7 @@ describe('runAllInvariantChecks', () => {
 
   function chainable(result: Result) {
     const obj: any = {}
-    for (const m of ['select', 'eq']) obj[m] = jest.fn(() => obj)
+    for (const m of ['select', 'eq', 'range']) obj[m] = jest.fn(() => obj)
     obj.then = (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject)
     return obj
   }
@@ -196,6 +200,20 @@ describe('runAllInvariantChecks', () => {
     await expect(runAllInvariantChecks('riwayah-1')).resolves.toBeUndefined()
   })
 
+  it('pages through results past the 1000-row PostgREST default cap (regression test for the false-alarm bug this fixed)', async () => {
+    // A single unpaginated .select() silently truncates at 1000 rows — this
+    // is exactly the bug that made a real, complete 6236-ayah Hafs seed look
+    // "broken" (fake gaps past row 1000) even though every row was correctly
+    // written. Exercise a first page at exactly PAGE_SIZE (1000) — forcing a
+    // second .from() call — followed by a shorter final page.
+    const firstPage = Array.from({ length: 1000 }, (_, i) => ({ ...VALID_AYAH, global_ayah_index: i + 1, surah_id: 's1' }))
+    const secondPage = [{ ...VALID_AYAH, global_ayah_index: 1001, surah_id: 's1' }]
+    queue('quran_ayahs', { data: firstPage, error: null })
+    queue('quran_ayahs', { data: secondPage, error: null })
+    queue('quran_surahs', { data: [{ id: 's1', number: 1, ayah_count: 1001 }], error: null })
+    await expect(runAllInvariantChecks('riwayah-1')).resolves.toBeUndefined()
+  })
+
   it('resolves without throwing when every check passes (with editionId, page monotonicity checked)', async () => {
     queue('quran_ayahs', { data: [VALID_AYAH], error: null })
     queue('quran_surahs', { data: [{ id: 's1', number: 1, ayah_count: 1 }], error: null })
@@ -206,6 +224,11 @@ describe('runAllInvariantChecks', () => {
   it('throws when the ayat query fails', async () => {
     queue('quran_ayahs', { data: null, error: { message: 'db error' } })
     await expect(runAllInvariantChecks('riwayah-1')).rejects.toThrow(/failed to fetch ayat/)
+  })
+
+  it('treats a null (but errorless) data page as "no more rows" rather than crashing', async () => {
+    queue('quran_ayahs', { data: null, error: null })
+    await expect(runAllInvariantChecks('riwayah-1')).rejects.toThrow(/ayah index contiguity/)
   })
 
   it('throws on an ayah-index contiguity violation', async () => {

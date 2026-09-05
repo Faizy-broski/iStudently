@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { PaginationWrapper } from "@/components/ui/pagination"
 import { toast } from "sonner"
 import {
   Mail,
@@ -75,6 +76,9 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
   const [search, setSearch] = useState("")
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
 
   // Send
   const [sending, setSending] = useState(false)
@@ -82,20 +86,28 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
+  const PAGE_SIZE = 25
+
   const fetchStudents = useCallback(async () => {
     setLoadingStudents(true)
     try {
-      const res = await getStudents({ limit: 300, search: search.trim() || undefined })
+      const res = await getStudents({ page, limit: PAGE_SIZE, search: search.trim() || undefined })
       setStudents((res.data as any) || [])
+      setTotal(res.pagination?.total ?? 0)
+      setTotalPages(res.pagination?.totalPages ?? 0)
     } finally {
       setLoadingStudents(false)
     }
-  }, [search])
+  }, [page, search])
 
   useEffect(() => {
     const t = setTimeout(fetchStudents, 350)
     return () => clearTimeout(t)
   }, [fetchStudents])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search])
 
   useEffect(() => {
     getMarkingPeriods().then((mp) => setMarkingPeriods(mp.filter((p) => p.does_grades))).catch(() => {})
@@ -431,8 +443,18 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
             </div>
           )}
 
+          {!loadingStudents && total > 0 && (
+            <PaginationWrapper
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={total}
+              itemsPerPage={PAGE_SIZE}
+              onPageChange={setPage}
+            />
+          )}
+
           <div className="flex items-center justify-between text-sm text-muted-foreground pt-1">
-            <span>{t("students_found_with_email", { total: students.length, withEmail: studentsWithEmail.length })}</span>
+            <span>{t("students_found_with_email", { total: total, withEmail: studentsWithEmail.length })}</span>
             <Button onClick={handleSubmit} disabled={sending || selectedIds.size === 0}>
               {sending ? t("sending") : (
                 <><Send className="h-4 w-4 mr-1.5" />{t("send_to_students_count", { count: selectedIds.size })}</>

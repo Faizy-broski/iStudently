@@ -126,14 +126,18 @@ export const messagingApi = {
     type: 'students' | 'teachers' | 'staff' | 'parents',
     search?: string,
     campusId?: string,
-    gradeLevelId?: string,
-    sectionId?: string
+    gradeLevelIds?: string[],
+    sectionIds?: string[],
+    page?: number,
+    limit?: number
   ) => {
     const params = new URLSearchParams({ type })
     if (search) params.append('search', search)
     if (campusId) params.append('campus_id', campusId)
-    if (gradeLevelId) params.append('grade_level_id', gradeLevelId)
-    if (sectionId) params.append('section_id', sectionId)
+    gradeLevelIds?.forEach((id) => params.append('grade_level_id', id))
+    sectionIds?.forEach((id) => params.append('section_id', id))
+    if (page) params.append('page', String(page))
+    if (limit) params.append('limit', String(limit))
     return apiRequest<MessageRecipientOption[]>(`/messaging/recipients?${params.toString()}`)
   },
 

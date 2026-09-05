@@ -74,6 +74,7 @@ import {
 } from "lucide-react";
 import { UserRole } from "@/types";
 import { SchoolKhalwaIcon } from "@/components/icons/SchoolKhalwaIcon";
+import { FormWorksheetIcon } from "@/components/icons/FormWorksheetIcon";
 
 export interface SidebarMenuItem {
   title: string;
@@ -463,8 +464,6 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "e_library", href: "/admin/library/e-library", icon: BookMarked },
       { title: "loan_directory", href: "/admin/library/loans", icon: ClipboardList },
       { title: "fines", href: "/admin/library/fines", icon: DollarSign },
-      { title: "my_worksheet", href: "/admin/library/worksheets", icon: FileStack, pluginRequired: "qirtasi" },
-      { title: "qirtasi_curriculum", href: "/admin/qirtasi/curriculum", icon: Settings, pluginRequired: "qirtasi" },
       { title: "textbooks", href: "#", icon: Table2, isLabel: true },
       { title: "textbooks_overview", href: "/admin/textbooks", icon: BookOpen },
       { title: "textbooks_matrix", href: "/admin/textbooks/matrix", icon: Table2 },
@@ -473,6 +472,16 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "setup", href: "#", icon: Settings, isLabel: true },
       { title: "document_categories", href: "/admin/library/categories", icon: FolderOpen },
       { title: "document_fields", href: "/admin/library/document-fields", icon: Sliders },
+    ],
+  },
+  {
+    title: "my_worksheet",
+    href: "/admin/qirtasi/worksheets",
+    icon: FormWorksheetIcon,
+    pluginRequired: "qirtasi",
+    subItems: [
+      { title: "my_worksheet", href: "/admin/qirtasi/worksheets", icon: FormWorksheetIcon },
+      { title: "qirtasi_curriculum", href: "/admin/qirtasi/curriculum", icon: Settings },
     ],
   },
   {
@@ -566,6 +575,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "circles", href: "/admin/hifzi/circles", icon: Users },
       { title: "students", href: "/admin/hifzi/students", icon: UserCheck },
       { title: "curriculum", href: "/admin/hifzi/curriculum", icon: GraduationCap },
+      { title: "quran", href: "/admin/hifzi/quran", icon: BookOpen },
       { title: "gradebook", href: "/admin/hifzi/gradebook", icon: Award },
       { title: "compliance", href: "/admin/hifzi/compliance", icon: TrendingUp },
       { title: "plans", href: "/admin/hifzi/plans", icon: Calendar },
@@ -773,7 +783,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "circuit_simulator", href: "/teacher/resources/circuit-simulator", icon: CircuitBoard },
       { title: "calculators_arena", href: "/teacher/resources/calculators-arena", icon: Gamepad2 },
       { title: "interactive_geometry", href: "/teacher/resources/interactive-geometry", icon: Compass },
-      { title: "my_worksheet", href: "/teacher/resources/worksheets", icon: FileStack, pluginRequired: "qirtasi" },
+      { title: "my_worksheet", href: "/teacher/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/teacher/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/teacher/resources/anatomy-3d", icon: Dna },
     ],
@@ -864,6 +874,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
     pluginRequired: "hifzi",
     subItems: [
       { title: "recite", href: "/teacher/hifzi/recite", icon: Mic },
+      { title: "quran", href: "/teacher/hifzi/quran", icon: BookOpen },
       { title: "attendance", href: "/teacher/hifzi/attendance", icon: CalendarCheck },
       { title: "plans", href: "/teacher/hifzi/plans", icon: Calendar },
     ],
@@ -1005,7 +1016,7 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "circuit_simulator", href: "/student/resources/circuit-simulator", icon: CircuitBoard },
       { title: "calculators_arena", href: "/student/resources/calculators-arena", icon: Gamepad2 },
       { title: "interactive_geometry", href: "/student/resources/interactive-geometry", icon: Compass },
-      { title: "my_worksheet", href: "/student/resources/worksheets", icon: FileStack, pluginRequired: "qirtasi" },
+      { title: "my_worksheet", href: "/student/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/student/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/student/resources/anatomy-3d", icon: Dna },
     ],
@@ -1044,6 +1055,7 @@ const studentMenuItems: SidebarMenuItem[] = [
       // never existed — the single page below already shows the heatmap,
       // so this was a dead duplicate link, not a missing feature.
       { title: "recitation", href: "/student/hifzi", icon: Mic },
+      { title: "quran", href: "/student/hifzi/quran", icon: BookOpen },
     ],
   },
   {
@@ -1183,6 +1195,7 @@ const parentMenuItems: SidebarMenuItem[] = [
       // history, milestones, and report-card download, so this was a dead
       // duplicate link, not a missing feature.
       { title: "recitation", href: "/parent/hifzi", icon: Mic },
+      { title: "quran", href: "/parent/hifzi/quran", icon: BookOpen },
     ],
   },
   {
@@ -1220,7 +1233,7 @@ const parentMenuItems: SidebarMenuItem[] = [
       { title: "circuit_simulator", href: "/parent/resources/circuit-simulator", icon: CircuitBoard },
       { title: "calculators_arena", href: "/parent/resources/calculators-arena", icon: Gamepad2 },
       { title: "interactive_geometry", href: "/parent/resources/interactive-geometry", icon: Compass },
-      { title: "my_worksheet", href: "/parent/resources/worksheets", icon: FileStack, pluginRequired: "qirtasi" },
+      { title: "my_worksheet", href: "/parent/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/parent/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/parent/resources/anatomy-3d", icon: Dna },
     ],
@@ -1234,7 +1247,7 @@ const librarianMenuItems: SidebarMenuItem[] = [
   { title: "books", href: "/librarian/books", icon: BookOpen },
   { title: "e_library", href: "/librarian/e-library", icon: BookMarked },
   { title: "loan_directory", href: "/librarian/loans", icon: ClipboardList },
-  { title: "my_worksheet", href: "/librarian/worksheets", icon: FileStack, pluginRequired: "qirtasi" },
+  { title: "my_worksheet", href: "/librarian/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
   {
     title: "library",
     href: "/librarian/library",

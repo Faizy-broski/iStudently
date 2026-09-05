@@ -339,6 +339,7 @@ describe('pageOfAyah', () => {
 describe('ayahsInRange', () => {
   it('returns ayah text ordered by Quran order', async () => {
     queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_editions', { data: [{ verified_at: '2026-01-01T00:00:00Z' }], error: null }) // assertRiwayahTextIsVerified
     queue('quran_ayahs', { data: { global_ayah_index: 1 }, error: null }) // start endpoint lookup
     queue('quran_ayahs', { data: { global_ayah_index: 2 }, error: null }) // end endpoint lookup
     queue('quran_ayahs', {
@@ -358,6 +359,7 @@ describe('ayahsInRange', () => {
 
   it('throws when the start ayah id is not found', async () => {
     queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_editions', { data: [{ verified_at: '2026-01-01T00:00:00Z' }], error: null })
     queue('quran_ayahs', { data: null, error: { message: 'not found' } })
     queue('quran_ayahs', { data: { global_ayah_index: 2 }, error: null })
     await expect(
@@ -367,6 +369,7 @@ describe('ayahsInRange', () => {
 
   it('throws when the end precedes the start', async () => {
     queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_editions', { data: [{ verified_at: '2026-01-01T00:00:00Z' }], error: null })
     queue('quran_ayahs', { data: { global_ayah_index: 5 }, error: null })
     queue('quran_ayahs', { data: { global_ayah_index: 1 }, error: null })
     await expect(
@@ -376,6 +379,7 @@ describe('ayahsInRange', () => {
 
   it('throws when the range query fails', async () => {
     queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_editions', { data: [{ verified_at: '2026-01-01T00:00:00Z' }], error: null })
     queue('quran_ayahs', { data: { global_ayah_index: 1 }, error: null })
     queue('quran_ayahs', { data: { global_ayah_index: 2 }, error: null })
     queue('quran_ayahs', { data: null, error: { message: 'db down' } })
@@ -386,11 +390,68 @@ describe('ayahsInRange', () => {
 
   it('returns an empty array when the query succeeds with no data (defensive null-guard)', async () => {
     queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_editions', { data: [{ verified_at: '2026-01-01T00:00:00Z' }], error: null })
     queue('quran_ayahs', { data: { global_ayah_index: 1 }, error: null })
     queue('quran_ayahs', { data: { global_ayah_index: 2 }, error: null })
     queue('quran_ayahs', { data: null, error: null })
     const result = await quranReferenceService.ayahsInRange('hafs', { riwayahCode: 'hafs', startAyahId: 'a1', endAyahId: 'a2' })
     expect(result).toEqual([])
+  })
+
+  describe('the religious sign-off gate (assertRiwayahTextIsVerified)', () => {
+    it('refuses to serve text when no edition of the riwayah is verified', async () => {
+      queue('quran_riwayat', RIWAYAH_ROW)
+      queue('quran_editions', { data: [{ verified_at: null }], error: null })
+      await expect(
+        quranReferenceService.ayahsInRange('hafs', { riwayahCode: 'hafs', startAyahId: 'a1', endAyahId: 'a2' })
+      ).rejects.toThrow(/not been signed off/)
+    })
+
+    it('refuses to serve text when the riwayah has no editions at all', async () => {
+      queue('quran_riwayat', RIWAYAH_ROW)
+      queue('quran_editions', { data: [], error: null })
+      await expect(
+        quranReferenceService.ayahsInRange('hafs', { riwayahCode: 'hafs', startAyahId: 'a1', endAyahId: 'a2' })
+      ).rejects.toThrow(/not been signed off/)
+    })
+
+    it('refuses to serve text when the editions query succeeds with null data (defensive null-guard)', async () => {
+      queue('quran_riwayat', RIWAYAH_ROW)
+      queue('quran_editions', { data: null, error: null })
+      await expect(
+        quranReferenceService.ayahsInRange('hafs', { riwayahCode: 'hafs', startAyahId: 'a1', endAyahId: 'a2' })
+      ).rejects.toThrow(/not been signed off/)
+    })
+
+    it('passes as soon as ANY edition of the riwayah is verified', async () => {
+      queue('quran_riwayat', RIWAYAH_ROW)
+      queue('quran_editions', { data: [{ verified_at: null }, { verified_at: '2026-01-01T00:00:00Z' }], error: null })
+      queue('quran_ayahs', { data: { global_ayah_index: 1 }, error: null })
+      queue('quran_ayahs', { data: { global_ayah_index: 2 }, error: null })
+      queue('quran_ayahs', { data: [], error: null })
+      await expect(
+        quranReferenceService.ayahsInRange('hafs', { riwayahCode: 'hafs', startAyahId: 'a1', endAyahId: 'a2' })
+      ).resolves.toEqual([])
+    })
+
+    it('serves unverified text when HIFZI_ALLOW_UNVERIFIED_QURAN_DATA=true (dev bypass, no editions query issued)', async () => {
+      process.env.HIFZI_ALLOW_UNVERIFIED_QURAN_DATA = 'true'
+      queue('quran_riwayat', RIWAYAH_ROW)
+      queue('quran_ayahs', { data: { global_ayah_index: 1 }, error: null })
+      queue('quran_ayahs', { data: { global_ayah_index: 2 }, error: null })
+      queue('quran_ayahs', { data: [], error: null })
+      await expect(
+        quranReferenceService.ayahsInRange('hafs', { riwayahCode: 'hafs', startAyahId: 'a1', endAyahId: 'a2' })
+      ).resolves.toEqual([])
+    })
+
+    it('throws when the editions query itself errors', async () => {
+      queue('quran_riwayat', RIWAYAH_ROW)
+      queue('quran_editions', { data: null, error: { message: 'db down' } })
+      await expect(
+        quranReferenceService.ayahsInRange('hafs', { riwayahCode: 'hafs', startAyahId: 'a1', endAyahId: 'a2' })
+      ).rejects.toThrow(/failed to check editions/)
+    })
   })
 })
 
@@ -491,6 +552,42 @@ describe('similarPassagesFor', () => {
     queue('quran_similar_members', { data: [{ group_id: 'g1' }], error: null })
     queue('quran_similar_members', { data: null, error: null })
     await expect(quranReferenceService.similarPassagesFor('hafs', { surahNumber: 1, ayahNumber: 1 })).resolves.toEqual([])
+  })
+})
+
+describe('listSurahs', () => {
+  it('returns all surahs for a riwayah, ordered by number', async () => {
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_surahs', {
+      data: [
+        { number: 1, name_ar: 'الفاتحة', name_en: 'The Opening', name_transliterated: 'Al-Fatihah', revelation_place: 'meccan', ayah_count: 7 },
+        { number: 2, name_ar: 'البقرة', name_en: 'The Cow', name_transliterated: 'Al-Baqarah', revelation_place: 'medinan', ayah_count: 286 },
+      ],
+      error: null,
+    })
+
+    const surahs = await quranReferenceService.listSurahs('hafs')
+    expect(surahs).toEqual([
+      { number: 1, nameAr: 'الفاتحة', nameEn: 'The Opening', nameTransliterated: 'Al-Fatihah', revelationPlace: 'meccan', ayahCount: 7 },
+      { number: 2, nameAr: 'البقرة', nameEn: 'The Cow', nameTransliterated: 'Al-Baqarah', revelationPlace: 'medinan', ayahCount: 286 },
+    ])
+  })
+
+  it('throws when the query errors', async () => {
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_surahs', { data: null, error: { message: 'db down' } })
+    await expect(quranReferenceService.listSurahs('hafs')).rejects.toThrow(/listSurahs failed/)
+  })
+
+  it('returns an empty array when the query succeeds with no data (defensive null-guard)', async () => {
+    queue('quran_riwayat', RIWAYAH_ROW)
+    queue('quran_surahs', { data: null, error: null })
+    await expect(quranReferenceService.listSurahs('hafs')).resolves.toEqual([])
+  })
+
+  it('throws for an unknown riwayah code', async () => {
+    queue('quran_riwayat', { data: null, error: { message: 'not found' } })
+    await expect(quranReferenceService.listSurahs('bogus')).rejects.toThrow(/Unknown riwayah/)
   })
 })
 

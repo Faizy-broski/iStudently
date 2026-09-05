@@ -17,6 +17,14 @@ export const listRiwayat = async (_req: AuthRequest, res: Response) => {
   } catch (error: any) { return handleError(res, error) }
 }
 
+export const listSurahs = async (req: AuthRequest, res: Response) => {
+  try {
+    const riwayahCode = (req.query.riwayah as string | undefined) ?? 'hafs'
+    const data = await quranReferenceService.listSurahs(riwayahCode)
+    return res.json({ success: true, data })
+  } catch (error: any) { return handleError(res, error) }
+}
+
 export const listEditions = async (req: AuthRequest, res: Response) => {
   try {
     const riwayahCode = req.query.riwayah as string | undefined

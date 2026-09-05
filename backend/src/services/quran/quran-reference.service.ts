@@ -33,6 +33,15 @@ export interface AyahWithText {
 
 export type QuranUnitType = 'surah' | 'juz' | 'hizb' | 'rub' | 'thumn' | 'page' | 'custom'
 
+export interface SurahMeta {
+  number: number
+  nameAr: string
+  nameEn: string
+  nameTransliterated: string
+  revelationPlace: string
+  ayahCount: number
+}
+
 export interface RangeSpec {
   unitType: QuranUnitType
   number?: number // required for surah|juz|hizb|rub|thumn|page
@@ -84,6 +93,33 @@ class QuranReferenceService {
     }
 
     return data
+  }
+
+  /**
+   * ayahsInRange serves actual Quranic text (unlike ayatOnPage/pageOfAyah,
+   * which only translate positions) and must never do so for a riwayah whose
+   * text hasn't been signed off by a qualified human reviewer — the same
+   * requirement getEdition() enforces for a specific edition, applied here
+   * per-riwayah since ayahsInRange has no edition in scope. Passes as soon as
+   * ANY edition of the riwayah is verified; same dev bypass as getEdition().
+   */
+  private async assertRiwayahTextIsVerified(riwayahId: string): Promise<void> {
+    if (process.env.HIFZI_ALLOW_UNVERIFIED_QURAN_DATA === 'true') return
+
+    const { data, error } = await supabase
+      .from('quran_editions')
+      .select('verified_at')
+      .eq('riwayah_id', riwayahId)
+
+    if (error) throw new Error(`assertRiwayahTextIsVerified: failed to check editions — ${error.message}`)
+
+    const hasVerifiedEdition = (data ?? []).some((e) => !!e.verified_at)
+    if (!hasVerifiedEdition) {
+      throw new Error(
+        `This riwayah's text has not been signed off by a religious authority yet (no edition has verified_at set). ` +
+        `Set HIFZI_ALLOW_UNVERIFIED_QURAN_DATA=true in development to bypass this gate.`
+      )
+    }
   }
 
   private async getAyahBySurahAyah(riwayahId: string, ayah: AyahRef): Promise<AyahRow> {
@@ -262,6 +298,7 @@ class QuranReferenceService {
    */
   async ayahsInRange(riwayahCode: string, range: AyahRange): Promise<AyahWithText[]> {
     const riwayahId = await this.getRiwayahIdByCode(riwayahCode)
+    await this.assertRiwayahTextIsVerified(riwayahId)
 
     const [{ data: start, error: startError }, { data: end, error: endError }] = await Promise.all([
       supabase.from('quran_ayahs').select('global_ayah_index').eq('id', range.startAyahId).single(),
@@ -340,6 +377,32 @@ class QuranReferenceService {
     return ((siblings as any[]) || []).map((row) => ({
       surahNumber: row.quran_ayahs.quran_surahs.number as number,
       ayahNumber: row.quran_ayahs.ayah_number_in_surah as number,
+    }))
+  }
+
+  /**
+   * All 114 surahs for a riwayah, by name — the table of contents a reading
+   * UI needs. Ungated: names/counts are metadata, not the text itself, same
+   * as listRiwayat/listEditions being ungated at the controller layer.
+   */
+  async listSurahs(riwayahCode: string): Promise<SurahMeta[]> {
+    const riwayahId = await this.getRiwayahIdByCode(riwayahCode)
+
+    const { data, error } = await supabase
+      .from('quran_surahs')
+      .select('number, name_ar, name_en, name_transliterated, revelation_place, ayah_count')
+      .eq('riwayah_id', riwayahId)
+      .order('number', { ascending: true })
+
+    if (error) throw new Error(`listSurahs failed: ${error.message}`)
+
+    return ((data as any[]) || []).map((row) => ({
+      number: row.number,
+      nameAr: row.name_ar,
+      nameEn: row.name_en,
+      nameTransliterated: row.name_transliterated,
+      revelationPlace: row.revelation_place,
+      ayahCount: row.ayah_count,
     }))
   }
 

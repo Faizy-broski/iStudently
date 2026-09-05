@@ -9,6 +9,7 @@ const router = Router()
 router.use(authenticate)
 
 router.get('/riwayat', ctrl.listRiwayat)
+router.get('/surahs', ctrl.listSurahs)
 router.get('/editions', ctrl.listEditions)
 router.get('/resolve-range', ctrl.resolveRange)
 router.get('/ayahs-in-range', ctrl.ayahsInRange)

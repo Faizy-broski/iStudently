@@ -16,6 +16,13 @@ interface RecitationPaneProps {
     activePickerKey: string | null
     onWordTap: (ayahId: string, wordIndex: number) => void
     onSelectType: (ayahId: string, wordIndex: number, type: ErrorType) => void
+    /**
+     * Pure reading view — no tap-to-mark, no hover affordance, no picker.
+     * Used by the Quran reader (spec-less Phase 1 feature: browse/read the
+     * 114 surahs), which reuses this pane instead of duplicating word-split
+     * rendering. Defaults to false so the teacher grading flow is unaffected.
+     */
+    readOnly?: boolean
 }
 
 export function wordKey(ayahId: string, wordIndex: number): string {
@@ -28,7 +35,7 @@ export function wordKey(ayahId: string, wordIndex: number): string {
  * older, per the spec's explicit note — no separate "accessibility mode" is
  * implemented as a toggle in this pass, the base styling already targets it.
  */
-export function RecitationPane({ ayahs, marks, activePickerKey, onWordTap, onSelectType }: RecitationPaneProps) {
+export function RecitationPane({ ayahs, marks, activePickerKey, onWordTap, onSelectType, readOnly = false }: RecitationPaneProps) {
     return (
         <div dir="rtl" className="leading-loose text-3xl font-arabic p-6 bg-card rounded-lg border select-none" style={{ lineHeight: 2.4 }}>
             {ayahs.map((ayah) => {
@@ -38,13 +45,14 @@ export function RecitationPane({ ayahs, marks, activePickerKey, onWordTap, onSel
                         {words.map((word, i) => {
                             const key = wordKey(ayah.id, i)
                             const mark = marks.get(key)
-                            const showPicker = activePickerKey === key
+                            const showPicker = !readOnly && activePickerKey === key
                             return (
                                 <span key={key} className="relative inline-block">
                                     <span
-                                        onClick={() => onWordTap(ayah.id, i)}
+                                        onClick={readOnly ? undefined : () => onWordTap(ayah.id, i)}
                                         className={cn(
-                                            'cursor-pointer rounded px-1 transition-colors hover:bg-muted',
+                                            'rounded px-1',
+                                            readOnly ? 'cursor-text' : 'cursor-pointer transition-colors hover:bg-muted',
                                             mark && ERROR_TYPE_COLORS[mark.errorType]
                                         )}
                                     >
@@ -64,6 +72,11 @@ export function RecitationPane({ ayahs, marks, activePickerKey, onWordTap, onSel
                     </span>
                 )
             })}
+            {ayahs.length > 0 && (
+                <div dir="ltr" className="mt-4 pt-3 border-t text-xs text-muted-foreground text-center">
+                    Quran text: <a href="https://tanzil.net" target="_blank" rel="noreferrer" className="underline hover:text-foreground">Tanzil Project</a> (CC BY 3.0)
+                </div>
+            )}
         </div>
     )
 }

@@ -782,6 +782,7 @@
     "hifzi_compliance": "امتثال الخلوة المدرسية",
     "recitation": "التسميع",
     "recite": "تسميع",
+    "quran": "القرآن",
     "plans": "الخطط",
     "grievances": "الشكاوى",
     "inspections": "التفتيش التربوي",
@@ -12743,6 +12744,19 @@
       "exam": "اختبار",
       "nextStudent": "الطالب التالي",
       "timer": "الوقت"
+    },
+    "quranReader": {
+      "title": "القرآن",
+      "subtitle": "تصفح واقرأ السور الـ 114.",
+      "surah": "السورة",
+      "ayahCount": "{count} آية",
+      "meccan": "مكية",
+      "medinan": "مدنية",
+      "previousSurah": "السورة السابقة",
+      "nextSurah": "السورة التالية",
+      "notVerifiedTitle": "غير متاح بعد",
+      "notVerifiedBody": "تم جلب هذا النص من مشروع تنزيل، لكنه لم يُعتمد بعد من قِبل مراجع مؤهل. سيظهر هنا فور اكتمال المراجعة.",
+      "loadError": "تعذّر تحميل هذه السورة"
     },
     "plans": {
       "title": "الخطط",

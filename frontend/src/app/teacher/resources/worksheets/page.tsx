@@ -1,7 +1,6 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import { WorksheetLibrary } from '@/components/worksheets/WorksheetLibrary'
-
-export default function TeacherWorksheetsPage() {
-  return <WorksheetLibrary canUpload />
+export default function TeacherResourcesWorksheetsPage() {
+  redirect('/teacher/qirtasi/worksheets')
 }
+

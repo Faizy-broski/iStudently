@@ -62,7 +62,14 @@ export function checkSurahAyahCounts(surahs: { surahNumber: number; declaredCoun
   return { ok: true }
 }
 
-/** Every ayah must have exactly one juz/hizb/rub/thumn assignment and each must sit within its valid numeric range (spec §5.5). */
+/**
+ * Every ayah must have exactly one juz/hizb/rub assignment, each within its
+ * valid numeric range (spec §5.5). thumn_number is the exception: it is NOT
+ * a universal Mushaf division (only certain riwayat — e.g. Qalun — mark
+ * eighths of a hizb; the standard Hafs Mushaf does not), so it's legitimately
+ * NULL for riwayat that don't use it — see migration 287. Only its range is
+ * validated, and only when present.
+ */
 export function checkDivisionAssignments(
   ayahs: { globalAyahIndex: number; juzNumber: number | null; hizbNumber: number | null; rubNumber: number | null; thumnNumber: number | null }[]
 ): InvariantResult {
@@ -76,11 +83,38 @@ export function checkDivisionAssignments(
     if (a.rubNumber == null || a.rubNumber < 1 || a.rubNumber > 240) {
       return { ok: false, message: `Ayah index ${a.globalAyahIndex}: invalid or missing rub_number (${a.rubNumber})` }
     }
-    if (a.thumnNumber == null || a.thumnNumber < 1 || a.thumnNumber > 480) {
-      return { ok: false, message: `Ayah index ${a.globalAyahIndex}: invalid or missing thumn_number (${a.thumnNumber})` }
+    if (a.thumnNumber != null && (a.thumnNumber < 1 || a.thumnNumber > 480)) {
+      return { ok: false, message: `Ayah index ${a.globalAyahIndex}: thumn_number out of range (${a.thumnNumber})` }
     }
   }
   return { ok: true }
+}
+
+// PostgREST (Supabase's query layer) caps a single .select() response at
+// 1000 rows by default — silently, with no error, no matter how many rows
+// actually match. quran_ayahs has 6236 rows (a real Hafs corpus), well past
+// that cap, so an unpaginated .select() here only ever sees an arbitrary,
+// unordered ~1000-row slice — exactly the shape of bug that stays hidden
+// against the old 10-row placeholder fixture and only surfaces the first
+// time a real, full-size dataset runs through this function. Every query
+// here that can plausibly exceed 1000 rows must page through with .range().
+const PAGE_SIZE = 1000
+
+async function fetchAllRows<T>(
+  runPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<T[]> {
+  const all: T[] = []
+  let from = 0
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await runPage(from, from + PAGE_SIZE - 1)
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) break
+    all.push(...data)
+    if (data.length < PAGE_SIZE) break
+    from += PAGE_SIZE
+  }
+  return all
 }
 
 /**
@@ -90,12 +124,18 @@ export function checkDivisionAssignments(
  * Throws on the first violation found.
  */
 export async function runAllInvariantChecks(riwayahId: string, editionId?: string): Promise<void> {
-  const { data: ayahRows, error: ayahError } = await supabase
-    .from('quran_ayahs')
-    .select('global_ayah_index, juz_number, hizb_number, rub_number, thumn_number, surah_id')
-    .eq('riwayah_id', riwayahId)
-
-  if (ayahError || !ayahRows) throw new Error(`runAllInvariantChecks: failed to fetch ayat — ${ayahError?.message}`)
+  let ayahRows: { global_ayah_index: number; juz_number: number | null; hizb_number: number | null; rub_number: number | null; thumn_number: number | null; surah_id: string }[]
+  try {
+    ayahRows = await fetchAllRows((from, to) =>
+      supabase
+        .from('quran_ayahs')
+        .select('global_ayah_index, juz_number, hizb_number, rub_number, thumn_number, surah_id')
+        .eq('riwayah_id', riwayahId)
+        .range(from, to)
+    )
+  } catch (e: any) {
+    throw new Error(`runAllInvariantChecks: failed to fetch ayat — ${e.message}`)
+  }
 
   const ayahs = ayahRows.map((r) => ({
     globalAyahIndex: r.global_ayah_index,
@@ -133,15 +173,21 @@ export async function runAllInvariantChecks(riwayahId: string, editionId?: strin
   if (!surahCheck.ok) throw new Error(`Invariant violation (surah ayah counts): ${surahCheck.message}`)
 
   if (editionId) {
-    const { data: pageRows, error: pageError } = await supabase
-      .from('quran_edition_ayah_pages')
-      .select('page_number, quran_ayahs!inner(global_ayah_index)')
-      .eq('edition_id', editionId)
-
-    if (pageError || !pageRows) throw new Error(`runAllInvariantChecks: failed to fetch page mappings — ${pageError?.message}`)
+    let pageRows: { page_number: number; quran_ayahs: { global_ayah_index: number } }[]
+    try {
+      pageRows = await fetchAllRows((from, to) =>
+        supabase
+          .from('quran_edition_ayah_pages')
+          .select('page_number, quran_ayahs!inner(global_ayah_index)')
+          .eq('edition_id', editionId)
+          .range(from, to)
+      ) as any
+    } catch (e: any) {
+      throw new Error(`runAllInvariantChecks: failed to fetch page mappings — ${e.message}`)
+    }
 
     const pageCheck = checkPageMonotonicity(
-      (pageRows as any[]).map((r) => ({ globalAyahIndex: r.quran_ayahs.global_ayah_index, pageNumber: r.page_number }))
+      pageRows.map((r) => ({ globalAyahIndex: r.quran_ayahs.global_ayah_index, pageNumber: r.page_number }))
     )
     if (!pageCheck.ok) throw new Error(`Invariant violation (page monotonicity): ${pageCheck.message}`)
   }

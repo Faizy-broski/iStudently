@@ -17,6 +17,7 @@ export interface QuranEdition {
   code: string
   name_ar: string
   name_en: string
+  verified_at: string | null
   quran_riwayat?: { code: string }
 }
 
@@ -30,6 +31,19 @@ export type QuranUnitType = 'surah' | 'juz' | 'hizb' | 'rub' | 'thumn' | 'page' 
 
 export async function getRiwayat() {
   return apiRequest<QuranRiwayah[]>('/quran/riwayat')
+}
+
+export interface QuranSurah {
+  number: number
+  nameAr: string
+  nameEn: string
+  nameTransliterated: string
+  revelationPlace: string
+  ayahCount: number
+}
+
+export async function getSurahs(riwayahCode = 'hafs') {
+  return apiRequest<QuranSurah[]>(`/quran/surahs?riwayah=${riwayahCode}`)
 }
 
 export async function getEditions(riwayahCode?: string) {

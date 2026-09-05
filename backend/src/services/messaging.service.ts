@@ -418,22 +418,43 @@ export class MessagingService {
     role: string,
     type: 'students' | 'teachers' | 'staff' | 'parents',
     search?: string,
-    gradeLevelId?: string,
-    sectionId?: string,
-    staffId?: string
+    gradeLevelIds?: string[],
+    sectionIds?: string[],
+    staffId?: string,
+    page: number = 1,
+    limit: number = 25
   ) {
     const term = search?.trim().toLowerCase()
     const isTeacher = role === 'teacher'
 
+    // Recipient names come from a separate profiles lookup joined in
+    // application code (the base tables — students/parents/staff — have no
+    // name column), so the search-term filter below always runs in JS after
+    // that join. Pagination therefore has to slice the full, already-
+    // name-filtered candidate list rather than a raw DB page: paginating the
+    // unfiltered base-table rows first would make the requested page
+    // silently short whenever some of the earlier rows get filtered out by
+    // the search term. This also means no `.limit(...)` is applied to any of
+    // the base-table queries below — every match must be fetched and
+    // filtered before pagination is applied, matching the same reasoning
+    // already used for the grade/section filter fix in the parents branch.
+    type RecipientOption = { profileId: string; name: string; subtitle: string }
+    const paginate = (all: RecipientOption[]) => {
+      const total = all.length
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 0
+      const start = (page - 1) * limit
+      return { data: all.slice(start, start + limit), pagination: { total, page, limit, totalPages } }
+    }
+
     // A teacher may not message other teachers or parents at all — only
     // their own students, school admins, and admin-approved staff.
     if (isTeacher && (type === 'teachers' || type === 'parents')) {
-      return []
+      return paginate([])
     }
 
     if (type === 'students') {
       if (!['admin', 'teacher', 'super_admin'].includes(role)) {
-        return []
+        return paginate([])
       }
 
       let query = supabase
@@ -441,16 +462,15 @@ export class MessagingService {
         .select('profile_id, student_number')
         .eq('school_id', schoolId)
         .not('profile_id', 'is', null)
-        .limit(300)
 
       if (isTeacher) {
-        const sectionIds = await this.getTeacherSectionIds(schoolId, staffId)
-        if (sectionIds.length === 0) return []
-        query = query.in('section_id', sectionIds)
+        const teacherSectionIds = await this.getTeacherSectionIds(schoolId, staffId)
+        if (teacherSectionIds.length === 0) return paginate([])
+        query = query.in('section_id', teacherSectionIds)
       }
 
-      if (gradeLevelId) query = query.eq('grade_level_id', gradeLevelId)
-      if (sectionId) query = query.eq('section_id', sectionId)
+      if (gradeLevelIds?.length) query = query.in('grade_level_id', gradeLevelIds)
+      if (sectionIds?.length) query = query.in('section_id', sectionIds)
 
       const { data, error } = await query
 
@@ -460,7 +480,7 @@ export class MessagingService {
 
       const profiles = await this.fetchProfilesByIds((data || []).map((s) => s.profile_id as string))
 
-      return (data || [])
+      const all = (data || [])
         .map((s) => {
           const profile = profiles.get(s.profile_id as string)
           return {
@@ -470,15 +490,67 @@ export class MessagingService {
           }
         })
         .filter((r) => !term || r.name.toLowerCase().includes(term))
+
+      return paginate(all)
     }
 
     if (type === 'parents') {
-      const { data, error } = await supabase
+      const hasGradeSectionFilter = !!(gradeLevelIds?.length || sectionIds?.length)
+
+      // undefined = no filter requested; [] = filter requested but matched
+      // no students/parents (must short-circuit to an empty result rather
+      // than falling through to an unfiltered parents query).
+      let parentIdsFilter: string[] | undefined
+
+      if (hasGradeSectionFilter) {
+        // Resolve which students match the grade/section filter first, then
+        // which parents are linked to any of them. Resolving through
+        // students/parent_student_links instead of embedding a nested
+        // PostgREST filter avoids the fragility of filtering on a doubly-
+        // embedded resource.
+        let studentQuery = supabase.from('students').select('id')
+        if (gradeLevelIds?.length) studentQuery = studentQuery.in('grade_level_id', gradeLevelIds)
+        if (sectionIds?.length) studentQuery = studentQuery.in('section_id', sectionIds)
+
+        const { data: matchedStudents, error: studentsError } = await studentQuery
+        if (studentsError) {
+          throw new Error(`Failed to resolve students for parent grade/section filter: ${studentsError.message}`)
+        }
+        const studentIds = (matchedStudents || []).map((s) => s.id as string)
+
+        if (studentIds.length === 0) {
+          parentIdsFilter = []
+        } else {
+          const { data: links, error: linksError } = await supabase
+            .from('parent_student_links')
+            .select('parent_id')
+            .in('student_id', studentIds)
+            .eq('is_active', true)
+
+          if (linksError) {
+            throw new Error(`Failed to resolve parent links for grade/section filter: ${linksError.message}`)
+          }
+          // A parent qualifies if ANY linked child matches the filter (a
+          // parent can have children in different grades/sections).
+          parentIdsFilter = Array.from(new Set((links || []).map((l) => l.parent_id as string)))
+        }
+      }
+
+      if (parentIdsFilter && parentIdsFilter.length === 0) {
+        return paginate([])
+      }
+
+      let query = supabase
         .from('parents')
         .select('profile_id')
         .eq('school_id', schoolId)
         .not('profile_id', 'is', null)
-        .limit(300)
+
+      if (parentIdsFilter) {
+        query = query.in('id', parentIdsFilter)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         throw new Error(`Failed to list parent recipients: ${error.message}`)
@@ -486,7 +558,7 @@ export class MessagingService {
 
       const profiles = await this.fetchProfilesByIds((data || []).map((p) => p.profile_id as string))
 
-      return (data || [])
+      const all = (data || [])
         .map((p) => {
           const profile = profiles.get(p.profile_id as string)
           return {
@@ -496,17 +568,19 @@ export class MessagingService {
           }
         })
         .filter((r) => !term || r.name.toLowerCase().includes(term))
+
+      return paginate(all)
     }
 
     // 'staff' tab for a teacher: only admins + the admin-curated whitelist,
     // not the full staff directory.
     if (isTeacher) {
       const allowedIds = await this.getTeacherAllowedStaffProfileIds(schoolId)
-      if (allowedIds.length === 0) return []
+      if (allowedIds.length === 0) return paginate([])
 
       const profiles = await this.fetchProfilesByIds(allowedIds)
 
-      return allowedIds
+      const all = allowedIds
         .map((profileId) => {
           const profile = profiles.get(profileId)
           return {
@@ -516,6 +590,8 @@ export class MessagingService {
           }
         })
         .filter((r) => !term || r.name.toLowerCase().includes(term))
+
+      return paginate(all)
     }
 
     // 'teachers' -> role='teacher'; 'staff' -> everyone else in the staff table
@@ -529,7 +605,6 @@ export class MessagingService {
       .select('profile_id, title')
       .eq('school_id', schoolId)
       .in('role', staffRoles)
-      .limit(300)
 
     if (error) {
       throw new Error(`Failed to list staff recipients: ${error.message}`)
@@ -537,7 +612,7 @@ export class MessagingService {
 
     const profiles = await this.fetchProfilesByIds((data || []).map((s) => s.profile_id as string))
 
-    return (data || [])
+    const all = (data || [])
       .map((s) => {
         const profile = profiles.get(s.profile_id as string)
         return {
@@ -547,6 +622,8 @@ export class MessagingService {
         }
       })
       .filter((r) => !term || r.name.toLowerCase().includes(term))
+
+    return paginate(all)
   }
 
   /**

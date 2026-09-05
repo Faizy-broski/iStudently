@@ -150,13 +150,27 @@ export class MessagingController {
       const type = (req.query.type as string) || 'teachers'
       const search = req.query.search as string | undefined
       const campusId = req.query.campus_id as string | undefined
-      const gradeLevelId = req.query.grade_level_id as string | undefined
-      const sectionId = req.query.section_id as string | undefined
+      const gradeLevelIdParam = req.query.grade_level_id
+      const sectionIdParam = req.query.section_id
+      const page = parseInt(req.query.page as string) || 1
+      const limit = parseInt(req.query.limit as string) || 25
 
       if (!['students', 'teachers', 'staff', 'parents'].includes(type)) {
         res.status(400).json({ success: false, error: 'Invalid recipient type' })
         return
       }
+
+      const gradeLevelIds = Array.isArray(gradeLevelIdParam)
+        ? (gradeLevelIdParam as string[])
+        : gradeLevelIdParam
+          ? String(gradeLevelIdParam).split(',').map((v) => v.trim()).filter(Boolean)
+          : undefined
+
+      const sectionIds = Array.isArray(sectionIdParam)
+        ? (sectionIdParam as string[])
+        : sectionIdParam
+          ? String(sectionIdParam).split(',').map((v) => v.trim()).filter(Boolean)
+          : undefined
 
       // Parents aren't a per-campus entity (they're created and stored under
       // the admin's root school_id — see AddParentForm.tsx / parent.service.ts),
@@ -166,17 +180,19 @@ export class MessagingController {
       const schoolId = type === 'parents'
         ? req.profile.school_id
         : await getEffectiveSchoolId(req.profile.school_id, campusId)
-      const recipients = await messagingService.listRecipients(
+      const result = await messagingService.listRecipients(
         schoolId,
         req.profile.role,
         type as any,
         search,
-        gradeLevelId,
-        sectionId,
-        req.profile.staff_id
+        gradeLevelIds,
+        sectionIds,
+        req.profile.staff_id,
+        page,
+        limit
       )
 
-      res.json({ success: true, data: recipients })
+      res.json({ success: true, data: result.data, pagination: result.pagination })
     } catch (error: any) {
       console.error('listRecipients error:', error)
       res.status(500).json({ success: false, error: error.message || 'Failed to list recipients' })

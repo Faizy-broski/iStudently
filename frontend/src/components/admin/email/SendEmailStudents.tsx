@@ -6,9 +6,7 @@ import { getStudents } from "@/lib/api/students"
 import { getAllStaff } from "@/lib/api/staff"
 import type { Staff } from "@/lib/api/staff"
 import type { EmailSendResult } from "@/lib/api/email"
-import { useGradeLevels } from "@/hooks/useAcademics"
-import { getSections } from "@/lib/api/academics"
-import type { Section } from "@/lib/api/academics"
+import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,13 +15,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { MultiSelectPopover } from "@/components/shared/MultiSelectPopover"
+import { PaginationWrapper } from "@/components/ui/pagination"
 import { toast } from "sonner"
 import {
   Mail,
@@ -64,10 +57,11 @@ export function SendEmailStudents() {
 
   // Grade / section filter
   const { gradeLevels } = useGradeLevels()
-  const [gradeFilter, setGradeFilter] = useState("all")
-  const [sectionFilter, setSectionFilter] = useState("all")
-  const [sections, setSections] = useState<Section[]>([])
-  const [sectionsLoading, setSectionsLoading] = useState(false)
+  const { sections: allSections } = useSections()
+  const [selectedGradeIds, setSelectedGradeIds] = useState<string[]>([])
+  const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([])
+  const [gradePopoverOpen, setGradePopoverOpen] = useState(false)
+  const [sectionPopoverOpen, setSectionPopoverOpen] = useState(false)
 
   // Compose state
   const [subject, setSubject] = useState("")
@@ -80,6 +74,9 @@ export function SendEmailStudents() {
   const [search, setSearch] = useState("")
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
 
   // CC staff
   const [staffForCC, setStaffForCC] = useState<Staff[]>([])
@@ -90,45 +87,60 @@ export function SendEmailStudents() {
 
   // ── Fetch students (debounced search) ──────────────────────────────────────
 
+  const PAGE_SIZE = 25
+
   const fetchStudents = useCallback(async () => {
     setLoadingStudents(true)
     try {
-      const selectedGradeName = gradeFilter !== "all"
-        ? gradeLevels.find((g) => g.id === gradeFilter)?.name
+      const selectedGradeNames = selectedGradeIds.length > 0
+        ? selectedGradeIds.map((id) => gradeLevels.find((g) => g.id === id)?.name).filter((n): n is string => !!n)
         : undefined
       const res = await getStudents({
-        limit: 300,
+        page,
+        limit: PAGE_SIZE,
         search: search.trim() || undefined,
         campus_id: selectedCampusId,
-        grade_level: selectedGradeName,
-        section_id: sectionFilter !== "all" ? sectionFilter : undefined,
+        grade_level: selectedGradeNames,
+        section_id: selectedSectionIds.length > 0 ? selectedSectionIds : undefined,
       })
       setStudents((res.data as any) || [])
+      setTotal(res.pagination?.total ?? 0)
+      setTotalPages(res.pagination?.totalPages ?? 0)
     } finally {
       setLoadingStudents(false)
     }
-  }, [search, selectedCampusId, gradeFilter, sectionFilter, gradeLevels])
+  }, [page, search, selectedCampusId, selectedGradeIds, selectedSectionIds, gradeLevels])
 
   useEffect(() => {
     const timer = setTimeout(fetchStudents, 350)
     return () => clearTimeout(timer)
   }, [fetchStudents])
 
-  // ── Load sections when grade changes ────────────────────────────────────────
+  // Any filter change should restart pagination from page 1 — otherwise a
+  // narrower result set could leave `page` pointing past the new totalPages.
+  useEffect(() => {
+    setPage(1)
+  }, [search, selectedCampusId, selectedGradeIds, selectedSectionIds])
+
+  // ── Sections belonging to any currently-selected grade (client-side; ───────
+  // useSections() already fetches every campus section unconditionally).
+  // Grade-name-prefixed once 2+ grades are selected, to disambiguate
+  // same-named sections across different grades.
+
+  const sections = useMemo(() => {
+    const filtered = selectedGradeIds.length > 0
+      ? allSections.filter((s) => selectedGradeIds.includes(s.grade_level_id))
+      : []
+    if (selectedGradeIds.length <= 1) return filtered
+    return filtered.map((s) => {
+      const gradeName = gradeLevels.find((g) => g.id === s.grade_level_id)?.name
+      return { ...s, name: gradeName ? `${gradeName} - ${s.name}` : s.name }
+    })
+  }, [allSections, selectedGradeIds, gradeLevels])
 
   useEffect(() => {
-    if (gradeFilter === "all") {
-      setSections([])
-      setSectionFilter("all")
-      return
-    }
-    setSectionsLoading(true)
-    getSections(gradeFilter)
-      .then((res) => { if (res.success && res.data) setSections(res.data) })
-      .catch(() => {})
-      .finally(() => setSectionsLoading(false))
-    setSectionFilter("all")
-  }, [gradeFilter])
+    setSelectedSectionIds((prev) => prev.filter((id) => sections.some((s) => s.id === id)))
+  }, [sections])
 
   // ── Fetch staff for CC ─────────────────────────────────────────────────────
 
@@ -485,30 +497,28 @@ export function SendEmailStudents() {
               />
             </div>
             {/* Grade */}
-            <Select value={gradeFilter} onValueChange={setGradeFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="All Grades" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Grades</SelectItem>
-                {gradeLevels.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* Section — only when grade selected */}
-            {gradeFilter !== "all" && (
-              <Select value={sectionFilter} onValueChange={setSectionFilter} disabled={sectionsLoading}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="All Sections" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
-                  {sections.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <MultiSelectPopover
+              options={gradeLevels.map((g) => ({ id: g.id, label: g.name }))}
+              selectedIds={selectedGradeIds}
+              onChange={setSelectedGradeIds}
+              placeholder="All Grades"
+              emptyMessage="All Grades"
+              open={gradePopoverOpen}
+              onOpenChange={setGradePopoverOpen}
+              className="w-40"
+            />
+            {/* Section — only when at least one grade selected */}
+            {selectedGradeIds.length > 0 && (
+              <MultiSelectPopover
+                options={sections.map((s) => ({ id: s.id, label: s.name }))}
+                selectedIds={selectedSectionIds}
+                onChange={setSelectedSectionIds}
+                placeholder="All Sections"
+                emptyMessage="All Sections"
+                open={sectionPopoverOpen}
+                onOpenChange={setSectionPopoverOpen}
+                className="w-40"
+              />
             )}
           </div>
 
@@ -591,10 +601,20 @@ export function SendEmailStudents() {
             </div>
           )}
 
+          {!loadingStudents && total > 0 && (
+            <PaginationWrapper
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={total}
+              itemsPerPage={PAGE_SIZE}
+              onPageChange={setPage}
+            />
+          )}
+
           {/* Footer */}
           <div className="flex items-center justify-between text-sm text-muted-foreground pt-1">
             <span>
-              {t("footer_found", { count: students.length })} &middot;{" "}
+              {t("footer_found", { count: total })} &middot;{" "}
               {t("footer_with_email", { count: studentsWithEmail.length })}
               {selectedIds.size > 0 && (
                 <>
