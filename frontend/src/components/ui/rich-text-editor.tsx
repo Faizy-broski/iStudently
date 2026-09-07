@@ -4,7 +4,7 @@
  * Reusable TipTap rich-text editor with full toolbar.
  * Mirrors the editor used in PDF Header / Footer settings.
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -194,28 +194,32 @@ function Toolbar({ editor, campusId, showEditorPlugins, showMediaRecorder }: { e
 
   return (
     <>
-      <LinkDialog
-        open={linkOpen}
-        initial={{
-          href: editor.getAttributes('link').href ?? '',
-          title: editor.getAttributes('link').title,
-          target: editor.getAttributes('link').target,
-        }}
-        onConfirm={({ href, title, target }) => {
-          editor.chain().focus().setLink({ href, target: target || undefined, ...(title ? { title } : {}) } as any).run()
-          setLinkOpen(false)
-        }}
-        onClose={() => setLinkOpen(false)}
-      />
-      <ImageDialog
-        open={imageOpen}
-        initial={{ src: editor.getAttributes('image').src ?? '', alt: editor.getAttributes('image').alt }}
-        onConfirm={({ src, alt }) => {
-          editor.chain().focus().setImage({ src, alt: alt || undefined } as any).run()
-          setImageOpen(false)
-        }}
-        onClose={() => setImageOpen(false)}
-      />
+      {linkOpen && (
+        <LinkDialog
+          open={linkOpen}
+          initial={{
+            href: editor.getAttributes('link').href ?? '',
+            title: editor.getAttributes('link').title,
+            target: editor.getAttributes('link').target,
+          }}
+          onConfirm={({ href, title, target }) => {
+            editor.chain().focus().setLink({ href, target: target || undefined, ...(title ? { title } : {}) } as any).run()
+            setLinkOpen(false)
+          }}
+          onClose={() => setLinkOpen(false)}
+        />
+      )}
+      {imageOpen && (
+        <ImageDialog
+          open={imageOpen}
+          initial={{ src: editor.getAttributes('image').src ?? '', alt: editor.getAttributes('image').alt }}
+          onConfirm={({ src, alt }) => {
+            editor.chain().focus().setImage({ src, alt: alt || undefined } as any).run()
+            setImageOpen(false)
+          }}
+          onClose={() => setImageOpen(false)}
+        />
+      )}
       {showEditorPlugins && (
         <FormulaEditorDialog
           open={formulaOpen}
@@ -367,7 +371,13 @@ interface RichTextEditorProps {
   showMediaRecorder?: boolean
 }
 
-export function RichTextEditor({ value, onChange, campusId, showEditorPlugins, showMediaRecorder }: RichTextEditorProps) {
+export interface RichTextEditorHandle {
+  /** Insert text at the current cursor position (or append if no cursor). */
+  insertText: (text: string) => void
+}
+
+export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(
+  function RichTextEditor({ value, onChange, campusId, showEditorPlugins, showMediaRecorder }, ref) {
   const isMounted = useRef(false)
 
   const editor = useEditor({
@@ -394,6 +404,14 @@ export function RichTextEditor({ value, onChange, campusId, showEditorPlugins, s
     },
   })
 
+  // Expose insertText imperative handle. useImperativeHandle MUST be called
+  // before any early return so that hook call order is stable across renders.
+  useImperativeHandle(ref, () => ({
+    insertText: (text: string) => {
+      editor?.chain().focus().insertContent(text).run()
+    },
+  }), [editor])
+
   // Sync external value changes (e.g. after load from API).
   // Skip the very first run — the editor is already initialised with `value`
   // from the `content` option above, so calling setContent immediately would
@@ -403,7 +421,10 @@ export function RichTextEditor({ value, onChange, campusId, showEditorPlugins, s
       isMounted.current = true
       return
     }
-    if (editor && value !== editor.getHTML()) {
+    if (!editor) return
+    const currentHtml = editor.getHTML()
+    const isBothEmpty = (!value || value.trim() === '' || value === '<p></p>') && (editor.isEmpty || currentHtml === '<p></p>' || currentHtml === '')
+    if (!isBothEmpty && value !== currentHtml) {
       editor.commands.setContent(value || '', { emitUpdate: false })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -416,4 +437,4 @@ export function RichTextEditor({ value, onChange, campusId, showEditorPlugins, s
       <Toolbar editor={editor} campusId={campusId} showEditorPlugins={showEditorPlugins} showMediaRecorder={showMediaRecorder} />
     </div>
   )
-}
+})

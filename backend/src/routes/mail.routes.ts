@@ -15,6 +15,7 @@ import {
   sendDisciplineLogToParentsEmail,
   sendReportCardsToParentsEmail,
   sendBalancesToParentsEmail,
+  fetchBulkSendRun,
 } from '../controllers/mail.controller'
 
 const router = Router()
@@ -23,6 +24,9 @@ router.use(authenticate)
 
 // Email log
 router.get('/log', requireAdmin, fetchEmailLog)
+
+// Bulk send run status (polled by the frontend for a progress bar)
+router.get('/bulk-runs/:runId', requireAdmin, fetchBulkSendRun)
 
 // Send to recipients
 router.post('/send-students', requireAdmin, sendToStudents)

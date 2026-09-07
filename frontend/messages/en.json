@@ -696,6 +696,7 @@
     "resources": "Edu Resources",
     "embedded_resources": "Embedded Resources",
     "anatomy_3d": "My Body 360°",
+    "human_atlas": "Human Atlas",
     "dashboards": "Dashboards",
     "school_inventory": "School Inventory",
     "inventory_snapshots": "Inventory Snapshots",
@@ -763,6 +764,7 @@
     "circuit_simulator": "Circuit Simulator",
     "calculators_arena": "Calculators Arena",
     "interactive_geometry": "Interactive Geometry",
+    "mental_math": "Mental Math",
     "my_worksheet": "My Worksheet",
     "qirtasi_curriculum": "Curriculum Manager",
     "arabic_fluency": "Arabic Fluency",
@@ -4184,6 +4186,23 @@
         "msg_delete_success": "Deleted {count} student(s)",
         "msg_delete_partial": "Deleted {count} student(s), {errors} failed",
         "msg_delete_failed": "Failed to delete students"
+      },
+      "group_assign": {
+        "title": "Group Assign",
+        "subtitle": "Assign grade, section, status, or Other Info fields to a group of students in one action. Fields left blank are not applied.",
+        "btn_group_assign": "Group Assign",
+        "save_button": "Save",
+        "dont_change": "— Don't change —",
+        "students_found": "{count} student(s) found",
+        "selected_count": "{count} selected",
+        "toast": {
+          "select_student": "Select at least one student",
+          "nothing_to_assign": "Fill in at least one field to assign",
+          "success": "{count} student(s) updated successfully",
+          "partial_success": "{updated} student(s) updated, {failed} failed",
+          "operation_failed": "Group assign failed",
+          "load_students_failed": "Failed to load students"
+        }
       },
       "add_student": {
         "credentials_title": "Student Login Credentials",
@@ -8998,6 +9017,8 @@
       "vlaby_desc": "Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) directly inside the portal. Available in English, Arabic, French, German & Indonesian.",
       "periodic_table_name": "J Periodic Table",
       "periodic_table_desc": "Interactive periodic table with 118 elements, 3D atom models, chemical equation balancer, molar mass calculator, and worksheet generator — all self-contained with no login required.",
+      "human_atlas_name": "Human Atlas",
+      "human_atlas_desc": "Interactive 3D whole-body anatomy explorer — 2,234 selectable structures across 15 systems from the BodyParts3D dataset, full-text search, an exploded-view slider, and short educational descriptions per structure. Self-contained, no login required.",
       "arabic_fluency_name": "Arabic Fluency طلاقة الفصحى",
       "arabic_fluency_desc": "Self-contained Arabic reading fluency drills with audio pronunciation practice across 18 lesson sets — no login required.",
       "physics_virtual_labs_name": "Physics Lab IGCSI + A-LEVEL",

@@ -46,6 +46,7 @@ import {
   Video,
   Languages,
   FileStack,
+  Dna,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -799,6 +800,30 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
           { title: 'marking_period_groups', href: '/admin/settings/marking-period-groups', icon: CalendarRange },
         ],
       },
+    ],
+  },
+
+  // ── Human Atlas ───────────────────────────────────────────────────────────
+  // Whole-body 3D anatomy explorer (BodyParts3D dataset), vendored as a
+  // static build and shown via iframe — separate from the always-on
+  // anatomy_3d organ-hotspot viewer used by quiz-building (lib/anatomy),
+  // which is untouched. Sidebar entry comes only from sidebarInjections
+  // below (no hardcoded sidebar.ts line) so isPluginActive('human_atlas')
+  // in DashboardLayout actually gates the link, and each role page also
+  // checks the toggle itself to block direct-URL access when disabled.
+  {
+    id: 'human_atlas',
+    name: 'Human Atlas',
+    description:
+      'Interactive 3D whole-body anatomy explorer — 2,234 selectable structures across 15 systems from the BodyParts3D dataset, full-text search, an exploded-view slider, and short educational descriptions per structure. Self-contained, no login required.',
+    icon: Dna,
+    category: 'Resources',
+    settingsHref: '/admin/resources/human-atlas',
+    sidebarInjections: [
+      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/admin/resources/human-atlas', icon: Dna }], roles: ['admin'] },
+      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/teacher/resources/human-atlas', icon: Dna }], roles: ['teacher'] },
+      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/student/resources/human-atlas', icon: Dna }], roles: ['student'] },
+      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/parent/resources/human-atlas', icon: Dna }], roles: ['parent'] },
     ],
   },
 

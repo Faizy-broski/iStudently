@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
@@ -12,7 +12,9 @@ import { useAuth } from "@/context/AuthContext"
 import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { RichTextEditor, type RichTextEditorHandle } from "@/components/ui/rich-text-editor"
+import { SubstitutionFieldPicker } from "@/components/shared/SubstitutionFieldPicker"
+import { getSubstitutionGroupsForTab } from "@/lib/substitution-fields"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -51,6 +53,9 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   const isTeacher = profile?.role === "teacher"
   const { gradeLevels } = useGradeLevels()
   const { sections: allSections } = useSections()
+
+  // Ref for the body RichTextEditor — used to insert substitution tokens at cursor
+  const richTextRef = useRef<RichTextEditorHandle>(null)
 
   const [subject, setSubject] = useState("")
   const [body, setBody] = useState("")
@@ -113,28 +118,33 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
     setLoadingRecipients(true)
     try {
       const filterApplies = recipientTab === "students" || recipientTab === "parents"
+      // Always fetch the full filtered/searched set (the server's listRecipients
+      // already filters in-memory before paginating, so limit:1000 returns the
+      // true complete set). Pagination is then applied client-side so "select all"
+      // actually means all results, not just the visible page.
       const res = await messagingApi.listRecipients(
         recipientTab,
         search.trim() || undefined,
         selectedCampusId,
         filterApplies && selectedGradeIds.length > 0 ? selectedGradeIds : undefined,
         filterApplies && selectedSectionIds.length > 0 ? selectedSectionIds : undefined,
-        recipientPage,
-        RECIPIENT_PAGE_SIZE
+        1,
+        1000
       )
-      const options = res.success && res.data ? res.data : []
-      setRecipientOptions(options)
-      setRecipientTotal(res.pagination?.total ?? 0)
-      setRecipientTotalPages(res.pagination?.totalPages ?? 0)
+      const allOptions = res.success && res.data ? res.data : []
+      setRecipientOptions(allOptions)
+      setRecipientTotal(allOptions.length)
+      setRecipientTotalPages(Math.max(1, Math.ceil(allOptions.length / RECIPIENT_PAGE_SIZE)))
     } finally {
       setLoadingRecipients(false)
     }
-  }, [recipientTab, search, selectedCampusId, selectedGradeIds, selectedSectionIds, recipientPage])
+  }, [recipientTab, search, selectedCampusId, selectedGradeIds, selectedSectionIds])
 
   // Any filter/tab/search change should restart pagination from page 1.
   useEffect(() => {
-    setRecipientPage(1)
+    setRecipientPage((prev) => (prev === 1 ? prev : 1))
   }, [recipientTab, search, selectedCampusId, selectedGradeIds, selectedSectionIds])
+
 
   // Sections belonging to any currently-selected grade — purely client-side,
   // useSections() already fetches every campus section unconditionally.
@@ -153,7 +163,14 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
 
   // Drop any selected sections that no longer belong to a currently selected grade.
   useEffect(() => {
-    setSelectedSectionIds((prev) => prev.filter((id) => sections.some((s) => s.id === id)))
+    setSelectedSectionIds((prev) => {
+      if (prev.length === 0) return prev
+      const valid = prev.filter((id) => sections.some((s) => s.id === id))
+      if (valid.length === prev.length && valid.every((id, idx) => id === prev[idx])) {
+        return prev
+      }
+      return valid
+    })
   }, [sections])
 
   useEffect(() => {
@@ -169,6 +186,14 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
     })
   }
 
+  // Client-side page slice — recipientOptions holds the full filtered set,
+  // only this slice is rendered in the list.
+  const visibleRecipients = recipientOptions.slice(
+    (recipientPage - 1) * RECIPIENT_PAGE_SIZE,
+    recipientPage * RECIPIENT_PAGE_SIZE
+  )
+
+  // "Select all" now covers the TRUE full filtered set, not just the visible page.
   const allVisibleSelected = recipientOptions.length > 0 && recipientOptions.every((o) => selectedProfileIds.has(o.profileId))
 
   const toggleSelectAllVisible = () => {
@@ -182,6 +207,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
       return next
     })
   }
+
 
   const applyTemplate = (templateId: string) => {
     setSelectedTemplateId(templateId)
@@ -291,7 +317,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
           {templates.length > 0 && (
             <div className="space-y-1.5 max-w-sm">
               <Label>{t('useATemplate')}</Label>
-              <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+              <Select value={selectedTemplateId || undefined} onValueChange={applyTemplate}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('chooseASavedTemplate')} />
                 </SelectTrigger>
@@ -317,15 +343,26 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="body">
               {t('message')} <span className="text-destructive">*</span>
             </Label>
             <RichTextEditor
+              ref={richTextRef}
               value={body}
               onChange={setBody}
               campusId={selectedCampusId}
               showMediaRecorder
+            />
+            {/* Rosario-style token picker — key changes when tab changes so Select updates */}
+            <SubstitutionFieldPicker
+              key={recipientTab}
+              groups={getSubstitutionGroupsForTab(recipientTab)}
+              onInsert={(tok) => richTextRef.current?.insertText(tok)}
+              onCopy={(tok) => navigator.clipboard.writeText(tok)}
+              placeholder="Display Name"
+              substitutionsLabel="Substitutions"
+              infoText="Personalization variables will be replaced with each recipient's actual details."
             />
           </div>
 
@@ -473,7 +510,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               <TabsContent value="teachers" className="mt-3">
                 <RecipientList
                   loading={loadingRecipients}
-                  items={recipientOptions}
+                  items={visibleRecipients}
+                  totalCount={recipientTotal}
                   selected={selectedProfileIds}
                   onToggle={toggleRecipient}
                   allSelected={allVisibleSelected}
@@ -484,7 +522,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
             <TabsContent value="staff" className="mt-3">
               <RecipientList
                 loading={loadingRecipients}
-                items={recipientOptions}
+                items={visibleRecipients}
+                totalCount={recipientTotal}
                 selected={selectedProfileIds}
                 onToggle={toggleRecipient}
                 allSelected={allVisibleSelected}
@@ -495,7 +534,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               <TabsContent value="parents" className="mt-3">
                 <RecipientList
                   loading={loadingRecipients}
-                  items={recipientOptions}
+                  items={visibleRecipients}
+                  totalCount={recipientTotal}
                   selected={selectedProfileIds}
                   onToggle={toggleRecipient}
                   allSelected={allVisibleSelected}
@@ -507,7 +547,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               <TabsContent value="students" className="mt-3">
                 <RecipientList
                   loading={loadingRecipients}
-                  items={recipientOptions}
+                  items={visibleRecipients}
+                  totalCount={recipientTotal}
                   selected={selectedProfileIds}
                   onToggle={toggleRecipient}
                   allSelected={allVisibleSelected}
@@ -535,6 +576,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
 function RecipientList({
   loading,
   items,
+  totalCount,
   selected,
   onToggle,
   allSelected,
@@ -542,6 +584,7 @@ function RecipientList({
 }: {
   loading: boolean
   items: { profileId: string; name: string; subtitle?: string }[]
+  totalCount?: number
   selected: Set<string>
   onToggle: (profileId: string) => void
   allSelected: boolean
@@ -562,7 +605,7 @@ function RecipientList({
       >
         <Checkbox checked={allSelected} onCheckedChange={onToggleSelectAll} onClick={(e) => e.stopPropagation()} />
         <div className="text-sm font-medium">
-          {t('selectAllResults', { count: items.length })}
+          {t('selectAllResults', { count: totalCount ?? items.length })}
         </div>
       </div>
       {items.map((item) => {

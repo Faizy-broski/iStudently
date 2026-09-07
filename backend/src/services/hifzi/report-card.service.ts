@@ -1,17 +1,13 @@
-import puppeteer, { Browser } from 'puppeteer'
 import { supabase } from '../../config/supabase'
 import { hifziHeatmapService } from './heatmap.service'
 import { createHifziMediaSignedUrl, HIFZI_MEDIA_BUCKET } from './signed-url.service'
+import { escapeHtml, renderHtmlToPdf } from '../../utils/html-pdf.util'
 
 // ============================================================================
-// Report card PDF — mirrors backend/src/services/fina/monthly-report.service.ts
-// line-for-line: build an HTML string, headless-Chromium render, upload the
-// buffer to the private 'hifzi-media' bucket, return a signed URL.
+// Report card PDF — build an HTML string, render via the shared
+// html-pdf.util plugin, upload the buffer to the private 'hifzi-media'
+// bucket, return a signed URL.
 // ============================================================================
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
-}
 
 interface ReportCardData {
   studentName: string
@@ -114,42 +110,10 @@ function renderReportCardHtml(d: ReportCardData): string {
 </html>`
 }
 
-// A cold Chromium launch is hundreds of ms to a few seconds by itself, so a
-// single browser process is launched lazily and reused across requests
-// instead of launched-and-closed on every PDF — only the (cheap) page is
-// per-request. Relaunched automatically if the shared process has died.
-let sharedBrowserPromise: Promise<Browser> | null = null
-
-async function getSharedBrowser(): Promise<Browser> {
-  if (sharedBrowserPromise) {
-    const browser = await sharedBrowserPromise
-    if (browser.connected) return browser
-    sharedBrowserPromise = null
-  }
-  sharedBrowserPromise = puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-gpu'],
-    executablePath: process.env.HIFZI_PUPPETEER_EXECUTABLE_PATH || process.env.FINA_PUPPETEER_EXECUTABLE_PATH || undefined,
-  })
-  return sharedBrowserPromise
-}
-
-async function renderPdf(html: string): Promise<Buffer> {
-  const browser = await getSharedBrowser()
-  const page = await browser.newPage()
-  try {
-    await page.setContent(html, { waitUntil: 'domcontentloaded' })
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20px', bottom: '20px' } })
-    return Buffer.from(pdf)
-  } finally {
-    await page.close()
-  }
-}
-
 export async function generateReportCard(studentId: string, schoolId: string): Promise<{ storageKey: string; signedUrl: string | null }> {
   const data = await computeReportCardData(studentId, schoolId)
   const html = renderReportCardHtml(data)
-  const pdfBuffer = await renderPdf(html)
+  const pdfBuffer = await renderHtmlToPdf(html)
 
   const storageKey = `${schoolId}/report-cards/${studentId}-${Date.now()}.pdf`
   const { error: uploadError } = await supabase.storage.from(HIFZI_MEDIA_BUCKET).upload(storageKey, pdfBuffer, { contentType: 'application/pdf', upsert: true })

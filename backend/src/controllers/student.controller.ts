@@ -633,4 +633,57 @@ export class StudentController {
       res.status(500).json({ success: false, error: error.message || 'Bulk update status failed' })
     }
   }
+
+  /**
+   * Group Assign: apply grade level / section / active status / custom fields
+   * to a selected group of students in one action. Any field omitted is left
+   * untouched on every selected student.
+   * POST /api/students/group-assign
+   * Requires: admin role
+   * Body: { student_ids: string[], grade_level_id?: string, section_id?: string,
+   *         is_active?: boolean, custom_field_updates?: {category_id, field_key, value}[], campus_id?: string }
+   */
+  async groupAssignStudents(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const adminSchoolId = req.profile?.school_id
+
+      if (!adminSchoolId) {
+        res.status(403).json({ success: false, error: 'No school associated with your account' })
+        return
+      }
+
+      const { student_ids, grade_level_id, section_id, is_active, custom_field_updates, campus_id } = req.body
+
+      if (!Array.isArray(student_ids) || student_ids.length === 0) {
+        res.status(400).json({ success: false, error: 'student_ids is required and must be a non-empty array' })
+        return
+      }
+
+      const hasCustomFieldUpdates = Array.isArray(custom_field_updates) && custom_field_updates.length > 0
+      if (grade_level_id === undefined && is_active === undefined && !hasCustomFieldUpdates) {
+        res.status(400).json({ success: false, error: 'Provide at least one field to assign (grade_level_id, is_active, or custom_field_updates)' })
+        return
+      }
+
+      const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
+      const result = await studentService.groupAssignStudents(effectiveSchoolId, {
+        student_ids,
+        grade_level_id,
+        section_id,
+        is_active: is_active === undefined ? undefined : Boolean(is_active),
+        custom_field_updates
+      })
+
+      res.json({
+        success: true,
+        data: result,
+        message: result.errors.length > 0
+          ? `${result.updated} student(s) updated, ${result.errors.length} failed`
+          : `${result.updated} student(s) updated successfully`
+      })
+    } catch (error: any) {
+      console.error('Group assign students error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Group assign failed' })
+    }
+  }
 }

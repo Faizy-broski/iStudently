@@ -119,6 +119,16 @@ router.post('/bulk-status', requireRole('admin'), (req, res) =>
 )
 
 /**
+ * POST /api/students/group-assign
+ * Assign grade level / section / active status / custom fields to a group of
+ * selected students in one action. Omitted fields are left untouched.
+ * Admin only
+ */
+router.post('/group-assign', requireRole('admin'), (req, res) =>
+  studentController.groupAssignStudents(req, res)
+)
+
+/**
  * POST /api/students
  * Create a new student
  * Admin only

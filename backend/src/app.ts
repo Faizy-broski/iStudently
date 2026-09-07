@@ -4,6 +4,8 @@ import path from "path";
 import { config } from "./config/env";
 import { cronService } from "./services/cron.service";
 import { startFinaJobsRunner } from "./services/fina/jobs-runner.service";
+import { startBulkSendJobsRunner } from "./services/bulk-send-jobs-runner.service";
+import { registerBulkEmailHandlers } from "./services/bulk-email-handler";
 import { reconcileOrphanedJobs } from "./services/timetable-generation.service";
 import { reconcileOrphanedImportJobs } from "./services/school-data-import.service";
 import schoolRoutes from "./routes/school.routes";
@@ -513,6 +515,8 @@ app.listen(PORT, () => {
   console.log("\n⏰ Starting automated services...");
   cronService.init();
   startFinaJobsRunner();
+  registerBulkEmailHandlers();
+  startBulkSendJobsRunner();
   startAuditChainVerifyCron();
   startMonthlyReportCron();
   startRetentionPurgeCron();

@@ -74,10 +74,18 @@ export const updateLogoAppearance = async (
  * don't need a second per-row request. Schools with no school_settings row
  * yet fall back to the defaults.
  */
-export async function attachLogoAppearance<T extends { id: string }>(rows: T[]): Promise<(T & LogoAppearance)[]> {
+export async function attachLogoAppearance<T extends { id: string; parent_school_id?: string | null }>(
+  rows: T[]
+): Promise<(T & LogoAppearance)[]> {
   if (rows.length === 0) return []
 
-  const ids = rows.map((r) => r.id)
+  const ids = Array.from(
+    new Set(
+      rows
+        .flatMap((r) => [r.id, r.parent_school_id])
+        .filter((id): id is string => Boolean(id))
+    )
+  )
   const { data } = await supabase
     .from('school_settings')
     .select('school_id, logo_shape, logo_border_width, logo_border_color')
@@ -87,7 +95,7 @@ export async function attachLogoAppearance<T extends { id: string }>(rows: T[]):
   const bySchoolId = new Map((data || []).map((row: any) => [row.school_id, row]))
 
   return rows.map((row) => {
-    const settings = bySchoolId.get(row.id)
+    const settings = bySchoolId.get(row.id) || (row.parent_school_id ? bySchoolId.get(row.parent_school_id) : undefined)
     return {
       ...row,
       logo_shape: (settings?.logo_shape as LogoShape) || DEFAULT_LOGO_APPEARANCE.logo_shape,

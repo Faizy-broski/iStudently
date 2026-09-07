@@ -260,7 +260,22 @@ export default function CertificateTemplateBuilderPage() {
   const handleMouseUp = () => setIsDragging(false);
 
   const toggleOrientation = (orientation: 'portrait' | 'landscape') => {
-    setLayout({ ...A4[orientation], orientation });
+    const nextDims = A4[orientation];
+    // Portrait/landscape are transposed (794x1123 vs 1123x794), so a bare
+    // dimension swap leaves every field's x/y/width/height sized for the old
+    // canvas — anything placed toward the right edge in landscape (including
+    // the default title/name fields) ends up clipped off a narrower portrait
+    // canvas. Rescale each field proportionally so the layout stays intact.
+    const scaleX = nextDims.width / layout.width;
+    const scaleY = nextDims.height / layout.height;
+    setFields((prev) =>
+      prev.map((f) => ({
+        ...f,
+        position: { x: Math.round(f.position.x * scaleX), y: Math.round(f.position.y * scaleY) },
+        size: { width: Math.round(f.size.width * scaleX), height: Math.round(f.size.height * scaleY) },
+      }))
+    );
+    setLayout({ ...nextDims, orientation });
   };
 
   const handlePreview = async () => {

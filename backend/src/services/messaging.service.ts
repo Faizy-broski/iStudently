@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { substituteMessageTokens, resolveRecipientSubstitutionData } from './message-substitution.service'
 
 export interface MessageAttachmentInput {
   url: string
@@ -209,8 +210,17 @@ export class MessagingService {
       : { data: [] }
     const messageIdsWithAttachments = new Set((attachmentRows || []).map((r: any) => r.message_id))
 
+    const tokens = await resolveRecipientSubstitutionData(profileId)
+
     const enriched = (data || []).map((item: any) => ({
       ...item,
+      messages: item.messages
+        ? {
+            ...item.messages,
+            subject: substituteMessageTokens(item.messages.subject || '', tokens),
+            body: substituteMessageTokens(item.messages.body || '', tokens),
+          }
+        : item.messages,
       sender_name: this.formatProfileName(profiles.get(item.messages?.sender_profile_id)),
       has_attachments: messageIdsWithAttachments.has(item.messages?.id),
     }))
@@ -314,6 +324,8 @@ export class MessagingService {
       attachmentsByMessage.set(row.message_id, list)
     }
 
+    const tokens = await resolveRecipientSubstitutionData(profile.id)
+
     const messages: ThreadMessage[] = []
     for (const m of visible) {
       const recipientRow = recipientByMessage.get(m.id)
@@ -327,8 +339,8 @@ export class MessagingService {
 
       messages.push({
         id: m.id,
-        subject: m.subject,
-        body: m.body,
+        subject: substituteMessageTokens(m.subject || '', tokens),
+        body: substituteMessageTokens(m.body || '', tokens),
         created_at: m.created_at,
         sender_profile_id: m.sender_profile_id,
         sender_name: this.formatProfileName(profiles.get(m.sender_profile_id)),

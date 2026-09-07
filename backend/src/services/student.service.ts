@@ -52,17 +52,27 @@ export class StudentService {
     // grade_level_id while grade_level no longer matches the grade's live name.
     let gradeLevelIds: string[] | undefined
     if (gradeLevel) {
-      const names = Array.isArray(gradeLevel) ? gradeLevel : [gradeLevel]
-      const { data: grades, error: gradesError } = await supabase
-        .from('grade_levels')
-        .select('id')
-        .eq('school_id', schoolId)
-        .in('name', names)
+      const items = Array.isArray(gradeLevel) ? gradeLevel : [gradeLevel]
+      const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+      const directIds = items.filter(isUUID)
+      const names = items.filter(n => !isUUID(n))
 
-      if (gradesError) {
-        throw new Error(`Failed to resolve grade level filter: ${gradesError.message}`)
+      const resolvedIds = [...directIds]
+      if (names.length > 0) {
+        const { data: grades, error: gradesError } = await supabase
+          .from('grade_levels')
+          .select('id')
+          .or(`school_id.eq.${schoolId},campus_id.eq.${schoolId}`)
+          .in('name', names)
+
+        if (gradesError) {
+          console.error('Failed to resolve grade level filter:', gradesError.message)
+        } else if (grades) {
+          resolvedIds.push(...grades.map((g: any) => g.id))
+        }
       }
-      gradeLevelIds = (grades || []).map((g: any) => g.id)
+
+      gradeLevelIds = Array.from(new Set(resolvedIds))
       // No matching grade levels — short-circuit to an empty result instead
       // of falling through to an unfiltered query.
       if (gradeLevelIds.length === 0) {
@@ -174,7 +184,49 @@ export class StudentService {
       }
     }
 
-    // Standard query (no search or fallback)
+    // Standard query (no search, or the search_students_for_library RPC
+    // above failed/was skipped). This path previously ignored `search`
+    // entirely whenever reached — since the RPC is currently broken for
+    // every call (a schema-vs-function-signature mismatch, unrelated to
+    // this fix), that meant the main Students list's search box silently
+    // returned every student instead of filtering, whatever term was typed.
+    //
+    // Resolve matching student ids in two queries — one against the base
+    // table's student_number, one against the joined profiles' name columns
+    // — rather than one combined filter, since PostgREST can't OR a
+    // base-table column together with an embedded-table column in a single
+    // filter (same constraint and the same two-query fix already applied in
+    // library.service.ts::searchStudents).
+    let searchMatchedIds: string[] | null = null
+    if (search && search.trim()) {
+      const term = search.trim()
+      const [byNumber, byName] = await Promise.all([
+        supabase.from('students').select('id').eq('school_id', schoolId).ilike('student_number', `%${term}%`),
+        supabase
+          .from('students')
+          .select('id, profile:profiles!inner(id)')
+          .eq('school_id', schoolId)
+          .or(
+            `first_name.ilike.%${term}%,last_name.ilike.%${term}%,father_name.ilike.%${term}%,grandfather_name.ilike.%${term}%`,
+            { foreignTable: 'profiles' }
+          ),
+      ])
+
+      if (byNumber.error) throw new Error(`Failed to search students by number: ${byNumber.error.message}`)
+      if (byName.error) throw new Error(`Failed to search students by name: ${byName.error.message}`)
+
+      searchMatchedIds = Array.from(new Set([
+        ...(byNumber.data || []).map((s: any) => s.id as string),
+        ...(byName.data || []).map((s: any) => s.id as string),
+      ]))
+
+      // No matches at all — short-circuit instead of falling through to an
+      // unfiltered query.
+      if (searchMatchedIds.length === 0) {
+        return { students: [], pagination: { total: 0, page, limit, totalPages: 0 } }
+      }
+    }
+
     let query = supabase
       .from('students')
       .select(`
@@ -229,6 +281,11 @@ export class StudentService {
     // Apply section filter
     if (sectionIds?.length) {
       query = query.in('section_id', sectionIds)
+    }
+
+    // Apply the search filter resolved above (student_number or name match).
+    if (searchMatchedIds) {
+      query = query.in('id', searchMatchedIds)
     }
 
     // Apply active/inactive filter (requires inner join on profile, added above)
@@ -1222,5 +1279,103 @@ export class StudentService {
     if (updateErr) throw new Error(`Failed to update student active status: ${updateErr.message}`)
 
     return { updated: profileIds.length }
+  }
+
+  /**
+   * Group Assign: apply grade level / section / active status / custom fields
+   * to a set of students in one action. Any field left undefined/empty is left
+   * untouched on every selected student (PowerSchool-style "Group Assign").
+   *
+   * custom_fields is stored nested as { [category_id]: { [field_key]: value } }
+   * and updateStudent() wholesale-replaces it rather than merging — so whenever
+   * custom_field_updates is non-empty we must read-merge-write per student
+   * instead of using the fast batched-update path.
+   */
+  async groupAssignStudents(
+    schoolId: string,
+    params: {
+      student_ids: string[]
+      grade_level_id?: string
+      section_id?: string
+      is_active?: boolean
+      custom_field_updates?: { category_id: string; field_key: string; value: any }[]
+    }
+  ): Promise<{ updated: number; errors: { student_id: string; error: string }[] }> {
+    const errors: { student_id: string; error: string }[] = []
+    const customFieldUpdates = params.custom_field_updates || []
+
+    // 1. Resolve which requested ids actually belong to this school.
+    const { data: rows, error: fetchErr } = await supabase
+      .from('students')
+      .select('id, profile_id, custom_fields')
+      .eq('school_id', schoolId)
+      .in('id', params.student_ids)
+
+    if (fetchErr) throw new Error(`Failed to resolve students for group assign: ${fetchErr.message}`)
+
+    const validRows = rows || []
+    const validIds = new Set(validRows.map((r: any) => r.id))
+    for (const id of params.student_ids) {
+      if (!validIds.has(id)) {
+        errors.push({ student_id: id, error: 'Student not found or does not belong to this school' })
+      }
+    }
+
+    if (validRows.length === 0) {
+      return { updated: 0, errors }
+    }
+
+    // 2. is_active lives on profiles, not students — always its own independent batch.
+    if (params.is_active !== undefined) {
+      const profileIds = validRows.map((r: any) => r.profile_id).filter(Boolean)
+      if (profileIds.length > 0) {
+        const { error: statusErr } = await supabase
+          .from('profiles')
+          .update({ is_active: params.is_active })
+          .in('id', profileIds)
+        if (statusErr) throw new Error(`Failed to update active status: ${statusErr.message}`)
+      }
+    }
+
+    const flatUpdates: Record<string, any> = {}
+    if (params.grade_level_id !== undefined) flatUpdates.grade_level_id = params.grade_level_id
+    if (params.section_id !== undefined) flatUpdates.section_id = params.section_id
+
+    let updated = 0
+
+    if (customFieldUpdates.length === 0) {
+      // 3. Fast path: no custom fields touched, plain batched update.
+      if (Object.keys(flatUpdates).length > 0) {
+        const ids = validRows.map((r: any) => r.id)
+        const { error: updateErr } = await supabase
+          .from('students')
+          .update(flatUpdates)
+          .eq('school_id', schoolId)
+          .in('id', ids)
+        if (updateErr) throw new Error(`Failed to update students: ${updateErr.message}`)
+      }
+      updated = validRows.length
+    } else {
+      // 4. Merge path: read-merge-write custom_fields per student.
+      for (const row of validRows) {
+        try {
+          const merged: Record<string, any> = { ...(row.custom_fields || {}) }
+          for (const cfu of customFieldUpdates) {
+            merged[cfu.category_id] = { ...(merged[cfu.category_id] || {}), [cfu.field_key]: cfu.value }
+          }
+          const { error: rowErr } = await supabase
+            .from('students')
+            .update({ ...flatUpdates, custom_fields: merged })
+            .eq('id', row.id)
+            .eq('school_id', schoolId)
+          if (rowErr) throw new Error(rowErr.message)
+          updated++
+        } catch (err: any) {
+          errors.push({ student_id: row.id, error: err.message || String(err) })
+        }
+      }
+    }
+
+    return { updated, errors }
   }
 }

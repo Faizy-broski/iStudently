@@ -55,6 +55,70 @@ export interface SendEmailPayload {
   campus_id?: string
 }
 
+// ─── Bulk send queue ──────────────────────────────────────────────────────────
+// Every bulk-email send endpoint now enqueues a background job instead of
+// blocking the request until every recipient is emailed (see
+// backend/migrations/289_create_bulk_send_jobs.sql) — it returns a run_id
+// immediately, and the frontend polls getBulkSendRun() for progress.
+
+export interface BulkSendEnqueueResult {
+  run_id: string
+  batches_total: number
+  total_recipients: number
+}
+
+export interface BulkSendRunStatus {
+  id: string
+  kind: string
+  subject: string
+  total_recipients: number
+  batches_total: number
+  batches_done: number
+  success_count: number
+  fail_count: number
+  skipped_count: number
+  status: 'queued' | 'running' | 'completed' | 'completed_with_errors'
+  errors: EmailSendError[]
+  skipped: EmailSkippedRecipient[]
+  created_at: string
+  completed_at: string | null
+}
+
+export function isBulkSendRunTerminal(status: BulkSendRunStatus['status']): boolean {
+  return status === 'completed' || status === 'completed_with_errors'
+}
+
+export async function getBulkSendRun(runId: string) {
+  return apiRequest<BulkSendRunStatus>(`/mail/bulk-runs/${runId}`)
+}
+
+/**
+ * Polls getBulkSendRun() until the run reaches a terminal status, then
+ * returns a result shaped exactly like the old synchronous EmailSendResult
+ * so existing result-view UI needs no changes beyond the call site.
+ */
+export async function pollBulkSendRun(runId: string, intervalMs = 2000): Promise<{ success: boolean; data?: EmailSendResult; error?: string }> {
+  while (true) {
+    const res = await getBulkSendRun(runId)
+    if (!res.success || !res.data) return { success: false, error: res.error || 'Failed to fetch send status' }
+    if (isBulkSendRunTerminal(res.data.status)) {
+      const run = res.data
+      return {
+        success: true,
+        data: {
+          success_count: run.success_count,
+          fail_count: run.fail_count,
+          total: run.total_recipients,
+          errors: run.errors,
+          skipped_count: run.skipped_count,
+          skipped: run.skipped,
+        },
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+}
+
 // ─── Request helper ───────────────────────────────────────────────────────────
 
 async function apiRequest<T>(
@@ -97,14 +161,14 @@ async function apiRequest<T>(
 // ─── API functions ────────────────────────────────────────────────────────────
 
 export async function sendEmailToStudents(payload: SendEmailPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-students', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-students', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export async function sendEmailToStaff(payload: SendEmailPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-staff', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-staff', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -150,7 +214,7 @@ export interface SendDisciplineLogPayload {
 }
 
 export async function sendDisciplineLogEmail(payload: SendDisciplineLogPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-discipline-log', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-discipline-log', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -175,7 +239,7 @@ export interface SendReportCardsPayload {
 }
 
 export async function sendReportCardsEmail(payload: SendReportCardsPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-report-cards', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-report-cards', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -193,7 +257,7 @@ export interface SendBalancesPayload {
 }
 
 export async function sendBalancesEmail(payload: SendBalancesPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-balances', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-balances', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -262,28 +326,28 @@ export interface SendDaysAbsentPayload {
 }
 
 export async function sendDaysAbsentEmail(payload: SendDaysAbsentPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-days-absent', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-days-absent', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export async function sendDisciplineLogToParentsEmail(payload: SendDisciplineLogPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-discipline-log-parents', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-discipline-log-parents', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export async function sendReportCardsToParentsEmail(payload: SendReportCardsPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-report-cards-parents', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-report-cards-parents', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export async function sendBalancesToParentsEmail(payload: SendBalancesPayload) {
-  return apiRequest<EmailSendResult>('/mail/send-balances-parents', {
+  return apiRequest<BulkSendEnqueueResult>('/mail/send-balances-parents', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

@@ -228,8 +228,9 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     }
 
     if (selectedCampus.logo_shape) resolvedLogoShape = selectedCampus.logo_shape
-    if (selectedCampus.logo_border_width != null && selectedCampus.logo_border_width > 0) {
-      resolvedBorderWidth = selectedCampus.logo_border_width
+    if (selectedCampus.logo_border_width !== undefined && selectedCampus.logo_border_width !== null) {
+      const parsedWidth = Number(selectedCampus.logo_border_width)
+      if (!isNaN(parsedWidth)) resolvedBorderWidth = parsedWidth
     }
     if (selectedCampus.logo_border_color) resolvedBorderColor = selectedCampus.logo_border_color
   }

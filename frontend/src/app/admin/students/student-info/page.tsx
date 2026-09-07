@@ -97,6 +97,7 @@ type StudentSortKey = "student_number" | "name" | "grade" | "status" | "contact"
 
 export default function StudentInfoPage() {
   const t = useTranslations("school.students.student_info");
+  const tGroupAssign = useTranslations("school.students.group_assign");
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
@@ -404,6 +405,14 @@ export default function StudentInfoPage() {
               )}
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => router.push("/admin/students/group-assign")}
+              >
+                <Users className="h-4 w-4" /> {tGroupAssign("btn_group_assign")}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

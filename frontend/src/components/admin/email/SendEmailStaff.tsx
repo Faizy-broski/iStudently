@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { sendEmailToStaff } from "@/lib/api/email"
+import { useBulkSendRun } from "@/hooks/useBulkSendRun"
 import { getAllStaff } from "@/lib/api/staff"
 import type { Staff } from "@/lib/api/staff"
 import type { EmailSendResult } from "@/lib/api/email"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor, type RichTextEditorHandle } from "@/components/ui/rich-text-editor"
+import { SubstitutionFieldPicker } from "@/components/shared/SubstitutionFieldPicker"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,7 +39,7 @@ const STAFF_SUB_KEYS = [
 
 export function SendEmailStaff() {
   const t = useTranslations("email")
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const richTextRef = useRef<RichTextEditorHandle>(null)
   const campusContext = useCampus()
   const selectedCampusId = campusContext?.selectedCampus?.id
 
@@ -61,6 +63,42 @@ export function SendEmailStaff() {
 
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<EmailSendResult | null>(null)
+  const [runId, setRunId] = useState<string | null>(null)
+  const { run, error: runError, isDone } = useBulkSendRun(runId)
+
+  useEffect(() => {
+    if (!isDone || !run) return
+    setResult({
+      success_count: run.success_count,
+      fail_count: run.fail_count,
+      total: run.total_recipients,
+      errors: run.errors,
+      skipped_count: run.skipped_count,
+      skipped: run.skipped,
+    })
+    setSending(false)
+    setRunId(null)
+    const skippedSuffix = run.skipped_count ? ` (${run.skipped_count} skipped — no email on file)` : ""
+    if (run.fail_count === 0) {
+      toast.success(t("success_msg", { count: run.success_count }) + skippedSuffix)
+    } else {
+      toast.warning(t("partial_success_msg", { success: run.success_count, fail: run.fail_count }) + skippedSuffix)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDone, run])
+
+  useEffect(() => {
+    if (runError) {
+      toast.error(runError)
+      setSending(false)
+      setRunId(null)
+    }
+  }, [runError])
+
+  const sendingLabel =
+    run && run.batches_total > 0 && !isDone
+      ? `${t("sending")} (${Math.round((run.batches_done / run.batches_total) * 100)}%)`
+      : t("sending")
 
   const fetchStaff = useCallback(async () => {
     setLoadingStaff(true)
@@ -78,17 +116,8 @@ export function SendEmailStaff() {
     return () => clearTimeout(timer)
   }, [fetchStaff])
 
-  const insertSub = (key: string) => {
-    const ta = textareaRef.current
-    if (!ta) return
-    const start = ta.selectionStart
-    const end = ta.selectionEnd
-    const tag = `{{${key}}}`
-    setBody(body.substring(0, start) + tag + body.substring(end))
-    setTimeout(() => {
-      ta.selectionStart = ta.selectionEnd = start + tag.length
-      ta.focus()
-    }, 0)
+  const insertSub = (token: string) => {
+    richTextRef.current?.insertText(token)
   }
 
   const staffWithEmail = staffList.filter((s) => !!s.profile?.email)
@@ -119,27 +148,18 @@ export function SendEmailStaff() {
 
     setSending(true)
     setResult(null)
-    try {
-      const res = await sendEmailToStaff({
-        recipient_ids: Array.from(selectedIds),
-        subject,
-        body,
-        test_email: testEmail.trim() || undefined,
-        campus_id: selectedCampusId,
-      })
+    const res = await sendEmailToStaff({
+      recipient_ids: Array.from(selectedIds),
+      subject,
+      body,
+      test_email: testEmail.trim() || undefined,
+      campus_id: selectedCampusId,
+    })
 
-      if (res.success && res.data) {
-        setResult(res.data)
-        const skippedSuffix = res.data.skipped_count ? ` (${res.data.skipped_count} skipped — no email on file)` : ""
-        if (res.data.fail_count === 0) {
-          toast.success(t("success_msg", { count: res.data.success_count }) + skippedSuffix)
-        } else {
-          toast.warning(t("partial_success_msg", { success: res.data.success_count, fail: res.data.fail_count }) + skippedSuffix)
-        }
-      } else {
-        toast.error(res.error || t("send_failed"))
-      }
-    } finally {
+    if (res.success && res.data) {
+      setRunId(res.data.run_id)
+    } else {
+      toast.error(res.error || t("send_failed"))
       setSending(false)
     }
   }
@@ -257,40 +277,26 @@ export function SendEmailStaff() {
           </div>
 
           {/* Body */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="body">
               {t("body_label")} <span className="text-destructive">*</span>
-              <span className="ml-2 text-xs text-muted-foreground font-normal">{t("html_supported")}</span>
             </Label>
-            <Textarea
-              id="body"
-              ref={textareaRef}
+            <RichTextEditor
+              ref={richTextRef}
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder={t("body_placeholder")}
-              rows={8}
-              className="font-mono text-sm resize-y"
+              onChange={setBody}
+              campusId={selectedCampusId}
+              showMediaRecorder
             />
-          </div>
-
-          {/* Substitution chips */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
-              {t("substitution_chips_label")}
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {STAFF_SUB_KEYS.map((sub) => (
-                <button
-                  key={sub.key}
-                  type="button"
-                  onClick={() => insertSub(sub.key)}
-                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border bg-muted hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
-                >
-                  {t(sub.labelKey)}
-                  <span className="opacity-60 font-mono">{`{{${sub.key}}}`}</span>
-                </button>
-              ))}
-            </div>
+            {/* Rosario-style Substitution Field Picker */}
+            <SubstitutionFieldPicker
+              fields={STAFF_SUB_KEYS.map((sub) => ({ id: `{{${sub.key}}}`, label: t(sub.labelKey) }))}
+              onInsert={(token) => insertSub(token)}
+              onCopy={(token) => navigator.clipboard.writeText(token)}
+              placeholder="Display Name"
+              substitutionsLabel="Substitutions"
+              infoText="Variables will be replaced with each recipient's actual details."
+            />
           </div>
 
           <Separator />
@@ -338,7 +344,7 @@ export function SendEmailStaff() {
                 disabled={sending || selectedIds.size === 0}
                 size="sm"
               >
-                {sending ? t("sending") : (
+                {sending ? sendingLabel : (
                   <>
                     <Send className="h-3.5 w-3.5 mr-1.5" />
                     {t("send_btn_staff", { count: selectedIds.size || 0 })}
@@ -486,7 +492,7 @@ export function SendEmailStaff() {
               onClick={handleSubmit}
               disabled={sending || selectedIds.size === 0}
             >
-              {sending ? t("sending") : (
+              {sending ? sendingLabel : (
                 <>
                   <Send className="h-4 w-4 mr-1.5" />
                   {t("send_btn_staff", { count: selectedIds.size })}

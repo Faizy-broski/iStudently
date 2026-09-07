@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { sendEmailToStudents } from "@/lib/api/email"
+import { useBulkSendRun } from "@/hooks/useBulkSendRun"
 import { getStudents } from "@/lib/api/students"
 import { getAllStaff } from "@/lib/api/staff"
 import type { Staff } from "@/lib/api/staff"
@@ -9,7 +10,8 @@ import type { EmailSendResult } from "@/lib/api/email"
 import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor, type RichTextEditorHandle } from "@/components/ui/rich-text-editor"
+import { SubstitutionFieldPicker } from "@/components/shared/SubstitutionFieldPicker"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,6 +29,7 @@ import {
   AlertTriangle,
   FlaskConical,
   RotateCcw,
+  Loader2,
 } from "lucide-react"
 import { useCampus } from "@/context/CampusContext"
 import { useTranslations } from "next-intl"
@@ -49,11 +52,15 @@ export function SendEmailStudents() {
   const tCommon = useTranslations("common")
   const tFields = useTranslations("school.students.custom_fields.standard_fields")
   
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const richTextRef = useRef<RichTextEditorHandle>(null)
   const campusContext = useCampus()
   const selectedCampusId = campusContext?.selectedCampus?.id
 
   const studentSubsKeys = useMemo(() => GET_STUDENT_SUBS_KEYS(tFields), [tFields])
+  const substitutionFields = useMemo(() => studentSubsKeys.map((s) => ({
+    id: `{{${s.key}}}`,
+    label: s.labelKey,
+  })), [studentSubsKeys])
 
   // Grade / section filter
   const { gradeLevels } = useGradeLevels()
@@ -84,6 +91,39 @@ export function SendEmailStudents() {
   // Send state
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<EmailSendResult | null>(null)
+  const [runId, setRunId] = useState<string | null>(null)
+  const { run, error: runError, isDone } = useBulkSendRun(runId)
+
+  // Once the queued run finishes, convert it into the same EmailSendResult
+  // shape the result view below already renders — no JSX changes needed.
+  useEffect(() => {
+    if (!isDone || !run) return
+    setResult({
+      success_count: run.success_count,
+      fail_count: run.fail_count,
+      total: run.total_recipients,
+      errors: run.errors,
+      skipped_count: run.skipped_count,
+      skipped: run.skipped,
+    })
+    setSending(false)
+    setRunId(null)
+    const skippedSuffix = run.skipped_count ? ` (${run.skipped_count} skipped — no email on file)` : ""
+    if (run.fail_count === 0) {
+      toast.success(t("success_msg", { count: run.success_count }) + skippedSuffix)
+    } else {
+      toast.warning(t("partial_success_msg", { success: run.success_count, fail: run.fail_count }) + skippedSuffix)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDone, run])
+
+  useEffect(() => {
+    if (runError) {
+      toast.error(runError)
+      setSending(false)
+      setRunId(null)
+    }
+  }, [runError])
 
   // ── Fetch students (debounced search) ──────────────────────────────────────
 
@@ -92,24 +132,22 @@ export function SendEmailStudents() {
   const fetchStudents = useCallback(async () => {
     setLoadingStudents(true)
     try {
-      const selectedGradeNames = selectedGradeIds.length > 0
-        ? selectedGradeIds.map((id) => gradeLevels.find((g) => g.id === id)?.name).filter((n): n is string => !!n)
-        : undefined
       const res = await getStudents({
-        page,
-        limit: PAGE_SIZE,
+        page: 1,
+        limit: 1000,
         search: search.trim() || undefined,
         campus_id: selectedCampusId,
-        grade_level: selectedGradeNames,
+        grade_level: selectedGradeIds.length > 0 ? selectedGradeIds : undefined,
         section_id: selectedSectionIds.length > 0 ? selectedSectionIds : undefined,
       })
-      setStudents((res.data as any) || [])
-      setTotal(res.pagination?.total ?? 0)
-      setTotalPages(res.pagination?.totalPages ?? 0)
+      const list = (res.data as any) || []
+      setStudents(list)
+      setTotal(list.length)
+      setTotalPages(Math.max(1, Math.ceil(list.length / PAGE_SIZE)))
     } finally {
       setLoadingStudents(false)
     }
-  }, [page, search, selectedCampusId, selectedGradeIds, selectedSectionIds, gradeLevels])
+  }, [search, selectedCampusId, selectedGradeIds, selectedSectionIds, gradeLevels])
 
   useEffect(() => {
     const timer = setTimeout(fetchStudents, 350)
@@ -119,7 +157,7 @@ export function SendEmailStudents() {
   // Any filter change should restart pagination from page 1 — otherwise a
   // narrower result set could leave `page` pointing past the new totalPages.
   useEffect(() => {
-    setPage(1)
+    setPage((prev) => (prev === 1 ? prev : 1))
   }, [search, selectedCampusId, selectedGradeIds, selectedSectionIds])
 
   // ── Sections belonging to any currently-selected grade (client-side; ───────
@@ -139,7 +177,14 @@ export function SendEmailStudents() {
   }, [allSections, selectedGradeIds, gradeLevels])
 
   useEffect(() => {
-    setSelectedSectionIds((prev) => prev.filter((id) => sections.some((s) => s.id === id)))
+    setSelectedSectionIds((prev) => {
+      if (prev.length === 0) return prev
+      const valid = prev.filter((id) => sections.some((s) => s.id === id))
+      if (valid.length === prev.length && valid.every((id, idx) => id === prev[idx])) {
+        return prev
+      }
+      return valid
+    })
   }, [sections])
 
   // ── Fetch staff for CC ─────────────────────────────────────────────────────
@@ -153,27 +198,41 @@ export function SendEmailStudents() {
 
   // ── Substitution insert at cursor ──────────────────────────────────────────
 
-  const insertSub = (key: string) => {
-    const ta = textareaRef.current
-    if (!ta) return
-    const start = ta.selectionStart
-    const end = ta.selectionEnd
-    const tag = `{{${key}}}`
-    setBody(body.substring(0, start) + tag + body.substring(end))
-    setTimeout(() => {
-      ta.selectionStart = ta.selectionEnd = start + tag.length
-      ta.focus()
-    }, 0)
+  const insertSub = (token: string) => {
+    richTextRef.current?.insertText(token)
   }
 
   // ── Selection helpers ──────────────────────────────────────────────────────
 
-  const studentsWithEmail = students.filter((s) => !!s.profile?.email)
+  const visibleStudents = students.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const studentsWithEmail = useMemo(() => students.filter((s) => !!s.profile?.email), [students])
+  const validSelectedIds = useMemo(() => {
+    const emailIds = new Set(studentsWithEmail.map((s) => s.id))
+    return Array.from(selectedIds).filter((id) => emailIds.has(id))
+  }, [selectedIds, studentsWithEmail])
+
+  // Automatically prune any stale selected IDs that do not have an email on file
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev
+      const emailIds = new Set(studentsWithEmail.map((s) => s.id))
+      const pruned = new Set(Array.from(prev).filter((id) => emailIds.has(id)))
+      if (pruned.size === prev.size) return prev
+      return pruned
+    })
+  }, [studentsWithEmail])
+
   const allSelected =
     studentsWithEmail.length > 0 &&
     studentsWithEmail.every((s) => selectedIds.has(s.id))
 
-  const toggleStudent = (id: string) => {
+  const sendingLabel =
+    run && run.batches_total > 0 && !isDone
+      ? `${t("sending")} (${Math.round((run.batches_done / run.batches_total) * 100)}%)`
+      : t("sending")
+
+  const toggleStudent = (id: string, hasEmail: boolean) => {
+    if (!hasEmail) return
     setSelectedIds((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
@@ -200,32 +259,25 @@ export function SendEmailStudents() {
   const handleSubmit = async () => {
     if (!subject.trim()) { toast.error(t("subject_required")); return }
     if (!body.trim()) { toast.error(t("body_required")); return }
-    if (selectedIds.size === 0) { toast.error(t("select_student_error")); return }
+    if (validSelectedIds.length === 0) { toast.error(t("select_student_error")); return }
 
     setSending(true)
     setResult(null)
-    try {
-      const res = await sendEmailToStudents({
-        recipient_ids: Array.from(selectedIds),
-        subject,
-        body,
-        test_email: testEmail.trim() || undefined,
-        cc_emails: ccEmails.length ? ccEmails : undefined,
-        campus_id: selectedCampusId,
-      })
+    const res = await sendEmailToStudents({
+      recipient_ids: validSelectedIds,
+      subject,
+      body,
+      test_email: testEmail.trim() || undefined,
+      cc_emails: ccEmails.length ? ccEmails : undefined,
+      campus_id: selectedCampusId,
+    })
 
-      if (res.success && res.data) {
-        setResult(res.data)
-        const skippedSuffix = res.data.skipped_count ? ` (${res.data.skipped_count} skipped — no email on file)` : ""
-        if (res.data.fail_count === 0) {
-          toast.success(t("success_msg", { count: res.data.success_count }) + skippedSuffix)
-        } else {
-          toast.warning(t("partial_success_msg", { success: res.data.success_count, fail: res.data.fail_count }) + skippedSuffix)
-        }
-      } else {
-        toast.error(res.error || tCommon("error_occurred"))
-      }
-    } finally {
+    if (res.success && res.data) {
+      // Enqueued — useBulkSendRun() below now polls until it's done, then
+      // converts the run into the same result shape and shows the toast.
+      setRunId(res.data.run_id)
+    } else {
+      toast.error(res.error || tCommon("error_occurred"))
       setSending(false)
     }
   }
@@ -343,40 +395,26 @@ export function SendEmailStudents() {
           </div>
 
           {/* Body */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="body">
               {t("body_label")} <span className="text-destructive">*</span>
-              <span className="ml-2 rtl:mr-2 rtl:ml-0 text-xs text-muted-foreground font-normal">({t("html_supported")})</span>
             </Label>
-            <Textarea
-              id="body"
-              ref={textareaRef}
+            <RichTextEditor
+              ref={richTextRef}
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder={t("body_placeholder")}
-              rows={8}
-              className="font-mono text-sm resize-y"
+              onChange={setBody}
+              campusId={selectedCampusId}
+              showMediaRecorder
             />
-          </div>
-
-          {/* Substitution chips */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
-              {t("substitution_chips_label")}
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {studentSubsKeys.map((sub) => (
-                <button
-                  key={sub.key}
-                  type="button"
-                  onClick={() => insertSub(sub.key)}
-                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border bg-muted hover:bg-[#022172] hover:text-white hover:border-[#022172] transition-colors"
-                >
-                  {sub.labelKey}
-                  <span className="opacity-60 font-mono">{`{{${sub.key}}}`}</span>
-                </button>
-              ))}
-            </div>
+            {/* Rosario-style Substitution Field Picker */}
+            <SubstitutionFieldPicker
+              fields={substitutionFields}
+              onInsert={(token) => insertSub(token)}
+              onCopy={(token) => navigator.clipboard.writeText(token)}
+              placeholder="Display Name"
+              substitutionsLabel="Substitutions"
+              infoText="Variables will be replaced with each recipient's actual details."
+            />
           </div>
 
           <Separator />
@@ -450,32 +488,32 @@ export function SendEmailStudents() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" /> {t("recipients_title")}
-              {selectedIds.size > 0 && (
-                <Badge variant="secondary">{t("recipients_count", { count: selectedIds.size })}</Badge>
+              {validSelectedIds.length > 0 && (
+                <Badge variant="secondary">{t("recipients_count", { count: validSelectedIds.length })}</Badge>
               )}
             </CardTitle>
 
             <div className="flex items-center gap-2">
-              {selectedIds.size > 0 && (
+              {validSelectedIds.length > 0 && (
                 <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
                   <X className="h-3.5 w-3.5 mr-1 rtl:ml-1 rtl:mr-0" /> {tCommon("clear")}
                 </Button>
               )}
               <Button
                 onClick={handleSubmit}
-                disabled={sending || selectedIds.size === 0}
+                disabled={sending || validSelectedIds.length === 0}
                 size="sm"
                 className="bg-[#022172] hover:bg-[#022172]/90"
               >
                 {sending ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    {t("sending")}
+                    {sendingLabel}
                   </>
                 ) : (
                   <>
                     <Send className="h-3.5 w-3.5 mr-1.5 rtl:ml-1.5 rtl:mr-0" />
-                    {t("send_btn", { count: selectedIds.size })}
+                    {t("send_btn", { count: validSelectedIds.length })}
                   </>
                 )}
               </Button>
@@ -533,6 +571,7 @@ export function SendEmailStudents() {
                     <th className="w-10 px-3 py-2.5">
                       <Checkbox
                         checked={allSelected}
+                        disabled={studentsWithEmail.length === 0}
                         onCheckedChange={toggleAll}
                         aria-label={tCommon("selectAll")}
                       />
@@ -551,7 +590,7 @@ export function SendEmailStudents() {
                       </td>
                     </tr>
                   ) : (
-                    students.map((student) => {
+                    visibleStudents.map((student) => {
                       const profile = student.profile
                       const hasEmail = !!profile?.email
                       const isSelected = selectedIds.has(student.id)
@@ -561,22 +600,19 @@ export function SendEmailStudents() {
                           className={`transition-colors ${
                             hasEmail
                               ? `cursor-pointer ${isSelected ? "bg-primary/5" : "hover:bg-muted/40"}`
-                              : "opacity-40"
+                              : "opacity-40 cursor-not-allowed bg-muted/10"
                           }`}
-                          onClick={() => hasEmail && toggleStudent(student.id)}
+                          onClick={() => toggleStudent(student.id, hasEmail)}
                         >
                           <td
                             className="px-3 py-2.5"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {hasEmail ? (
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleStudent(student.id)}
-                              />
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
+                            <Checkbox
+                              checked={isSelected}
+                              disabled={!hasEmail}
+                              onCheckedChange={() => toggleStudent(student.id, hasEmail)}
+                            />
                           </td>
                           <td className="px-3 py-2.5 font-medium">
                             {profile?.first_name} {profile?.last_name}
@@ -632,7 +668,7 @@ export function SendEmailStudents() {
 
             <Button
               onClick={handleSubmit}
-              disabled={sending || selectedIds.size === 0}
+              disabled={sending || validSelectedIds.length === 0}
               className="bg-[#022172] hover:bg-[#022172]/90"
             >
               {sending ? (
@@ -643,7 +679,7 @@ export function SendEmailStudents() {
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-1.5 rtl:ml-1.5 rtl:mr-0" />
-                  {t("send_btn", { count: selectedIds.size })}
+                  {t("send_btn", { count: validSelectedIds.length })}
                 </>
               )}
             </Button>
@@ -651,25 +687,5 @@ export function SendEmailStudents() {
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-// Simple loader helper
-function Loader2({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
   )
 }

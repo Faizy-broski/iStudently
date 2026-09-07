@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { sendDaysAbsentEmail } from "@/lib/api/email"
+import { useBulkSendRun } from "@/hooks/useBulkSendRun"
 import { getStudents } from "@/lib/api/students"
 import type { EmailSendResult } from "@/lib/api/email"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor, type RichTextEditorHandle } from "@/components/ui/rich-text-editor"
+import { SubstitutionFieldPicker } from "@/components/shared/SubstitutionFieldPicker"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -54,7 +56,7 @@ function firstDayOfMonthStr() {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function SendDaysAbsent() {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const richTextRef = useRef<RichTextEditorHandle>(null)
 
   // Compose
   const [subject, setSubject] = useState("Days Absent – {{full_name}}")
@@ -77,6 +79,37 @@ export function SendDaysAbsent() {
   // Send
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<EmailSendResult | null>(null)
+  const [runId, setRunId] = useState<string | null>(null)
+  const { run, error: runError, isDone } = useBulkSendRun(runId)
+
+  useEffect(() => {
+    if (!isDone || !run) return
+    setResult({
+      success_count: run.success_count,
+      fail_count: run.fail_count,
+      total: run.total_recipients,
+      errors: run.errors,
+      skipped_count: run.skipped_count,
+      skipped: run.skipped,
+    })
+    setSending(false)
+    setRunId(null)
+    const skippedSuffix = run.skipped_count ? `, ${run.skipped_count} skipped (no email on file)` : ""
+    run.fail_count === 0
+      ? toast.success(`${run.success_count} parent(s) notified${skippedSuffix}`)
+      : toast.warning(`${run.success_count} sent, ${run.fail_count} failed${skippedSuffix}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDone, run])
+
+  useEffect(() => {
+    if (runError) {
+      toast.error(runError)
+      setSending(false)
+      setRunId(null)
+    }
+  }, [runError])
+
+  const sendingLabel = run && run.batches_total > 0 && !isDone ? `Sending… (${Math.round((run.batches_done / run.batches_total) * 100)}%)` : "Sending..."
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -85,14 +118,15 @@ export function SendDaysAbsent() {
   const fetchStudents = useCallback(async () => {
     setLoadingStudents(true)
     try {
-      const res = await getStudents({ page, limit: PAGE_SIZE, search: search.trim() || undefined })
-      setStudents((res.data as any) || [])
-      setTotal(res.pagination?.total ?? 0)
-      setTotalPages(res.pagination?.totalPages ?? 0)
+      const res = await getStudents({ page: 1, limit: 1000, search: search.trim() || undefined })
+      const list = (res.data as any) || []
+      setStudents(list)
+      setTotal(list.length)
+      setTotalPages(Math.max(1, Math.ceil(list.length / PAGE_SIZE)))
     } finally {
       setLoadingStudents(false)
     }
-  }, [page, search])
+  }, [search])
 
   useEffect(() => {
     const t = setTimeout(fetchStudents, 350)
@@ -105,18 +139,13 @@ export function SendDaysAbsent() {
 
   // ── Substitution insert ────────────────────────────────────────────────────
 
-  const insertSub = (key: string) => {
-    const ta = textareaRef.current
-    if (!ta) return
-    const start = ta.selectionStart
-    const end = ta.selectionEnd
-    const tag = `{{${key}}}`
-    setBody(body.substring(0, start) + tag + body.substring(end))
-    setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + tag.length; ta.focus() }, 0)
+  const insertSub = (token: string) => {
+    richTextRef.current?.insertText(token)
   }
 
   // ── Selection ─────────────────────────────────────────────────────────────
 
+  const visibleStudents = students.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const studentsWithParents = students // we show all; backend resolves parent emails
   const allSelected = studentsWithParents.length > 0 && studentsWithParents.every((s) => selectedIds.has(s.id))
 
@@ -134,26 +163,19 @@ export function SendDaysAbsent() {
 
     setSending(true)
     setResult(null)
-    try {
-      const res = await sendDaysAbsentEmail({
-        recipient_ids: Array.from(selectedIds),
-        subject,
-        body,
-        start_date: startDate,
-        end_date: endDate,
-        test_email: testEmail.trim() || undefined,
-      })
+    const res = await sendDaysAbsentEmail({
+      recipient_ids: Array.from(selectedIds),
+      subject,
+      body,
+      start_date: startDate,
+      end_date: endDate,
+      test_email: testEmail.trim() || undefined,
+    })
 
-      if (res.success && res.data) {
-        setResult(res.data)
-        const skippedSuffix = res.data.skipped_count ? `, ${res.data.skipped_count} skipped (no email on file)` : ""
-        res.data.fail_count === 0
-          ? toast.success(`${res.data.success_count} parent(s) notified${skippedSuffix}`)
-          : toast.warning(`${res.data.success_count} sent, ${res.data.fail_count} failed${skippedSuffix}`)
-      } else {
-        toast.error(res.error || "Failed to send emails")
-      }
-    } finally {
+    if (res.success && res.data) {
+      setRunId(res.data.run_id)
+    } else {
+      toast.error(res.error || "Failed to send emails")
       setSending(false)
     }
   }
@@ -280,30 +302,25 @@ export function SendDaysAbsent() {
           </div>
 
           {/* Body */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="body">
               Body <span className="text-destructive">*</span>
-              <span className="ml-2 text-xs text-muted-foreground font-normal">HTML is supported</span>
             </Label>
-            <Textarea id="body" ref={textareaRef} value={body} onChange={(e) => setBody(e.target.value)} rows={8} className="font-mono text-sm resize-y" />
-          </div>
-
-          {/* Substitution chips */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Click to insert substitution:</Label>
-            <div className="flex flex-wrap gap-2">
-              {SUBS.map((sub) => (
-                <button
-                  key={sub.key}
-                  type="button"
-                  onClick={() => insertSub(sub.key)}
-                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border bg-muted hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
-                >
-                  {sub.label}
-                  <span className="opacity-60 font-mono">{`{{${sub.key}}}`}</span>
-                </button>
-              ))}
-            </div>
+            <RichTextEditor
+              ref={richTextRef}
+              value={body}
+              onChange={setBody}
+              showMediaRecorder
+            />
+            {/* Rosario-style Substitution Field Picker */}
+            <SubstitutionFieldPicker
+              fields={SUBS.map((s) => ({ id: `{{${s.key}}}`, label: s.label }))}
+              onInsert={(token) => insertSub(token)}
+              onCopy={(token) => navigator.clipboard.writeText(token)}
+              placeholder="Display Name"
+              substitutionsLabel="Substitutions"
+              infoText="Variables will be replaced with each recipient's actual details."
+            />
           </div>
 
           <Separator />
@@ -342,7 +359,7 @@ export function SendDaysAbsent() {
                 </Button>
               )}
               <Button onClick={handleSubmit} disabled={sending || selectedIds.size === 0} size="sm">
-                {sending ? "Sending..." : (
+                {sending ? sendingLabel : (
                   <><Send className="h-3.5 w-3.5 mr-1.5" />Notify {selectedIds.size || 0} Parent{selectedIds.size !== 1 ? "s" : ""}</>
                 )}
               </Button>
@@ -375,7 +392,7 @@ export function SendDaysAbsent() {
                   {students.length === 0 ? (
                     <tr><td colSpan={4} className="text-center py-10 text-muted-foreground">No students found</td></tr>
                   ) : (
-                    students.map((student) => {
+                    visibleStudents.map((student) => {
                       const profile = student.profile
                       const isSelected = selectedIds.has(student.id)
                       return (
@@ -412,7 +429,7 @@ export function SendDaysAbsent() {
           <div className="flex items-center justify-between text-sm text-muted-foreground pt-1">
             <span>{total} student{total !== 1 ? "s" : ""} found</span>
             <Button onClick={handleSubmit} disabled={sending || selectedIds.size === 0}>
-              {sending ? "Sending..." : (
+              {sending ? sendingLabel : (
                 <><Send className="h-4 w-4 mr-1.5" />Send to {selectedIds.size} Parent{selectedIds.size !== 1 ? "s" : ""}</>
               )}
             </Button>

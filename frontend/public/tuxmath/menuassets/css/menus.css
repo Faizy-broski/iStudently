@@ -161,10 +161,8 @@ a.o-menu__box { text-decoration: none; }
 }
 
 .o-bigtux {
-    position: fixed;
-    bottom: 1rem;
-    left: 1rem;
-    z-index: 0;
+    /* Hidden per platform preference — mascot removed from the menu screens. */
+    display: none;
 }
 
 

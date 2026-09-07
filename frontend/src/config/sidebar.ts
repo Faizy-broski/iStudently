@@ -75,6 +75,7 @@ import {
 import { UserRole } from "@/types";
 import { SchoolKhalwaIcon } from "@/components/icons/SchoolKhalwaIcon";
 import { FormWorksheetIcon } from "@/components/icons/FormWorksheetIcon";
+import { AbacusIcon } from "@/components/icons/AbacusIcon";
 
 export interface SidebarMenuItem {
   title: string;
@@ -543,6 +544,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "circuit_simulator", href: "/admin/resources/circuit-simulator", icon: CircuitBoard },
       { title: "calculators_arena", href: "/admin/resources/calculators-arena", icon: Gamepad2 },
       { title: "interactive_geometry", href: "/admin/resources/interactive-geometry", icon: Compass },
+      { title: "mental_math", href: "/admin/resources/mental-math", icon: AbacusIcon },
       { title: "arabic_fluency", href: "/admin/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/admin/resources/anatomy-3d", icon: Dna },
     ],
@@ -783,6 +785,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "circuit_simulator", href: "/teacher/resources/circuit-simulator", icon: CircuitBoard },
       { title: "calculators_arena", href: "/teacher/resources/calculators-arena", icon: Gamepad2 },
       { title: "interactive_geometry", href: "/teacher/resources/interactive-geometry", icon: Compass },
+      { title: "mental_math", href: "/teacher/resources/mental-math", icon: AbacusIcon },
       { title: "my_worksheet", href: "/teacher/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/teacher/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/teacher/resources/anatomy-3d", icon: Dna },
@@ -1016,6 +1019,7 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "circuit_simulator", href: "/student/resources/circuit-simulator", icon: CircuitBoard },
       { title: "calculators_arena", href: "/student/resources/calculators-arena", icon: Gamepad2 },
       { title: "interactive_geometry", href: "/student/resources/interactive-geometry", icon: Compass },
+      { title: "mental_math", href: "/student/resources/mental-math", icon: AbacusIcon },
       { title: "my_worksheet", href: "/student/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/student/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/student/resources/anatomy-3d", icon: Dna },
@@ -1233,6 +1237,7 @@ const parentMenuItems: SidebarMenuItem[] = [
       { title: "circuit_simulator", href: "/parent/resources/circuit-simulator", icon: CircuitBoard },
       { title: "calculators_arena", href: "/parent/resources/calculators-arena", icon: Gamepad2 },
       { title: "interactive_geometry", href: "/parent/resources/interactive-geometry", icon: Compass },
+      { title: "mental_math", href: "/parent/resources/mental-math", icon: AbacusIcon },
       { title: "my_worksheet", href: "/parent/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/parent/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/parent/resources/anatomy-3d", icon: Dna },

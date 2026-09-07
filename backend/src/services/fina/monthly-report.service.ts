@@ -1,26 +1,19 @@
 import cron from 'node-cron'
-import puppeteer from 'puppeteer'
 import { supabase } from '../../config/supabase'
 import { registerFinaJobHandler } from './jobs-runner.service'
 import { enqueueFinaJob } from '../../utils/fina-jobs'
+import { escapeHtml, renderHtmlToPdf } from '../../utils/html-pdf.util'
 import { CallerContext } from './types'
 
 /**
  * Monthly compliance report (spec §18) — the one PDF in this module that's
- * generated server-side (headless Chrome via Puppeteer), since every other
- * PDF here is triggered by a live user in their own browser (jsPDF), but
- * this one runs unattended on a schedule with nobody present to render it
- * client-side. `--no-sandbox` is required for this to launch reliably in
- * this environment (the default launch hangs here); safe in this specific
- * context since Puppeteer only ever renders our own trusted HTML template
- * below, never arbitrary third-party content.
+ * generated server-side (headless Chrome via the shared html-pdf.util
+ * plugin), since every other PDF here is triggered by a live user in their
+ * own browser (jsPDF), but this one runs unattended on a schedule with
+ * nobody present to render it client-side.
  */
 
 const BUCKET = 'fina-media'
-
-function escapeHtml(s: string): string {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
 
 interface ReportMetrics {
   schoolName: string
@@ -181,26 +174,10 @@ function renderReportHtml(m: ReportMetrics): string {
 </html>`
 }
 
-async function renderPdf(html: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-gpu'],
-    executablePath: process.env.FINA_PUPPETEER_EXECUTABLE_PATH || undefined,
-  })
-  try {
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'domcontentloaded' })
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20px', bottom: '20px' } })
-    return Buffer.from(pdf)
-  } finally {
-    await browser.close()
-  }
-}
-
 export async function generateMonthlyReport(schoolId: string, period: string) {
   const metrics = await computeMetrics(schoolId, period)
   const html = renderReportHtml(metrics)
-  const pdfBuffer = await renderPdf(html)
+  const pdfBuffer = await renderHtmlToPdf(html)
 
   const key = `${schoolId}/reports/${period}.pdf`
   const { error: uploadError } = await supabase.storage.from(BUCKET).upload(key, pdfBuffer, { contentType: 'application/pdf', upsert: true })

@@ -465,3 +465,25 @@ export async function bulkUpdateStudentStatus(params: BulkStatusParams) {
     })
   })
 }
+
+// GROUP ASSIGN (bulk-assign grade/section/status/custom fields to a selected group)
+export interface GroupAssignParams {
+  student_ids: string[]
+  grade_level_id?: string
+  section_id?: string
+  is_active?: boolean
+  custom_field_updates?: { category_id: string; field_key: string; value: any }[]
+  campus_id?: string
+}
+
+export interface GroupAssignResult {
+  updated: number
+  errors: { student_id: string; error: string }[]
+}
+
+export async function groupAssignStudents(params: GroupAssignParams) {
+  return apiRequest<GroupAssignResult>('/students/group-assign', {
+    method: 'POST',
+    body: JSON.stringify(params)
+  })
+}
