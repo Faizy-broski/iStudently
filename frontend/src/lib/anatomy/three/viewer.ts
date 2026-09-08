@@ -1,11 +1,14 @@
 // Vendored from thebuggeddev/anatomy (app/lib/three/viewer.ts) for the
-// "anatomy_label" quiz question type. Unmodified besides import paths.
+// "anatomy_label" quiz question type. Unmodified besides import paths, plus
+// one deliberate Studently-specific addition in setOrgan() — see
+// ensureModestyPatch()'s own doc comment in ./modesty-patch.ts for why.
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import gsap from "gsap";
 import type { Hotspot } from "../i18n/merge";
 import { AnatomyAssetManager, type LoadedOrgan } from "./loaders";
 import { HotspotLayer } from "./hotspots";
+import { ensureModestyPatch } from "./modesty-patch";
 
 type ViewerCallbacks = {
   onLoading: (loading: boolean, progress: number) => void;
@@ -289,6 +292,8 @@ export class AnatomyViewer {
     organ.pivot.position.set(0, 0, 0);
     this.scene.add(organ.pivot);
     organ.pivot.updateWorldMatrix(true, true);
+
+    if (modelUrl.includes("skin.glb")) ensureModestyPatch(organ.pivot);
 
     // Anchor the dots while the organ is still invisible, then play the intro.
     this.hotspots.attach(organ.pivot, hotspots, organ.meshes);

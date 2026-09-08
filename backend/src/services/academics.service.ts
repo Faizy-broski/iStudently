@@ -21,17 +21,25 @@ import {
 // ============================================================================
 
 export const createGradeLevel = async (data: CreateGradeLevelDTO): Promise<GradeLevel> => {
+  const insertPayload: Record<string, any> = {
+    school_id: data.school_id,
+    campus_id: data.school_id, // campus_id = school_id for campuses
+    name: data.name,
+    order_index: data.order_index,
+    base_fee: data.base_fee,
+    created_by: data.created_by,
+    group_id: data.group_id ?? null,
+  }
+  if (data.capacity !== undefined) {
+    insertPayload.capacity = data.capacity
+  }
+  if (data.next_grade_id !== undefined) {
+    insertPayload.next_grade_id = data.next_grade_id
+  }
+
   const { data: grade, error } = await supabase
     .from('grade_levels')
-    .insert({
-      school_id: data.school_id,
-      campus_id: data.school_id, // campus_id = school_id for campuses
-      name: data.name,
-      order_index: data.order_index,
-      base_fee: data.base_fee,
-      created_by: data.created_by,
-      group_id: data.group_id ?? null,
-    })
+    .insert(insertPayload)
     .select()
     .single()
 
@@ -40,13 +48,41 @@ export const createGradeLevel = async (data: CreateGradeLevelDTO): Promise<Grade
 }
 
 export const getGradeLevels = async (schoolId: string): Promise<GradeLevel[]> => {
-  const { data, error } = await supabase.rpc('get_grade_with_stats', {
-    p_campus_id: schoolId,
-    p_school_id: null,
-  })
+  let statsGrades: GradeLevel[] = []
+  try {
+    const { data, error } = await supabase.rpc('get_grade_with_stats', {
+      p_campus_id: schoolId,
+      p_school_id: null,
+    })
+    if (!error && data) {
+      statsGrades = data
+    }
+  } catch (err) {
+    // Ignore RPC error and fallback
+  }
 
-  if (error) throw error
-  return data || []
+  // Also query base table to ensure capacity, order_index, group_id etc. are complete
+  const { data: baseGrades, error: baseError } = await supabase
+    .from('grade_levels')
+    .select('*')
+    .or(`school_id.eq.${schoolId},campus_id.eq.${schoolId}`)
+    .order('order_index', { ascending: true })
+
+  if (baseGrades && baseGrades.length > 0) {
+    const statsMap = new Map(statsGrades.map((g: any) => [g.id, g]))
+    return baseGrades.map((bg: any) => {
+      const stats = statsMap.get(bg.id)
+      return {
+        ...bg,
+        capacity: bg.capacity ?? stats?.capacity ?? null,
+        sections_count: stats?.sections_count ?? 0,
+        subjects_count: stats?.subjects_count ?? 0,
+        students_count: stats?.students_count ?? 0,
+      }
+    })
+  }
+
+  return statsGrades || []
 }
 
 export const getGradeLevelById = async (id: string, schoolId: string): Promise<GradeLevel | null> => {

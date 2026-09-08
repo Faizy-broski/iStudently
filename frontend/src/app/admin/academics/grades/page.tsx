@@ -71,11 +71,18 @@ export default function GradeLevelsPage() {
   const [editingGrade, setEditingGrade] = useState<academicsApi.GradeLevel | null>(null)
   const [gradeToDelete, setGradeToDelete] = useState<string | null>(null)
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    order_index: number
+    is_active: boolean
+    base_fee: number
+    capacity?: number
+  }>({
     name: '',
     order_index: 1,
     is_active: true,
-    base_fee: 0
+    base_fee: 0,
+    capacity: 30,
   })
 
   const fetchGrades = useCallback(async () => {
@@ -131,6 +138,7 @@ export default function GradeLevelsPage() {
     const headers = [
       t('order'),
       t('name'),
+      t('capacity'),
       t('sections'),
       t('subjects'),
       t('next_grade'),
@@ -143,6 +151,7 @@ export default function GradeLevelsPage() {
       return [
         g.order_index.toString(),
         g.name,
+        (g.capacity ?? '').toString(),
         (g.sections_count || 0).toString(),
         (g.subjects_count || 0).toString(),
         nextName,
@@ -169,6 +178,7 @@ export default function GradeLevelsPage() {
         order_index: grade.order_index,
         is_active: grade.is_active,
         base_fee: grade.base_fee || 0,
+        capacity: grade.capacity ?? 30,
       })
     } else {
       setEditingGrade(null)
@@ -177,6 +187,7 @@ export default function GradeLevelsPage() {
         order_index: grades.length + 1,
         is_active: true,
         base_fee: 0,
+        capacity: 30,
       })
     }
     setDialogOpen(true)
@@ -190,6 +201,7 @@ export default function GradeLevelsPage() {
       order_index: 1,
       is_active: true,
       base_fee: 0,
+      capacity: 30,
     })
   }
 
@@ -329,6 +341,7 @@ export default function GradeLevelsPage() {
                 <TableRow>
                   <TableHead>{t('order')}</TableHead>
                   <TableHead>{t('name')}</TableHead>
+                  <TableHead>{t('capacity')}</TableHead>
                   <TableHead>
                     <Users className="inline mr-1 h-4 w-4" />
                     {t('sections')}
@@ -353,6 +366,7 @@ export default function GradeLevelsPage() {
                         {grade.name}
                       </div>
                     </TableCell>
+                    <TableCell>{grade.capacity ?? '—'}</TableCell>
                     <TableCell>{grade.sections_count || 0}</TableCell>
                     <TableCell>{grade.subjects_count || 0}</TableCell>
                     <TableCell>
@@ -444,6 +458,25 @@ export default function GradeLevelsPage() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="capacity">{t('capacity_label')}</Label>
+                <Input
+                  id="capacity"
+                  type="number"
+                  min="1"
+                  placeholder="30"
+                  value={formData.capacity ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      capacity: e.target.value === '' ? undefined : parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('capacity_desc')}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="order_index">{t('order_label')}</Label>

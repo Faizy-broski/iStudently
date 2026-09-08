@@ -36,6 +36,7 @@ export interface GradeLevel {
   name: string;
   order_index: number;
   base_fee: number;
+  capacity?: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -86,6 +87,7 @@ export interface CreateGradeLevelDTO {
   name: string;
   order_index: number;
   base_fee: number;
+  capacity?: number | null;
   created_by?: string;
   next_grade_id?: string | null;
   group_id?: string | null;
@@ -95,6 +97,7 @@ export interface UpdateGradeLevelDTO {
   name?: string;
   order_index?: number;
   base_fee?: number;
+  capacity?: number | null;
   is_active?: boolean;
   next_grade_id?: string | null;
   group_id?: string | null;

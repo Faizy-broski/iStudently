@@ -23,6 +23,7 @@ export interface GradeLevel {
   name: string
   order_index: number
   base_fee: number
+  capacity?: number | null
   is_active: boolean
   next_grade_id?: string | null
   next_grade_name?: string | null
@@ -71,6 +72,7 @@ export interface CreateGradeLevelDTO {
   name: string
   order_index: number
   base_fee: number
+  capacity?: number | null
   campus_id?: string // For campus-specific grade levels
   group_id?: string | null
 }
@@ -79,6 +81,7 @@ export interface UpdateGradeLevelDTO {
   name?: string
   order_index?: number
   base_fee?: number
+  capacity?: number | null
   is_active?: boolean
   next_grade_id?: string | null
   group_id?: string | null

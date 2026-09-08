@@ -493,6 +493,7 @@ export class MessagingService {
       const profiles = await this.fetchProfilesByIds((data || []).map((s) => s.profile_id as string))
 
       const all = (data || [])
+        .filter((s) => profiles.get(s.profile_id as string)?.is_active !== false)
         .map((s) => {
           const profile = profiles.get(s.profile_id as string)
           return {
@@ -776,7 +777,7 @@ export class MessagingService {
   }
 
   private async fetchProfilesByIds(profileIds: string[]) {
-    const map = new Map<string, { first_name: string | null; last_name: string | null; role: string | null }>()
+    const map = new Map<string, { first_name: string | null; last_name: string | null; role: string | null; is_active: boolean | null }>()
 
     if (profileIds.length === 0) {
       return map
@@ -784,7 +785,7 @@ export class MessagingService {
 
     const { data } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, role')
+      .select('id, first_name, last_name, role, is_active')
       .in('id', profileIds)
 
     for (const profile of data || []) {

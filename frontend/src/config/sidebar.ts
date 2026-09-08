@@ -163,6 +163,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     icon: GraduationCap,
     subItems: [
       { title: "student_info", href: "/admin/students/student-info", icon: GraduationCap },
+      { title: "group_assign", href: "/admin/students/group-assign", icon: Users },
       { title: "add_student", href: "/admin/students/add-student", icon: Users },
       { title: "bulk_import", href: "/admin/students/bulk-import", icon: Upload },
       { title: "custom_fields", href: "/admin/students/custom-fields", icon: Settings },
