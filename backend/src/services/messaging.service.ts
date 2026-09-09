@@ -834,6 +834,33 @@ export class MessagingService {
     return data
   }
 
+  async updateTemplate(
+    templateId: string,
+    ownerProfileId: string,
+    input: { title?: string; subject?: string; body?: string }
+  ) {
+    const updatePayload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    }
+    if (input.title !== undefined) updatePayload.title = input.title.trim()
+    if (input.subject !== undefined) updatePayload.subject = input.subject
+    if (input.body !== undefined) updatePayload.body = input.body
+
+    const { data, error } = await supabase
+      .from('message_templates')
+      .update(updatePayload)
+      .eq('id', templateId)
+      .eq('owner_profile_id', ownerProfileId)
+      .select('*')
+      .single()
+
+    if (error) {
+      throw new Error(`Failed to update template: ${error.message}`)
+    }
+
+    return data
+  }
+
   async deleteTemplate(templateId: string, ownerProfileId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from('message_templates')

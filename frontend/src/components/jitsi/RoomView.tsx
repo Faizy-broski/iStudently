@@ -87,7 +87,7 @@ export function RoomView({ roomId }: RoomViewProps) {
         <TabsContent value="video" className="flex-1 min-h-0">
           <JitsiRoomEmbed
             roomName={room.room_name}
-            displayName={`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'User'}
+            displayName={`${profile?.first_name || ''} ${profile?.father_name || ''} ${profile?.last_name || ''}`.replace(/\s+/g, ' ').trim() || 'User'}
             email={profile?.email || undefined}
             domain={room.jitsi_domain}
             password={room.password}

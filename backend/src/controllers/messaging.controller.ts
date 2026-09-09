@@ -272,6 +272,37 @@ export class MessagingController {
     }
   }
 
+  async updateTemplate(req: AuthRequest, res: Response) {
+    try {
+      const { title, subject, body } = req.body
+
+      if (title !== undefined && !title?.trim()) {
+        res.status(400).json({ success: false, error: 'Template title cannot be empty' })
+        return
+      }
+
+      const template = await messagingService.updateTemplate(
+        req.params.id,
+        req.profile.id,
+        {
+          title,
+          subject,
+          body,
+        }
+      )
+
+      if (!template) {
+        res.status(404).json({ success: false, error: 'Template not found' })
+        return
+      }
+
+      res.json({ success: true, data: template })
+    } catch (error: any) {
+      console.error('updateTemplate error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to update template' })
+    }
+  }
+
   async deleteTemplate(req: AuthRequest, res: Response) {
     try {
       const deleted = await messagingService.deleteTemplate(req.params.id, req.profile.id)

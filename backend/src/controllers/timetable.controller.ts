@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import * as timetableService from '../services/timetable.service'
 import * as attendanceService from '../services/attendance.service'
 import { ApiResponse, DayOfWeek } from '../types'
+import { stripConfidentialFamilyStatus } from '../utils/confidential-family-status'
 import {
   lockTimetableEntrySchema,
   bulkLockTimetableEntriesSchema
@@ -455,6 +456,10 @@ export const getAttendanceForClass = async (req: Request, res: Response) => {
       date as string
     )
 
+    if (result.success && result.data) {
+      result.data = stripConfidentialFamilyStatus(result.data, (req as AuthRequest).profile?.role)
+    }
+
     res.json(result)
   } catch (error: any) {
     console.error('Error fetching attendance for class:', error)
@@ -480,6 +485,10 @@ export const getAttendanceForSectionDate = async (req: Request, res: Response) =
       section_id as string,
       date as string
     )
+
+    if (result.success && result.data) {
+      result.data = stripConfidentialFamilyStatus(result.data, (req as AuthRequest).profile?.role)
+    }
 
     res.json(result)
   } catch (error: any) {

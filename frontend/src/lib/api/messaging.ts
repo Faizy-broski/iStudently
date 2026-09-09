@@ -194,6 +194,13 @@ export const messagingApi = {
     })
   },
 
+  updateTemplate: async (id: string, input: { title?: string; subject?: string; body?: string }) => {
+    return apiRequest<MessageTemplate>(`/messaging/templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    })
+  },
+
   deleteTemplate: async (id: string) => {
     return apiRequest<void>(`/messaging/templates/${id}`, { method: 'DELETE' })
   },

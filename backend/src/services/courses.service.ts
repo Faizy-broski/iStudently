@@ -582,6 +582,7 @@ class CoursesService {
         student_number,
         section_id,
         is_active,
+        confidential_family_status,
         profile:profiles!profile_id(first_name, last_name, email, phone)
       `)
       .eq('section_id', cp.section_id)

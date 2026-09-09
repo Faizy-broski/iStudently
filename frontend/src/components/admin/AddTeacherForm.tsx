@@ -130,7 +130,16 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   useEffect(() => {
     const loadCustomFields = async () => {
       try {
-        const campusId = selectedCampus?.id;
+        // Editing an existing teacher must look up fields using THAT teacher's
+        // own school_id, not whichever campus the admin's sidebar switcher
+        // currently happens to be on — those are unrelated and easily out of
+        // sync (e.g. admin browsing "All Campuses" while editing a teacher who
+        // belongs to one specific campus), which silently hid every
+        // 'this_campus'-scoped custom field (custom-fields.service.ts's
+        // getFieldDefinitions matches campus_scope:'this_campus' fields by an
+        // exact school_id match). Only fall back to the sidebar's selected
+        // campus for the *create* flow, where there's no teacher yet to ask.
+        const campusId = editingTeacher?.school_id || selectedCampus?.id;
         const [fieldsResponse, ordersResponse] = await Promise.all([
           getFieldDefinitions('teacher', campusId),
           getFieldOrders('teacher', undefined, campusId)
@@ -154,7 +163,39 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         }
 
         if (fieldsResponse.success && fieldsResponse.data) {
-          setCustomFields(fieldsResponse.data);
+          // Unlike students (whose forms hardcode an "Address" field, stored at
+          // custom_fields.personal.address — see EditStudentForm.tsx), teachers
+          // never got an equivalent: there's no address column on staff/profiles,
+          // and no standard field for it either, so it was simply missing from
+          // every teacher form. Injecting it here as a synthetic entry — flowing
+          // through the exact same rendering/persistence path as an admin-defined
+          // custom field (this.customFieldValues, flat "address" key in
+          // custom_fields, matching this form's existing flat convention) — makes
+          // it a real, always-present field with no schema change needed, unless
+          // a school has already defined their own "address" field for teachers.
+          const hasAdminDefinedAddress = fieldsResponse.data.some(f => f.field_key === 'address' && f.category_id === 'personal');
+          const fieldsWithAddress = hasAdminDefinedAddress ? fieldsResponse.data : [
+            {
+              id: '__standard_address__',
+              school_id: '',
+              entity_type: 'teacher' as const,
+              category_id: 'personal',
+              category_name: 'Personal',
+              field_key: 'address',
+              label: 'Address',
+              type: 'long-text' as const,
+              options: [],
+              required: false,
+              sort_order: 6.5, // between date_of_birth (6) and the next category
+              campus_scope: 'all_campuses' as const,
+              applicable_school_ids: [],
+              is_active: true,
+              created_at: '',
+              updated_at: '',
+            },
+            ...fieldsResponse.data,
+          ];
+          setCustomFields(fieldsWithAddress);
 
           const categoryOrderMap: Record<string, number> = {};
           fieldsResponse.data.forEach((field: CustomFieldDefinition) => {
@@ -185,7 +226,10 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     };
 
     loadCustomFields();
-  }, [selectedCampus?.id]);
+    // editingTeacher arrives asynchronously (the parent /admin/teachers/[id]/edit
+    // page fetches it after mount) — re-run once it's actually available so the
+    // fields lookup uses its school_id, not just whatever ran at first mount.
+  }, [selectedCampus?.id, editingTeacher?.school_id]);
 
   // Populate form when editing
   useEffect(() => {

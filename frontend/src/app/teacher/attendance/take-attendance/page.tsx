@@ -27,6 +27,7 @@ import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods
 import { useSearchParams, useRouter } from "next/navigation"
 import useSWR from "swr"
 import { useTranslations } from "next-intl"
+import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge"
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused"
 
@@ -465,7 +466,10 @@ export default function AttendancePage() {
               filteredStudents.map((student, index) => (
                 <tr key={student.student_id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <div className="font-medium">{student.student_name}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      <span>{student.student_name}</span>
+                      <ConfidentialFamilyStatusBadge status={student.confidential_family_status} />
+                    </div>
                     <div className="text-xs text-slate-500">#{index + 1}</div>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{student.student_number}</td>

@@ -93,6 +93,7 @@ export interface CoursePeriodStudent {
   section_id: string
   is_active: boolean
   grade_level?: string | null
+  confidential_family_status?: string | null
   profile?: {
     first_name: string | null
     last_name: string | null

@@ -27,6 +27,8 @@ export interface CustomFieldDefinition {
     category_name: string
     field_key: string
     label: string
+    /** Arabic translation of `label` — null/absent means it falls back to `label` (see getFieldLabel()). */
+    label_ar?: string | null
     type: CustomFieldType
     options: string[]
     required: boolean
@@ -45,6 +47,7 @@ export interface CreateCustomFieldDTO {
     category_name: string
     field_key?: string
     label: string
+    label_ar?: string | null
     type: CustomFieldType
     options?: string[]
     required?: boolean
@@ -60,6 +63,7 @@ export interface UpdateCustomFieldDTO {
     category_order?: number
     field_key?: string
     label?: string
+    label_ar?: string | null
     type?: CustomFieldType
     options?: string[]
     required?: boolean
@@ -131,6 +135,15 @@ async function apiRequest<T>(
  * @param entityType - The entity type (student, teacher, parent)
  * @param campusId - Optional campus ID to get campus-specific fields
  */
+/**
+ * The label to actually display for a custom field, given the current site
+ * locale — Arabic when the locale is 'ar' and a translation exists, else the
+ * field's original (English, or whatever it was authored in) label.
+ */
+export function getFieldLabel(field: Pick<CustomFieldDefinition, 'label' | 'label_ar'>, locale: string): string {
+    return locale === 'ar' && field.label_ar ? field.label_ar : field.label
+}
+
 export async function getFieldDefinitions(entityType: EntityType, campusId?: string): Promise<ApiResponse<CustomFieldDefinition[]>> {
     const url = campusId
         ? `/custom-fields/${entityType}?campus_id=${campusId}`

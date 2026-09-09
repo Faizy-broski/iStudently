@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { GripVertical, Trash2, Save, Building2, Loader2 } from 'lucide-react'
+import { GripVertical, Trash2, Save, Building2, Loader2, Languages } from 'lucide-react'
 import { toast } from 'sonner'
 import { CustomField, CustomFieldType, CampusScope } from '@/types'
 import { BranchSchool, customFieldsApi } from '@/lib/api/custom-fields'
@@ -27,6 +27,10 @@ export interface MergedFieldOrderListLabels {
   th_req: string
   btn_save_order: string
   field_label_placeholder: string
+  // Optional — only the student custom-fields page (the only one with
+  // Arabic label support so far) supplies this; other callers fall back to
+  // a hardcoded default rather than needing their own translation key.
+  field_label_ar_placeholder?: string
   field_options_placeholder: string
   scope_this: string
   scope_selected: string
@@ -290,11 +294,26 @@ function CustomFieldRow({
           <GripVertical className="h-3.5 w-3.5 text-gray-400" />
         </div>
       </div>
-      <div className="col-span-3">
+      <div className="col-span-3 space-y-1">
+        <div className="relative">
+          <Input
+            value={field.label}
+            onChange={(e) => onUpdateField(field.id, { label: e.target.value })}
+            placeholder={labels.field_label_placeholder}
+            className="h-7 text-xs pr-6 rtl:pr-2 rtl:pl-6"
+          />
+          {!!field.label_ar && (
+            <Languages
+              className="h-3 w-3 text-green-600 absolute right-1.5 top-1/2 -translate-y-1/2 rtl:right-auto rtl:left-1.5"
+              aria-label="Has Arabic translation"
+            />
+          )}
+        </div>
         <Input
-          value={field.label}
-          onChange={(e) => onUpdateField(field.id, { label: e.target.value })}
-          placeholder={labels.field_label_placeholder}
+          value={field.label_ar || ''}
+          onChange={(e) => onUpdateField(field.id, { label_ar: e.target.value })}
+          placeholder={labels.field_label_ar_placeholder || 'Arabic label (optional)'}
+          dir="rtl"
           className="h-7 text-xs"
         />
       </div>

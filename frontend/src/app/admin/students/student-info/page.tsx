@@ -11,13 +11,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Edit, Download, MoreHorizontal, ChevronLeft, ChevronRight, Loader2, Users, UserCheck, UserX, Trash2 } from "lucide-react";
+import { Eye, Edit, Download, MoreHorizontal, ChevronLeft, ChevronRight, Loader2, Users, UserCheck, UserX, Trash2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal";
 import { EditStudentForm } from "@/components/admin";
+import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
+import { ConfidentialFamilyStatusDialog } from "@/components/shared/ConfidentialFamilyStatusDialog";
 import { type Student, getStudentById, bulkDeleteStudents, bulkUpdateStudentStatus } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -120,6 +122,8 @@ export default function StudentInfoPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmDeleteMode, setConfirmDeleteMode] = useState<"selected" | "class" | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confidentialStudent, setConfidentialStudent] = useState<Student | null>(null);
+  const [showConfidentialDialog, setShowConfidentialDialog] = useState(false);
 
   // Bulk Status Modal States (Deactivate / Activate by List, Grade, or School)
   const { gradeLevels = [], isLoading: loadingGradeLevels } = useGradeLevels();
@@ -537,8 +541,9 @@ export default function StudentInfoPage() {
                                   size="xs"
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <div className="font-medium truncate">
-                                    {fullName || tCommon("noData")}
+                                  <div className="font-medium truncate flex items-center gap-2">
+                                    <span>{fullName || tCommon("noData")}</span>
+                                    <ConfidentialFamilyStatusBadge status={student.confidential_family_status} />
                                   </div>
                                   <div className="text-sm text-muted-foreground truncate">{student.profile?.email || tCommon("noData")}</div>
                                 </div>
@@ -590,6 +595,13 @@ export default function StudentInfoPage() {
                                   }}>
                                     <Lock className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
                                     {t("edit_credentials")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                    setConfidentialStudent(student);
+                                    setShowConfidentialDialog(true);
+                                  }}>
+                                    <Shield className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0 text-amber-600" />
+                                    {locale === 'ar' ? 'الحالة العائلية السرية' : 'Confidential Status'}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleEditStudent(student)}>
                                     <Edit className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
@@ -942,6 +954,24 @@ export default function StudentInfoPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {confidentialStudent && (
+        <ConfidentialFamilyStatusDialog
+          isOpen={showConfidentialDialog}
+          onClose={() => {
+            setShowConfidentialDialog(false);
+            setConfidentialStudent(null);
+          }}
+          studentId={confidentialStudent.id}
+          studentName={`${confidentialStudent.profile?.first_name || ''} ${confidentialStudent.profile?.last_name || ''}`.trim()}
+          studentNumber={confidentialStudent.student_number}
+          currentStatus={confidentialStudent.confidential_family_status}
+          onSuccess={(newStatus) => {
+            confidentialStudent.confidential_family_status = newStatus;
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

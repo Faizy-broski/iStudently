@@ -27,6 +27,7 @@ import { MessagingNotificationProvider } from '@/context/MessagingNotificationCo
 import { GrievanceNotificationProvider } from '@/context/GrievanceNotificationContext'
 import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt'
 import { PaymentReminderToast } from '@/components/notifications/PaymentReminderToast'
+import { CustomPagePopup } from '@/components/notifications/CustomPagePopup'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -342,6 +343,9 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
       {/* Conditional Overdue Payment Reminder Toast — auto-dismissing non-modal toast */}
       <PaymentReminderToast />
+
+      {/* Role-targeted custom page/poster popup (Admin Settings → Public Pages) — hidden for super admin, who manages these rather than consumes them */}
+      {effectiveRole !== 'super_admin' && <CustomPagePopup />}
     </div>
   )
 }

@@ -63,8 +63,33 @@ export default function SuperAdminDashboard() {
     const school = allSchools.find(s => s.id === selectedSchoolId)
     if (!school) return
     swrMutate(() => true, undefined, { revalidate: false })
+    // Clear any cached campus data from a previously-impersonated school so the
+    // sidebar can't briefly (or indefinitely, if a refetch silently fails) show
+    // the wrong school's name/logo before CampusContext refetches.
+    sessionStorage.removeItem('studently_campus_cache_v2')
+    localStorage.removeItem('selectedCampusId')
     sessionStorage.setItem('impersonatedSchoolId', school.id)
     sessionStorage.setItem('impersonatedSchoolName', school.name)
+    if (school.logo_url) {
+      sessionStorage.setItem('impersonatedSchoolLogoUrl', school.logo_url)
+    } else {
+      sessionStorage.removeItem('impersonatedSchoolLogoUrl')
+    }
+    if (school.logo_shape) {
+      sessionStorage.setItem('impersonatedSchoolLogoShape', school.logo_shape)
+    } else {
+      sessionStorage.removeItem('impersonatedSchoolLogoShape')
+    }
+    if (school.logo_border_width !== undefined && school.logo_border_width !== null) {
+      sessionStorage.setItem('impersonatedSchoolLogoBorderWidth', school.logo_border_width.toString())
+    } else {
+      sessionStorage.removeItem('impersonatedSchoolLogoBorderWidth')
+    }
+    if (school.logo_border_color) {
+      sessionStorage.setItem('impersonatedSchoolLogoBorderColor', school.logo_border_color)
+    } else {
+      sessionStorage.removeItem('impersonatedSchoolLogoBorderColor')
+    }
     router.push('/admin/dashboard')
   }
 

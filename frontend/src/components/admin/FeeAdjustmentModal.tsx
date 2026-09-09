@@ -92,7 +92,7 @@ export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted, s
     if (!isOpen) return null
 
     const studentName = fee.students?.profiles
-        ? `${fee.students.profiles.first_name} ${fee.students.profiles.last_name}`
+        ? [fee.students.profiles.first_name, fee.students.profiles.father_name, fee.students.profiles.last_name].filter(Boolean).join(' ')
         : 'Unknown Student'
 
     return (

@@ -580,7 +580,7 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
           )}
 
           {loading ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="h-64 animate-pulse rounded-xl border bg-gray-100 dark:bg-gray-800" />
               ))}
@@ -596,7 +596,7 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
               )}
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {worksheets.map((w) => (
                 <WorksheetCard
                   key={w.id} worksheet={w}

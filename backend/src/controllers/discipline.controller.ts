@@ -357,7 +357,7 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
         *,
         students ( id, student_number, grade_level, section_id, profile:profiles(first_name, father_name, grandfather_name, last_name) ),
         staff ( id, employee_number, profile:profiles!staff_profile_id_fkey(first_name, last_name) ),
-        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
+        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, father_name, last_name )
       `, { count: 'exact' })
       .eq('school_id', schoolId)
       .order('incident_date', { ascending: false })
@@ -382,7 +382,7 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
     if (data && Array.isArray(data)) {
       data = data.map((r: any) => {
         if (r.reporter && r.reporter.first_name !== undefined) {
-          r.reporter.full_name = `${r.reporter.first_name || ''} ${r.reporter.last_name || ''}`.trim();
+          r.reporter.full_name = [r.reporter.first_name, r.reporter.father_name, r.reporter.last_name].filter(Boolean).join(' ');
         }
         return r;
       });
@@ -406,7 +406,7 @@ export async function getReferralById(req: Request, res: Response): Promise<void
       .select(`
         *,
         students ( id, student_number, profile:profiles(first_name, father_name, grandfather_name, last_name) ),
-        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
+        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, father_name, last_name )
       `)
       .eq('id', id)
       .single();
@@ -417,7 +417,7 @@ export async function getReferralById(req: Request, res: Response): Promise<void
     }
 
     if (data && data.reporter && data.reporter.first_name !== undefined) {
-      data.reporter.full_name = `${data.reporter.first_name || ''} ${data.reporter.last_name || ''}`.trim();
+      data.reporter.full_name = [data.reporter.first_name, data.reporter.father_name, data.reporter.last_name].filter(Boolean).join(' ');
     }
 
     res.json({ data });

@@ -220,7 +220,11 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
 
   // Selected campus - overrides root school IF it has its own logo or custom appearance
   // If a campus doesn't have its own logo URL or border width, inherit from parent school settings.
-  if (selectedCampus) {
+  // Guarded to a genuinely distinct campus (not the admin's own root school) — CampusContext
+  // caches this data for up to 10 minutes, so when it's the same entity as profile.school we
+  // prefer the freshly-fetched profile data instead of a possibly-stale cached copy.
+  const isDistinctCampus = !!selectedCampus && selectedCampus.id !== profile?.school_id
+  if (isDistinctCampus) {
     if (selectedCampus.logo_url) {
       resolvedLogoUrl = selectedCampus.logo_url
     } else if (profile?.school?.logo_url) {
@@ -265,8 +269,8 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
       : `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || (profile.role === 'super_admin' ? (isAr ? 'المالك الرئيسي' : 'Master Owner') : '')
     : ''
 
-  const displayName = selectedCampus?.name || impersonatedSchoolName || profile?.school?.name || 'No Campus'
-  const rawInitialsString = selectedCampus?.short_name || (displayName !== 'No Campus' ? displayName : adminName) || 'Super Admin'
+  const displayName = (isDistinctCampus ? selectedCampus?.name : null) || impersonatedSchoolName || profile?.school?.name || 'No Campus'
+  const rawInitialsString = (isDistinctCampus ? selectedCampus?.short_name : null) || (displayName !== 'No Campus' ? displayName : adminName) || 'Super Admin'
   const initials = rawInitialsString
     ? rawInitialsString.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
     : 'SA'

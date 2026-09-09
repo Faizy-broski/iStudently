@@ -3,6 +3,8 @@ import { simpleFetch } from './abortable-fetch'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
 import { getFieldDefinitions } from './custom-fields'
+import { ConfidentialFamilyStatus } from '@/lib/constants/confidential-family-status'
+export type { ConfidentialFamilyStatus }
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -91,6 +93,7 @@ export interface Student {
   campus_id?: string               // returned when a student is assigned to a campus
   student_number: string
   grade_level: string | null
+  confidential_family_status?: ConfidentialFamilyStatus | null
   medical_info?: {
     id: string
     first_name: string | null
@@ -144,6 +147,7 @@ export interface CreateStudentDTO {
   date_of_birth?: string
   national_id?: string
   medical_info?: Student['medical_info']
+  confidential_family_status?: ConfidentialFamilyStatus | null
   custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
@@ -166,6 +170,7 @@ export interface UpdateStudentDTO {
   date_of_birth?: string
   national_id?: string
   medical_info?: Student['medical_info']
+  confidential_family_status?: ConfidentialFamilyStatus | null
   custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
@@ -485,5 +490,19 @@ export async function groupAssignStudents(params: GroupAssignParams) {
   return apiRequest<GroupAssignResult>('/students/group-assign', {
     method: 'POST',
     body: JSON.stringify(params)
+  })
+}
+
+/**
+ * Update student's confidential family status
+ * Requires admin, super_admin, or counselor role
+ */
+export async function updateStudentConfidentialStatus(
+  studentId: string,
+  status: ConfidentialFamilyStatus
+): Promise<ApiResponse<Student>> {
+  return apiRequest<Student>(`/students/${studentId}/confidential-status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
   })
 }

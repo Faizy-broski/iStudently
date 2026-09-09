@@ -380,20 +380,64 @@ async function getPrimarySchoolId(): Promise<string | null> {
   return data?.id ?? null
 }
 
-/** Public endpoint — returns active custom links for login page. No auth required. */
+function isPageCurrentlyActive(l: CustomLink, now: Date): boolean {
+  if (!l.isActive) return false
+  if (l.is_template) return false
+  if (l.start_date && new Date(l.start_date) > now) return false
+  if (l.end_date && new Date(l.end_date) < now) return false
+  return true
+}
+
+/**
+ * Public endpoint — returns active custom links for the login page. No auth
+ * required. Only pages with NO visible_to_roles are public login-page tabs
+ * (matches the settings UI's own copy: "if left empty, it will only be a
+ * public login page tab") — a role-targeted page is for logged-in users of
+ * that role instead, via getRoleVisiblePages/getPopupPagesForProfile below.
+ */
 export async function getLoginLinks(): Promise<CustomLink[]> {
   const schoolId = await getPrimarySchoolId()
   if (!schoolId) return []
   const links = await getCustomLinks(schoolId)
-  
   const now = new Date()
-  return links.filter((l) => {
-    if (!l.isActive) return false
-    if (l.is_template) return false
-    if (l.start_date && new Date(l.start_date) > now) return false
-    if (l.end_date && new Date(l.end_date) < now) return false
-    return true
-  })
+  return links.filter((l) => isPageCurrentlyActive(l, now) && (!l.visible_to_roles || l.visible_to_roles.length === 0))
+}
+
+// ============================================================================
+// ROLE-VISIBLE / POPUP CUSTOM PAGES — pages targeted at logged-in users of a
+// specific role via visible_to_roles, surfaced as a one-time-per-profile
+// login popup (see routes: /my-pages, /my-popup-pages, dismiss).
+// ============================================================================
+
+/** Active custom pages targeted at this role, regardless of dismissal state. */
+export async function getRoleVisiblePages(role: string): Promise<CustomLink[]> {
+  const schoolId = await getPrimarySchoolId()
+  if (!schoolId) return []
+  const links = await getCustomLinks(schoolId)
+  const now = new Date()
+  return links.filter((l) => isPageCurrentlyActive(l, now) && !!l.visible_to_roles?.includes(role))
+}
+
+/** Role-visible pages this profile hasn't dismissed yet — the login popup queue. */
+export async function getPopupPagesForProfile(profileId: string, role: string): Promise<CustomLink[]> {
+  const pages = await getRoleVisiblePages(role)
+  if (pages.length === 0) return []
+
+  const { data: dismissed } = await supabase
+    .from('custom_page_dismissals')
+    .select('custom_page_id')
+    .eq('profile_id', profileId)
+    .in('custom_page_id', pages.map((p) => p.id))
+
+  const dismissedIds = new Set((dismissed || []).map((d) => d.custom_page_id as string))
+  return pages.filter((p) => !dismissedIds.has(p.id))
+}
+
+/** Permanently dismisses one popup page for this profile. Idempotent. */
+export async function dismissPopupPage(profileId: string, pageId: string): Promise<void> {
+  await supabase
+    .from('custom_page_dismissals')
+    .upsert({ profile_id: profileId, custom_page_id: pageId, dismissed_at: new Date().toISOString() }, { onConflict: 'profile_id,custom_page_id' })
 }
 
 // ============================================================================

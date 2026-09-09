@@ -13,16 +13,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ArrowRight, Save, Loader2, User, GraduationCap, Heart, Shield, ListPlus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, User, GraduationCap, Heart, Shield, ListPlus, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { type Student, updateStudent } from "@/lib/api/students";
-import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
+import { getFieldDefinitions, getFieldLabel, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders } from "@/lib/utils/field-ordering";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useGradeLevels } from "@/hooks/useAcademics";
 import { StudentPhotoUpload } from "@/components/ui/student-photo-upload";
+import {
+  CONFIDENTIAL_FAMILY_STATUS_OPTIONS,
+  type ConfidentialFamilyStatus,
+  canWriteConfidentialFamilyStatus
+} from "@/lib/constants/confidential-family-status";
 
 // Helper: Calculate exact age in years, months and days from a date string (YYYY-MM-DD)
 function calculateAge(dateStr: string): { years: number; months: number; days: number } | null {
@@ -58,6 +63,7 @@ interface FormData {
   dateOfBirth: string;
   address: string;
   studentPhoto: string;
+  confidentialFamilyStatus: ConfidentialFamilyStatus;
 
   studentNumber: string;
   gradeLevel: string;
@@ -82,6 +88,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
   const t = useTranslations("school.students.edit_student");
   const tFields = useTranslations("school.students.fields");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const { user } = useAuth();
   const campusContext = useCampus();
   const [activeTab, setActiveTab] = useState('personal');
@@ -142,21 +149,21 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
           <DatePicker
             value={value ? new Date(value) : undefined}
             onChange={(date) => onChange(date?.toISOString())}
-            placeholder={`Select ${field.label}`}
+            placeholder={`Select ${getFieldLabel(field, locale)}`}
           />
         );
       case "checkbox":
         return (
           <div className="flex items-center space-x-2">
             <Checkbox checked={!!value} onCheckedChange={(checked) => onChange(!!checked)} />
-            <span className="text-sm">{field.label}</span>
+            <span className="text-sm">{getFieldLabel(field, locale)}</span>
           </div>
         );
       case "select":
         return (
           <Select value={value || ""} onValueChange={onChange}>
             <SelectTrigger>
-              <SelectValue placeholder={`Select ${field.label}`} />
+              <SelectValue placeholder={`Select ${getFieldLabel(field, locale)}`} />
             </SelectTrigger>
             <SelectContent>
               {field.options?.map((option) => (
@@ -166,9 +173,9 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
           </Select>
         );
       case "multi-select":
-        return <TagsInput value={value || []} onChange={onChange} placeholder={`Add ${field.label}`} />;
+        return <TagsInput value={value || []} onChange={onChange} placeholder={`Add ${getFieldLabel(field, locale)}`} />;
       case "file":
-        return <Input type="url" value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={`Enter URL for ${field.label}`} />;
+        return <Input type="url" value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={`Enter URL for ${getFieldLabel(field, locale)}`} />;
       case "text":
       default:
         return <Input value={value || ""} onChange={(e) => onChange(e.target.value)} />;
@@ -187,7 +194,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
             {fields.map(field => (
               <div key={field.id} className={field.type === 'long-text' ? 'md:col-span-2' : ''}>
                 {field.type !== 'checkbox' && (
-                  <Label>{field.label}{field.required && <span className="text-red-500"> *</span>}</Label>
+                  <Label>{getFieldLabel(field, locale)}{field.required && <span className="text-red-500"> *</span>}</Label>
                 )}
                 {renderCustomFieldInput(field)}
               </div>
@@ -217,6 +224,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
       new Date(student.custom_fields.personal.date_of_birth).toISOString().split('T')[0] : '',
     address: student.custom_fields?.personal?.address || '',
 studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo || '',
+    confidentialFamilyStatus: (student.confidential_family_status as ConfidentialFamilyStatus) || 'NONE',
     studentNumber: student.student_number || '',
     gradeLevel: student.grade_level || '',
     // profile.username is the real login username (source of truth for resolve-username);
@@ -247,7 +255,7 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
   const isFirstTab = currentTabIndex === 0;
   const isLastTab = currentTabIndex === tabs.length - 1;
 
-  const handleInputChange = (field: keyof FormData, value: string) => {
+  const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -296,7 +304,7 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
 
     setIsSubmitting(true);
     try {
-      const updateData = {
+      const updateData: any = {
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.email,
@@ -304,6 +312,9 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
         student_number: formData.studentNumber,
         grade_level: formData.gradeLevel,
         username: formData.username || undefined,
+        ...(canWriteConfidentialFamilyStatus(user?.role) ? {
+          confidential_family_status: formData.confidentialFamilyStatus,
+        } : {}),
         // Start from the preserved custom_fields (original values + any admin-defined
         // custom field edits) and only overlay the keys this form has dedicated inputs
         // for. Overwriting with just the hardcoded shape would silently wipe out any
@@ -367,7 +378,7 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-[#022172] dark:text-white">
-            {t("title")}: {student.profile?.first_name} {student.profile?.last_name}
+            {t("title")}: {[student.profile?.first_name, student.profile?.father_name, student.profile?.last_name].filter(Boolean).join(' ')}
           </h2>
           <p className="text-gray-600 dark:text-gray-400">{t("student_number")}: {student.student_number}</p>
         </div>
@@ -517,6 +528,39 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                     rows={2}
                   />
                 </div>
+                {canWriteConfidentialFamilyStatus(user?.role) && (
+                  <div className="md:col-span-2 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-2">
+                    <Label htmlFor="confidentialFamilyStatus" className="flex items-center gap-1.5 font-semibold text-amber-900 dark:text-amber-300">
+                      <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <span>{locale === 'ar' ? 'الحالة العائلية السرية' : 'Confidential Family Status'}</span>
+                    </Label>
+                    <Select
+                      value={formData.confidentialFamilyStatus}
+                      onValueChange={(value) => handleInputChange('confidentialFamilyStatus', value as ConfidentialFamilyStatus)}
+                    >
+                      <SelectTrigger id="confidentialFamilyStatus" className="bg-white dark:bg-zinc-900">
+                        <SelectValue placeholder={locale === 'ar' ? 'اختر الحالة العائلية السرية' : 'Select confidential family status'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CONFIDENTIAL_FAMILY_STATUS_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div className="flex flex-col text-left rtl:text-right py-0.5">
+                              <span className="font-medium text-sm">{locale === 'ar' ? option.label.ar : option.label.en}</span>
+                              {option.description && (
+                                <span className="text-xs text-muted-foreground">{locale === 'ar' ? option.description.ar : option.description.en}</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      {locale === 'ar'
+                        ? 'خاص بالمرشد والمعلمين والإدارة فقط — محجوب بالكامل عن حسابات الطلاب وأولياء الأمور على مستوى واجهة برمجة التطبيقات (API).'
+                        : 'Visible only to counselors, teachers, and school administrators. Completely stripped from student and parent accounts at the API level.'}
+                    </p>
+                  </div>
+                )}
               </div>
               {renderCustomFieldsForCategory('personal')}
             </CardContent>
@@ -724,7 +768,7 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                         .map(field => (
                           <div key={field.id} className={field.type === 'long-text' ? 'md:col-span-2' : ''}>
                             {field.type !== 'checkbox' && (
-                              <Label>{field.label}{field.required && <span className="text-red-500"> *</span>}</Label>
+                              <Label>{getFieldLabel(field, locale)}{field.required && <span className="text-red-500"> *</span>}</Label>
                             )}
                             {renderCustomFieldInput(field)}
                           </div>

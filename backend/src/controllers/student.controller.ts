@@ -3,6 +3,7 @@ import { AuthRequest } from '../middlewares/auth.middleware'
 import { StudentService } from '../services/student.service'
 import { CreateStudentDTO, UpdateStudentDTO } from '../types'
 import { getEffectiveSchoolId } from '../utils/campus-validation'
+import { stripConfidentialFamilyStatus, canWriteConfidentialFamilyStatus } from '../utils/confidential-family-status'
 
 const studentService = new StudentService()
 
@@ -58,9 +59,11 @@ export class StudentController {
         isActive
       )
 
+      const sanitizedStudents = stripConfidentialFamilyStatus(result.students, req.profile?.role)
+
       res.json({
         success: true,
-        data: result.students,
+        data: sanitizedStudents,
         pagination: result.pagination
       })
     } catch (error: any) {
@@ -105,7 +108,7 @@ export class StudentController {
 
       res.json({
         success: true,
-        data: result.students,
+        data: stripConfidentialFamilyStatus(result.students, req.profile?.role),
         pagination: result.pagination
       })
     } catch (error: any) {
@@ -145,9 +148,38 @@ export class StudentController {
         return
       }
 
+      // Enforce self/linked-record ownership for student and parent callers
+      const role = req.profile?.role
+      const callerProfileId = req.profile?.id
+      const callerStudentId = req.profile?.student_id
+
+      if (role === 'student') {
+        const isSelf = (callerStudentId && callerStudentId === student.id) ||
+                       (student.profile_id && student.profile_id === callerProfileId) ||
+                       (callerProfileId && callerProfileId === student.id)
+        if (!isSelf) {
+          res.status(403).json({
+            success: false,
+            error: 'Forbidden: You can only view your own student record'
+          })
+          return
+        }
+      } else if (role === 'parent') {
+        const isLinkedChild = (student as any).parent_links?.some(
+          (link: any) => link.parent?.profile?.id === callerProfileId || link.parent?.profile_id === callerProfileId
+        )
+        if (!isLinkedChild) {
+          res.status(403).json({
+            success: false,
+            error: 'Forbidden: You can only view your linked children records'
+          })
+          return
+        }
+      }
+
       res.json({
         success: true,
-        data: student
+        data: stripConfidentialFamilyStatus(student, role)
       })
     } catch (error: any) {
       console.error('Get student by ID error:', error)
@@ -188,7 +220,7 @@ export class StudentController {
 
       res.json({
         success: true,
-        data: student
+        data: stripConfidentialFamilyStatus(student, req.profile?.role)
       })
     } catch (error: any) {
       console.error('Get student by number error:', error)
@@ -236,7 +268,7 @@ export class StudentController {
 
       res.status(201).json({
         success: true,
-        data: student,
+        data: stripConfidentialFamilyStatus(student, req.profile?.role),
         message: 'Student created successfully'
       })
     } catch (error: any) {
@@ -288,13 +320,13 @@ export class StudentController {
       // Use campus_id if provided, otherwise use school_id
       const effectiveSchoolId = (campusId && campusId.trim() !== '') ? campusId : schoolId
 
-      const updateData: UpdateStudentDTO = req.body
-
-      const student = await studentService.updateStudent(studentId, effectiveSchoolId, updateData)
+      const updateData = req.body
+      const callerRole = req.profile?.role
+      const student = await studentService.updateStudent(studentId, effectiveSchoolId, updateData, callerRole)
 
       res.json({
         success: true,
-        data: student,
+        data: stripConfidentialFamilyStatus(student, callerRole),
         message: 'Student updated successfully'
       })
     } catch (error: any) {
@@ -387,7 +419,7 @@ export class StudentController {
 
       res.json({
         success: true,
-        data: students
+        data: stripConfidentialFamilyStatus(students, req.profile?.role)
       })
     } catch (error: any) {
       console.error('Get students by grade error:', error)
@@ -684,6 +716,64 @@ export class StudentController {
     } catch (error: any) {
       console.error('Group assign students error:', error)
       res.status(500).json({ success: false, error: error.message || 'Group assign failed' })
+    }
+  }
+
+  /**
+   * Update student's confidential family status
+   * PATCH /api/students/:id/confidential-status
+   * Requires: admin, super_admin, or counselor role
+   */
+  async updateConfidentialFamilyStatus(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      const studentId = req.params.id
+      const callerRole = req.profile?.role
+      const { status } = req.body
+
+      if (!schoolId) {
+        res.status(403).json({
+          success: false,
+          error: 'No school associated with your account'
+        })
+        return
+      }
+
+      if (!canWriteConfidentialFamilyStatus(callerRole)) {
+        res.status(403).json({
+          success: false,
+          error: 'Forbidden: Insufficient permissions to update confidential family status'
+        })
+        return
+      }
+
+      const validStatuses = ['NONE', 'PARENTS_DIVORCED', 'ORPHAN_FATHER', 'ORPHAN_MOTHER', 'ORPHAN_BOTH']
+      if (!status || !validStatuses.includes(status)) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+        })
+        return
+      }
+
+      const student = await studentService.updateStudent(
+        studentId,
+        schoolId,
+        { confidential_family_status: status },
+        callerRole
+      )
+
+      res.json({
+        success: true,
+        data: stripConfidentialFamilyStatus(student, callerRole),
+        message: 'Confidential family status updated successfully'
+      })
+    } catch (error: any) {
+      console.error('Update confidential family status error:', error)
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to update confidential family status'
+      })
     }
   }
 }

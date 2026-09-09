@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student' | 'parent' | 'staff' | 'librarian' | 'inspector' | 'media_officer' | 'fina_supervisor'
+export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student' | 'parent' | 'staff' | 'librarian' | 'counselor' | 'inspector' | 'media_officer' | 'fina_supervisor'
 export type SchoolStatus = 'active' | 'suspended'
 
 // Library Types
@@ -254,6 +254,8 @@ export type CampusScope = 'this_campus' | 'selected_campuses' | 'all_campuses' |
 export interface CustomField {
   id: string
   label: string
+  /** Arabic translation of `label` — undefined/null falls back to `label`. */
+  label_ar?: string | null
   type: CustomFieldType
   value: any
   options?: string[] // For select/multi-select

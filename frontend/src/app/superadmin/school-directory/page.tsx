@@ -127,6 +127,24 @@ export default function SchoolDirectoryPage() {
     setCurrentPage(1);
   }, [filteredNetworks.length]);
 
+  // Auto-expand any network that has campuses/branches the first time it's seen,
+  // so branch editing (previously easy to miss behind a collapsed toggle) is
+  // visible by default. Still respects a user's manual collapse afterward, since
+  // we only set a network's initial state once (skip it if already in the map).
+  useEffect(() => {
+    setExpandedNetworks(prev => {
+      let changed = false;
+      const next = { ...prev };
+      schoolNetworks.forEach(network => {
+        if (network.branches.length > 0 && !(network.root.id in next)) {
+          next[network.root.id] = true;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [schoolNetworks]);
+
   const totalPages = Math.ceil(filteredNetworks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -146,7 +164,7 @@ export default function SchoolDirectoryPage() {
     // Clear any cached campus data from a previously-impersonated school so the
     // sidebar can't briefly (or indefinitely, if a refetch silently fails) show
     // the wrong school's name/logo before CampusContext refetches.
-    sessionStorage.removeItem('studently_campus_cache');
+    sessionStorage.removeItem('studently_campus_cache_v2');
     localStorage.removeItem('selectedCampusId');
     sessionStorage.setItem('impersonatedSchoolId', school.id);
     sessionStorage.setItem('impersonatedSchoolName', school.name);
@@ -399,9 +417,8 @@ export default function SchoolDirectoryPage() {
                       <TableCell className="align-top pt-5 pb-5">
                         {branches.length > 0 ? (
                           <Button
-                            variant="ghost"
                             size="sm"
-                            className="h-9 px-3 text-xs font-bold text-gray-700 dark:text-gray-300 hover:text-brand-blue dark:hover:text-[#57A3CC] hover:bg-blue-50 dark:hover:bg-blue-900/20 uppercase tracking-wide border border-transparent hover:border-blue-100 dark:hover:border-blue-800/30"
+                            className="h-9 px-3 text-xs font-bold uppercase tracking-wide bg-blue-100 text-brand-blue border border-blue-200 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-[#57A3CC] dark:border-blue-800/50 dark:hover:bg-blue-900/60 shadow-sm"
                             onClick={() => toggleNetwork(root.id)}
                           >
                             <GitBranch className="h-4 w-4 mr-2" />
@@ -508,10 +525,9 @@ export default function SchoolDirectoryPage() {
                         </TableCell>
                         <TableCell className="pt-4 pb-4 text-right pr-6">
                           <div className="flex justify-end">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="h-8 text-xs border-gray-200 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 hover:bg-gray-100 dark:bg-transparent font-medium" 
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs font-semibold gradient-blue text-white border-0 hover:shadow-md transition-all"
                               onClick={() => setEditingSchool(branch)}
                             >
                               <Edit className="h-3.5 w-3.5 mr-1.5" /> Edit Branch

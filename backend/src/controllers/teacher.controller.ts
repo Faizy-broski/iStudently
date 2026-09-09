@@ -3,6 +3,7 @@ import * as teacherService from '../services/teacher.service'
 import { coursesService } from '../services/courses.service'
 import { ApiResponse } from '../types'
 import { getEffectiveSchoolId, validateCampusAccess } from '../utils/campus-validation'
+import { stripConfidentialFamilyStatus } from '../utils/confidential-family-status'
 
 interface AuthRequest extends Request {
   profile?: {
@@ -580,7 +581,8 @@ export const getMyCoursePeriodStudents = async (req: Request, res: Response) => 
 
     const { cpId } = req.params
     const data = await coursesService.getStudentsByCoursePeriod(cpId, staffId)
-    res.json({ success: true, data })
+    const sanitized = stripConfidentialFamilyStatus(data, profile?.role)
+    res.json({ success: true, data: sanitized })
   } catch (error: any) {
     console.error('Error in getMyCoursePeriodStudents:', error)
     const status = error.message?.includes('Access denied') ? 403 : 500

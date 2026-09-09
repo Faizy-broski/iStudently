@@ -23,7 +23,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { MultiSelectPopover } from "@/components/shared/MultiSelectPopover"
 import { PaginationWrapper } from "@/components/ui/pagination"
-import { Send, Search, Users, GraduationCap, Save, X, Paperclip, FileText } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Send, Search, Users, GraduationCap, Save, X, Paperclip, FileText, Edit, Trash2, Settings2, Loader2, Check } from "lucide-react"
 
 const MAX_ATTACHMENTS = 10
 
@@ -104,6 +113,11 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("")
   const [templateTitle, setTemplateTitle] = useState("")
   const [savingTemplate, setSavingTemplate] = useState(false)
+  const [manageTemplatesOpen, setManageTemplatesOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
+  const [editForm, setEditForm] = useState({ title: "", subject: "", body: "" })
+  const [updatingTemplate, setUpdatingTemplate] = useState(false)
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
@@ -247,6 +261,100 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
     }
   }
 
+  const handleDeleteTemplate = async (templateId: string, title?: string) => {
+    const confirmed = window.confirm(
+      t('confirmDeleteTemplate', { title: title || 'Template' })
+    )
+    if (!confirmed) return
+
+    setDeletingTemplateId(templateId)
+    try {
+      const res = await messagingApi.deleteTemplate(templateId)
+      if (res.success) {
+        setTemplates((prev) => prev.filter((t) => t.id !== templateId))
+        if (selectedTemplateId === templateId) {
+          setSelectedTemplateId("")
+          setTemplateTitle("")
+        }
+        if (editingTemplate?.id === templateId) {
+          setEditingTemplate(null)
+        }
+        toast.success(t('templateDeleted'))
+      } else {
+        toast.error(res.error || t('failedToDeleteTemplate'))
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('failedToDeleteTemplate'))
+    } finally {
+      setDeletingTemplateId(null)
+    }
+  }
+
+  const handleUpdateCurrentTemplate = async () => {
+    if (!selectedTemplateId) return
+    const current = templates.find((t) => t.id === selectedTemplateId)
+    if (!current) return
+
+    setUpdatingTemplate(true)
+    try {
+      const res = await messagingApi.updateTemplate(selectedTemplateId, {
+        title: templateTitle.trim() || current.title,
+        subject,
+        body,
+      })
+      if (res.success && res.data) {
+        const updated = res.data as MessageTemplate
+        setTemplates((prev) =>
+          prev.map((t) => (t.id === updated.id ? updated : t)).sort((a, b) => a.title.localeCompare(b.title))
+        )
+        setTemplateTitle(updated.title)
+        toast.success(t('templateUpdated'))
+      } else {
+        toast.error(res.error || t('failedToUpdateTemplate'))
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('failedToUpdateTemplate'))
+    } finally {
+      setUpdatingTemplate(false)
+    }
+  }
+
+  const handleSaveEditedTemplate = async () => {
+    if (!editingTemplate) return
+    if (!editForm.title.trim()) {
+      toast.error(t('templateTitle'))
+      return
+    }
+
+    setUpdatingTemplate(true)
+    try {
+      const res = await messagingApi.updateTemplate(editingTemplate.id, {
+        title: editForm.title.trim(),
+        subject: editForm.subject,
+        body: editForm.body,
+      })
+      if (res.success && res.data) {
+        const updated = res.data as MessageTemplate
+        setTemplates((prev) =>
+          prev.map((t) => (t.id === updated.id ? updated : t)).sort((a, b) => a.title.localeCompare(b.title))
+        )
+        if (selectedTemplateId === updated.id) {
+          setSubject(updated.subject || "")
+          setBody(updated.body || "")
+          setTemplateTitle(updated.title)
+        }
+        setEditingTemplate(null)
+        toast.success(t('templateUpdated'))
+      } else {
+        toast.error(res.error || t('failedToUpdateTemplate'))
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('failedToUpdateTemplate'))
+    } finally {
+      setUpdatingTemplate(false)
+    }
+  }
+
   const handleAttachFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     e.target.value = ""
@@ -315,18 +423,93 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
         </CardHeader>
         <CardContent className="space-y-5">
           {templates.length > 0 && (
-            <div className="space-y-1.5 max-w-sm">
-              <Label>{t('useATemplate')}</Label>
-              <Select value={selectedTemplateId || undefined} onValueChange={applyTemplate}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('chooseASavedTemplate')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>{template.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border/60 max-w-lg">
+              <div className="flex items-center justify-between">
+                <Label className="font-semibold text-xs tracking-wider uppercase text-muted-foreground">
+                  {t('useATemplate')}
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs text-muted-foreground hover:text-foreground gap-1 px-2"
+                  onClick={() => setManageTemplatesOpen(true)}
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  <span>{t('manageTemplates')}</span>
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <Select value={selectedTemplateId || undefined} onValueChange={applyTemplate}>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder={t('chooseASavedTemplate')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>{template.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedTemplateId && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                      title={t('editTemplate')}
+                      onClick={() => {
+                        const tpl = templates.find((t) => t.id === selectedTemplateId)
+                        if (tpl) {
+                          setEditingTemplate(tpl)
+                          setEditForm({
+                            title: tpl.title,
+                            subject: tpl.subject || "",
+                            body: tpl.body || "",
+                          })
+                        }
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      title={t('deleteTemplate')}
+                      disabled={deletingTemplateId === selectedTemplateId}
+                      onClick={() => {
+                        const tpl = templates.find((t) => t.id === selectedTemplateId)
+                        if (tpl) handleDeleteTemplate(tpl.id, tpl.title)
+                      }}
+                    >
+                      {deletingTemplateId === selectedTemplateId ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                      title={t('clear')}
+                      onClick={() => {
+                        setSelectedTemplateId("")
+                        setTemplateTitle("")
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -412,7 +595,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
           <div className="flex flex-wrap items-end gap-2 pt-2 border-t">
             <div className="space-y-1.5 flex-1 min-w-[200px]">
               <Label htmlFor="template_title" className="text-xs text-muted-foreground">
-                {t('saveThisAsATemplate')}
+                {selectedTemplateId ? t('templateTitle') : t('saveThisAsATemplate')}
               </Label>
               <Input
                 id="template_title"
@@ -421,8 +604,37 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                 placeholder={t('templateTitle')}
               />
             </div>
-            <Button variant="outline" size="sm" onClick={handleSaveTemplate} disabled={savingTemplate}>
-              <Save className="h-3.5 w-3.5 mr-1.5" /> {savingTemplate ? t('saving') : t('saveTemplate')}
+            {selectedTemplateId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleUpdateCurrentTemplate}
+                disabled={updatingTemplate}
+                className="gap-1.5"
+              >
+                {updatingTemplate ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
+                {t('updateCurrentTemplate')}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant={selectedTemplateId ? "ghost" : "outline"}
+              size="sm"
+              onClick={handleSaveTemplate}
+              disabled={savingTemplate}
+              className="gap-1.5"
+            >
+              {savingTemplate ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              {selectedTemplateId ? t('templateSavedAsNew') : t('saveTemplate')}
             </Button>
           </div>
         </CardContent>
@@ -569,6 +781,154 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Manage Templates Dialog */}
+      <Dialog open={manageTemplatesOpen} onOpenChange={setManageTemplatesOpen}>
+        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#022172] dark:text-[#57A3CC]">
+              <Settings2 className="h-5 w-5" />
+              {t('manageTemplates')}
+            </DialogTitle>
+            <DialogDescription>
+              {templates.length > 0 ? t('chooseASavedTemplate') : t('noTemplatesSaved')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto py-2 space-y-2 min-h-[150px]">
+            {templates.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                {t('noTemplatesSaved')}
+              </div>
+            ) : (
+              templates.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/40 transition-colors gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm truncate">{tpl.title}</p>
+                    {tpl.subject && (
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        <span className="font-medium text-foreground/70">{t('subject')}:</span> {tpl.subject}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1"
+                      onClick={() => {
+                        applyTemplate(tpl.id)
+                        setManageTemplatesOpen(false)
+                      }}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>{t('chooseASavedTemplate', { defaultValue: 'Use' })}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      title={t('editTemplate')}
+                      onClick={() => {
+                        setEditingTemplate(tpl)
+                        setEditForm({
+                          title: tpl.title,
+                          subject: tpl.subject || "",
+                          body: tpl.body || "",
+                        })
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                      title={t('deleteTemplate')}
+                      disabled={deletingTemplateId === tpl.id}
+                      onClick={() => handleDeleteTemplate(tpl.id, tpl.title)}
+                    >
+                      {deletingTemplateId === tpl.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManageTemplatesOpen(false)}>
+              {t('clear', { defaultValue: 'Close' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Template Dialog */}
+      <Dialog open={!!editingTemplate} onOpenChange={(open) => !open && setEditingTemplate(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#022172] dark:text-[#57A3CC]">
+              <Edit className="h-5 w-5" />
+              {t('editTemplate')}
+            </DialogTitle>
+            <DialogDescription>
+              {editingTemplate?.title}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit_tpl_title">{t('templateTitle')} *</Label>
+              <Input
+                id="edit_tpl_title"
+                value={editForm.title}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder={t('templateTitle')}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit_tpl_subject">{t('subject')}</Label>
+              <Input
+                id="edit_tpl_subject"
+                value={editForm.subject}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, subject: e.target.value }))}
+                placeholder={t('messageSubject')}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit_tpl_body">{t('message')}</Label>
+              <Textarea
+                id="edit_tpl_body"
+                value={editForm.body}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, body: e.target.value }))}
+                placeholder={t('message')}
+                rows={5}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setEditingTemplate(null)} disabled={updatingTemplate}>
+              {t('clear', { defaultValue: 'Cancel' })}
+            </Button>
+            <Button onClick={handleSaveEditedTemplate} disabled={updatingTemplate} className="gap-1.5 bg-[#022172] hover:bg-[#022172]/90 text-white">
+              {updatingTemplate && <Loader2 className="h-4 w-4 animate-spin" />}
+              {t('saveTemplate', { defaultValue: 'Save' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

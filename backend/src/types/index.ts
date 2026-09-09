@@ -376,6 +376,13 @@ export interface ApiResponse<T = any> {
 // STUDENT TYPES
 // ============================================================================
 
+export type ConfidentialFamilyStatus =
+  | "NONE"
+  | "PARENTS_DIVORCED"
+  | "ORPHAN_FATHER"
+  | "ORPHAN_MOTHER"
+  | "ORPHAN_BOTH";
+
 export interface Student {
   id: string;
   profile_id: string | null;
@@ -384,6 +391,7 @@ export interface Student {
   grade_level: string | null; // Legacy field - will be deprecated
   grade_level_id: string | null; // New: Reference to grade_levels table
   section_id: string | null; // New: Reference to sections table
+  confidential_family_status?: ConfidentialFamilyStatus | null;
   medical_info?: {
     allergies?: string[];
     medications?: string[];
@@ -403,6 +411,7 @@ export interface CreateStudentDTO {
   grade_level?: string; // Legacy - keep for backward compatibility
   grade_level_id?: string; // New: UUID reference to grade_levels
   section_id?: string; // New: UUID reference to sections
+  confidential_family_status?: ConfidentialFamilyStatus | null;
   medical_info?: Student["medical_info"];
   custom_fields?: Record<string, any>;
   // Profile data (if creating new user)
@@ -425,6 +434,7 @@ export interface UpdateStudentDTO {
   grade_level?: string; // Legacy
   grade_level_id?: string; // New: UUID reference
   section_id?: string; // New: UUID reference
+  confidential_family_status?: ConfidentialFamilyStatus | null;
   medical_info?: Student["medical_info"];
   custom_fields?: Record<string, any>;
   // Profile updates
@@ -930,6 +940,7 @@ export interface AttendanceRecord {
   // Joined data
   student_name?: string;
   student_number?: string;
+  confidential_family_status?: ConfidentialFamilyStatus | null;
 }
 
 export interface CreateAttendanceDTO {

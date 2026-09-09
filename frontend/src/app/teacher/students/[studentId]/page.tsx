@@ -12,6 +12,7 @@ import { Loader2, ArrowLeft, GraduationCap, MapPin, Phone, Mail, User } from 'lu
 import { getStudentsForGrades, type StudentListItem } from '@/lib/api/grades'
 import { getStudentById } from '@/lib/api/students'
 import { StudentCustomFields } from '@/components/shared/StudentCustomFields'
+import { ConfidentialFamilyStatusBadge } from '@/components/shared/ConfidentialFamilyStatusBadge'
 
 export default function TeacherStudentDetailPage() {
   const t = useTranslations('teacherPages.studentDetail')
@@ -85,7 +86,10 @@ export default function TeacherStudentDetailPage() {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <CardTitle className="text-2xl text-brand-blue dark:text-white">{name}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-2xl text-brand-blue dark:text-white">{name}</CardTitle>
+                <ConfidentialFamilyStatusBadge status={fullStudent?.confidential_family_status ?? student.confidential_family_status} />
+              </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {student.grade_level && (
                   <Badge variant="secondary" className="gap-1">

@@ -61,6 +61,7 @@ import {
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { useTranslations } from "next-intl";
+import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
 
 // Utility function for debouncing
 function debounce(
@@ -1762,9 +1763,12 @@ export default function StudentIdCardPage() {
                                 onCheckedChange={() => toggleStudent(student.id)}
                               />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                  {getStudentName(student)}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium truncate">
+                                    {getStudentName(student)}
+                                  </p>
+                                  <ConfidentialFamilyStatusBadge status={student.confidential_family_status} />
+                                </div>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {student.student_number}
                                   {studentWithAcademics.grade_level_name && ` • ${studentWithAcademics.grade_level_name}`}

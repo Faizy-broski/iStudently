@@ -6,6 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Library utility functions
+export function formatFullName(profile?: {
+  first_name?: string | null;
+  father_name?: string | null;
+  last_name?: string | null;
+} | null): string {
+  if (!profile) return '';
+  const parts = [profile.first_name, profile.father_name, profile.last_name].filter(Boolean);
+  return parts.join(' ');
+}
+
 export interface LoanStatus {
   status: string;
   color: string;

@@ -217,9 +217,19 @@ export async function getLoginLinks() {
   return publicFetch<CustomLink[]>('/public/login-links')
 }
 
-/** Authenticated — used by student/parent/teacher portals to render school custom pages. */
+/** Authenticated — role-filtered custom pages for the "School Pages" dashboard view. */
 export async function getMyPages() {
-  return authFetch<CustomLink[]>('/public/login-links')
+  return authFetch<CustomLink[]>('/public/my-pages')
+}
+
+/** Authenticated — role-targeted pages the current user hasn't dismissed yet (login popup queue). */
+export async function getMyPopupPages() {
+  return authFetch<CustomLink[]>('/public/my-popup-pages')
+}
+
+/** Authenticated — permanently dismisses one popup page for the current user. */
+export async function dismissPopupPage(pageId: string) {
+  return authFetch<void>(`/public/my-popup-pages/${pageId}/dismiss`, { method: 'POST' })
 }
 
 /** Super Admin — get all custom link pages for a school (per-school, kept for compat). */

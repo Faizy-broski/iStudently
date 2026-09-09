@@ -132,6 +132,7 @@ export interface StudentListItem {
   id: string
   student_number: string
   grade_level?: string | null
+  confidential_family_status?: string | null
   profile?: {
     first_name: string | null
     father_name?: string | null

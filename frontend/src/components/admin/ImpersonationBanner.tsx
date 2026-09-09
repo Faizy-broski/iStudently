@@ -16,9 +16,13 @@ export function ImpersonationBanner() {
     mutate(() => true, undefined, { revalidate: false })
     sessionStorage.removeItem('impersonatedSchoolId')
     sessionStorage.removeItem('impersonatedSchoolName')
+    sessionStorage.removeItem('impersonatedSchoolLogoUrl')
+    sessionStorage.removeItem('impersonatedSchoolLogoShape')
+    sessionStorage.removeItem('impersonatedSchoolLogoBorderWidth')
+    sessionStorage.removeItem('impersonatedSchoolLogoBorderColor')
     // Clear cached campus data too, so returning to super-admin views (or a future
     // impersonation session) can't briefly show this school's campus name/logo.
-    sessionStorage.removeItem('studently_campus_cache')
+    sessionStorage.removeItem('studently_campus_cache_v2')
     localStorage.removeItem('selectedCampusId')
     router.push('/superadmin/school-directory')
   }

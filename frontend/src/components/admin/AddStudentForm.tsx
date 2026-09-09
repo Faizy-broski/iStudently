@@ -29,7 +29,7 @@ import { useGradeLevels, useSections } from "@/hooks/useAcademics";
 import { generateFeeForNewStudent } from "@/lib/api/fees";
 import FeeChallanModal from "@/components/admin/FeeChallanModal";
 import * as servicesApi from "@/lib/api/services";
-import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields";
+import { getFieldDefinitions, getFieldLabel, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import { useTranslations, useLocale } from "next-intl";
 import {
@@ -420,7 +420,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
         if (response.success && response.data) {
           const options: ComboboxOption[] = response.data.map((p: Parent) => {
-            const fullName = `${p.profile?.first_name || ''} ${p.profile?.last_name || ''}`.trim();
+            const fullName = [p.profile?.first_name, p.profile?.father_name, p.profile?.last_name].filter(Boolean).join(' ');
             const childrenCount = p.children?.length || 0;
             return {
               value: p.id,
@@ -840,8 +840,8 @@ customFields.forEach((field) => {
   // Render a single field (standard or custom)
   const renderField = (field: any) => {
     const isCustom = !!field.isCustom;
-    // For custom fields use the raw label; for standard fields translate via messages
-    const fieldDisplayLabel = isCustom ? field.label : t(`fields.${field.label}` as Parameters<typeof t>[0]);
+    // For custom fields use the (locale-aware) label; for standard fields translate via messages
+    const fieldDisplayLabel = isCustom ? getFieldLabel(field, locale) : t(`fields.${field.label}` as Parameters<typeof t>[0]);
     // Initialize multi-select fields as arrays
     const defaultValue = field.type === 'multi-select' ? [] : '';
     const value = isCustom ? (customFieldValues[field.field_key] ?? defaultValue) : (formData[field.id as keyof StudentFormData] ?? defaultValue);

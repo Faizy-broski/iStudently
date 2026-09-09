@@ -93,6 +93,7 @@ export const getAttendanceForClass = async (
         student:students(
           id,
           student_number,
+          confidential_family_status,
           profile:profiles(first_name, last_name)
         )
       `)
@@ -114,6 +115,7 @@ export const getAttendanceForClass = async (
             student:students(
               id,
               student_number,
+              confidential_family_status,
               profile:profiles(first_name, last_name)
             )
           `)
@@ -133,7 +135,8 @@ export const getAttendanceForClass = async (
         student_name: item.student?.profile
           ? `${item.student.profile.first_name} ${item.student.profile.last_name}`.trim()
           : 'Unknown',
-        student_number: item.student?.student_number || ''
+        student_number: item.student?.student_number || '',
+        confidential_family_status: item.student?.confidential_family_status || null
       }))
       .sort((a: any, b: any) => (a.student_number || '').localeCompare(b.student_number || ''))
 
@@ -161,6 +164,7 @@ export const getAttendanceForSectionDate = async (
       .select(`
         id,
         student_number,
+        confidential_family_status,
         profile:profiles(first_name, last_name)
       `)
       .eq('section_id', sectionId)
@@ -215,7 +219,8 @@ export const getAttendanceForSectionDate = async (
           student_name: profile
             ? `${profile.first_name} ${profile.last_name}`.trim()
             : 'Unknown',
-          student_number: student?.student_number || ''
+          student_number: student?.student_number || '',
+          confidential_family_status: student?.confidential_family_status || null
         }
       })
 
@@ -235,7 +240,8 @@ export const getAttendanceForSectionDate = async (
         student_name: profile
           ? `${profile.first_name} ${profile.last_name}`.trim()
           : 'Unknown',
-        student_number: student?.student_number || ''
+        student_number: student?.student_number || '',
+        confidential_family_status: student?.confidential_family_status || null
       }
     })
 

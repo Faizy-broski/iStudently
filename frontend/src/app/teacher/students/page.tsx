@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/pagination";
 import { MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
 
 export default function TeacherStudentInfoPage() {
   const t = useTranslations('teacherPages.students');
@@ -208,7 +209,10 @@ export default function TeacherStudentInfoPage() {
                               </div>
                             )}
                             <div>
-                              <div className="font-medium">{fullName || t('na')}</div>
+                              <div className="font-medium flex items-center gap-2">
+                                <span>{fullName || t('na')}</span>
+                                <ConfidentialFamilyStatusBadge status={student.confidential_family_status} />
+                              </div>
                               <div className="text-sm text-muted-foreground">{student.profile?.email || t('noEmail')}</div>
                             </div>
                           </div>

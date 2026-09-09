@@ -343,6 +343,7 @@ export interface AttendanceRecord {
   remarks: string | null
   student_name?: string
   student_number?: string
+  confidential_family_status?: string | null
 }
 
 export interface UpdateAttendanceDTO {

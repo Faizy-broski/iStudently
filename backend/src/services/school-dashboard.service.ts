@@ -46,46 +46,73 @@ export class SchoolDashboardService {
       // years reflects real per-year enrollment instead of the school's
       // all-time active student count.
       //
-      // student_enrollment rows are created best-effort at student-creation
-      // time (student.service.ts's enrollInCurrentYear — deliberately never
-      // throws, e.g. when no academic year was configured yet) and are never
-      // backfilled for students imported before that existed. An `!inner`
-      // join against student_enrollment therefore silently drops every such
-      // legacy/never-enrolled student from the count — for a school where
-      // enrollment tracking was never backfilled at all, that's every
-      // student, showing 0 despite the roster (e.g. /admin/school-details,
-      // which counts students directly with no enrollment join at all) being
-      // non-empty. A student is eligible here if they're enrolled in the
-      // selected year OR have no enrollment records at all (grandfathered);
-      // only a student enrolled in a *different* year only (e.g. graduated)
-      // is correctly excluded.
+      // Past years must be FROZEN HISTORY: a student's enrollment row for a
+      // past year is never touched by later actions (see
+      // student.service.ts's closeCurrentYearEnrollment/
+      // reopenCurrentYearEnrollment, which only ever write to the CURRENT
+      // year's row), so for a non-current year, "were they enrolled" is
+      // answered purely by "does a student_enrollment row exist for that
+      // year" — no end_date filter, no profiles.is_active check (that flag
+      // reflects the student's status TODAY, not back then).
+      //
+      // The current year is different: student_enrollment rows are created
+      // best-effort at student-creation time (enrollInCurrentYear —
+      // deliberately never throws, e.g. when no academic year was configured
+      // yet) and a one-time backfill (migration 292) covers students that
+      // existed before that write path did. A narrow grandfather fallback is
+      // kept for the current year only, as a safety net against any future
+      // code path that might still fail to create an enrollment row — an
+      // active student with zero enrollment rows at all is still counted.
+      // This fallback must NOT extend to past years, since that's exactly
+      // what caused every student to show up in every year.
       let eligibleStudentIds: string[] | null = null
       if (academicYearId) {
-        const { data: activeStudents, error: activeErr } = await supabase
-          .from('students')
-          .select('id, profile:profiles!inner(is_active)')
-          .eq('school_id', effectiveId)
-          .eq('profile.is_active', true)
-        if (activeErr) console.error('Students query error:', activeErr)
+        const { data: yearRow, error: yearErr } = await supabase
+          .from('academic_years')
+          .select('is_current')
+          .eq('id', academicYearId)
+          .maybeSingle()
+        if (yearErr) console.error('Academic year lookup error:', yearErr)
+        const isCurrentYear = !!yearRow?.is_current
 
-        const activeIds = (activeStudents || []).map((s: any) => s.id as string)
-        if (activeIds.length === 0) {
-          eligibleStudentIds = []
+        if (isCurrentYear) {
+          const { data: activeStudents, error: activeErr } = await supabase
+            .from('students')
+            .select('id, profile:profiles!inner(is_active)')
+            .eq('school_id', effectiveId)
+            .eq('profile.is_active', true)
+          if (activeErr) console.error('Students query error:', activeErr)
+
+          const activeIds = (activeStudents || []).map((s: any) => s.id as string)
+          if (activeIds.length === 0) {
+            eligibleStudentIds = []
+          } else {
+            const { data: enrollmentRows, error: enrollErr } = await supabase
+              .from('student_enrollment')
+              .select('student_id, academic_year_id, end_date')
+              .in('student_id', activeIds)
+            if (enrollErr) console.error('Enrollment query error:', enrollErr)
+
+            const enrolledThisYear = new Set(
+              (enrollmentRows || [])
+                .filter((e: any) => e.academic_year_id === academicYearId && e.end_date === null)
+                .map((e: any) => e.student_id as string)
+            )
+            const hasAnyEnrollment = new Set((enrollmentRows || []).map((e: any) => e.student_id as string))
+
+            eligibleStudentIds = activeIds.filter((id) => enrolledThisYear.has(id) || !hasAnyEnrollment.has(id))
+          }
         } else {
+          // Past (or future) year: frozen history — presence of a row is the
+          // only signal, regardless of end_date or today's profiles.is_active.
           const { data: enrollmentRows, error: enrollErr } = await supabase
             .from('student_enrollment')
-            .select('student_id, academic_year_id, end_date')
-            .in('student_id', activeIds)
+            .select('student_id')
+            .eq('academic_year_id', academicYearId)
+            .eq('campus_id', effectiveId)
           if (enrollErr) console.error('Enrollment query error:', enrollErr)
 
-          const enrolledThisYear = new Set(
-            (enrollmentRows || [])
-              .filter((e: any) => e.academic_year_id === academicYearId && e.end_date === null)
-              .map((e: any) => e.student_id as string)
-          )
-          const hasAnyEnrollment = new Set((enrollmentRows || []).map((e: any) => e.student_id as string))
-
-          eligibleStudentIds = activeIds.filter((id) => enrolledThisYear.has(id) || !hasAnyEnrollment.has(id))
+          eligibleStudentIds = Array.from(new Set((enrollmentRows || []).map((e: any) => e.student_id as string)))
         }
       }
 
@@ -395,43 +422,63 @@ export class SchoolDashboardService {
     // so it would show today's placement even while looking at a past or
     // future year.
     //
-    // student_enrollment rows are best-effort at student creation and never
-    // backfilled for older/imported students (see the matching note in
-    // getSchoolStats above) — querying student_enrollment alone silently
-    // drops every student who was never backfilled. Grandfather them in
-    // using their current grade_level_id/section_id snapshot, same as the
-    // no-academic-year branch below.
+    // Past years are FROZEN HISTORY (see the matching note in getSchoolStats
+    // above): presence of a student_enrollment row for that year is the only
+    // signal — no end_date filter, no profiles.is_active check, no
+    // grandfathering. Only the CURRENT year keeps the legacy-grandfather
+    // fallback (a student with zero enrollment rows at all still counts),
+    // since migration 292 backfilled existing students for the current year
+    // and this stays purely as a safety net going forward.
     let rows: { grade: any; section: any }[] | null = null
     let error: any = null
 
     if (academicYearId) {
-      const enrolledResult = await supabase
-        .from('student_enrollment')
-        .select('student_id, grade:grade_levels!student_enrollment_grade_level_id_fkey(name, order_index), section:sections(name), student:students!inner(school_id, profile:profiles!inner(is_active))')
-        .eq('academic_year_id', academicYearId)
-        .is('end_date', null)
-        .eq('student.school_id', effectiveId)
-        .eq('student.profile.is_active', true)
-      error = enrolledResult.error
+      const { data: yearRow, error: yearErr } = await supabase
+        .from('academic_years')
+        .select('is_current')
+        .eq('id', academicYearId)
+        .maybeSingle()
+      if (yearErr) console.error('Academic year lookup error:', yearErr)
+      const isCurrentYear = !!yearRow?.is_current
 
-      const { data: activeStudents } = await supabase
-        .from('students')
-        .select('id, grade:grade_levels(name, order_index), section:sections(name), profile:profiles!inner(is_active)')
-        .eq('school_id', effectiveId)
-        .eq('profile.is_active', true)
-      const activeIds = (activeStudents || []).map((s: any) => s.id as string)
-
-      const hasAnyEnrollment = new Set<string>()
-      if (activeIds.length > 0) {
-        const { data: enrollmentRows } = await supabase
+      if (isCurrentYear) {
+        const enrolledResult = await supabase
           .from('student_enrollment')
-          .select('student_id')
-          .in('student_id', activeIds)
-        ;(enrollmentRows || []).forEach((e: any) => hasAnyEnrollment.add(e.student_id))
-      }
-      const legacyRows = (activeStudents || []).filter((s: any) => !hasAnyEnrollment.has(s.id))
+          .select('student_id, grade:grade_levels!student_enrollment_grade_level_id_fkey(name, order_index), section:sections(name), student:students!inner(school_id, profile:profiles!inner(is_active))')
+          .eq('academic_year_id', academicYearId)
+          .eq('campus_id', effectiveId)
+          .is('end_date', null)
+          .eq('student.school_id', effectiveId)
+          .eq('student.profile.is_active', true)
+        error = enrolledResult.error
 
-      rows = [...(enrolledResult.data || []), ...legacyRows]
+        const { data: activeStudents } = await supabase
+          .from('students')
+          .select('id, grade:grade_levels(name, order_index), section:sections(name), profile:profiles!inner(is_active)')
+          .eq('school_id', effectiveId)
+          .eq('profile.is_active', true)
+        const activeIds = (activeStudents || []).map((s: any) => s.id as string)
+
+        const hasAnyEnrollment = new Set<string>()
+        if (activeIds.length > 0) {
+          const { data: enrollmentRows } = await supabase
+            .from('student_enrollment')
+            .select('student_id')
+            .in('student_id', activeIds)
+          ;(enrollmentRows || []).forEach((e: any) => hasAnyEnrollment.add(e.student_id))
+        }
+        const legacyRows = (activeStudents || []).filter((s: any) => !hasAnyEnrollment.has(s.id))
+
+        rows = [...(enrolledResult.data || []), ...legacyRows]
+      } else {
+        const pastResult = await supabase
+          .from('student_enrollment')
+          .select('student_id, grade:grade_levels!student_enrollment_grade_level_id_fkey(name, order_index), section:sections(name)')
+          .eq('academic_year_id', academicYearId)
+          .eq('campus_id', effectiveId)
+        rows = pastResult.data as any
+        error = pastResult.error
+      }
     } else {
       const result = await supabase
         .from('students')

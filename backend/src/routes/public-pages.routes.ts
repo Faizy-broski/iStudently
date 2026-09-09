@@ -19,6 +19,9 @@ import {
   deleteCustomLink,
   reorderCustomLinks,
   getLoginLinks,
+  getRoleVisiblePages,
+  getPopupPagesForProfile,
+  dismissPopupPage,
   getGlobalCustomLinks,
   addGlobalCustomLink,
   updateGlobalCustomLink,
@@ -231,6 +234,58 @@ router.get('/login-links', async (_req: Request, res: Response) => {
   try {
     const links = await getLoginLinks()
     res.json({ success: true, data: links })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
+// ============================================================================
+// AUTHENTICATED — MY DASHBOARD / POPUP PAGES
+// Custom pages targeted at the caller's own role via visible_to_roles.
+// Registered before the /:slug catch-all further down so these paths aren't
+// swallowed as a slug param.
+// ============================================================================
+
+/**
+ * GET /api/public/my-pages
+ * Active custom pages targeted at the caller's role (any authenticated role).
+ */
+router.get('/my-pages', authenticate, async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    if (!profile?.role) return res.status(401).json({ success: false, error: 'Not authenticated' })
+    const pages = await getRoleVisiblePages(profile.role)
+    res.json({ success: true, data: pages })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
+/**
+ * GET /api/public/my-popup-pages
+ * Role-targeted pages the caller hasn't dismissed yet — the login popup queue.
+ */
+router.get('/my-popup-pages', authenticate, async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    if (!profile?.id || !profile?.role) return res.status(401).json({ success: false, error: 'Not authenticated' })
+    const pages = await getPopupPagesForProfile(profile.id, profile.role)
+    res.json({ success: true, data: pages })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
+/**
+ * POST /api/public/my-popup-pages/:pageId/dismiss
+ * Permanently dismisses one popup page for the caller.
+ */
+router.post('/my-popup-pages/:pageId/dismiss', authenticate, async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    if (!profile?.id) return res.status(401).json({ success: false, error: 'Not authenticated' })
+    await dismissPopupPage(profile.id, req.params.pageId)
+    res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message })
   }

@@ -34,6 +34,7 @@ import * as academicsApi from "@/lib/api/academics"
 import { getCheckpoints, getAttendanceIntegration } from "@/lib/api/entry-exit"
 import type { TimetableEntry, AttendanceRecord } from "@/lib/api/timetable"
 import type { Checkpoint, AttendanceIntegrationRecord } from "@/types"
+import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge"
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused"
 
@@ -43,6 +44,7 @@ interface StudentWithAttendance {
   student_name: string
   student_number: string
   status: AttendanceStatus
+  confidential_family_status?: string | null
   remarks?: string
   record_id?: string
 }
@@ -215,6 +217,7 @@ export default function AdminTakeAttendancePage() {
         student_name: r.student_name || "Unknown Student",
         student_number: r.student_number || "",
         status: r.status as AttendanceStatus,
+        confidential_family_status: (r as any).confidential_family_status || null,
         remarks: r.remarks ?? undefined,
         record_id: r.id,
       }))
@@ -656,7 +659,10 @@ export default function AdminTakeAttendancePage() {
                             {index + 1}
                           </div>
                       <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{student.student_name}</p>
+                             <div className="flex items-center gap-2">
+                               <p className="font-medium truncate">{student.student_name}</p>
+                               <ConfidentialFamilyStatusBadge status={student.confidential_family_status} />
+                             </div>
                             <p className="text-xs text-muted-foreground">{student.student_number}</p>
                             {eeCheckpoint && (() => {
                               const ee = eeData.get(student.student_id)

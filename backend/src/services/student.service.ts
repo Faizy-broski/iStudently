@@ -5,6 +5,7 @@ import { generateCredentials, applyCredentialUpdate } from './username.service'
 import { encryptSecret } from '../utils/crypto'
 import { generatePlaceholderEmail, redactPlaceholderEmail, withRedactedEmail } from '../utils/email.util'
 import { getCurrentAcademicYear } from './academics.service'
+import { canWriteConfidentialFamilyStatus } from '../utils/confidential-family-status'
 
 /**
  * Redacts a placeholder email on a profile object nested under `.profile`,
@@ -345,7 +346,10 @@ export class StudentService {
           role,
           username
         ),
-        parent_links:parent_student_links!inner(
+        parent_links:parent_student_links(
+          is_active,
+          relationship,
+          relation_type,
           parent:parents(
             id,
             profile:profiles(
@@ -354,14 +358,11 @@ export class StudentService {
               email,
               phone
             )
-          ),
-          relationship,
-          relation_type
+          )
         )
       `)
       .eq('id', studentId)
       .eq('school_id', schoolId)
-      .eq('parent_links.is_active', true)
       .single()
 
     if (error) {
@@ -369,6 +370,10 @@ export class StudentService {
         return null
       }
       throw new Error(`Failed to fetch student: ${error.message}`)
+    }
+
+    if (data?.parent_links) {
+      data.parent_links = (data.parent_links as any[]).filter(link => link.is_active !== false)
     }
 
     // Fetch last_sign_in_at from Supabase auth
@@ -528,6 +533,7 @@ export class StudentService {
         grade_level: studentData.grade_level, // Legacy field
         grade_level_id: studentData.grade_level_id, // New: UUID reference
         section_id: studentData.section_id, // New: UUID reference (triggers auto-update)
+        confidential_family_status: studentData.confidential_family_status || 'NONE',
         medical_info: studentData.medical_info || {},
         custom_fields: studentData.custom_fields || {}
       })
@@ -627,12 +633,117 @@ export class StudentService {
   }
 
   /**
+   * Closes ONLY the student's current-year student_enrollment row(s) on
+   * deactivation (end_date = today, rollover_status = 'dropped') - scoped to
+   * the school's current academic_year_id, so past years are never touched
+   * (past-year rows must stay frozen history, per school-dashboard.service.ts's
+   * getSchoolStats/getClassBreakdown past-year branch).
+   *
+   * rollover_status = 'dropped' matters beyond bookkeeping:
+   * withdrawal-analytics.service.ts's fetchWithdrawals() already filters on
+   * rollover_status IN ('dropped', 'transferred') - setting only end_date
+   * would silently make deactivations invisible to that existing feature.
+   *
+   * Best-effort, same convention as enrollInCurrentYear: never throws, never
+   * blocks the caller's main request on this.
+   */
+  private async closeCurrentYearEnrollment(studentIds: string[], campusId: string): Promise<void> {
+    if (studentIds.length === 0) return
+    try {
+      const currentYear = await getCurrentAcademicYear(campusId)
+      if (!currentYear.success || !currentYear.data) return
+
+      const { error } = await supabase
+        .from('student_enrollment')
+        .update({ end_date: new Date().toISOString().split('T')[0], rollover_status: 'dropped' })
+        .eq('academic_year_id', currentYear.data.id)
+        .in('student_id', studentIds)
+        .is('end_date', null) // only close still-open rows; don't re-touch already-closed ones
+
+      if (error) {
+        console.error('Failed to close current-year enrollment on deactivation:', error)
+      }
+    } catch (error) {
+      console.error('Failed to close current-year enrollment on deactivation:', error)
+    }
+  }
+
+  /**
+   * Symmetric handling for reactivation: reopens the current-year
+   * student_enrollment row if one exists (end_date -> NULL, rollover_status
+   * -> 'pending'), or creates one from scratch (mirroring enrollInCurrentYear)
+   * if the student has none for the current year yet. Only ever touches the
+   * current year's rows.
+   */
+  private async reopenCurrentYearEnrollment(studentIds: string[], campusId: string): Promise<void> {
+    if (studentIds.length === 0) return
+    try {
+      const currentYear = await getCurrentAcademicYear(campusId)
+      if (!currentYear.success || !currentYear.data) return
+
+      const { data: existingRows } = await supabase
+        .from('student_enrollment')
+        .select('student_id')
+        .eq('academic_year_id', currentYear.data.id)
+        .in('student_id', studentIds)
+      const existingIds = new Set((existingRows || []).map((r: any) => r.student_id as string))
+
+      if (existingIds.size > 0) {
+        const { error: reopenError } = await supabase
+          .from('student_enrollment')
+          .update({ end_date: null, rollover_status: 'pending' })
+          .eq('academic_year_id', currentYear.data.id)
+          .in('student_id', Array.from(existingIds))
+        if (reopenError) {
+          console.error('Failed to reopen current-year enrollment on reactivation:', reopenError)
+        }
+      }
+
+      const missingIds = studentIds.filter((id) => !existingIds.has(id))
+      if (missingIds.length > 0) {
+        const { data: studentRows } = await supabase
+          .from('students')
+          .select('id, grade_level_id, section_id, admission_date')
+          .in('id', missingIds)
+
+        const { data: admissionCode } = await supabase
+          .from('enrollment_codes')
+          .select('id')
+          .eq('code', 'ADMISSION')
+          .single()
+
+        const inserts = (studentRows || []).map((s: any) => ({
+          student_id: s.id,
+          academic_year_id: currentYear.data!.id,
+          school_id: currentYear.data!.school_id,
+          campus_id: campusId,
+          grade_level_id: s.grade_level_id,
+          section_id: s.section_id,
+          enrollment_code_id: admissionCode?.id || null,
+          start_date: s.admission_date || new Date().toISOString().split('T')[0],
+          rollover_status: 'pending'
+        }))
+
+        if (inserts.length > 0) {
+          const { error: insertError } = await supabase.from('student_enrollment').insert(inserts)
+          if (insertError) {
+            console.error('Failed to create current-year enrollment on reactivation:', insertError)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to reopen current-year enrollment on reactivation:', error)
+    }
+  }
+
+  /**
    * Update a student with tenant isolation
    */
   async updateStudent(
     studentId: string,
     schoolId: string,
-    updateData: UpdateStudentDTO
+    updateData: UpdateStudentDTO,
+    callerRole?: string
   ): Promise<Student> {
     // First verify the student belongs to this school
     const studentExists = await this.checkStudentOwnership(studentId, schoolId)
@@ -702,6 +813,15 @@ export class StudentService {
         if (profileError) {
           throw new Error(`Failed to update profile: ${profileError.message}`)
         }
+
+        // Keep the current-year student_enrollment row in sync with is_active
+        // so past years stay frozen history (see closeCurrentYearEnrollment /
+        // reopenCurrentYearEnrollment). Fire-and-forget, best-effort.
+        if (updateData.is_active === false) {
+          this.closeCurrentYearEnrollment([studentId], schoolId)
+        } else if (updateData.is_active === true) {
+          this.reopenCurrentYearEnrollment([studentId], schoolId)
+        }
       }
     }
 
@@ -724,6 +844,9 @@ export class StudentService {
     if (updateData.section_id !== undefined) studentUpdates.section_id = updateData.section_id
     if (updateData.medical_info !== undefined) studentUpdates.medical_info = updateData.medical_info
     if (updateData.custom_fields !== undefined) studentUpdates.custom_fields = updateData.custom_fields
+    if (updateData.confidential_family_status !== undefined && canWriteConfidentialFamilyStatus(callerRole)) {
+      studentUpdates.confidential_family_status = updateData.confidential_family_status
+    }
 
     const selectQuery = `*, profile:profiles(*)`
     let data: any
@@ -1248,7 +1371,7 @@ export class StudentService {
   ): Promise<{ updated: number }> {
     let studentQuery = supabase
       .from('students')
-      .select('profile_id')
+      .select('id, profile_id')
       .eq('school_id', schoolId)
 
     if (params.mode === 'selected' && params.student_ids && params.student_ids.length > 0) {
@@ -1277,6 +1400,15 @@ export class StudentService {
       .in('id', profileIds)
 
     if (updateErr) throw new Error(`Failed to update student active status: ${updateErr.message}`)
+
+    // Keep the current-year student_enrollment rows in sync so past years
+    // stay frozen history. Fire-and-forget, best-effort.
+    const studentIds = (studentRows || []).map((s: any) => s.id).filter(Boolean)
+    if (params.is_active === false) {
+      this.closeCurrentYearEnrollment(studentIds, schoolId)
+    } else {
+      this.reopenCurrentYearEnrollment(studentIds, schoolId)
+    }
 
     return { updated: profileIds.length }
   }
@@ -1334,6 +1466,15 @@ export class StudentService {
           .update({ is_active: params.is_active })
           .in('id', profileIds)
         if (statusErr) throw new Error(`Failed to update active status: ${statusErr.message}`)
+
+        // Keep the current-year student_enrollment rows in sync so past
+        // years stay frozen history. Fire-and-forget, best-effort.
+        const validStudentIds = validRows.map((r: any) => r.id)
+        if (params.is_active === false) {
+          this.closeCurrentYearEnrollment(validStudentIds, schoolId)
+        } else {
+          this.reopenCurrentYearEnrollment(validStudentIds, schoolId)
+        }
       }
     }
 

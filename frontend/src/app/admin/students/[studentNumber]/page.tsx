@@ -49,6 +49,8 @@ import { ReassignGradeSectionDialog } from "@/components/admin/ReassignGradeSect
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { useTranslations, useLocale } from "next-intl";
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
+import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
+import { ConfidentialFamilyStatusDialog } from "@/components/shared/ConfidentialFamilyStatusDialog";
 
 interface EmergencyContact {
   name?: string;
@@ -87,6 +89,7 @@ export default function StudentDetailsPage() {
   const [activeTab, setActiveTab] = useState("personal");
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [showConfidentialDialog, setShowConfidentialDialog] = useState(false);
 
   const { students, total, loading: studentsLoading, updateStudent, refresh } = useStudents(
     prevNextEnabled ? { page: 1, limit: 1000 } : { page: 1, limit: 0 }
@@ -321,6 +324,14 @@ export default function StudentDetailsPage() {
             </>
           )}
           <Button
+            variant="outline"
+            onClick={() => setShowConfidentialDialog(true)}
+            className="gap-2 border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40"
+          >
+            <Shield className="h-4 w-4 text-amber-600" />
+            <span>{locale === 'ar' ? 'الحالة السرية' : 'Confidential Status'}</span>
+          </Button>
+          <Button
             onClick={() => router.push(`/admin/students/student-info?edit=${currentStudent.id}`)}
           >
             <Edit className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
@@ -342,7 +353,10 @@ export default function StudentDetailsPage() {
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{fullName || tCommon("noData")}</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-2xl font-bold">{fullName || tCommon("noData")}</h2>
+                    <ConfidentialFamilyStatusBadge status={currentStudent.confidential_family_status} />
+                  </div>
                   <p className="text-muted-foreground">
                     {currentStudent.student_number} • {currentStudent.section?.name || sectionName || t("no_section")}
                   </p>
@@ -773,6 +787,19 @@ export default function StudentDetailsPage() {
         student={currentStudent}
         updateStudent={updateStudent}
         refresh={refresh}
+      />
+
+      <ConfidentialFamilyStatusDialog
+        isOpen={showConfidentialDialog}
+        onClose={() => setShowConfidentialDialog(false)}
+        studentId={currentStudent.id}
+        studentName={fullName}
+        studentNumber={currentStudent.student_number}
+        currentStatus={currentStudent.confidential_family_status}
+        onSuccess={(newStatus) => {
+          setCurrentStudent({ ...currentStudent, confidential_family_status: newStatus });
+          refresh();
+        }}
       />
     </div>
   );

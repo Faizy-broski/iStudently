@@ -98,7 +98,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
     if (!isOpen) return null
 
     const studentName = fee?.students?.profiles
-        ? `${fee.students.profiles.first_name} ${fee.students.profiles.last_name}`
+        ? [fee.students.profiles.first_name, fee.students.profiles.father_name, fee.students.profiles.last_name].filter(Boolean).join(' ')
         : 'Loading...'
 
     const studentNumber = fee?.students?.student_number || ''

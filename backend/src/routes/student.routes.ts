@@ -32,18 +32,18 @@ router.get('/report', requireRole('admin', 'teacher', 'librarian'), (req, res) =
 /**
  * GET /api/students/grade/:gradeLevel
  * Get students by grade level
- * Admin and teacher can access
+ * Admin, teacher, and counselor can access
  */
-router.get('/grade/:gradeLevel', requireRole('admin', 'teacher'), (req, res) =>
+router.get('/grade/:gradeLevel', requireRole('admin', 'teacher', 'counselor'), (req, res) =>
   studentController.getStudentsByGrade(req, res)
 )
 
 /**
  * GET /api/students/number/:studentNumber
  * Get student by student number
- * Admin and teacher can access
+ * Admin, teacher, and counselor can access
  */
-router.get('/number/:studentNumber', requireRole('admin', 'teacher'), (req, res) =>
+router.get('/number/:studentNumber', requireRole('admin', 'teacher', 'counselor'), (req, res) =>
   studentController.getStudentByNumber(req, res)
 )
 
@@ -67,18 +67,18 @@ router.get('/:id/relatives', requireRole('admin', 'teacher'), async (req: Reques
 /**
  * GET /api/students/:id
  * Get a single student by ID
- * Admin, teacher, and student (own record only) can access
+ * Admin, teacher, counselor, student (own record only), and parent (linked child only) can access
  */
-router.get('/:id', requireRole('admin', 'teacher', 'student'), (req, res) =>
+router.get('/:id', requireRole('admin', 'teacher', 'counselor', 'student', 'parent'), (req, res) =>
   studentController.getStudentById(req, res)
 )
 
 /**
  * GET /api/students
  * Get all students with pagination and search
- * Admin, teacher, and librarian can access
+ * Admin, teacher, librarian, and counselor can access
  */
-router.get('/', requireRole('admin', 'teacher', 'librarian'), (req, res) =>
+router.get('/', requireRole('admin', 'teacher', 'librarian', 'counselor'), (req, res) =>
   studentController.getStudents(req, res)
 )
 
@@ -162,6 +162,15 @@ router.put('/:id', requireRole('admin'), (req, res) =>
  */
 router.delete('/:id', requireRole('admin'), (req, res) =>
   studentController.deleteStudent(req, res)
+)
+
+/**
+ * PATCH /api/students/:id/confidential-status
+ * Update student's confidential family status
+ * Admin and counselor can access
+ */
+router.patch('/:id/confidential-status', requireRole('admin', 'counselor'), (req, res) =>
+  studentController.updateConfidentialFamilyStatus(req, res)
 )
 
 export default router

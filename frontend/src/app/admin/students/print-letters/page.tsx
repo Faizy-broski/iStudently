@@ -74,7 +74,8 @@ export default function PrintLettersPage() {
   const isPdfPluginActive = isPluginActive('pdf_header_footer');
 
   const groupedFields = useMemo(() => GET_GROUPED_FIELDS(tFields), [tFields]);
-  
+  const PLACEHOLDER_FIELDS = useMemo(() => Object.values(groupedFields).flat(), [groupedFields]);
+
   // State for filters
   const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string>("");

@@ -539,7 +539,7 @@ export async function getTeacherCompletionReport(req: Request, res: Response): P
         course_period_id,
         school_date,
         staff_id,
-        staff:profiles!eligibility_completed_staff_id_fkey ( id, first_name, last_name )
+        staff:profiles!eligibility_completed_staff_id_fkey ( id, first_name, father_name, last_name )
       `)
       .eq('school_id', schoolId)
       .eq('school_date', school_date);
@@ -552,7 +552,7 @@ export async function getTeacherCompletionReport(req: Request, res: Response): P
     // ensure frontend can rely on a single full_name field
     const transformed = (completed || []).map((c: any) => {
       if (c.staff && c.staff.first_name !== undefined) {
-        c.staff.full_name = `${c.staff.first_name || ''} ${c.staff.last_name || ''}`.trim();
+        c.staff.full_name = [c.staff.first_name, c.staff.father_name, c.staff.last_name].filter(Boolean).join(' ');
       }
       return c;
     });

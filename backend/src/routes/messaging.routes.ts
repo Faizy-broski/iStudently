@@ -15,6 +15,7 @@ router.get('/unread-count', (req, res) => messagingController.getUnreadCount(req
 router.get('/', (req, res) => messagingController.listMessages(req, res))
 router.get('/templates', (req, res) => messagingController.listTemplates(req, res))
 router.post('/templates', (req, res) => messagingController.saveTemplate(req, res))
+router.put('/templates/:id', (req, res) => messagingController.updateTemplate(req, res))
 router.delete('/templates/:id', (req, res) => messagingController.deleteTemplate(req, res))
 
 // Global delete-window setting — super admin only.

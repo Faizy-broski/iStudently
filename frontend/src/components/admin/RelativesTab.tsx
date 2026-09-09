@@ -24,6 +24,7 @@ interface ParentRelative {
   relationship: string | null
   first_name: string | null
   last_name: string | null
+  father_name?: string | null
   phone: string | null
   email: string | null
   profile_photo_url: string | null
@@ -125,10 +126,10 @@ export default function RelativesTab({ studentId }: Props) {
             <div className="space-y-3">
               {parents.map((p, i) => (
                 <div key={p.id ?? i} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
-                  <Avatar src={p.profile_photo_url} name={`${p.first_name} ${p.last_name}`} />
+                  <Avatar src={p.profile_photo_url} name={[p.first_name, p.father_name, p.last_name].filter(Boolean).join(' ')} />
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm">
-                      {[p.first_name, p.last_name].filter(Boolean).join(' ') || 'Unknown'}
+                      {[p.first_name, p.father_name, p.last_name].filter(Boolean).join(' ') || 'Unknown'}
                       <span className="ml-2 text-xs text-[#57A3CC] font-normal">
                         {RELATION_LABELS[p.relation_type] ?? p.relation_type}
                         {p.relationship && ` (${p.relationship})`}

@@ -101,7 +101,7 @@ export class CustomFieldsController {
                 return
             }
 
-            const { entity_type, category_id, category_name, field_key, label, type, options, required, sort_order, category_order, campus_scope, applicable_school_ids } = req.body
+            const { entity_type, category_id, category_name, field_key, label, label_ar, type, options, required, sort_order, category_order, campus_scope, applicable_school_ids } = req.body
 
             if (!entity_type || !category_id || !category_name || !label || !type) {
                 res.status(400).json({
@@ -133,6 +133,7 @@ export class CustomFieldsController {
                 category_name,
                 field_key,
                 label,
+                label_ar,
                 type,
                 options,
                 required,

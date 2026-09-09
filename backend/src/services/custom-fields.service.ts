@@ -20,6 +20,7 @@ export interface CustomFieldDefinition {
     category_name: string
     field_key: string
     label: string
+    label_ar?: string | null
     type: CustomFieldType
     options: string[]
     required: boolean
@@ -38,6 +39,7 @@ export interface CreateCustomFieldDTO {
     category_name: string
     field_key: string
     label: string
+    label_ar?: string | null
     type: CustomFieldType
     options?: string[]
     required?: boolean
@@ -52,6 +54,7 @@ export interface UpdateCustomFieldDTO {
     category_name?: string
     field_key?: string
     label?: string
+    label_ar?: string | null
     type?: CustomFieldType
     options?: string[]
     required?: boolean
@@ -182,6 +185,7 @@ export class CustomFieldsService {
                 category_name: data.category_name,
                 field_key: fieldKey,
                 label: data.label,
+                label_ar: data.label_ar ?? null,
                 type: data.type,
                 options: data.options || [],
                 required: data.required ?? false,

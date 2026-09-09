@@ -69,7 +69,7 @@ export function useTeacherStudents(options: UseTeacherStudentsOptions = {}) {
       if (search) {
         const q = search.toLowerCase();
         allStudents = allStudents.filter(s => {
-          const name = `${s.profile?.first_name || ''} ${s.profile?.last_name || ''}`.toLowerCase();
+          const name = `${s.profile?.first_name || ''} ${(s.profile as any)?.father_name || ''} ${s.profile?.last_name || ''}`.toLowerCase();
           return name.includes(q) || s.student_number?.toLowerCase().includes(q);
         });
       }
