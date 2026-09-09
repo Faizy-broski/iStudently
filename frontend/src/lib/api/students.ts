@@ -499,9 +499,14 @@ export async function groupAssignStudents(params: GroupAssignParams) {
  */
 export async function updateStudentConfidentialStatus(
   studentId: string,
-  status: ConfidentialFamilyStatus
+  status: ConfidentialFamilyStatus,
+  campusId?: string
 ): Promise<ApiResponse<Student>> {
-  return apiRequest<Student>(`/students/${studentId}/confidential-status`, {
+  const queryParams = new URLSearchParams()
+  if (campusId) queryParams.append('campus_id', campusId)
+  const query = queryParams.toString()
+
+  return apiRequest<Student>(`/students/${studentId}/confidential-status${query ? `?${query}` : ''}`, {
     method: 'PATCH',
     body: JSON.stringify({ status })
   })

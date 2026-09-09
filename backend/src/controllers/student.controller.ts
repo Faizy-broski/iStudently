@@ -728,6 +728,7 @@ export class StudentController {
     try {
       const schoolId = req.profile?.school_id
       const studentId = req.params.id
+      const campusId = req.query.campus_id as string
       const callerRole = req.profile?.role
       const { status } = req.body
 
@@ -738,6 +739,13 @@ export class StudentController {
         })
         return
       }
+
+      // Use campus_id if provided, otherwise use school_id — same resolution
+      // as updateStudent above. Without this, a network admin whose
+      // profile.school_id is the root school (not the campus the student
+      // actually belongs to) fails checkStudentOwnership and gets a false
+      // "Student not found or does not belong to this school".
+      const effectiveSchoolId = (campusId && campusId.trim() !== '') ? campusId : schoolId
 
       if (!canWriteConfidentialFamilyStatus(callerRole)) {
         res.status(403).json({
@@ -758,7 +766,7 @@ export class StudentController {
 
       const student = await studentService.updateStudent(
         studentId,
-        schoolId,
+        effectiveSchoolId,
         { confidential_family_status: status },
         callerRole
       )

@@ -26,6 +26,7 @@ import {
   CONFIDENTIAL_FAMILY_STATUS_OPTIONS,
 } from '@/lib/constants/confidential-family-status';
 import { updateStudentConfidentialStatus } from '@/lib/api/students';
+import { useCampus } from '@/context/CampusContext';
 
 interface ConfidentialFamilyStatusDialogProps {
   studentId: string;
@@ -48,6 +49,7 @@ export function ConfidentialFamilyStatusDialog({
 }: ConfidentialFamilyStatusDialogProps) {
   const locale = useLocale();
   const isAr = locale === 'ar';
+  const campusContext = useCampus();
 
   const [selectedStatus, setSelectedStatus] = useState<ConfidentialFamilyStatus>(
     (currentStatus as ConfidentialFamilyStatus) || 'NONE'
@@ -63,7 +65,7 @@ export function ConfidentialFamilyStatusDialog({
 
     setSaving(true);
     try {
-      const res = await updateStudentConfidentialStatus(studentId, selectedStatus);
+      const res = await updateStudentConfidentialStatus(studentId, selectedStatus, campusContext?.selectedCampus?.id);
       if (res.success) {
         toast.success(
           isAr
