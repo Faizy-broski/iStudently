@@ -21,6 +21,8 @@ export interface Campus {
     principal_name?: string
     short_name?: string
     school_number?: string
+    latitude?: number | null
+    longitude?: number | null
     website?: string | null
     logo_url?: string | null
     // Merged in from school_settings by the backend — see logo-appearance.service.ts

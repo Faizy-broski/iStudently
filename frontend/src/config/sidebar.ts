@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Lock,
   Users,
   GraduationCap,
   DoorOpen,
@@ -568,6 +569,12 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "write", href: "/admin/messaging/write", icon: Mail },
       { title: "teacher_messaging_permissions", href: "/admin/settings/teacher-messaging", icon: Settings },
     ],
+  },
+  {
+    title: "vault",
+    href: "/admin/vault",
+    icon: Lock,
+    pluginRequired: "vault",
   },
   {
     title: "hifzi",
@@ -1317,6 +1324,23 @@ const finaSupervisorMenuItems: SidebarMenuItem[] = [
   { title: "fina_supervisor_reports", href: "/fina-supervisor/reports", icon: FileText },
 ];
 
+// Financial Admin Menu Items — AdminVault's finance-facing role (Phase 1
+// Foundation Slice). Reuses the same /admin/vault pages an 'admin' account
+// uses (no separate route tree) — admin/layout.tsx's RoleGuard allows this
+// role in alongside admin/super_admin. Used by Topbar.tsx and the
+// admin/settings/custom-menu + user-profiles config pages, which all key
+// off the real profile.role. NOT yet used by DashboardLayout's own primary
+// sidebar — that layout hardcodes role="admin" for every /admin/* visitor
+// (see AdminLayout's <DashboardLayout role="admin">), so a financial_admin
+// currently sees the full admin sidebar there, not this narrowed one, and
+// can reach any /admin/* page by URL. Narrowing that is a known gap for a
+// future pass (the same usePermissions/canUse scoping the 'staff' role
+// already uses would need extending to cover this role too) — out of scope
+// for this foundation slice.
+const financialAdminMenuItems: SidebarMenuItem[] = [
+  { title: "vault", href: "/admin/vault", icon: Lock, pluginRequired: "vault" },
+];
+
 // Get menu items based on user role
 export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
   switch (role) {
@@ -1338,6 +1362,8 @@ export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
       return mediaOfficerMenuItems;
     case "fina_supervisor":
       return finaSupervisorMenuItems;
+    case "financial_admin":
+      return financialAdminMenuItems;
     case "staff":
       // Staff accounts have no dedicated /staff/* routes — they log into the
       // admin app shell and are scoped down entirely by their User Profile
@@ -1388,6 +1414,8 @@ export function getDashboardPathByRole(role: UserRole): string {
       return "/media-officer/fina/review";
     case "fina_supervisor":
       return "/fina-supervisor/dashboard";
+    case "financial_admin":
+      return "/admin/vault";
     default:
       return "/";
   }

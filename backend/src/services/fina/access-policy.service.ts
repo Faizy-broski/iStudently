@@ -203,15 +203,32 @@ export async function listComposerAudienceOptions(caller: CallerContext) {
   }
 
   const { data: sections } = sectionIds.length
-    ? await supabase.from('sections').select('id, name').in('id', sectionIds)
+    ? await supabase.from('sections').select('id, name, grade_level_id').in('id', sectionIds)
     : { data: [] }
+
+  // Admin/media_officer see every grade level defined for the school, even
+  // one with no sections yet — otherwise a school that just set up its
+  // grades but hasn't added sections gets an empty picker with no way to
+  // tell why. A teacher only sees the grades of their own taught sections.
+  let gradeLevels: { id: string; name: string }[] = []
+  if (isSchoolWide) {
+    const { data } = await supabase.from('grade_levels').select('id, name').eq('school_id', caller.schoolId).order('order_index', { ascending: true })
+    gradeLevels = data || []
+  } else {
+    const gradeLevelIds = [...new Set((sections || []).map((s: any) => s.grade_level_id).filter(Boolean))]
+    const { data } = gradeLevelIds.length
+      ? await supabase.from('grade_levels').select('id, name, order_index').in('id', gradeLevelIds).order('order_index', { ascending: true })
+      : { data: [] }
+    gradeLevels = data || []
+  }
 
   const { data: students } = sectionIds.length
     ? await supabase.from('students').select('id, section_id, profile:profiles(first_name, last_name)').in('section_id', sectionIds)
     : { data: [] }
 
   return {
-    sections: (sections || []).map((s: any) => ({ id: s.id, name: s.name })),
+    gradeLevels: (gradeLevels || []).map((g: any) => ({ id: g.id, name: g.name })),
+    sections: (sections || []).map((s: any) => ({ id: s.id, name: s.name, gradeLevelId: s.grade_level_id ?? null })),
     students: (students || []).map((s: any) => ({
       id: s.id,
       sectionId: s.section_id,

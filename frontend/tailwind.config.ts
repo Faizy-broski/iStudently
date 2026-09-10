@@ -71,6 +71,11 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        // Reaction Engine "Golden Multiplier" glow — used on super-reactions
+        // (fina/PostCard.tsx) and the Wall Spotlight badge.
+        gold: "0 0 10px 2px rgba(250, 204, 21, 0.55)",
+      },
     },
   },
   plugins: [tailwindcssAnimate],

@@ -15,6 +15,15 @@ interface SchoolDashboardStats {
   femaleStudents: number
   maleStaff: number
   femaleStaff: number
+  /**
+   * True only when a past year was selected, totalStudents came back 0, and
+   * that's because NO student_enrollment rows exist for this school in that
+   * year at all — i.e. a genuine data-availability gap (never backfilled),
+   * not an actually-empty year. Lets the frontend show "no enrollment
+   * records for this year" instead of a bare 0 that reads as "0 students
+   * were ever here," which is a different and more alarming claim.
+   */
+  noEnrollmentDataForYear: boolean
 }
 
 interface AttendanceData {
@@ -66,6 +75,7 @@ export class SchoolDashboardService {
       // This fallback must NOT extend to past years, since that's exactly
       // what caused every student to show up in every year.
       let eligibleStudentIds: string[] | null = null
+      let noEnrollmentDataForYear = false
       if (academicYearId) {
         const { data: yearRow, error: yearErr } = await supabase
           .from('academic_years')
@@ -113,6 +123,21 @@ export class SchoolDashboardService {
           if (enrollErr) console.error('Enrollment query error:', enrollErr)
 
           eligibleStudentIds = Array.from(new Set((enrollmentRows || []).map((e: any) => e.student_id as string)))
+
+          // Distinguish "genuinely 0 students this year" from "no
+          // historical data was ever recorded for this year" — only the
+          // latter gets the distinct empty-state message. A second, cheap
+          // existence check unscoped by student: any row at all for this
+          // academic_year_id/campus means real (if sparse) history exists.
+          if (eligibleStudentIds.length === 0) {
+            const { count: anyRowCount, error: anyRowErr } = await supabase
+              .from('student_enrollment')
+              .select('student_id', { count: 'exact', head: true })
+              .eq('academic_year_id', academicYearId)
+              .eq('campus_id', effectiveId)
+            if (anyRowErr) console.error('Enrollment existence check error:', anyRowErr)
+            noEnrollmentDataForYear = (anyRowCount ?? 0) === 0
+          }
         }
       }
 
@@ -263,7 +288,8 @@ export class SchoolDashboardService {
         maleStudents,
         femaleStudents,
         maleStaff,
-        femaleStaff
+        femaleStaff,
+        noEnrollmentDataForYear
       }
 
       return result

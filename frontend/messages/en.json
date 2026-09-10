@@ -778,6 +778,7 @@
     "inbox": "Inbox",
     "write": "Write",
     "teacher_messaging_permissions": "Teacher Messaging Permissions",
+    "vault": "AdminVault",
     "hifzi": "School Khalwa",
     "circles": "Circles",
     "curriculum": "Curriculum",
@@ -981,7 +982,8 @@
       "male_label": "Male: {count}",
       "female_label": "Female: {count}",
       "teachers_label": "Teachers: {count}",
-      "employees_label": "Others: {count}"
+      "employees_label": "Others: {count}",
+      "no_enrollment_data_for_year": "No enrollment records for this year"
     },
     "charts": {
       "enrollment_title": "Student Enrollment ({year})",
@@ -4502,6 +4504,7 @@
         "field_label_placeholder": "Field label...",
         "field_label_ar_placeholder": "Arabic label (optional)",
         "field_options_placeholder": "Male, Female, Other",
+        "field_options_ar_placeholder": "Arabic options (optional, same order)",
         "default_fields": "Default Fields",
         "custom_categories": "Custom Categories",
         "info_reorder": "Drag categories to reorder. Default fields shown in blue. Set custom field Sort Order to position between default fields.",
@@ -8956,6 +8959,8 @@
       "no_results": "No plugins match your search.",
       "grievance_portal_name": "Compliances & Grievances",
       "grievance_portal_desc": "A Ministry-of-Education-compliant complaints/grievances portal for students, parents, teachers, and staff — submission, assignment, SLA tracking, escalation, confidential/anonymous handling, and reporting.",
+      "vault_name": "AdminVault",
+      "vault_desc": "A secure records vault for facility/utilities, legal & licensing, financial & procurement, IT & security, and HR-confidential documents — dynamic per-category fields, AES-256-GCM encrypted secrets with a reveal-and-audit flow, an immutable audit log, and private watermarked attachments. Restricted to Admin, Super Admin, and Financial Admin.",
       "hifzi_name": "School Khalwa — Quran Memorization",
       "hifzi_desc": "Quran memorization management: circles, recitation tracking with error taxonomy and auto-grading, spaced-repetition review, daily assignments, attendance, and progress reports/heatmap.",
       "qirtasi_name": "Qirtasi قرطاسي — My Worksheet",
@@ -12433,7 +12438,25 @@
       "react_button": "Appreciate",
       "moderate_approve": "Approve comment",
       "moderate_reject": "Reject comment",
-      "offline_banner": "Viewing a saved copy — will update when you're back online"
+      "offline_banner": "Viewing a saved copy — will update when you're back online",
+      "spotlight_badge": "Wall Spotlight",
+      "super_reaction_hint": "Your reaction counts ×3 as staff",
+      "remove_reaction": "Remove reaction",
+      "class_goals_title": "Class Goals",
+      "class_goals_empty": "No goals set for this class yet.",
+      "class_goal_create": "New goal",
+      "class_goal_target_reached": "Goal reached! 🎉",
+      "class_goal_grade_placeholder": "Grade"
+    },
+    "reactions": {
+      "thumbs_up": "Nice",
+      "clap": "Well Done",
+      "bright_idea": "Bright Idea",
+      "star": "Outstanding",
+      "thinker": "Great Thinking",
+      "artistic": "Creative",
+      "teamwork": "Team Player",
+      "bookworm": "Scholar"
     },
     "composer": {
       "page_title": "New post",

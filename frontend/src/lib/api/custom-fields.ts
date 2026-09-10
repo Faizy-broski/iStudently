@@ -31,6 +31,8 @@ export interface CustomFieldDefinition {
     label_ar?: string | null
     type: CustomFieldType
     options: string[]
+    /** Position-matched Arabic translation of `options` — see getFieldOptions(). */
+    options_ar?: string[] | null
     required: boolean
     sort_order: number
     category_order?: number
@@ -50,6 +52,7 @@ export interface CreateCustomFieldDTO {
     label_ar?: string | null
     type: CustomFieldType
     options?: string[]
+    options_ar?: string[] | null
     required?: boolean
     sort_order?: number
     category_order?: number
@@ -66,6 +69,7 @@ export interface UpdateCustomFieldDTO {
     label_ar?: string | null
     type?: CustomFieldType
     options?: string[]
+    options_ar?: string[] | null
     required?: boolean
     sort_order?: number
     campus_scope?: CampusScope
@@ -142,6 +146,28 @@ async function apiRequest<T>(
  */
 export function getFieldLabel(field: Pick<CustomFieldDefinition, 'label' | 'label_ar'>, locale: string): string {
     return locale === 'ar' && field.label_ar ? field.label_ar : field.label
+}
+
+/**
+ * The select/multi-select option list to actually render for a custom
+ * field, given the current site locale — mirrors getFieldLabel() above but
+ * per-option, since a field's dropdown CHOICES need their own translation
+ * independent of the field's own label (see 301_add_custom_field_options_ar.sql).
+ *
+ * `value` is always the original English string — this is what gets stored
+ * when a user picks an option, and never changes based on locale. `label` is
+ * what's displayed: the Arabic translation at the same index when the
+ * locale is 'ar' and one exists at that position, else the English value.
+ */
+export function getFieldOptions(
+    field: Pick<CustomFieldDefinition, 'options' | 'options_ar'>,
+    locale: string
+): { value: string; label: string }[] {
+    const options = field.options || []
+    return options.map((value, i) => {
+        const arLabel = field.options_ar?.[i]
+        return { value, label: locale === 'ar' && arLabel ? arLabel : value }
+    })
 }
 
 export async function getFieldDefinitions(entityType: EntityType, campusId?: string): Promise<ApiResponse<CustomFieldDefinition[]>> {

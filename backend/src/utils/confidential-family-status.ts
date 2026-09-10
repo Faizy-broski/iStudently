@@ -13,6 +13,14 @@ export const CONFIDENTIAL_STATUS_WRITE_ROLES: ReadonlyArray<string> = [
   'counselor'
 ]
 
+export const VALID_CONFIDENTIAL_STATUSES: ReadonlyArray<string> = [
+  'NONE',
+  'PARENTS_DIVORCED',
+  'ORPHAN_FATHER',
+  'ORPHAN_MOTHER',
+  'ORPHAN_BOTH'
+]
+
 /**
  * Can this role view confidential family status?
  * Allowed: admin, super_admin, counselor, teacher.

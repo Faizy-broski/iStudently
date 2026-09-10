@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { type Student, updateStudent } from "@/lib/api/students";
-import { getFieldDefinitions, getFieldLabel, type CustomFieldDefinition } from "@/lib/api/custom-fields";
+import { getFieldDefinitions, getFieldLabel, getFieldOptions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders } from "@/lib/utils/field-ordering";
 import { useTranslations, useLocale } from "next-intl";
 import { useGradeLevels } from "@/hooks/useAcademics";
@@ -166,8 +166,8 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
               <SelectValue placeholder={`Select ${getFieldLabel(field, locale)}`} />
             </SelectTrigger>
             <SelectContent>
-              {field.options?.map((option) => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
+              {getFieldOptions(field, locale).map(({ value: option, label }) => (
+                <SelectItem key={option} value={option}>{label}</SelectItem>
               ))}
             </SelectContent>
           </Select>

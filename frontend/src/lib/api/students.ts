@@ -477,6 +477,7 @@ export interface GroupAssignParams {
   grade_level_id?: string
   section_id?: string
   is_active?: boolean
+  confidential_family_status?: ConfidentialFamilyStatus
   custom_field_updates?: { category_id: string; field_key: string; value: any }[]
   campus_id?: string
 }

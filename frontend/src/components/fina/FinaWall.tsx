@@ -12,6 +12,7 @@ import { listWall, type FinaPost } from '@/lib/api/fina-posts'
 import { PostCard } from './PostCard'
 import { NotificationBell } from './NotificationBell'
 import { StoriesBar } from './StoriesBar'
+import { ClassGoalsWidget } from './ClassGoalsWidget'
 
 /**
  * The wall (spec §16.2): strictly reverse-chronological, pinned first, no
@@ -109,6 +110,7 @@ export function FinaWall() {
         <NotificationBell />
       </div>
       <StoriesBar />
+      <ClassGoalsWidget />
       {posts === null ? (
         <div className="space-y-3">
           <Skeleton className="h-40 w-full" />

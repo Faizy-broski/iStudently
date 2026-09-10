@@ -29,7 +29,7 @@ import { useGradeLevels, useSections } from "@/hooks/useAcademics";
 import { generateFeeForNewStudent } from "@/lib/api/fees";
 import FeeChallanModal from "@/components/admin/FeeChallanModal";
 import * as servicesApi from "@/lib/api/services";
-import { getFieldDefinitions, getFieldLabel, CustomFieldDefinition } from "@/lib/api/custom-fields";
+import { getFieldDefinitions, getFieldLabel, getFieldOptions, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import { useTranslations, useLocale } from "next-intl";
 import {
@@ -1054,9 +1054,13 @@ customFields.forEach((field) => {
             </SelectTrigger>
             <SelectContent>
               {field.options && field.options.length > 0 ? (
-                field.options.map((opt: string) => (
+                getFieldOptions(field, locale).map(({ value: opt, label: arOrEnLabel }) => (
                   <SelectItem key={opt} value={opt}>
-                    {t.has("fields." + opt) ? t("fields." + opt) : (opt.charAt(0).toUpperCase() + opt.slice(1))}
+                    {/* Custom fields' options_ar (per-option Arabic translation) takes
+                        priority; falls back to this pre-existing global fields.<opt>
+                        i18n lookup (only ever matched built-in, non-custom option sets),
+                        then the raw capitalized English value. */}
+                    {arOrEnLabel !== opt ? arOrEnLabel : t.has("fields." + opt) ? t("fields." + opt) : (opt.charAt(0).toUpperCase() + opt.slice(1))}
                   </SelectItem>
                 ))
               ) : (

@@ -23,6 +23,8 @@ export interface CustomFieldDefinition {
     label_ar?: string | null
     type: CustomFieldType
     options: string[]
+    /** Position-matched Arabic translation of `options` — see 301_add_custom_field_options_ar.sql. */
+    options_ar?: string[] | null
     required: boolean
     sort_order: number
     category_order?: number
@@ -42,6 +44,7 @@ export interface CreateCustomFieldDTO {
     label_ar?: string | null
     type: CustomFieldType
     options?: string[]
+    options_ar?: string[] | null
     required?: boolean
     sort_order?: number
     category_order?: number
@@ -57,6 +60,7 @@ export interface UpdateCustomFieldDTO {
     label_ar?: string | null
     type?: CustomFieldType
     options?: string[]
+    options_ar?: string[] | null
     required?: boolean
     sort_order?: number
     category_order?: number
@@ -188,6 +192,7 @@ export class CustomFieldsService {
                 label_ar: data.label_ar ?? null,
                 type: data.type,
                 options: data.options || [],
+                options_ar: data.options_ar ?? null,
                 required: data.required ?? false,
                 sort_order: data.sort_order ?? 0,
                 category_order: data.category_order ?? 0,

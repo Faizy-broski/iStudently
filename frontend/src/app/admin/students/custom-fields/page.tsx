@@ -457,14 +457,14 @@ export default function CustomFieldsPage() {
       for (const { categoryId, categoryName, field } of allFields) {
         if (existingIds.has(field.id)) {
           await customFieldsApi.updateFieldDefinition(field.id, {
-            label: field.label, label_ar: field.label_ar, type: field.type, options: field.options,
+            label: field.label, label_ar: field.label_ar, type: field.type, options: field.options, options_ar: field.options_ar,
             required: field.required, sort_order: field.sort_order,
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
         } else {
           await customFieldsApi.createFieldDefinition({
             entity_type: 'student', category_id: categoryId, category_name: categoryName,
-            label: field.label, label_ar: field.label_ar, type: field.type, options: field.options,
+            label: field.label, label_ar: field.label_ar, type: field.type, options: field.options, options_ar: field.options_ar,
             required: field.required, sort_order: field.sort_order,
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
@@ -730,6 +730,7 @@ function SortableCategoryItem({
     field_label_placeholder: t("field_label_placeholder"),
     field_label_ar_placeholder: t("field_label_ar_placeholder", { defaultValue: "Arabic label (optional)" }),
     field_options_placeholder: t("field_options_placeholder"),
+    field_options_ar_placeholder: t("field_options_ar_placeholder", { defaultValue: "Arabic options (optional, same order)" }),
     scope_this: t("scope_this"),
     scope_selected: t("scope_selected"),
     scope_all: t("scope_all"),

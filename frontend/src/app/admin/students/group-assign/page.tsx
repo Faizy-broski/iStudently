@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,11 @@ import { UniversalFilter, type FilterState } from "@/components/filters/Universa
 import { CustomFieldsRenderer } from "@/components/admin/CustomFieldsRenderer";
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { groupAssignStudents } from "@/lib/api/students";
+import {
+  CONFIDENTIAL_FAMILY_STATUS_OPTIONS,
+  type ConfidentialFamilyStatus,
+} from "@/lib/constants/confidential-family-status";
+import { useLocale } from "next-intl";
 
 // Sentinels for the assign-form selects — a select's value can never be "",
 // so "leave unchanged" needs its own explicit value distinct from a real id.
@@ -35,14 +40,22 @@ export default function GroupAssignStudentsPage() {
   const tCommon = useTranslations("common");
   const router = useRouter();
   const campusCtx = useCampus();
+  const locale = useLocale();
+  const isAr = locale === "ar";
 
   // ── Candidate list (unpaginated — "select all" must cover every filtered match) ──
   const [filters, setFilters] = useState<FilterState>({});
+  const [showInactive, setShowInactive] = useState(false);
   const { students, loading, refresh } = useStudents({
     limit: 1000,
     search: filters.search || undefined,
     grade_level: filters.gradeNames?.length ? filters.gradeNames : undefined,
     section_id: filters.sectionId || undefined,
+    // Undefined = include both active and inactive; true = active only —
+    // matches student-info/page.tsx's convention. Kept opt-in (not hardcoded
+    // to active-only) since this page's own Status assign action is also
+    // used to bulk-reactivate a batch of deactivated students.
+    is_active: showInactive ? undefined : true,
   });
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -75,6 +88,7 @@ export default function GroupAssignStudentsPage() {
   const hasAssignGrade = assignGradeId !== DONT_CHANGE;
 
   const [assignStatus, setAssignStatus] = useState<"unchanged" | "active" | "inactive">("unchanged");
+  const [assignConfidentialStatus, setAssignConfidentialStatus] = useState<string>(DONT_CHANGE);
 
   const [fieldDefs, setFieldDefs] = useState<CustomFieldDefinition[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
@@ -111,6 +125,7 @@ export default function GroupAssignStudentsPage() {
     setAssignGradeId(DONT_CHANGE);
     setAssignSectionId(DONT_CHANGE);
     setAssignStatus("unchanged");
+    setAssignConfidentialStatus(DONT_CHANGE);
     setCustomFieldValues({});
     setTouchedFieldKeys(new Set());
   };
@@ -140,8 +155,9 @@ export default function GroupAssignStudentsPage() {
 
     const sectionChanged = assignSectionId !== DONT_CHANGE;
     const statusChanged = assignStatus !== "unchanged";
+    const confidentialStatusChanged = assignConfidentialStatus !== DONT_CHANGE;
 
-    if (!hasAssignGrade && !statusChanged && customFieldUpdates.length === 0) {
+    if (!hasAssignGrade && !statusChanged && !confidentialStatusChanged && customFieldUpdates.length === 0) {
       toast.error(t("toast.nothing_to_assign"));
       return;
     }
@@ -153,6 +169,7 @@ export default function GroupAssignStudentsPage() {
         grade_level_id: hasAssignGrade ? assignGradeId : undefined,
         section_id: hasAssignGrade && sectionChanged ? assignSectionId : undefined,
         is_active: statusChanged ? assignStatus === "active" : undefined,
+        confidential_family_status: confidentialStatusChanged ? (assignConfidentialStatus as ConfidentialFamilyStatus) : undefined,
         custom_field_updates: customFieldUpdates,
         campus_id: campusCtx?.selectedCampus?.id,
       });
@@ -208,7 +225,7 @@ export default function GroupAssignStudentsPage() {
       {/* Assign form */}
       <Card>
         <CardContent className="py-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>{tStudents("student_details.grade_level")}</Label>
               <Select value={assignGradeId} onValueChange={handleAssignGradeChange} disabled={loadingGrades}>
@@ -268,6 +285,26 @@ export default function GroupAssignStudentsPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 text-amber-600" />
+                {isAr ? "الحالة العائلية السرية" : "Confidential Family Status"}
+              </Label>
+              <Select value={assignConfidentialStatus} onValueChange={setAssignConfidentialStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DONT_CHANGE}>{t("dont_change")}</SelectItem>
+                  {CONFIDENTIAL_FAMILY_STATUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {isAr ? opt.label.ar : opt.label.en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <CustomFieldsRenderer
@@ -281,7 +318,7 @@ export default function GroupAssignStudentsPage() {
 
       {/* Filter bar */}
       <Card>
-        <CardContent className="py-4">
+        <CardContent className="py-4 space-y-3">
           <UniversalFilter
             availableFilters={["search", "grade", "section"]}
             entityType="students"
@@ -291,6 +328,18 @@ export default function GroupAssignStudentsPage() {
               setSelectedIds(new Set());
             }}
           />
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => {
+                setShowInactive(e.target.checked);
+                setSelectedIds(new Set());
+              }}
+              className="rounded border-gray-300"
+            />
+            {tCommon("showInactive")}
+          </label>
         </CardContent>
       </Card>
 

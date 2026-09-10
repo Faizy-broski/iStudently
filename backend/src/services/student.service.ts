@@ -1430,6 +1430,7 @@ export class StudentService {
       grade_level_id?: string
       section_id?: string
       is_active?: boolean
+      confidential_family_status?: string
       custom_field_updates?: { category_id: string; field_key: string; value: any }[]
     }
   ): Promise<{ updated: number; errors: { student_id: string; error: string }[] }> {
@@ -1481,6 +1482,7 @@ export class StudentService {
     const flatUpdates: Record<string, any> = {}
     if (params.grade_level_id !== undefined) flatUpdates.grade_level_id = params.grade_level_id
     if (params.section_id !== undefined) flatUpdates.section_id = params.section_id
+    if (params.confidential_family_status !== undefined) flatUpdates.confidential_family_status = params.confidential_family_status
 
     let updated = 0
 

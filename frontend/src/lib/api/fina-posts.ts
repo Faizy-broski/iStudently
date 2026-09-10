@@ -41,7 +41,26 @@ export interface FinaPost {
   media: FinaPostMedia[]
   reactionsCount: number
   myReaction: string | null
+  /** Whether the viewer's own reaction (if any) was a 3x golden super-reaction. */
+  myReactionIsSuper: boolean
   commentsCount: number
+  /** Positive & Skill-Based Reaction Engine — "Wall Spotlight" badge (5+ academic_skill reactions). */
+  isHonorRoll: boolean
+}
+
+export type ReactionKind = 'thumbs_up' | 'clap' | 'bright_idea' | 'star' | 'thinker' | 'artistic' | 'teamwork' | 'bookworm'
+
+export interface ReactionActionResult {
+  action: 'CREATED' | 'UPDATED' | 'REMOVED'
+  pointsEarnedByAuthor: number
+  isSuperReaction: boolean
+  promotedToHonorRoll: boolean
+}
+
+export interface ReactionSummary {
+  totalCount: number
+  currentUserReaction: string | null
+  topReactions: { kind: string; count: number; hasSuperReaction: boolean }[]
 }
 
 export interface CreatePostInput {
@@ -104,7 +123,11 @@ export const listWall = (params?: { cursor?: string | null; type?: string; q?: s
 export const getPostDetail = (postId: string) => apiFetch<FinaPost>(`/fina/posts/${postId}`)
 
 export const getComposerOptions = () =>
-  apiFetch<{ sections: { id: string; name: string }[]; students: { id: string; sectionId: string | null; name: string }[] }>('/fina/posts/composer-options')
+  apiFetch<{
+    gradeLevels: { id: string; name: string }[]
+    sections: { id: string; name: string; gradeLevelId: string | null }[]
+    students: { id: string; sectionId: string | null; name: string }[]
+  }>('/fina/posts/composer-options')
 
 // ── Composer / moderation ───────────────────────────────────────────────────
 
@@ -136,10 +159,13 @@ export const pinPost = (postId: string, pinned: boolean) =>
 
 // ── Reactions / comments ────────────────────────────────────────────────────
 
-export const setReaction = (postId: string, kind = 'clap') =>
-  apiFetch(`/fina/posts/${postId}/reactions`, { method: 'POST', body: JSON.stringify({ kind }) })
+export const setReaction = (postId: string, kind: ReactionKind = 'clap') =>
+  apiFetch<ReactionActionResult>(`/fina/posts/${postId}/reactions`, { method: 'POST', body: JSON.stringify({ kind }) })
 
-export const removeReaction = (postId: string) => apiFetch(`/fina/posts/${postId}/reactions`, { method: 'DELETE' })
+export const removeReaction = (postId: string) =>
+  apiFetch<ReactionActionResult>(`/fina/posts/${postId}/reactions`, { method: 'DELETE' })
+
+export const getReactionSummary = (postId: string) => apiFetch<ReactionSummary>(`/fina/posts/${postId}/reactions`)
 
 export const listComments = (postId: string) => apiFetch<FinaComment[]>(`/fina/posts/${postId}/comments`)
 
@@ -148,6 +174,27 @@ export const addComment = (postId: string, body: string) =>
 
 export const moderateComment = (commentId: string, decision: 'approve' | 'reject') =>
   apiFetch<FinaComment>(`/fina/posts/comments/${commentId}/moderate`, { method: 'POST', body: JSON.stringify({ decision }) })
+
+// ── Class Goal Engine ────────────────────────────────────────────────────────
+
+export interface FinaClassGoal {
+  id: string
+  school_id: string
+  section_id: string
+  reaction_kind: ReactionKind
+  target_count: number
+  week_start: string
+  week_end: string
+  currentCount: number
+}
+
+export const listClassGoals = (sectionId?: string) => {
+  const qs = sectionId ? `?sectionId=${sectionId}` : ''
+  return apiFetch<FinaClassGoal[]>(`/fina/posts/class-goals${qs}`)
+}
+
+export const createClassGoal = (input: { sectionId: string; reactionKind: ReactionKind; targetCount: number }) =>
+  apiFetch<FinaClassGoal>('/fina/posts/class-goals', { method: 'POST', body: JSON.stringify(input) })
 
 // ── Albums ───────────────────────────────────────────────────────────────
 

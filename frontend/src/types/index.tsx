@@ -264,6 +264,8 @@ export interface CustomField {
   type: CustomFieldType;
   value: any;
   options?: string[]; // For select/multi-select
+  /** Position-matched Arabic translation of `options` — undefined/null falls back to `options`. */
+  options_ar?: string[] | null;
   required?: boolean;
   sort_order?: number; // Position in form
   campus_scope?: CampusScope; // Which campuses this field applies to

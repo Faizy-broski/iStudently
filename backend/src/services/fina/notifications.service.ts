@@ -112,6 +112,29 @@ export async function notifyNewPost(schoolId: string, recipientProfileIds: strin
   })
 }
 
+/**
+ * Positive & Skill-Based Reaction Engine — notifies a post's author when
+ * their post crosses the academic_skill "high-tier" reaction threshold and
+ * is promoted. The DB write is awaited (not fire-and-forget like the push
+ * send) — unlike most of this module's notifications, a promotion event
+ * must never be silently lost, since it's a one-time reward moment for the
+ * author. UI copy deliberately avoids the bare word "Honor Roll" — this
+ * codebase already has an unrelated grade/GPA-based Honor Roll system
+ * (course_periods.does_honor_roll, honor_roll_rules), so the wall's version
+ * uses "Wall Spotlight" instead to avoid confusing staff who already know
+ * "Honor Roll" to mean something grade-based.
+ */
+export async function notifyHonorRoll(schoolId: string, authorProfileId: string, postId: string): Promise<void> {
+  await notify({
+    schoolId,
+    userId: authorProfileId,
+    type: 'honor_roll_promotion',
+    payload: { postId },
+    pushTitle: 'The School Wall',
+    pushBody: 'Your post earned a Wall Spotlight for outstanding reactions!',
+  })
+}
+
 /** Spec §7.6/§22: the nightly chain-verify job's own alert on a break —
  * "the specific thing a regulator will ask you to demonstrate". The chain
  * is a single GLOBAL ledger (not per-school), so this notifies every

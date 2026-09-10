@@ -72,6 +72,8 @@ export interface SchoolDashboardStats {
   femaleStudents: number
   maleStaff: number
   femaleStaff: number
+  /** True when a past year was selected and it has no enrollment records at all (data gap, not an actually-empty year). */
+  noEnrollmentDataForYear: boolean
 }
 
 export interface AttendanceData {

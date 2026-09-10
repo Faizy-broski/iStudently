@@ -71,10 +71,15 @@ export default function AdminDashboard() {
       },
       {
         title: t('stats.total_students'),
-        value: stats.totalStudents,
+        // A past year with no enrollment records at all is a data gap, not
+        // an actually-empty year — show a distinct dash + explanation
+        // instead of a bare 0, which reads as "0 students were ever here."
+        value: stats.noEnrollmentDataForYear ? '—' : stats.totalStudents,
         icon: GraduationCap,
         bgColor: '#2E7D32',
-        subtitle: `${t('stats.male_label', { count: stats.maleStudents })}  ${t('stats.female_label', { count: stats.femaleStudents })}`
+        subtitle: stats.noEnrollmentDataForYear
+          ? t('stats.no_enrollment_data_for_year')
+          : `${t('stats.male_label', { count: stats.maleStudents })}  ${t('stats.female_label', { count: stats.femaleStudents })}`
       }
     ];
   }, [stats, t]);

@@ -23,6 +23,11 @@ router.get('/mine', requireRole(...COMPOSE_ROLES), ctrl.listMyPosts)
 router.get('/review-queue', requireRole(...REVIEWER_ROLES), ctrl.listReviewQueue)
 router.get('/approval-queue', requireRole(...PRINCIPAL_ROLES), ctrl.listApprovalQueue)
 router.get('/post-hoc-review-queue', requireRole(...REVIEWER_ROLES, ...PRINCIPAL_ROLES), ctrl.listPostHocReviewQueue)
+// Positive & Skill-Based Reaction Engine — Class Goal Engine. Literal
+// segment, must stay up here with the other literal-segment routes, before
+// the generic '/:id' route below would otherwise swallow it.
+router.get('/class-goals', ctrl.listClassGoals)
+router.post('/class-goals', requireRole(...COMPOSE_ROLES), ctrl.createClassGoal)
 router.post('/', requireRole(...COMPOSE_ROLES), ctrl.createPost)
 
 router.get('/:id', ctrl.getPostDetail)
@@ -37,6 +42,7 @@ router.post('/:id/pin', requireRole(...PRINCIPAL_ROLES), ctrl.pinPost)
 
 router.post('/:id/reactions', ctrl.setReaction)
 router.delete('/:id/reactions', ctrl.removeReaction)
+router.get('/:id/reactions', ctrl.getReactionSummary)
 router.get('/:id/comments', ctrl.listComments)
 router.post('/:id/comments', ctrl.addComment)
 router.post('/comments/:commentId/moderate', ctrl.moderateComment)

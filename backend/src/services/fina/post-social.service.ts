@@ -1,6 +1,14 @@
 import { supabase } from '../../config/supabase'
 import { CallerContext } from './types'
 import { logAuditFromCaller } from './audit-logger.service'
+import { notifyHonorRoll } from './notifications.service'
+import {
+  ACADEMIC_SKILL_KINDS,
+  HONOR_ROLL_THRESHOLD,
+  SUPER_REACTION_ROLES,
+  isValidReactionKind,
+  pointsForReaction,
+} from '../../utils/reaction-config'
 
 /**
  * Reactions and comments on published posts (spec §7.5, §12). Comment
@@ -15,11 +23,11 @@ import { logAuditFromCaller } from './audit-logger.service'
 const AUTO_APPROVE_ROLES = ['teacher', 'admin', 'media_officer']
 const MODERATOR_ROLES = ['admin', 'media_officer']
 
-async function assertPublishedAndVisible(caller: CallerContext, postId: string) {
+export async function assertPublishedAndVisible(caller: CallerContext, postId: string) {
   if (caller.role === 'super_admin') throw new Error('Access denied') // spec §12: SYSADMIN has zero content access
   const { data: post, error } = await supabase
     .from('fina_posts')
-    .select('id, school_id, author_id, comments_enabled, state')
+    .select('id, school_id, author_id, comments_enabled, state, is_honor_roll')
     .eq('id', postId)
     .maybeSingle()
   if (error || !post) throw new Error('Post not found')
@@ -28,20 +36,93 @@ async function assertPublishedAndVisible(caller: CallerContext, postId: string) 
   return post
 }
 
-export async function setReaction(caller: CallerContext, postId: string, kind: string) {
-  await assertPublishedAndVisible(caller, postId)
-  const { data, error } = await supabase
-    .from('fina_reactions')
-    .upsert({ post_id: postId, user_id: caller.profileId, kind }, { onConflict: 'post_id,user_id' })
-    .select()
-    .single()
-  if (error) throw new Error(`Failed to react: ${error.message}`)
-  return data
+export interface ReactionResult {
+  action: 'CREATED' | 'UPDATED' | 'REMOVED'
+  pointsEarnedByAuthor: number
+  isSuperReaction: boolean
+  promotedToHonorRoll: boolean
 }
 
-export async function removeReaction(caller: CallerContext, postId: string) {
+/**
+ * Positive & Skill-Based Reaction Engine. One reaction per user per post
+ * (enforced by fina_reactions' UNIQUE(post_id, user_id) — this upsert is a
+ * toggle-to-CHANGE, not toggle-to-remove; removal is the separate
+ * removeReaction() below). Points are always server-computed from
+ * reaction-config.ts, never trusted from the client. Teacher/admin/
+ * fina_supervisor reactions are unconditionally 3x "Golden Multiplier"
+ * super-reactions (see SUPER_REACTION_ROLES) — every reaction those roles
+ * make is golden, there is no separate opt-in.
+ */
+export async function setReaction(caller: CallerContext, postId: string, kind: string): Promise<ReactionResult> {
+  if (!isValidReactionKind(kind)) throw new Error(`Invalid reaction kind: ${kind}`)
+  const post = await assertPublishedAndVisible(caller, postId)
+
+  const isSuperReaction = SUPER_REACTION_ROLES.includes(caller.role)
+  const pointsAwarded = pointsForReaction(kind, isSuperReaction)
+
+  const { data: existing } = await supabase
+    .from('fina_reactions')
+    .select('kind, points_awarded')
+    .eq('post_id', postId)
+    .eq('user_id', caller.profileId)
+    .maybeSingle()
+
+  const { error } = await supabase
+    .from('fina_reactions')
+    .upsert(
+      { post_id: postId, user_id: caller.profileId, kind, points_awarded: pointsAwarded, is_super_reaction: isSuperReaction },
+      { onConflict: 'post_id,user_id' }
+    )
+  if (error) throw new Error(`Failed to react: ${error.message}`)
+
+  // Apply only the DELTA to the author's running total — this is an
+  // upsert, so a prior reaction's points must be un-applied first.
+  const pointsDelta = pointsAwarded - (existing?.points_awarded ?? 0)
+  if (pointsDelta !== 0 && post.author_id) {
+    const { error: incError } = await supabase.rpc('increment_wall_points', { p_profile_id: post.author_id, p_delta: pointsDelta })
+    if (incError) console.error('Failed to update wall_points:', incError)
+  }
+
+  let promotedToHonorRoll = false
+  // Only an academic_skill reaction can ever push the count over the
+  // threshold — skip the query entirely for general reactions.
+  if (!post.is_honor_roll && ACADEMIC_SKILL_KINDS.includes(kind)) {
+    const { count } = await supabase
+      .from('fina_reactions')
+      .select('post_id', { count: 'exact', head: true })
+      .eq('post_id', postId)
+      .in('kind', ACADEMIC_SKILL_KINDS)
+    if ((count ?? 0) >= HONOR_ROLL_THRESHOLD) {
+      const { error: promoteError } = await supabase.from('fina_posts').update({ is_honor_roll: true }).eq('id', postId).eq('is_honor_roll', false)
+      if (!promoteError) {
+        promotedToHonorRoll = true
+        if (post.author_id) await notifyHonorRoll(caller.schoolId, post.author_id, postId)
+      }
+    }
+  }
+
+  return {
+    action: existing ? 'UPDATED' : 'CREATED',
+    pointsEarnedByAuthor: pointsDelta,
+    isSuperReaction,
+    promotedToHonorRoll,
+  }
+}
+
+/**
+ * Removal policy is STICKY: points already awarded to the author are never
+ * clawed back, and a post's Wall Spotlight (is_honor_roll) status never
+ * reverts, even if the triggering reaction is later removed. Retroactively
+ * debiting a student's points on unlike would be a visibly negative moment
+ * in a feature explicitly designed to be positive-only, and un-promoting a
+ * Spotlight post after the author was already notified would be confusing
+ * for no real benefit. This was a deliberate, confirmed product decision,
+ * not an oversight.
+ */
+export async function removeReaction(caller: CallerContext, postId: string): Promise<ReactionResult> {
   const { error } = await supabase.from('fina_reactions').delete().eq('post_id', postId).eq('user_id', caller.profileId)
   if (error) throw new Error(`Failed to remove reaction: ${error.message}`)
+  return { action: 'REMOVED', pointsEarnedByAuthor: 0, isSuperReaction: false, promotedToHonorRoll: false }
 }
 
 export async function addComment(caller: CallerContext, postId: string, body: string) {

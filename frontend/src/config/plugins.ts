@@ -47,6 +47,7 @@ import {
   Languages,
   FileStack,
   Dna,
+  Lock,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -825,6 +826,26 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
       { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/student/resources/human-atlas', icon: Dna }], roles: ['student'] },
       { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/parent/resources/human-atlas', icon: Dna }], roles: ['parent'] },
     ],
+  },
+
+  // ── AdminVault ────────────────────────────────────────────────────────────
+  // Standalone module with its own top-level sidebar entry (added directly
+  // in sidebar.ts under both adminMenuItems and financialAdminMenuItems,
+  // gated by pluginRequired: 'vault'), mirroring hifzi/qirtasi's pattern —
+  // no sidebarInjections needed here. Foundation slice only: dynamic
+  // per-category custom fields, AES-256-GCM encrypted secrets, an immutable
+  // hash-chained audit log, and private watermarked attachments. Escalating
+  // expiry alerts, maintenance work orders, utility-anomaly detection, and
+  // the emergency/DRP directory are future phases.
+  {
+    id: 'vault',
+    name: 'AdminVault',
+    description:
+      'A secure records vault for facility/utilities, legal & licensing, financial & procurement, IT & security, and HR-confidential documents — dynamic per-category fields, AES-256-GCM encrypted secrets with a reveal-and-audit flow, an immutable audit log, and private watermarked attachments. Restricted to Admin, Super Admin, and Financial Admin.',
+    icon: Lock,
+    category: 'Security',
+    settingsHref: '/admin/vault',
+    sidebarInjections: [],
   },
 
   // ── Future plugins go here ────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { AuthRequest } from '../middlewares/auth.middleware'
 import { StudentService } from '../services/student.service'
 import { CreateStudentDTO, UpdateStudentDTO } from '../types'
 import { getEffectiveSchoolId } from '../utils/campus-validation'
-import { stripConfidentialFamilyStatus, canWriteConfidentialFamilyStatus } from '../utils/confidential-family-status'
+import { stripConfidentialFamilyStatus, canWriteConfidentialFamilyStatus, VALID_CONFIDENTIAL_STATUSES } from '../utils/confidential-family-status'
 
 const studentService = new StudentService()
 
@@ -673,18 +673,20 @@ export class StudentController {
    * POST /api/students/group-assign
    * Requires: admin role
    * Body: { student_ids: string[], grade_level_id?: string, section_id?: string,
-   *         is_active?: boolean, custom_field_updates?: {category_id, field_key, value}[], campus_id?: string }
+   *         is_active?: boolean, confidential_family_status?: string,
+   *         custom_field_updates?: {category_id, field_key, value}[], campus_id?: string }
    */
   async groupAssignStudents(req: AuthRequest, res: Response): Promise<void> {
     try {
       const adminSchoolId = req.profile?.school_id
+      const callerRole = req.profile?.role
 
       if (!adminSchoolId) {
         res.status(403).json({ success: false, error: 'No school associated with your account' })
         return
       }
 
-      const { student_ids, grade_level_id, section_id, is_active, custom_field_updates, campus_id } = req.body
+      const { student_ids, grade_level_id, section_id, is_active, confidential_family_status, custom_field_updates, campus_id } = req.body
 
       if (!Array.isArray(student_ids) || student_ids.length === 0) {
         res.status(400).json({ success: false, error: 'student_ids is required and must be a non-empty array' })
@@ -692,8 +694,22 @@ export class StudentController {
       }
 
       const hasCustomFieldUpdates = Array.isArray(custom_field_updates) && custom_field_updates.length > 0
-      if (grade_level_id === undefined && is_active === undefined && !hasCustomFieldUpdates) {
-        res.status(400).json({ success: false, error: 'Provide at least one field to assign (grade_level_id, is_active, or custom_field_updates)' })
+      if (grade_level_id === undefined && is_active === undefined && confidential_family_status === undefined && !hasCustomFieldUpdates) {
+        res.status(400).json({ success: false, error: 'Provide at least one field to assign (grade_level_id, is_active, confidential_family_status, or custom_field_updates)' })
+        return
+      }
+
+      // Same restricted-write check as the single-student endpoint — group
+      // assign must not become a back door for a role that can't write this
+      // field one at a time (route is admin-only today, so this is
+      // currently always true, but the check travels with the field rather
+      // than relying on the route staying admin-only forever).
+      if (confidential_family_status !== undefined && !canWriteConfidentialFamilyStatus(callerRole)) {
+        res.status(403).json({ success: false, error: 'Forbidden: Insufficient permissions to update confidential family status' })
+        return
+      }
+      if (confidential_family_status !== undefined && !VALID_CONFIDENTIAL_STATUSES.includes(confidential_family_status)) {
+        res.status(400).json({ success: false, error: `Invalid confidential_family_status. Must be one of: ${VALID_CONFIDENTIAL_STATUSES.join(', ')}` })
         return
       }
 
@@ -703,6 +719,7 @@ export class StudentController {
         grade_level_id,
         section_id,
         is_active: is_active === undefined ? undefined : Boolean(is_active),
+        confidential_family_status,
         custom_field_updates
       })
 
@@ -755,11 +772,10 @@ export class StudentController {
         return
       }
 
-      const validStatuses = ['NONE', 'PARENTS_DIVORCED', 'ORPHAN_FATHER', 'ORPHAN_MOTHER', 'ORPHAN_BOTH']
-      if (!status || !validStatuses.includes(status)) {
+      if (!status || !VALID_CONFIDENTIAL_STATUSES.includes(status)) {
         res.status(400).json({
           success: false,
-          error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+          error: `Invalid status. Must be one of: ${VALID_CONFIDENTIAL_STATUSES.join(', ')}`
         })
         return
       }

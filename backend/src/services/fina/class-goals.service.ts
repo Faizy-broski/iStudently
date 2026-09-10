@@ -1,0 +1,120 @@
+import { supabase } from '../../config/supabase'
+import { CallerContext } from './types'
+import { isValidReactionKind } from '../../utils/reaction-config'
+
+/**
+ * Positive & Skill-Based Reaction Engine — Class Goal Engine (spec: "aggregate
+ * weekly reaction counts scoped to students within a specific classId toward
+ * target milestones"). Minimal, deliberately: no cron, progress is computed
+ * on read.
+ *
+ * Aggregation rule (see 300_create_fina_class_goals.sql's header for the
+ * full reasoning): a goal's progress only counts reactions from STUDENTS in
+ * that section, made on posts whose audience_type='classes' and whose
+ * audience_ref.section_ids includes the goal's section. Reactions on
+ * school-wide posts, and reactions from staff, never count — fina_posts has
+ * no direct section_id column to join against, only the classes-audience
+ * JSONB, so this is the only rule that doesn't require guessing a reacting
+ * user's class from the reaction row alone.
+ *
+ * Section-ownership check is intentionally simple: any teacher/admin whose
+ * resolved schoolId (campus) matches the section's school_id can create a
+ * goal for it — this codebase has no teacher-to-section assignment table to
+ * validate "their own section" more strictly, and COMPOSE_ROLES-style
+ * gating at the route level already limits who can call this at all.
+ */
+
+function mondayOf(date: Date): Date {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+  const day = d.getUTCDay() // 0=Sun..6=Sat
+  const diff = day === 0 ? -6 : 1 - day // shift back to Monday
+  d.setUTCDate(d.getUTCDate() + diff)
+  return d
+}
+
+function toDateStr(d: Date): string {
+  return d.toISOString().split('T')[0]
+}
+
+export interface CreateClassGoalInput {
+  sectionId: string
+  reactionKind: string
+  targetCount: number
+}
+
+export async function createClassGoal(caller: CallerContext, input: CreateClassGoalInput) {
+  if (!isValidReactionKind(input.reactionKind)) throw new Error(`Invalid reaction kind: ${input.reactionKind}`)
+  if (!Number.isFinite(input.targetCount) || input.targetCount <= 0) throw new Error('targetCount must be a positive number')
+
+  const { data: section, error: sectionError } = await supabase
+    .from('sections')
+    .select('id, school_id')
+    .eq('id', input.sectionId)
+    .maybeSingle()
+  if (sectionError || !section) throw new Error('Section not found')
+  if (section.school_id !== caller.schoolId) throw new Error('Access denied')
+
+  const now = new Date()
+  const weekStart = mondayOf(now)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6)
+
+  const { data, error } = await supabase
+    .from('fina_class_goals')
+    .upsert(
+      {
+        school_id: caller.schoolId,
+        section_id: input.sectionId,
+        reaction_kind: input.reactionKind,
+        target_count: input.targetCount,
+        week_start: toDateStr(weekStart),
+        week_end: toDateStr(weekEnd),
+        created_by: caller.profileId,
+      },
+      { onConflict: 'section_id,reaction_kind,week_start' }
+    )
+    .select()
+    .single()
+  if (error) throw new Error(`Failed to create class goal: ${error.message}`)
+  return data
+}
+
+async function computeProgress(goal: { id: string; school_id: string; section_id: string; reaction_kind: string; week_start: string; week_end: string }): Promise<number> {
+  const { data: students } = await supabase.from('students').select('profile_id').eq('section_id', goal.section_id)
+  const studentProfileIds = new Set((students || []).map((s: any) => s.profile_id as string).filter(Boolean))
+  if (studentProfileIds.size === 0) return 0
+
+  const { data: posts } = await supabase
+    .from('fina_posts')
+    .select('id, audience_ref')
+    .eq('school_id', goal.school_id)
+    .eq('audience_type', 'classes')
+    .eq('state', 'published')
+  const matchingPostIds = (posts || [])
+    .filter((p: any) => (p.audience_ref?.section_ids || []).includes(goal.section_id))
+    .map((p: any) => p.id as string)
+  if (matchingPostIds.length === 0) return 0
+
+  const { data: reactions } = await supabase
+    .from('fina_reactions')
+    .select('post_id, user_id, kind, created_at')
+    .in('post_id', matchingPostIds)
+    .eq('kind', goal.reaction_kind)
+    .gte('created_at', `${goal.week_start}T00:00:00Z`)
+    .lt('created_at', `${new Date(new Date(goal.week_end).getTime() + 86400000).toISOString().split('T')[0]}T00:00:00Z`)
+
+  return (reactions || []).filter((r: any) => studentProfileIds.has(r.user_id)).length
+}
+
+export async function listClassGoals(caller: CallerContext, sectionId?: string) {
+  let query = supabase.from('fina_class_goals').select('*').eq('school_id', caller.schoolId)
+  if (sectionId) query = query.eq('section_id', sectionId)
+  const { data, error } = await query.order('created_at', { ascending: false })
+  if (error) throw new Error(`Failed to load class goals: ${error.message}`)
+
+  const goals = data || []
+  const withProgress = await Promise.all(
+    goals.map(async (g: any) => ({ ...g, currentCount: await computeProgress(g) }))
+  )
+  return withProgress
+}

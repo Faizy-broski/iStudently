@@ -3,6 +3,7 @@ import { AuthRequest } from '../../middlewares/auth.middleware'
 import * as moderation from '../../services/fina/moderation.service'
 import * as wall from '../../services/fina/wall.service'
 import * as social from '../../services/fina/post-social.service'
+import * as classGoals from '../../services/fina/class-goals.service'
 import { listComposerAudienceOptions } from '../../services/fina/access-policy.service'
 import { callerFromFinaRequest as callerFrom } from '../../utils/fina-caller'
 
@@ -150,8 +151,15 @@ export const setReaction = async (req: AuthRequest, res: Response) => {
 
 export const removeReaction = async (req: AuthRequest, res: Response) => {
   try {
-    await social.removeReaction(await callerFrom(req), req.params.id)
-    return res.json({ success: true })
+    const data = await social.removeReaction(await callerFrom(req), req.params.id)
+    return res.json({ success: true, data })
+  } catch (error: any) { return handleError(res, error) }
+}
+
+export const getReactionSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await wall.getReactionSummary(await callerFrom(req), req.params.id)
+    return res.json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }
 }
 
@@ -173,6 +181,26 @@ export const moderateComment = async (req: AuthRequest, res: Response) => {
   try {
     const decision = req.body?.decision === 'reject' ? 'reject' : 'approve'
     const data = await social.moderateComment(await callerFrom(req), req.params.commentId, decision)
+    return res.json({ success: true, data })
+  } catch (error: any) { return handleError(res, error) }
+}
+
+// ── Class Goal Engine ────────────────────────────────────────────────────────
+
+export const createClassGoal = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await classGoals.createClassGoal(await callerFrom(req), {
+      sectionId: req.body?.sectionId,
+      reactionKind: req.body?.reactionKind,
+      targetCount: Number(req.body?.targetCount),
+    })
+    return res.status(201).json({ success: true, data })
+  } catch (error: any) { return handleError(res, error) }
+}
+
+export const listClassGoals = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await classGoals.listClassGoals(await callerFrom(req), req.query.sectionId as string | undefined)
     return res.json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }
 }

@@ -11,7 +11,8 @@ export type UserRole =
   | "counselor"
   | "inspector"
   | "media_officer"
-  | "fina_supervisor";
+  | "fina_supervisor"
+  | "financial_admin";
 export type SchoolStatus = "active" | "suspended";
 export type ParentRelationType = "father" | "mother" | "guardian" | "other"; // Removed 'both'
 export type EventCategory =

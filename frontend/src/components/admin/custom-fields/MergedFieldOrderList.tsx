@@ -32,6 +32,8 @@ export interface MergedFieldOrderListLabels {
   // a hardcoded default rather than needing their own translation key.
   field_label_ar_placeholder?: string
   field_options_placeholder: string
+  // Optional, same convention as field_label_ar_placeholder above.
+  field_options_ar_placeholder?: string
   scope_this: string
   scope_selected: string
   scope_all: string
@@ -379,14 +381,31 @@ function CustomFieldRow({
           </Popover>
         )}
       </div>
-      <div className="col-span-2">
+      <div className="col-span-2 space-y-1">
         {field.type === 'select' || field.type === 'multi-select' ? (
-          <Input
-            defaultValue={field.options?.join(', ') || ''}
-            onBlur={(e) => onUpdateField(field.id, { options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-            placeholder={labels.field_options_placeholder}
-            className="h-7 text-xs"
-          />
+          <>
+            <Input
+              defaultValue={field.options?.join(', ') || ''}
+              onBlur={(e) => onUpdateField(field.id, { options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+              placeholder={labels.field_options_placeholder}
+              className="h-7 text-xs"
+            />
+            <Input
+              defaultValue={field.options_ar?.join(', ') || ''}
+              onBlur={(e) =>
+                onUpdateField(field.id, {
+                  // Position-matched to `options` — same comma order, so
+                  // options_ar[i] translates options[i]. A short/empty
+                  // entry at any position just falls back to English there
+                  // (see getFieldOptions()).
+                  options_ar: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                })
+              }
+              placeholder={labels.field_options_ar_placeholder || 'Arabic options (optional, same order)'}
+              dir="rtl"
+              className="h-7 text-xs"
+            />
+          </>
         ) : (
           <span className="text-gray-400">—</span>
         )}

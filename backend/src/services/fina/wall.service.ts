@@ -1,6 +1,7 @@
 import { supabase } from '../../config/supabase'
 import { CallerContext } from './types'
 import { getGuardianStudentIds, getStudentSectionIds } from './access-policy.service'
+import { assertPublishedAndVisible } from './post-social.service'
 
 /**
  * The wall feed (spec §16.2): strictly reverse-chronological, pinned first,
@@ -94,14 +95,29 @@ function mapMedia(row: any) {
   return { id: row.media?.id, kind: row.media?.kind }
 }
 
-function mapPost(post: any, reactionCounts: Map<string, number>, myReaction: Map<string, string>, commentCounts: Map<string, number>) {
+function mapPost(
+  post: any,
+  reactionCounts: Map<string, number>,
+  myReaction: Map<string, { kind: string; isSuper: boolean }>,
+  commentCounts: Map<string, number>
+) {
   const { audience_ref, ...rest } = post
+  const mine = myReaction.get(post.id)
   return {
     ...rest,
     media: (post.media || []).sort((a: any, b: any) => a.sort - b.sort).map(mapMedia),
     reactionsCount: reactionCounts.get(post.id) ?? 0,
-    myReaction: myReaction.get(post.id) ?? null,
+    myReaction: mine?.kind ?? null,
+    // So the client can render the golden glow correctly on first paint,
+    // not only right after the viewer reacts in the current session.
+    myReactionIsSuper: mine?.isSuper ?? false,
     commentsCount: commentCounts.get(post.id) ?? 0,
+    // Positive & Skill-Based Reaction Engine — "Wall Spotlight" badge. Kept
+    // lightweight here (a boolean) on purpose: the full top-3
+    // reaction-kind breakdown with super-reaction flags is only fetched via
+    // getReactionSummary() below, on demand when a viewer opens a single
+    // post's reaction detail, not for every post in a paginated feed.
+    isHonorRoll: !!post.is_honor_roll,
   }
 }
 
@@ -138,15 +154,15 @@ export async function listWall(caller: CallerContext, filters: WallFilters) {
 
   const postIds = visible.map((p) => p.id)
   const [{ data: reactions }, { data: comments }] = await Promise.all([
-    postIds.length ? supabase.from('fina_reactions').select('post_id, user_id, kind').in('post_id', postIds) : Promise.resolve({ data: [] as any[] }),
+    postIds.length ? supabase.from('fina_reactions').select('post_id, user_id, kind, is_super_reaction').in('post_id', postIds) : Promise.resolve({ data: [] as any[] }),
     postIds.length ? supabase.from('fina_comments').select('post_id').eq('state', 'approved').in('post_id', postIds) : Promise.resolve({ data: [] as any[] }),
   ])
 
   const reactionCounts = new Map<string, number>()
-  const myReaction = new Map<string, string>()
+  const myReaction = new Map<string, { kind: string; isSuper: boolean }>()
   for (const r of reactions || []) {
     reactionCounts.set(r.post_id, (reactionCounts.get(r.post_id) ?? 0) + 1)
-    if (r.user_id === caller.profileId) myReaction.set(r.post_id, r.kind)
+    if (r.user_id === caller.profileId) myReaction.set(r.post_id, { kind: r.kind, isSuper: !!r.is_super_reaction })
   }
   const commentCounts = new Map<string, number>()
   for (const c of comments || []) {
@@ -179,14 +195,58 @@ export async function getPostDetail(caller: CallerContext, postId: string) {
   }
 
   const [{ data: reactions }, { data: comments }] = await Promise.all([
-    supabase.from('fina_reactions').select('post_id, user_id, kind').eq('post_id', postId),
+    supabase.from('fina_reactions').select('post_id, user_id, kind, is_super_reaction').eq('post_id', postId),
     supabase.from('fina_comments').select('post_id').eq('post_id', postId).eq('state', 'approved'),
   ])
   const reactionCounts = new Map<string, number>([[postId, (reactions || []).length]])
-  const myReaction = new Map<string, string>()
+  const myReaction = new Map<string, { kind: string; isSuper: boolean }>()
   const mine = (reactions || []).find((r) => r.user_id === caller.profileId)
-  if (mine) myReaction.set(postId, mine.kind)
+  if (mine) myReaction.set(postId, { kind: mine.kind, isSuper: !!mine.is_super_reaction })
   const commentCounts = new Map<string, number>([[postId, (comments || []).length]])
 
   return mapPost(post, reactionCounts, myReaction, commentCounts)
+}
+
+export interface ReactionSummary {
+  totalCount: number
+  currentUserReaction: string | null
+  topReactions: { kind: string; count: number; hasSuperReaction: boolean }[]
+}
+
+/**
+ * Positive & Skill-Based Reaction Engine — GET /:id/reactions. Visibility
+ * uses the same assertPublishedAndVisible() gate as setReaction/removeReaction
+ * (post-social.service.ts): if you're allowed to react to a post, you're
+ * allowed to see its reaction summary. Reused rather than duplicated here.
+ */
+export async function getReactionSummary(caller: CallerContext, postId: string): Promise<ReactionSummary> {
+  await assertPublishedAndVisible(caller, postId)
+
+  const { data: reactions, error } = await supabase
+    .from('fina_reactions')
+    .select('kind, user_id, is_super_reaction')
+    .eq('post_id', postId)
+  if (error) throw new Error(`Failed to load reactions: ${error.message}`)
+
+  const rows = reactions || []
+  const byKind = new Map<string, { count: number; hasSuperReaction: boolean }>()
+  for (const r of rows) {
+    const entry = byKind.get(r.kind) ?? { count: 0, hasSuperReaction: false }
+    entry.count += 1
+    if (r.is_super_reaction) entry.hasSuperReaction = true
+    byKind.set(r.kind, entry)
+  }
+
+  const topReactions = Array.from(byKind.entries())
+    .map(([kind, v]) => ({ kind, count: v.count, hasSuperReaction: v.hasSuperReaction }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+
+  const mine = rows.find((r) => r.user_id === caller.profileId)
+
+  return {
+    totalCount: rows.length,
+    currentUserReaction: mine ? mine.kind : null,
+    topReactions,
+  }
 }

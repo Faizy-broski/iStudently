@@ -77,6 +77,8 @@ interface CampusFormData {
   principal_name: string
   short_name: string
   school_number: string
+  latitude: string
+  longitude: string
   vision: string
   mission: string
 }
@@ -116,6 +118,8 @@ export default function SchoolDetailsPage() {
     principal_name: "",
     short_name: "",
     school_number: "",
+    latitude: "",
+    longitude: "",
     vision: "",
     mission: "",
   })
@@ -170,6 +174,8 @@ export default function SchoolDetailsPage() {
         principal_name: selectedCampus.principal_name || "",
         short_name: selectedCampus.short_name || "",
         school_number: selectedCampus.school_number || "",
+        latitude: selectedCampus.latitude != null ? String(selectedCampus.latitude) : "",
+        longitude: selectedCampus.longitude != null ? String(selectedCampus.longitude) : "",
         vision: customVals.vision_statement ?? customVals.school_vision ?? t("vision_default"),
         mission: customVals.mission_statement ?? customVals.school_mission ?? t("mission_default"),
       })
@@ -297,6 +303,8 @@ export default function SchoolDetailsPage() {
             principal_name: formData.principal_name,
             short_name: formData.short_name,
             school_number: formData.school_number,
+            latitude: formData.latitude.trim() ? parseFloat(formData.latitude) : null,
+            longitude: formData.longitude.trim() ? parseFloat(formData.longitude) : null,
             custom_fields: updatedCustomFields,
           }),
         }
@@ -332,6 +340,8 @@ export default function SchoolDetailsPage() {
         principal_name: selectedCampus.principal_name || "",
         short_name: selectedCampus.short_name || "",
         school_number: selectedCampus.school_number || "",
+        latitude: selectedCampus.latitude != null ? String(selectedCampus.latitude) : "",
+        longitude: selectedCampus.longitude != null ? String(selectedCampus.longitude) : "",
         vision: customVals.vision_statement ?? customVals.school_vision ?? t("vision_default"),
         mission: customVals.mission_statement ?? customVals.school_mission ?? t("mission_default"),
       })
@@ -717,6 +727,31 @@ export default function SchoolDetailsPage() {
                           placeholder={t("zip_code")}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="latitude" className="font-semibold">{t("latitude", { defaultValue: "Latitude" })}</Label>
+                        <Input
+                          id="latitude"
+                          type="number"
+                          step="any"
+                          value={formData.latitude}
+                          onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                          placeholder="24.7136"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="longitude" className="font-semibold">{t("longitude", { defaultValue: "Longitude" })}</Label>
+                        <Input
+                          id="longitude"
+                          type="number"
+                          step="any"
+                          value={formData.longitude}
+                          onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                          placeholder="46.6753"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          {t("coordinates_hint", { defaultValue: "Right-click the school's location on Google Maps and copy the coordinates shown at the top of the menu." })}
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-6">
@@ -790,6 +825,35 @@ export default function SchoolDetailsPage() {
                             </p>
                           </div>
                         </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                        <h4 className="font-bold text-sm uppercase text-slate-500 tracking-wider flex items-center gap-2">
+                          <MapPin className="h-4 w-4" /> {t("location_on_map", { defaultValue: "Location on Map" })}
+                        </h4>
+                        {selectedCampus.latitude != null && selectedCampus.longitude != null ? (
+                          <div className="space-y-2">
+                            <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                              <iframe
+                                src={`https://www.google.com/maps?q=${selectedCampus.latitude},${selectedCampus.longitude}&z=16&output=embed`}
+                                className="w-full"
+                                style={{ height: 320, border: 0 }}
+                                loading="lazy"
+                                title={t("location_on_map", { defaultValue: "Location on Map" })}
+                              />
+                            </div>
+                            <a
+                              href={`https://www.google.com/maps?q=${selectedCampus.latitude},${selectedCampus.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sm text-[#022172] dark:text-blue-400 hover:underline"
+                            >
+                              <MapPin className="h-3.5 w-3.5" /> {t("open_in_google_maps", { defaultValue: "Open in Google Maps" })}
+                            </a>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">{t("not_provided")}</p>
+                        )}
                       </div>
                     </div>
                   )}
