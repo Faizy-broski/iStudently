@@ -576,4 +576,22 @@ export class ParentController {
       })
     }
   }
+
+  async groupAssignParents(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const effectiveSchoolId = getEffectiveSchoolId(req)
+      validateCampusAccess(req, effectiveSchoolId)
+
+      const result = await parentService.groupAssignParents(effectiveSchoolId, {
+        parent_ids: req.body.parent_ids,
+        is_active: req.body.is_active,
+        custom_field_updates: req.body.custom_field_updates
+      })
+
+      res.status(200).json({ success: true, data: result })
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message })
+    }
+  }
+
 }

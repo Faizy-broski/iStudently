@@ -110,6 +110,8 @@ export interface Student {
   profile?: {
     id: string
     first_name: string | null
+    father_name?: string | null
+    grandfather_name?: string | null
     last_name: string | null
     email: string | null
     phone: string | null
@@ -188,6 +190,10 @@ export async function getStudents(params?: {
   section_id?: string | string[]
   /** Filter by active status. Omit to include both active and inactive students. */
   is_active?: boolean
+  /** Column to sort by BEFORE pagination — must be server-side so students of the
+   *  same grade/etc. land on consecutive pages instead of scattered across them. */
+  sort_key?: 'student_number' | 'name' | 'grade' | 'status' | 'contact'
+  sort_dir?: 'asc' | 'desc'
 }) {
   const queryParams = new URLSearchParams()
   if (params?.page) queryParams.append('page', params.page.toString())
@@ -209,6 +215,8 @@ export async function getStudents(params?: {
     }
   }
   if (params?.is_active !== undefined) queryParams.append('is_active', String(params.is_active))
+  if (params?.sort_key) queryParams.append('sort_key', params.sort_key)
+  if (params?.sort_dir) queryParams.append('sort_dir', params.sort_dir)
 
   const query = queryParams.toString()
   return apiRequest<Student[]>(`/students${query ? `?${query}` : ''}`)

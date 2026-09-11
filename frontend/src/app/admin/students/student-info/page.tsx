@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
-import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Edit, Download, MoreHorizontal, ChevronLeft, ChevronRight, Loader2, Users, UserCheck, UserX, Trash2, Shield } from "lucide-react";
 import { toast } from "sonner";
@@ -192,6 +191,25 @@ export default function StudentInfoPage() {
     }).catch(() => {})
   }, []);
 
+  // Sorting is applied server-side, BEFORE pagination — sorting only the
+  // already-paginated page client-side (the previous behavior) meant a
+  // page's membership was still determined by the server's default order,
+  // so e.g. sorting by grade only reordered within a page, leaving students
+  // of the same grade scattered across non-adjacent pages instead of
+  // grouped together. Changing the sort key/direction resets to page 1,
+  // since the previous page number no longer means the same slice of data.
+  const [sortKey, setSortKey] = useState<StudentSortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const toggleSort = (key: StudentSortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setCurrentPage(1);
+  };
+
   // Debounce search is handled inside UniversalFilter; pass the filter value directly
   const { students, total, totalPages, loading, error, refresh, updateStudent } = useStudents({
     page: currentPage,
@@ -206,6 +224,8 @@ export default function StudentInfoPage() {
     section_id: studentFilters.sectionId || undefined,
     // Undefined = include both active and inactive; true = active only
     is_active: showInactive ? undefined : true,
+    sort_key: sortKey,
+    sort_dir: sortDir,
   });
 
   // Show error toast if there's an error, but only for persistent errors
@@ -339,21 +359,11 @@ export default function StudentInfoPage() {
     );
   };
 
-  // Active/inactive filtering is applied server-side via the is_active param
-  const getStudentSortValue = (student: Student, key: StudentSortKey): string | number => {
-    switch (key) {
-      case "student_number": return student.student_number || "";
-      case "name": return `${student.profile?.first_name || ""} ${student.profile?.last_name || ""}`.trim();
-      case "grade": return student.grade?.name || student.grade_level || "";
-      case "status": return student.profile?.is_active ? "active" : "inactive";
-      case "contact": return student.profile?.phone || "";
-      default: return "";
-    }
-  };
-  const { sorted: sortedStudents, sortKey, sortDir, toggleSort } = useTableSort<Student, StudentSortKey>(
-    students, getStudentSortValue, "name", "asc"
-  );
-  const filteredStudents = sortedStudents;
+  // Active/inactive filtering is applied server-side via the is_active param.
+  // Sorting (sortKey/sortDir, declared above useStudents) is also applied
+  // server-side now, so `students` already arrives in the right order —
+  // no client-side re-sort needed here.
+  const filteredStudents = students;
 
   return (
     <div className="p-6 space-y-6">
@@ -515,7 +525,12 @@ export default function StudentInfoPage() {
                       </TableRow>
                     ) : (
                       filteredStudents.map((student) => {
-                        const fullName = `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`.trim();
+                        const fullName = [
+                          student.profile?.first_name,
+                          student.profile?.father_name,
+                          student.profile?.grandfather_name,
+                          student.profile?.last_name,
+                        ].filter(Boolean).join(' ');
                         const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                         return (
                           <TableRow

@@ -257,3 +257,16 @@ export async function downloadStaffImportTemplate(campusId?: string) {
     a.click()
     URL.revokeObjectURL(url)
 }
+
+export interface GroupAssignStaffParams {
+  staff_ids: string[]
+  is_active?: boolean
+  custom_field_updates?: { category_id: string; field_key: string; value: any }[]
+  campus_id?: string
+}
+export async function groupAssignStaff(params: GroupAssignStaffParams) {
+  return apiRequest<{ updated: number; errors: any[] }>('/staff/group-assign', {
+    method: 'POST',
+    body: JSON.stringify(params)
+  })
+}

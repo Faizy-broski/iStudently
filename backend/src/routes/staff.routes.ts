@@ -22,4 +22,7 @@ router.post('/', requireRole('admin'), StaffController.createStaff)
 router.put('/:id', requireRole('admin'), StaffController.updateStaff)
 router.delete('/:id', requireRole('admin'), StaffController.deleteStaff)
 
+
+router.post('/group-assign', requireRole('admin'), StaffController.groupAssignStaff)
+
 export default router

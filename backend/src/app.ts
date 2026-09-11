@@ -468,6 +468,31 @@ registerRoutes("/hifzi/gradebook", hifziGradebookBridgeRoutes);
 registerRoutes("/hifzi/compliance", hifziComplianceRoutes);
 registerRoutes("/hifzi", hifziReportsRoutes);
 
+// Qaida module routes
+import qaidaProgressRoutes from "./routes/qaida/progress.routes";
+import qaidaStationRoutes from "./routes/qaida/station.routes";
+import qaidaSessionRoutes from "./routes/qaida/session.routes";
+import qaidaReportRoutes from "./routes/qaida/report.routes";
+
+registerRoutes("/qaida/progress", qaidaProgressRoutes);
+registerRoutes("/qaida/station", qaidaStationRoutes);
+registerRoutes("/qaida/session", qaidaSessionRoutes);
+registerRoutes("/qaida/report", qaidaReportRoutes);
+
+// Miqat module routes
+import miqatDevicesRoutes from "./routes/miqat/devices.routes";
+import miqatAttendanceRoutes from "./routes/miqat/attendance.routes";
+import miqatPermissionsRoutes from "./routes/miqat/permissions.routes";
+import miqatSchoolsRoutes from "./routes/miqat/schools.routes";
+import miqatCardsRoutes from "./routes/miqat/cards.routes";
+
+registerRoutes("/miqat/devices", miqatDevicesRoutes);
+registerRoutes("/miqat/attendance", miqatAttendanceRoutes);
+registerRoutes("/miqat/permissions", miqatPermissionsRoutes);
+registerRoutes("/miqat/schools", miqatSchoolsRoutes);
+registerRoutes("/miqat/cards", miqatCardsRoutes);
+import { startMiqatNightlyJobs } from "./jobs/miqat-nightly.job";
+
 // 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({
@@ -528,6 +553,7 @@ app.listen(PORT, () => {
   startRetentionPurgeCron();
   startHifziJobsRunner();
   startHifziAbsenceAlertCron();
+  startMiqatNightlyJobs();
   startHifziNightlyAssignmentCron();
 
   // Reconcile any timetable generation jobs left 'running'/'queued' from

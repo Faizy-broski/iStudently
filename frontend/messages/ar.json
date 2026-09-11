@@ -12997,5 +12997,54 @@
       "enable": "تفعيل وحدة الخلوة المدرسية",
       "description": "إدارة تحفيظ القرآن الكريم: الحلقات، متابعة التسميع، المراجعة المتباعدة، وتقارير التقدم."
     }
+  },
+  "miqat": {
+    "settings": {
+      "title": "إعدادات حضور ميقات",
+      "firstTimeNotice": "حدّد موقع المدرسة وسياسة الحضور لتفعيل مسح بطاقات ميقات.",
+      "geofenceTitle": "النطاق الجغرافي",
+      "lat": "خط العرض",
+      "lng": "خط الطول",
+      "useCurrentLocation": "استخدام الموقع الحالي",
+      "locationError": "تعذّر تحديد الموقع الحالي",
+      "radiusM": "نصف القطر (متر)",
+      "maxAccuracyM": "أقصى انحراف مقبول لدقة GPS (متر)",
+      "policyTitle": "سياسة التأخير",
+      "officialStart": "وقت البدء الرسمي",
+      "gracePeriod": "فترة السماح (دقائق)",
+      "photoTitle": "التقاط الصور",
+      "photoRetentionDays": "مدة الاحتفاظ (أيام)",
+      "save": "حفظ الإعدادات",
+      "saveSuccess": "تم حفظ إعدادات ميقات",
+      "saveError": "فشل حفظ الإعدادات"
+    },
+    "devices": {
+      "title": "أجهزة مسح ميقات",
+      "generateCode": "إنشاء رمز تفعيل",
+      "roleGate": "بوابة",
+      "roleTeacher": "معلّم",
+      "roleAdmin": "إداري",
+      "generateError": "فشل إنشاء رمز التفعيل",
+      "expiresAt": "ينتهي في",
+      "codeCopied": "تم نسخ الرمز",
+      "colLabel": "الجهاز",
+      "colRole": "الدور",
+      "colStatus": "الحالة",
+      "colLastSeen": "آخر ظهور",
+      "never": "لم يظهر بعد",
+      "revoke": "إلغاء",
+      "revokeSuccess": "تم إلغاء الجهاز",
+      "revokeError": "فشل إلغاء الجهاز",
+      "noDevices": "لا توجد أجهزة مُفعّلة بعد"
+    },
+    "dashboard": {
+      "title": "ميقات — حضور اليوم",
+      "attendanceToday": "نسبة الحضور اليوم",
+      "present": "حاضر",
+      "late": "متأخر",
+      "absent": "غائب",
+      "unclosedWarning": "{count} طالب سجّل حضورًا ولم يسجّل انصرافًا اليوم",
+      "noData": "لا يوجد سجل حضور اليوم بعد"
+    }
   }
 }

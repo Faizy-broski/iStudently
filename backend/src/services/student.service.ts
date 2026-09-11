@@ -17,6 +17,42 @@ function redactProfileEmail<T extends { profile?: { email?: string | null } | nu
   return record
 }
 
+export type StudentSortKey = 'student_number' | 'name' | 'grade' | 'status' | 'contact'
+
+const studentSortCollator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
+
+/**
+ * Mirrors the frontend's getStudentSortValue() in student-info/page.tsx —
+ * same columns, same semantics — so "sort by grade" etc. means the same
+ * thing here as it does in the UI. Sorting MUST happen here, before
+ * pagination slices the result set, not client-side on an already-paginated
+ * page (that only reorders whichever students happened to land on a given
+ * page, which is what caused students of the same grade to be scattered
+ * across non-adjacent pages instead of grouped together).
+ */
+function getStudentSortValue(student: any, key: StudentSortKey): string | number {
+  switch (key) {
+    case 'student_number': return student.student_number || ''
+    case 'name': return `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`.trim()
+    case 'grade': return student.grade?.name || student.grade_level || ''
+    case 'status': return student.profile?.is_active ? 'active' : 'inactive'
+    case 'contact': return student.profile?.phone || ''
+    default: return ''
+  }
+}
+
+function sortStudents<T>(rows: T[], sortKey: StudentSortKey, sortDir: 'asc' | 'desc'): T[] {
+  const sorted = rows.slice().sort((a, b) => {
+    const av = getStudentSortValue(a, sortKey)
+    const bv = getStudentSortValue(b, sortKey)
+    const cmp = typeof av === 'string' && typeof bv === 'string'
+      ? studentSortCollator.compare(av, bv)
+      : Number(av) - Number(bv)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+  return sorted
+}
+
 export class StudentService {
   /**
    * Generate a student number that's unique within the school, retrying on
@@ -42,7 +78,9 @@ export class StudentService {
     search?: string,
     gradeLevel?: string | string[],
     sectionIds?: string[],
-    isActive?: boolean
+    isActive?: boolean,
+    sortKey: StudentSortKey = 'name',
+    sortDir: 'asc' | 'desc' = 'asc'
   ) {
     const offset = (page - 1) * limit
 
@@ -114,9 +152,30 @@ export class StudentService {
             filtered = filtered.filter((s: any) => !!s.is_active === isActive);
           }
 
+          // Sort before paginating — this RPC returns flat rows (first_name/
+          // grade_level directly, not nested under .profile/.grade like the
+          // standard query below), so it needs its own adapter rather than
+          // reusing getStudentSortValue()'s nested-shape lookups.
+          const sortedFiltered = filtered.slice().sort((a: any, b: any) => {
+            const valueFor = (s: any) => {
+              switch (sortKey) {
+                case 'student_number': return s.student_number || ''
+                case 'name': return `${s.first_name || ''} ${s.last_name || ''}`.trim()
+                case 'grade': return s.grade_level || ''
+                case 'status': return s.is_active ? 'active' : 'inactive'
+                case 'contact': return s.phone || ''
+                default: return ''
+              }
+            }
+            const av = valueFor(a)
+            const bv = valueFor(b)
+            const cmp = studentSortCollator.compare(String(av), String(bv))
+            return sortDir === 'asc' ? cmp : -cmp
+          })
+
           // Apply pagination
-          const total = filtered.length;
-          const paginatedData = filtered.slice(offset, offset + limit);
+          const total = sortedFiltered.length;
+          const paginatedData = sortedFiltered.slice(offset, offset + limit);
 
           // Get all student IDs for batch parent links query
           const studentIds = paginatedData.map((s: any) => s.student_id);
@@ -236,6 +295,8 @@ export class StudentService {
           id,
           first_name,
           last_name,
+          father_name,
+          grandfather_name,
           email,
           phone,
           avatar_url,
@@ -305,12 +366,7 @@ export class StudentService {
       throw new Error(`Failed to fetch students: ${error.message}`)
     }
 
-    const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
-    const sorted = (data || []).slice().sort((a: any, b: any) => {
-      const nameA = `${a.profile?.first_name || ''} ${a.profile?.last_name || ''}`.trim()
-      const nameB = `${b.profile?.first_name || ''} ${b.profile?.last_name || ''}`.trim()
-      return collator.compare(nameA, nameB)
-    })
+    const sorted = sortStudents(data || [], sortKey, sortDir)
 
     const total = sorted.length
     const paginated = sorted.slice(offset, offset + limit)

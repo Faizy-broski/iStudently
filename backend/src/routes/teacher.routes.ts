@@ -54,4 +54,7 @@ router.post('/', requireAdmin, teacherController.createTeacher)
 router.put('/:id', requireAdmin, teacherController.updateTeacher)
 router.delete('/:id', requireAdmin, teacherController.deleteTeacher)
 
+
+router.post('/group-assign', requireAdmin, teacherController.groupAssignTeachers)
+
 export default router

@@ -283,3 +283,20 @@ export const getMyProfile = async (req: Request, res: Response) => {
         return res.status(500).json({ success: false, message: error.message })
     }
 }
+
+export const groupAssignStaff = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const effectiveSchoolId = getEffectiveSchoolId(req)
+    validateCampusAccess(req, effectiveSchoolId)
+
+    const result = await staffService.groupAssignStaff(effectiveSchoolId, {
+      staff_ids: req.body.staff_ids,
+      is_active: req.body.is_active,
+      custom_field_updates: req.body.custom_field_updates
+    })
+
+    res.status(200).json({ success: true, data: result })
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message })
+  }
+}

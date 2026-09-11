@@ -43,7 +43,22 @@ export const config = {
             ]
         ),
   },
+
+  miqat: {
+    // Platform enrolment-authority keypair — signs device certificates
+    // (Layer 4). PEM strings with literal \n escapes, matching the common
+    // convention for multi-line PEM values in single-line .env files.
+    authorityPrivateKey: (process.env.MIQAT_AUTHORITY_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+    authorityPublicKey: (process.env.MIQAT_AUTHORITY_PUBLIC_KEY || '').replace(/\\n/g, '\n'),
+    // AES-256-GCM master key (base64, 32 raw bytes) encrypting card-signing
+    // keys and other Miqat secrets at rest — see services/miqat/key-management.ts.
+    masterKeyBase64: process.env.MIQAT_MASTER_KEY || '',
+  },
 };
+
+if (isProduction && (!config.miqat.authorityPrivateKey || !config.miqat.masterKeyBase64)) {
+  console.warn('⚠️ WARNING: MIQAT_AUTHORITY_PRIVATE_KEY / MIQAT_MASTER_KEY are not set in production — Miqat device enrolment and key storage will fail closed.');
+}
 
 // Simple validation to warn you if critical keys are missing
 if (!config.supabase.url || !config.supabase.anonKey) {

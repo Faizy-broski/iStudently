@@ -319,7 +319,9 @@ export default function SignupPage() {
             }
           />
 
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-wide">{linkInfo?.school_name}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-wide">
+            {linkInfo?.campus_name || linkInfo?.school_name}
+          </h1>
           {linkInfo?.label && (
             <p className="text-white/90 text-base mt-1 font-medium">{linkInfo.label}</p>
           )}

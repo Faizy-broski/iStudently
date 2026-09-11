@@ -14,6 +14,8 @@ import { getFieldDefinitions, CustomFieldDefinition, EntityType } from "@/lib/ap
 import { getAuthToken } from "@/lib/api/schools"
 import { API_URL } from "@/config/api"
 import Link from "next/link"
+import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge"
+import { getConfidentialFamilyStatusLabel } from "@/lib/constants/confidential-family-status"
 
 type ReportRole = 'student' | 'teacher' | 'staff' | 'librarian' | 'parent'
 
@@ -125,6 +127,7 @@ export default function AdvancedReportResultsPage() {
     }
     const val = row[fieldId]
     if (fieldId === 'is_active') return val ? 'Active' : 'Inactive'
+    if (fieldId === 'confidential_family_status') return getConfidentialFamilyStatusLabel(val)
     if ((fieldId === 'created_at' || fieldId === 'date_of_birth' || fieldId === 'date_of_joining') && val)
       return new Date(val).toLocaleDateString()
     return val != null ? String(val) : '—'
@@ -259,7 +262,9 @@ export default function AdvancedReportResultsPage() {
                         const display = getDisplayValue(row, fieldId)
                         return (
                           <TableCell key={fieldId} className="whitespace-nowrap text-sm">
-                            {fieldId === 'is_active' ? (
+                            {fieldId === 'confidential_family_status' ? (
+                              <ConfidentialFamilyStatusBadge status={row[fieldId]} />
+                            ) : fieldId === 'is_active' ? (
                               <Badge className={display === 'Active'
                                 ? 'bg-green-500 text-white border-0'
                                 : 'bg-gray-400 text-white border-0'

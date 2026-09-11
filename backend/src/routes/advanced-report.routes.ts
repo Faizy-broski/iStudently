@@ -145,7 +145,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
       let q = supabase
         .from('students')
         .select(`
-          id, student_number, custom_fields, created_at,
+          id, student_number, custom_fields, created_at, confidential_family_status,
           profile:profiles(
             first_name, last_name, father_name, grandfather_name,
             email, phone, is_active
@@ -179,6 +179,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
           section_name: s.section?.name ?? '',
           created_at: s.created_at,
           custom_fields: s.custom_fields ?? {},
+          confidential_family_status: s.confidential_family_status,
         }
       })
     }
@@ -258,7 +259,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
           .select(`
             id, created_at,
             profile:profiles(first_name, last_name, email, phone, is_active),
-            parent_student_links(student_id, students(student_number))
+            parent_student_links(student_id, students(student_number, confidential_family_status))
           `)
           .eq('school_id', parentSchoolId)
           .order('created_at', { ascending: false })
@@ -298,6 +299,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
             is_active: p?.is_active ?? false,
             created_at: row.created_at,
             custom_fields: {},
+            confidential_family_status: (row.parent_student_links ?? []).map((l: any) => l.students?.confidential_family_status).filter((s: any) => s && s !== 'NONE')[0] || 'NONE',
           }
         })
       }

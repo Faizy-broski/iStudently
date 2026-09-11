@@ -496,23 +496,25 @@ export async function isEmailAlreadyUsed(email: string, schoolId: string): Promi
     .select('id')
     .eq('email', email)
     .eq('school_id', schoolId)
-    .maybeSingle()
+    .limit(1)
 
-  if (profile) return true
+  if (profile && profile.length > 0) return true
 
-  // Check pending_signups (already applied, not yet approved)
+  // Check pending_signups (already applied or approved)
   const { data: pending } = await supabase
     .from('pending_signups')
     .select('id')
     .eq('email', email)
     .eq('school_id', schoolId)
     .in('status', ['pending', 'approved'])
-    .maybeSingle()
+    .limit(1)
 
-  return !!pending
+  return !!(pending && pending.length > 0)
 }
 
 /**
+ * Checks if a given username is already in use by either an active profile
+ * or another pending/approved signup.
  * Usernames are the login identifier and are looked up globally (across
  * every school — see resolve-username in public-pages.routes.ts, which has
  * no school_id filter), so uniqueness must be checked globally too, unlike
@@ -524,9 +526,9 @@ export async function isUsernameAlreadyUsed(username: string): Promise<boolean> 
     .from('profiles')
     .select('id')
     .ilike('username', username)
-    .maybeSingle()
+    .limit(1)
 
-  if (profile) return true
+  if (profile && profile.length > 0) return true
 
   // Check pending_signups (already applied or approved, any school)
   const { data: pending } = await supabase
@@ -534,16 +536,14 @@ export async function isUsernameAlreadyUsed(username: string): Promise<boolean> 
     .select('id')
     .ilike('username', username)
     .in('status', ['pending', 'approved'])
-    .maybeSingle()
+    .limit(1)
 
-  return !!pending
+  return !!(pending && pending.length > 0)
 }
 
 /**
- * Best-effort fallback dedupe for signups submitted without an email — checks
- * for an existing STILL-PENDING row (not 'approved', which already consumed
- * its slot and shouldn't block a fresh attempt) matching first + last name
- * for this school. Name comparison is case-insensitive, matching the
+ * Checks if a given first/last name combo is already pending for this school.
+ * A very simple best-effort dedupe for when email isn't provided. Matches the
  * convention used for the `search` filter in getPendingSignups (ilike).
  */
 export async function isDuplicatePendingSignup(
@@ -557,10 +557,10 @@ export async function isDuplicatePendingSignup(
     .ilike('first_name', firstName)
     .ilike('last_name', lastName)
     .eq('school_id', schoolId)
-    .eq('status', 'pending')
-    .maybeSingle()
+    .in('status', ['pending', 'approved'])
+    .limit(1)
 
-  return !!pending
+  return !!(pending && pending.length > 0)
 }
 
 export async function getPendingCount(schoolId: string): Promise<number> {

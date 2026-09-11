@@ -833,3 +833,16 @@ export async function downloadTeacherImportTemplate(campusId?: string) {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+export interface GroupAssignTeachersParams {
+  teacher_ids: string[]
+  is_active?: boolean
+  custom_field_updates?: { category_id: string; field_key: string; value: any }[]
+  campus_id?: string
+}
+export async function groupAssignTeachers(params: GroupAssignTeachersParams) {
+  return apiRequest<{ updated: number; errors: any[] }>('/teachers/group-assign', {
+    method: 'POST',
+    body: JSON.stringify(params)
+  })
+}

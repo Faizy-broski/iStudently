@@ -30,7 +30,7 @@ const ROLE_CONFIGS: Record<ReportRole, RoleConfig> = {
   student: {
     icon: <GraduationCap className="h-4 w-4" />,
     entityType: 'student',
-    standardFieldKeys: ['student_number','first_name','last_name','father_name','grandfather_name','email','phone','grade_level_name','section_name','is_active','created_at'],
+    standardFieldKeys: ['student_number','first_name','last_name','father_name','grandfather_name','email','phone','grade_level_name','section_name','is_active','confidential_family_status','created_at'],
   },
   teacher: {
     icon: <UserCheck className="h-4 w-4" />,
@@ -50,7 +50,7 @@ const ROLE_CONFIGS: Record<ReportRole, RoleConfig> = {
   parent: {
     icon: <UserCircle className="h-4 w-4" />,
     entityType: 'parent',
-    standardFieldKeys: ['first_name','last_name','email','phone','linked_students','is_active','created_at'],
+    standardFieldKeys: ['first_name','last_name','email','phone','linked_students','is_active','confidential_family_status','created_at'],
   },
 }
 

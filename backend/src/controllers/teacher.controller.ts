@@ -589,3 +589,20 @@ export const getMyCoursePeriodStudents = async (req: Request, res: Response) => 
     res.status(status).json({ success: false, error: error.message } as ApiResponse)
   }
 }
+
+export const groupAssignTeachers = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const effectiveSchoolId = getEffectiveSchoolId(req)
+    validateCampusAccess(req, effectiveSchoolId)
+
+    const result = await teacherService.groupAssignTeachers(effectiveSchoolId, {
+      teacher_ids: req.body.teacher_ids,
+      is_active: req.body.is_active,
+      custom_field_updates: req.body.custom_field_updates
+    })
+
+    res.status(200).json({ success: true, data: result })
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message })
+  }
+}

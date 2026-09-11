@@ -1896,7 +1896,8 @@
           "qualifications": "Qualifications",
           "date_of_joining": "Date of Joining",
           "employment_type": "Employment Type",
-          "linked_students": "Linked Students"
+          "linked_students": "Linked Students",
+          "confidential_family_status": "Confidential Family Status"
         }
       }
     },
@@ -12996,6 +12997,55 @@
     "plugin": {
       "enable": "Enable School Khalwa Module",
       "description": "Quran memorization management: circles, recitation tracking, spaced-repetition review, and progress reports."
+    }
+  },
+  "miqat": {
+    "settings": {
+      "title": "Miqat Attendance Settings",
+      "firstTimeNotice": "Set the school's location and attendance policy to enable Miqat card scanning.",
+      "geofenceTitle": "Geofence",
+      "lat": "Latitude",
+      "lng": "Longitude",
+      "useCurrentLocation": "Use current location",
+      "locationError": "Could not get current location",
+      "radiusM": "Radius (metres)",
+      "maxAccuracyM": "Max accepted GPS inaccuracy (metres)",
+      "policyTitle": "Lateness Policy",
+      "officialStart": "Official start time",
+      "gracePeriod": "Grace period (minutes)",
+      "photoTitle": "Photo Capture",
+      "photoRetentionDays": "Retention (days)",
+      "save": "Save Settings",
+      "saveSuccess": "Miqat settings saved",
+      "saveError": "Failed to save settings"
+    },
+    "devices": {
+      "title": "Miqat Scanner Devices",
+      "generateCode": "Generate Enrolment Code",
+      "roleGate": "Gate",
+      "roleTeacher": "Teacher",
+      "roleAdmin": "Admin",
+      "generateError": "Failed to generate enrolment code",
+      "expiresAt": "Expires at",
+      "codeCopied": "Code copied",
+      "colLabel": "Device",
+      "colRole": "Role",
+      "colStatus": "Status",
+      "colLastSeen": "Last Seen",
+      "never": "Never",
+      "revoke": "Revoke",
+      "revokeSuccess": "Device revoked",
+      "revokeError": "Failed to revoke device",
+      "noDevices": "No devices enrolled yet"
+    },
+    "dashboard": {
+      "title": "Miqat — Today's Attendance",
+      "attendanceToday": "Attendance Today",
+      "present": "Present",
+      "late": "Late",
+      "absent": "Absent",
+      "unclosedWarning": "{count} student(s) checked in but never checked out today",
+      "noData": "No attendance recorded yet today"
     }
   }
 }

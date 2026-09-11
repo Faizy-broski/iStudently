@@ -126,4 +126,7 @@ router.delete('/:parentId/unlink-student/:studentId', requireRole('admin'), (req
   parentController.unlinkParentFromStudent(req, res)
 )
 
+
+router.post('/group-assign', requireRole('admin'), (req, res) => parentController.groupAssignParents(req, res))
+
 export default router

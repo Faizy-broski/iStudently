@@ -308,3 +308,16 @@ export interface ChildrenFeesResult {
 export async function getMyChildrenFees() {
   return apiRequest<ChildrenFeesResult>('/parents/my/children/fees')
 }
+
+export interface GroupAssignParentsParams {
+  parent_ids: string[]
+  is_active?: boolean
+  custom_field_updates?: { category_id: string; field_key: string; value: any }[]
+  campus_id?: string
+}
+export async function groupAssignParents(params: GroupAssignParentsParams) {
+  return apiRequest<{ updated: number; errors: any[] }>('/parents/group-assign', {
+    method: 'POST',
+    body: JSON.stringify(params)
+  })
+}
