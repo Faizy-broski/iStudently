@@ -284,12 +284,27 @@ export const getMyProfile = async (req: Request, res: Response) => {
     }
 }
 
-export const groupAssignStaff = async (req: AuthRequest, res: Response): Promise<void> => {
+export const groupAssignStaff = async (req: Request, res: Response): Promise<void> => {
   try {
-    const effectiveSchoolId = getEffectiveSchoolId(req)
-    validateCampusAccess(req, effectiveSchoolId)
+    const isSuperAdmin = (req as any).profile?.role === 'super_admin'
+    const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
+    const adminSchoolId = (req as any).profile?.school_id || (req as any).profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
 
-    const result = await staffService.groupAssignStaff(effectiveSchoolId, {
+    let effectiveSchoolId = req.body.school_id || req.body.campus_id || headerSchoolId || adminSchoolId
+
+    if (!isSuperAdmin && adminSchoolId) {
+      effectiveSchoolId = await getEffectiveSchoolId(
+        adminSchoolId,
+        req.body.campus_id || req.body.school_id
+      )
+    }
+
+    if (!effectiveSchoolId) {
+      res.status(400).json({ success: false, error: 'School ID is required' })
+      return
+    }
+
+    const result = await StaffService.groupAssignStaff(effectiveSchoolId, {
       staff_ids: req.body.staff_ids,
       is_active: req.body.is_active,
       custom_field_updates: req.body.custom_field_updates

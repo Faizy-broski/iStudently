@@ -579,8 +579,23 @@ export class ParentController {
 
   async groupAssignParents(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const effectiveSchoolId = getEffectiveSchoolId(req)
-      validateCampusAccess(req, effectiveSchoolId)
+      const isSuperAdmin = req.profile?.role === 'super_admin'
+      const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
+      const adminSchoolId = req.profile?.school_id || req.profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
+
+      let effectiveSchoolId = req.body.school_id || req.body.campus_id || headerSchoolId || adminSchoolId
+
+      if (!isSuperAdmin && adminSchoolId) {
+        effectiveSchoolId = await getEffectiveSchoolId(
+          adminSchoolId,
+          req.body.campus_id || req.body.school_id
+        )
+      }
+
+      if (!effectiveSchoolId) {
+        res.status(400).json({ success: false, error: 'School ID is required' })
+        return
+      }
 
       const result = await parentService.groupAssignParents(effectiveSchoolId, {
         parent_ids: req.body.parent_ids,

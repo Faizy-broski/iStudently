@@ -592,8 +592,23 @@ export const getMyCoursePeriodStudents = async (req: Request, res: Response) => 
 
 export const groupAssignTeachers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const effectiveSchoolId = getEffectiveSchoolId(req)
-    validateCampusAccess(req, effectiveSchoolId)
+    const isSuperAdmin = req.profile?.role === 'super_admin'
+    const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
+    const adminSchoolId = req.profile?.school_id || headerSchoolId || req.body.school_id || req.body.campus_id
+
+    let effectiveSchoolId = req.body.school_id || req.body.campus_id || headerSchoolId || adminSchoolId
+
+    if (!isSuperAdmin && adminSchoolId) {
+      effectiveSchoolId = await getEffectiveSchoolId(
+        adminSchoolId,
+        req.body.campus_id || req.body.school_id
+      )
+    }
+
+    if (!effectiveSchoolId) {
+      res.status(400).json({ success: false, error: 'School ID is required' } as ApiResponse)
+      return
+    }
 
     const result = await teacherService.groupAssignTeachers(effectiveSchoolId, {
       teacher_ids: req.body.teacher_ids,
