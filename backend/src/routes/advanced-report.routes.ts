@@ -40,32 +40,37 @@ router.get('/:role/search', async (req: AuthRequest, res: Response) => {
     if (role === 'student') {
       let studentQuery = supabase
         .from('students')
-        .select('id, student_number, profile:profiles(first_name, last_name)')
+        .select('id, student_number, confidential_family_status, profile:profiles(first_name, father_name, grandfather_name, last_name)')
         .eq('school_id', effectiveId)
 
       if (gradeLevelId?.trim()) studentQuery = studentQuery.eq('grade_level_id', gradeLevelId.trim())
       if (sectionId?.trim())    studentQuery = studentQuery.eq('section_id', sectionId.trim())
 
-      const { data: rows } = await studentQuery.limit(200)
+      const { data: rows } = await studentQuery.limit(5000)
 
       results = (rows ?? [])
         .map((s: any) => {
           const p = Array.isArray(s.profile) ? s.profile[0] : s.profile
-          return { id: s.id, label: `${p?.first_name ?? ''} ${p?.last_name ?? ''} (${s.student_number})`.trim() }
+          const fullName = [p?.first_name, p?.father_name, p?.grandfather_name, p?.last_name].filter(Boolean).join(' ')
+          return {
+            id: s.id,
+            label: `${fullName} (${s.student_number})`.trim(),
+            confidential_family_status: s.confidential_family_status
+          }
         })
         .filter(r => !q || r.label.toLowerCase().includes(q))
-        .slice(0, 30)
+        .slice(0, 50)
     }
 
     if (['teacher', 'staff', 'librarian'].includes(role)) {
       let staffQuery = supabase
         .from('staff')
-        .select('id, employee_number, profile:profiles!staff_profile_id_fkey(first_name, last_name, role)')
+        .select('id, employee_number, profile:profiles!staff_profile_id_fkey(first_name, father_name, grandfather_name, last_name, role)')
         .eq('school_id', effectiveId)
 
       if (department?.trim()) staffQuery = staffQuery.ilike('department', `%${department.trim()}%`)
 
-      const { data: rows } = await staffQuery.limit(200)
+      const { data: rows } = await staffQuery.limit(5000)
 
       results = (rows ?? [])
         .filter((r: any) => {
@@ -74,10 +79,11 @@ router.get('/:role/search', async (req: AuthRequest, res: Response) => {
         })
         .map((s: any) => {
           const p = Array.isArray(s.profile) ? s.profile[0] : s.profile
-          return { id: s.id, label: `${p?.first_name ?? ''} ${p?.last_name ?? ''} (${s.employee_number ?? ''})`.trim() }
+          const fullName = [p?.first_name, p?.father_name, p?.grandfather_name, p?.last_name].filter(Boolean).join(' ')
+          return { id: s.id, label: `${fullName} (${s.employee_number ?? ''})`.trim() }
         })
         .filter(r => !q || r.label.toLowerCase().includes(q))
-        .slice(0, 30)
+        .slice(0, 50)
     }
 
     if (role === 'parent') {
@@ -87,17 +93,18 @@ router.get('/:role/search', async (req: AuthRequest, res: Response) => {
 
       const { data: rows } = await supabase
         .from('parents')
-        .select('id, profile:profiles(first_name, last_name, email)')
+        .select('id, profile:profiles(first_name, father_name, grandfather_name, last_name, email)')
         .eq('school_id', parentSchoolId)
-        .limit(200)
+        .limit(5000)
 
       results = (rows ?? [])
         .map((r: any) => {
           const p = Array.isArray(r.profile) ? r.profile[0] : r.profile
-          return { id: r.id, label: `${p?.first_name ?? ''} ${p?.last_name ?? ''} (${p?.email ?? ''})`.trim() }
+          const fullName = [p?.first_name, p?.father_name, p?.grandfather_name, p?.last_name].filter(Boolean).join(' ')
+          return { id: r.id, label: `${fullName} (${p?.email ?? ''})`.trim() }
         })
         .filter(r => !q || r.label.toLowerCase().includes(q))
-        .slice(0, 30)
+        .slice(0, 50)
     }
 
     res.json({ success: true, data: results })

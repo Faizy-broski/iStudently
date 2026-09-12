@@ -553,6 +553,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "mental_math", href: "/admin/resources/mental-math", icon: AbacusIcon },
       { title: "arabic_fluency", href: "/admin/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/admin/resources/anatomy-3d", icon: Dna },
+      { title: "qaida_al_jahabidha", href: "/admin/resources/qaida", icon: FileText },
     ],
   },
   {
@@ -815,6 +816,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "my_worksheet", href: "/teacher/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/teacher/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/teacher/resources/anatomy-3d", icon: Dna },
+      { title: "qaida_al_jahabidha", href: "/teacher/resources/qaida", icon: FileText },
     ],
   },
   {
@@ -1049,6 +1051,7 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "my_worksheet", href: "/student/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/student/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/student/resources/anatomy-3d", icon: Dna },
+      { title: "qaida_al_jahabidha", href: "/student/resources/qaida", icon: FileText },
     ],
   },
   {
@@ -1273,6 +1276,7 @@ const parentMenuItems: SidebarMenuItem[] = [
       { title: "my_worksheet", href: "/parent/qirtasi/worksheets", icon: FormWorksheetIcon, pluginRequired: "qirtasi" },
       { title: "arabic_fluency", href: "/parent/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/parent/resources/anatomy-3d", icon: Dna },
+      { title: "qaida_al_jahabidha", href: "/parent/resources/qaida", icon: FileText },
     ],
   },
   { title: "settings", href: "/parent/settings", icon: Settings },

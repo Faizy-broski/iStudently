@@ -144,11 +144,8 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
     if (emailRequired && (!email || !String(email).trim())) {
       standardFieldErrors.push('email is required')
     }
-    // At least one of email or username must be provided so the applicant has
-    // something to log in with once their account is approved.
-    if ((!emailEnabled || !email || !String(email).trim()) && (!usernameEnabled || !username || !String(username).trim())) {
-      standardFieldErrors.push('email or username is required')
-    }
+    // If the admin left both email and username optional, the applicant can leave them
+    // blank. The backend auto-generates a username on signup in pending-signups.service.ts.
     if (standardFieldErrors.length > 0) {
       res.status(400).json({ success: false, error: standardFieldErrors.join('; ') } as ApiResponse)
       return

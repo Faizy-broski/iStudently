@@ -820,7 +820,9 @@
     "fina_supervisor_audit": "Audit Log",
     "fina_supervisor_reports": "Reports",
     "fina_audit": "Audit Log",
-    "fina_reports": "Reports"
+    "fina_reports": "Reports",
+    "edu_resources": "Educational Resources",
+    "qaida_al_jahabidha": "قاعدة الجهابذة The Arabic Savant"
   },
   "dashboard": {
     "welcome_back": "Welcome back, {name}!",
@@ -13123,6 +13125,298 @@
       "gatePresentPeriodAbsent": "Present at gate but absent from class",
       "chronicEarlyCheckout": "Chronic early checkout",
       "teacherNotScanning": "Teacher not scanning attendance"
+    }
+  },
+  "qaida": {
+    "title": "Qaidat Al-Jahabidha",
+    "subtitle": "Learn Arabic reading from the first letter to Quranic recitation",
+    "loadError": "Could not load your progress.",
+    "summary": "You have completed {done} of {total} stations",
+    "toNextRank": "{points} points to «{rank}»",
+    "ranks": {
+      "0": "Beginner",
+      "1": "Novice Reader",
+      "2": "Reader",
+      "3": "Proficient Reader",
+      "4": "Skilled",
+      "5": "Skilled Reciter",
+      "6": "Jahbadh",
+      "7": "Master"
+    },
+    "station": {
+      "exam": "Stage exam",
+      "best": "Best {pct}%",
+      "notStarted": "Not started"
+    },
+    "review": {
+      "title": "Review box",
+      "cta": "Review {count} cards"
+    },
+    "worlds": {
+      "w1": {
+        "title": "الحُروف",
+        "subtitle": "الأسماء والأشكال"
+      },
+      "w1b": {
+        "title": "المركّبة والمقطّعة",
+        "subtitle": "اقرأ بالهجاء لا بالصوت"
+      },
+      "w2": {
+        "title": "الحَرَكات",
+        "subtitle": "فتحة وضمة وكسرة"
+      },
+      "w3": {
+        "title": "التَّنوين",
+        "subtitle": "فتحتان وضمتان وكسرتان"
+      },
+      "w4": {
+        "title": "السُّكون",
+        "subtitle": "مهارة النطق بحرفين"
+      },
+      "w5": {
+        "title": "الشَّدَّة",
+        "subtitle": "الحرف المشدَّد"
+      },
+      "w6": {
+        "title": "المُدود",
+        "subtitle": "الأصلية والفرعية"
+      },
+      "wf": {
+        "title": "عائلات الكلمات",
+        "subtitle": "النهاية ثابتة والأول يتغيّر"
+      },
+      "w7": {
+        "title": "القِراءة",
+        "subtitle": "الكلمة ثم الجملة"
+      },
+      "w8": {
+        "title": "النُّون السَّاكِنة",
+        "subtitle": "إظهار وإدغام وإقلاب وإخفاء"
+      },
+      "w9": {
+        "title": "المِيم السَّاكِنة",
+        "subtitle": "إخفاء وإدغام وإظهار شفوي"
+      },
+      "w10": {
+        "title": "التَّفخيم والتَّرقيق",
+        "subtitle": "الراء ولام لفظ الجلالة"
+      },
+      "wq": {
+        "title": "التِّلاوة",
+        "subtitle": "قراءة المصحف وثمرة الإتقان"
+      }
+    },
+    "stations": {
+      "w1s1": "تعرَّف على الحروف",
+      "w1s2": "من الجيم إلى الضاد",
+      "w1s3": "من الطاء إلى الهمزة",
+      "w1s4": "اسمعْ واختَرْ",
+      "w1s5": "الحروف المتشابهة",
+      "w1s6": "ترتيب الحروف",
+      "w1s7": "أشكال الحرف",
+      "w1s8": "موقع الحرف",
+      "w1s11": "مخارج الحروف",
+      "w1s12": "من أين يخرج الحرف؟",
+      "w1s9": "المتشابهة صوتاً",
+      "w1s10": "الضاد والظاء",
+      "w1x": "اختبار عالم الحروف",
+      "w1bs1": "الحروف المركّبة",
+      "w1bs2": "فواتح السور",
+      "w1bs3": "اقرأ الحروف المقطّعة",
+      "w1bs4": "مدود الحروف المقطّعة",
+      "w1bx": "اختبار المقطّعة",
+      "w2s1": "الحروف المفتوحة",
+      "w2s2": "الحروف المضمومة",
+      "w2s3": "الحروف المكسورة",
+      "w2s4": "صيد الحركة",
+      "w2s8": "التهجّي",
+      "w2s9": "عائلات فَعَلَ",
+      "w2s5": "كلمات مفتوحة",
+      "w2s6": "كلمات مضمومة",
+      "w2s7": "كلمات مكسورة",
+      "w2x": "اختبار الحركات",
+      "w3s1": "الفتحتان",
+      "w3s2": "الضمتان",
+      "w3s3": "الكسرتان",
+      "w3s4": "كلمات منوَّنة",
+      "w3s5": "حركة أم تنوين؟",
+      "w3x": "اختبار التنوين",
+      "w4s1": "حرفان مُرقَّقان",
+      "w4s2": "حرفان مُفخَّمان",
+      "w4s3": "كلمات ساكنة",
+      "w4s4": "القَلْقَلة",
+      "w4s5": "مقاطع مغلقة",
+      "w4s6": "اسمع المقطع",
+      "w4x": "اختبار السكون",
+      "w5s1": "الحروف المشدَّدة",
+      "w5s2": "كلمات مشدَّدة",
+      "w5s3": "مشدَّد أم ساكن؟",
+      "w5s4": "عائلات المضعَّف",
+      "w5s5": "شدّة ومدّ معاً",
+      "w5x": "اختبار الشدة",
+      "w6s1": "المد بالألف",
+      "w6s2": "المد بالواو",
+      "w6s3": "المد بالياء",
+      "w6s4": "حروف اللين",
+      "w6s5": "مدٌّ أم لين؟",
+      "w6s6b": "عائلات المدّ",
+      "w6s6": "أنواع المد الفرعي",
+      "w6s7": "ما نوع المد؟",
+      "w6x": "اختبار المدود",
+      "wfs1": "عائلات فَعَلَ",
+      "wfs2": "عائلات المضعَّف",
+      "wfs3": "عائلات المدّ",
+      "wfs4": "اسمع واختر من العائلة",
+      "wfs5": "الدخيلة على العائلة",
+      "wfs6": "قراءة متدرّجة",
+      "wfx": "اختبار العائلات",
+      "w7s1": "ابنِ الكلمة",
+      "w7s2": "اللام الشمسية والقمرية",
+      "w7s3": "همزة الوصل والقطع",
+      "w7s4": "التاء المربوطة والمفتوحة",
+      "w7s5": "الألف المقصورة والممدودة",
+      "w7s7": "فُكّ الكلمة",
+      "w7s8": "قواعد الوقف",
+      "w7s6": "اقرأ الجملة",
+      "w7x": "اختبار القراءة",
+      "w8s1": "تعرَّف على الأحكام",
+      "w8s2": "ما الحكم؟",
+      "w8s3": "حروف كل حكم",
+      "w8x": "اختبار النون",
+      "w9s1": "أحكام الميم الثلاثة",
+      "w9s2": "ما حكم الميم؟",
+      "w9s3": "نون أم ميم؟",
+      "w9s4": "الغنّة",
+      "w9x": "اختبار الميم",
+      "w10s1": "قاعدتا الراء",
+      "w10s2": "مفخَّمة أم مرقَّقة؟",
+      "w10s3": "لام لفظ الجلالة",
+      "w10x": "اختبار التفخيم",
+      "wqs1": "الألف الخنجرية",
+      "wqs2": "حروف تُكتب ولا تُنطق",
+      "wqs3": "علامات الوقف",
+      "wqs4": "ما حكم العلامة؟",
+      "wqs5": "سورة الفاتحة",
+      "wqs6": "العصر والكوثر والنصر",
+      "wqs7": "المعوّذات والإخلاص",
+      "wqs8": "تلاوة مختلطة",
+      "wqx": "اختبار التلاوة",
+      "wqf": "امتحان التخرّج"
+    },
+    "play": {
+      "exit": "Exit",
+      "listen": "Listen",
+      "next": "Next",
+      "finish": "Finish",
+      "check": "Check",
+      "retry": "Retry",
+      "backToMap": "Back to map",
+      "correct": "Correct",
+      "tryAgain": "Look again",
+      "readAgain": "Again",
+      "readCorrectly": "I read it correctly",
+      "tapInOrder": "Tap the letters in order",
+      "hearts": "{count} attempts left",
+      "keyboardHint": "1–9 to answer · Space to listen · Enter to continue · Esc to exit",
+      "noVoiceAvailable": "No Arabic voice is available in this browser/device, so Listen has no sound to play. Try a different browser (Edge usually has one built in) or install an Arabic text-to-speech voice for this device."
+    },
+    "result": {
+      "stars": "{count} stars",
+      "accuracy": "Accuracy",
+      "points": "points",
+      "newBadges": "New badges",
+      "badgesEarned": "New badges",
+      "retry": "Retry",
+      "backToMap": "Reading ladder",
+      "saveFailed": "Could not save the session.",
+      "verdict": {
+        "mastered": "Full mastery.",
+        "excellent": "Excellent — one more star to go.",
+        "passed": "Passed. Repeat it to raise your stars.",
+        "review": "Review this station again."
+      },
+      "badge": {
+        "first_steps": "أول الطريق",
+        "letters": "صاحب الحروف",
+        "perfect": "إجابة كاملة",
+        "streak3": "ثلاثة أيام",
+        "streak7": "أسبوع كامل",
+        "review50": "المراجِع",
+        "speed": "سريع البديهة",
+        "tajweed": "مُجوِّد",
+        "reciter": "التالي",
+        "families": "صاحب العائلات",
+        "muqattaat": "قارئ الفواتح",
+        "meem": "ضابط الميم",
+        "tafkheem": "صاحب التفخيم",
+        "graduate": "خِرِّيج القاعدة"
+      }
+    },
+    "board": {
+      "title": "Board mode",
+      "exit": "Exit",
+      "zoom": "Zoom",
+      "hint": "Tap any cell to hear it · Esc to exit",
+      "tab": {
+        "letters": "Letters",
+        "forms": "Letter forms",
+        "composites": "Joined letters",
+        "muqattaat": "Disjoined letters",
+        "harakat": "Short vowels",
+        "tanween": "Tanween",
+        "madd": "Elongation"
+      }
+    },
+    "report": {
+      "title": "Class report",
+      "subtitle": "Student progress in the curriculum",
+      "empty": "No students have started yet.",
+      "worldProgress": "Class progress by stage",
+      "exportCsv": "Export CSV",
+      "print": "Print",
+      "stat": {
+        "students": "students",
+        "avgAccuracy": "avg accuracy",
+        "avgStations": "avg stations",
+        "minutes": "minutes"
+      },
+      "col": {
+        "name": "Student",
+        "rank": "Rank",
+        "xp": "Points",
+        "done": "Stations",
+        "stars": "Stars",
+        "accuracy": "Accuracy",
+        "minutes": "Time",
+        "graduated": "Graduated",
+        "grade": "Grade",
+        "section": "Section"
+      },
+      "rank": {
+        "0": "Beginner",
+        "1": "Novice Reader",
+        "2": "Reader",
+        "3": "Proficient Reader",
+        "4": "Skilled",
+        "5": "Skilled Reciter",
+        "6": "Jahbadh",
+        "7": "Master"
+      },
+      "worlds": {
+        "w1": "الحُروف",
+        "w1b": "المركّبة والمقطّعة",
+        "w2": "الحَرَكات",
+        "w3": "التَّنوين",
+        "w4": "السُّكون",
+        "w5": "الشَّدَّة",
+        "w6": "المُدود",
+        "wf": "عائلات الكلمات",
+        "w7": "القِراءة",
+        "w8": "النُّون السَّاكِنة",
+        "w9": "المِيم السَّاكِنة",
+        "w10": "التَّفخيم والتَّرقيق",
+        "wq": "التِّلاوة"
+      }
     }
   }
 }

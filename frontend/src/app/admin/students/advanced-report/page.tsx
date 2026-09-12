@@ -17,6 +17,7 @@ import { getGradeLevels, getSections, GradeLevel, Section } from "@/lib/api/acad
 import { useCampus } from "@/context/CampusContext"
 import { getAuthToken } from "@/lib/api/schools"
 import { API_URL } from "@/config/api"
+import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge"
 
 type ReportRole = 'student' | 'teacher' | 'staff' | 'librarian' | 'parent'
 
@@ -56,7 +57,7 @@ const ROLE_CONFIGS: Record<ReportRole, RoleConfig> = {
 
 // ─── Person search combobox ───────────────────────────────────────────────────
 
-interface PersonOption { id: string; label: string }
+interface PersonOption { id: string; label: string; confidential_family_status?: string | null }
 
 function PersonPicker({
   role,
@@ -123,7 +124,10 @@ function PersonPicker({
     return (
       <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-blue-50 dark:bg-slate-700 border-blue-200 dark:border-slate-600">
         <span className="text-sm flex-1 text-[#022172] dark:text-blue-300 font-medium">{value.label}</span>
-        <button onClick={() => onChange(null)} className="text-muted-foreground hover:text-destructive">
+        {value.confidential_family_status && (
+          <ConfidentialFamilyStatusBadge status={value.confidential_family_status} />
+        )}
+        <button onClick={() => onChange(null)} className="text-muted-foreground hover:text-destructive shrink-0">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -148,10 +152,13 @@ function PersonPicker({
           {results.map(r => (
             <button
               key={r.id}
-              className="w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
+              className="w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between"
               onClick={() => { onChange(r); setOpen(false); setQuery('') }}
             >
-              {r.label}
+              <span className="truncate pr-2">{r.label}</span>
+              {r.confidential_family_status && (
+                <ConfidentialFamilyStatusBadge status={r.confidential_family_status} />
+              )}
             </button>
           ))}
         </div>

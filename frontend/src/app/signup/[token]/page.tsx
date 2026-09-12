@@ -246,9 +246,9 @@ export default function SignupPage() {
         <LanguageToggle />
         <div className="w-full max-w-sm text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto">
-            <AlertTriangle className="h-8 w-8 text-red-500" />
+            <AlertTriangle className="h-8 w-8 text-red-500 dark:text-red-400" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">{t('invalidLinkTitle')}</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('invalidLinkTitle')}</h1>
           <p className="text-sm text-muted-foreground">
             {invalidMessage[invalidReason] ?? t('invalidLinkMessage')}
           </p>
@@ -267,7 +267,7 @@ export default function SignupPage() {
           <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
             <CheckCircle2 className="h-10 w-10 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('successTitle')}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('successTitle')}</h1>
           <p className="text-sm text-muted-foreground">{t('successMessage')}</p>
           <Button
             className="w-full bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white border-0"
@@ -345,41 +345,41 @@ export default function SignupPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 md:p-10 space-y-8">
           <div className="border-b border-gray-100 dark:border-slate-700 pb-3">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('formTitle')}</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 dark:text-white">{t('formTitle')}</h2>
           </div>
 
           {/* Responsive multi-column grid: 1 col on mobile, 2 on tablet, 3 on desktop */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {/* First Name */}
               <div className="space-y-1.5 col-span-1">
-                <label htmlFor="first_name" className="block text-sm font-semibold text-gray-800">
-                  {t('firstName')} {firstNameRequired && <span className="text-red-500">*</span>}
+                <label htmlFor="first_name" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  {t('firstName')} {firstNameRequired && <span className="text-red-500 dark:text-red-400">*</span>}
                 </label>
                 <Input
                   id="first_name"
                   placeholder="Ahmad"
                   value={form.first_name}
                   onChange={(e) => setForm(f => ({ ...f, first_name: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.first_name ? 'border-red-400' : '')}
+                  className={cn('border-gray-300 dark:border-slate-600 focus:border-[#57A3CC] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder-slate-400 h-10', errors.first_name ? 'border-red-400 dark:border-red-500' : '')}
                   disabled={submitting}
                 />
-                {errors.first_name && <p className="text-xs text-red-500">{errors.first_name}</p>}
+                {errors.first_name && <p className="text-xs text-red-500 dark:text-red-400">{errors.first_name}</p>}
               </div>
 
               {/* Last Name */}
               <div className="space-y-1.5 col-span-1">
-                <label htmlFor="last_name" className="block text-sm font-semibold text-gray-800">
-                  {t('lastName')} {lastNameRequired && <span className="text-red-500">*</span>}
+                <label htmlFor="last_name" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  {t('lastName')} {lastNameRequired && <span className="text-red-500 dark:text-red-400">*</span>}
                 </label>
                 <Input
                   id="last_name"
                   placeholder="Ali"
                   value={form.last_name}
                   onChange={(e) => setForm(f => ({ ...f, last_name: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.last_name ? 'border-red-400' : '')}
+                  className={cn('border-gray-300 dark:border-slate-600 focus:border-[#57A3CC] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder-slate-400 h-10', errors.last_name ? 'border-red-400 dark:border-red-500' : '')}
                   disabled={submitting}
                 />
-                {errors.last_name && <p className="text-xs text-red-500">{errors.last_name}</p>}
+                {errors.last_name && <p className="text-xs text-red-500 dark:text-red-400">{errors.last_name}</p>}
               </div>
 
               {/* Custom Fields */}
@@ -394,8 +394,8 @@ export default function SignupPage() {
                     )}
                   >
                     {field.type !== 'checkbox' && (
-                      <label htmlFor={field.id} className="block text-sm font-semibold text-gray-800">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                      <label htmlFor={field.id} className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        {field.label} {field.required && <span className="text-red-500 dark:text-red-400">*</span>}
                       </label>
                     )}
                     {field.type === 'select' ? (
@@ -403,7 +403,7 @@ export default function SignupPage() {
                         value={form.extra_fields[field.id] || ''}
                         onValueChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: val } }))}
                       >
-                        <SelectTrigger className={cn('w-full border-gray-300 focus:ring-[#57A3CC] h-10', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : '')}>
+                        <SelectTrigger className={cn('w-full border-gray-300 dark:border-slate-600 focus:ring-[#57A3CC] h-10', (errors as any).extra_fields?.[field.id] ? 'border-red-400 dark:border-red-500' : '')}>
                           <SelectValue placeholder={field.placeholder || 'Select...'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -413,12 +413,12 @@ export default function SignupPage() {
                         </SelectContent>
                       </Select>
                     ) : field.type === 'multi-select' ? (
-                      <div className={cn('space-y-1.5 rounded-md border p-2.5', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : 'border-gray-300')}>
+                      <div className={cn('space-y-1.5 rounded-md border p-2.5', (errors as any).extra_fields?.[field.id] ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-slate-600')}>
                         {field.options?.map(opt => {
                           const selected: string[] = Array.isArray(form.extra_fields[field.id]) ? form.extra_fields[field.id] : []
                           const checked = selected.includes(opt)
                           return (
-                            <label key={opt} className="flex items-center gap-2 text-sm text-gray-800">
+                            <label key={opt} className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
                               <Checkbox
                                 checked={checked}
                                 disabled={submitting}
@@ -434,13 +434,13 @@ export default function SignupPage() {
                         })}
                       </div>
                     ) : field.type === 'checkbox' ? (
-                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 pt-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200 pt-2">
                         <Checkbox
                           checked={!!form.extra_fields[field.id]}
                           disabled={submitting}
                           onCheckedChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: !!val } }))}
                         />
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                        {field.label} {field.required && <span className="text-red-500 dark:text-red-400">*</span>}
                       </label>
                     ) : (
                       <Input
@@ -449,11 +449,11 @@ export default function SignupPage() {
                         placeholder={field.placeholder}
                         value={form.extra_fields[field.id] || ''}
                         onChange={(e) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: e.target.value } }))}
-                        className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 h-10', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : '')}
+                        className={cn('border-gray-300 dark:border-slate-600 focus:border-[#57A3CC] text-gray-900 dark:text-gray-100 h-10', (errors as any).extra_fields?.[field.id] ? 'border-red-400 dark:border-red-500' : '')}
                         disabled={submitting}
                       />
                     )}
-                    {(errors as any).extra_fields?.[field.id] && <p className="text-xs text-red-500">{(errors as any).extra_fields[field.id]}</p>}
+                    {(errors as any).extra_fields?.[field.id] && <p className="text-xs text-red-500 dark:text-red-400">{(errors as any).extra_fields[field.id]}</p>}
                   </div>
                 )
               })}
@@ -461,8 +461,8 @@ export default function SignupPage() {
               {/* Email */}
               {emailEnabled && (
                 <div className="space-y-1.5 col-span-1">
-                  <label htmlFor="email" className="block text-sm font-semibold text-gray-800">
-                    {t('email')} {emailRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>}
+                  <label htmlFor="email" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {t('email')} {emailRequired ? <span className="text-red-500 dark:text-red-400">*</span> : <span className="text-gray-400 dark:placeholder-slate-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>}
                   </label>
                   <Input
                     id="email"
@@ -470,12 +470,12 @@ export default function SignupPage() {
                     placeholder="you@example.com"
                     value={form.email}
                     onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                    className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.email ? 'border-red-400' : '')}
+                    className={cn('border-gray-300 dark:border-slate-600 focus:border-[#57A3CC] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder-slate-400 h-10', errors.email ? 'border-red-400 dark:border-red-500' : '')}
                     disabled={submitting}
                   />
-                  {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
+                  {errors.email && <p className="text-xs text-red-500 dark:text-red-400">{errors.email}</p>}
                   {!errors.email && (
-                    <p className="text-xs text-gray-400">{t('emailOrUsernameNote')}</p>
+                    <p className="text-xs text-gray-400 dark:placeholder-slate-400">{t('emailOrUsernameNote')}</p>
                   )}
                 </div>
               )}
@@ -483,8 +483,8 @@ export default function SignupPage() {
               {/* Username */}
               {usernameEnabled && (
                 <div className="space-y-1.5 col-span-1">
-                  <label htmlFor="username" className="block text-sm font-semibold text-gray-800">
-                    {t('username')} {usernameRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>}
+                  <label htmlFor="username" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {t('username')} {usernameRequired ? <span className="text-red-500 dark:text-red-400">*</span> : <span className="text-gray-400 dark:placeholder-slate-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>}
                   </label>
                   <Input
                     id="username"
@@ -492,12 +492,12 @@ export default function SignupPage() {
                     placeholder={isAr ? 'مثال: ahmad.ali' : 'e.g. ahmad.ali'}
                     value={form.username}
                     onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))}
-                    className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.username ? 'border-red-400' : '')}
+                    className={cn('border-gray-300 dark:border-slate-600 focus:border-[#57A3CC] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder-slate-400 h-10', errors.username ? 'border-red-400 dark:border-red-500' : '')}
                     disabled={submitting}
                   />
-                  {errors.username && <p className="text-xs text-red-500">{errors.username}</p>}
+                  {errors.username && <p className="text-xs text-red-500 dark:text-red-400">{errors.username}</p>}
                   {!errors.username && (
-                    <p className="text-xs text-gray-400">{t('usernameOptionalNote')}</p>
+                    <p className="text-xs text-gray-400 dark:placeholder-slate-400">{t('usernameOptionalNote')}</p>
                   )}
                 </div>
               )}
@@ -505,8 +505,8 @@ export default function SignupPage() {
               {/* Phone */}
               {phoneEnabled && (
                 <div className="space-y-1.5 col-span-1">
-                  <label htmlFor="phone" className="block text-sm font-semibold text-gray-800">
-                    {phoneRequired ? (isAr ? 'رقم الهاتف' : 'Phone Number') : t('phoneOptional')} {phoneRequired && <span className="text-red-500">*</span>}
+                  <label htmlFor="phone" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {phoneRequired ? (isAr ? 'رقم الهاتف' : 'Phone Number') : t('phoneOptional')} {phoneRequired && <span className="text-red-500 dark:text-red-400">*</span>}
                   </label>
                   <Input
                     id="phone"
@@ -514,17 +514,17 @@ export default function SignupPage() {
                     placeholder="+966 5xx xxx xxxx"
                     value={form.phone}
                     onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
-                    className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.phone ? 'border-red-400' : '')}
+                    className={cn('border-gray-300 dark:border-slate-600 focus:border-[#57A3CC] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder-slate-400 h-10', errors.phone ? 'border-red-400 dark:border-red-500' : '')}
                     disabled={submitting}
                   />
-                  {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
+                  {errors.phone && <p className="text-xs text-red-500 dark:text-red-400">{errors.phone}</p>}
                 </div>
               )}
 
               {/* Password */}
               <div className="space-y-1.5 col-span-1">
-                <label htmlFor="password" className="block text-sm font-semibold text-gray-800">
-                  {t('password')} <span className="text-red-500">*</span>
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  {t('password')} <span className="text-red-500 dark:text-red-400">*</span>
                 </label>
                 <div className="relative">
                   <Input
@@ -533,19 +533,19 @@ export default function SignupPage() {
                     placeholder="••••••••"
                     value={form.password}
                     onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
-                    className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.password ? 'border-red-400' : '')}
+                    className={cn('pe-10 border-gray-300 dark:border-slate-600 focus:border-[#57A3CC] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder-slate-400 h-10', errors.password ? 'border-red-400 dark:border-red-500' : '')}
                     disabled={submitting}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 end-3 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 end-3 flex items-center text-gray-400 dark:placeholder-slate-400 hover:text-gray-600"
                     onClick={() => setShowPassword(s => !s)}
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
+                {errors.password && <p className="text-xs text-red-500 dark:text-red-400">{errors.password}</p>}
                 {/* Strength indicator */}
                 {form.password && (
                   <div className="space-y-1 pt-0.5">
@@ -564,7 +564,7 @@ export default function SignupPage() {
                       'text-xs font-semibold',
                       strength.score === 4 ? 'text-green-600' :
                       strength.score === 3 ? 'text-yellow-600' :
-                      strength.score === 2 ? 'text-orange-500' : 'text-red-500'
+                      strength.score === 2 ? 'text-orange-500' : 'text-red-500 dark:text-red-400'
                     )}>
                       {strength.score === 1 && t('passwordStrengthWeak')}
                       {strength.score === 2 && t('passwordStrengthFair')}
@@ -573,13 +573,13 @@ export default function SignupPage() {
                     </p>
                   </div>
                 )}
-                <p className="text-xs text-gray-400">{t('passwordHint')}</p>
+                <p className="text-xs text-gray-400 dark:placeholder-slate-400">{t('passwordHint')}</p>
               </div>
 
               {/* Confirm Password */}
               <div className="space-y-1.5 col-span-1">
-                <label htmlFor="confirm_password" className="block text-sm font-semibold text-gray-800">
-                  {t('confirmPassword')} <span className="text-red-500">*</span>
+                <label htmlFor="confirm_password" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  {t('confirmPassword')} <span className="text-red-500 dark:text-red-400">*</span>
                 </label>
                 <div className="relative">
                   <Input
@@ -588,12 +588,12 @@ export default function SignupPage() {
                     placeholder="••••••••"
                     value={form.confirm_password}
                     onChange={(e) => setForm(f => ({ ...f, confirm_password: e.target.value }))}
-                    className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.confirm_password ? 'border-red-400' : '')}
+                    className={cn('pe-10 border-gray-300 dark:border-slate-600 focus:border-[#57A3CC] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder-slate-400 h-10', errors.confirm_password ? 'border-red-400 dark:border-red-500' : '')}
                     disabled={submitting}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 end-3 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 end-3 flex items-center text-gray-400 dark:placeholder-slate-400 hover:text-gray-600"
                     onClick={() => setShowConfirm(s => !s)}
                     tabIndex={-1}
                   >
@@ -601,7 +601,7 @@ export default function SignupPage() {
                   </button>
                 </div>
                 {errors.confirm_password && (
-                  <p className="text-xs text-red-500">{errors.confirm_password}</p>
+                  <p className="text-xs text-red-500 dark:text-red-400">{errors.confirm_password}</p>
                 )}
               </div>
             </div>
