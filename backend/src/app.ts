@@ -485,12 +485,16 @@ import miqatAttendanceRoutes from "./routes/miqat/attendance.routes";
 import miqatPermissionsRoutes from "./routes/miqat/permissions.routes";
 import miqatSchoolsRoutes from "./routes/miqat/schools.routes";
 import miqatCardsRoutes from "./routes/miqat/cards.routes";
+import miqatReportsRoutes from "./routes/miqat/reports.routes";
+import miqatStaffCodeRoutes from "./routes/miqat/staff-code.routes";
 
 registerRoutes("/miqat/devices", miqatDevicesRoutes);
 registerRoutes("/miqat/attendance", miqatAttendanceRoutes);
 registerRoutes("/miqat/permissions", miqatPermissionsRoutes);
 registerRoutes("/miqat/schools", miqatSchoolsRoutes);
 registerRoutes("/miqat/cards", miqatCardsRoutes);
+registerRoutes("/miqat/reports", miqatReportsRoutes);
+registerRoutes("/miqat/staff-code", miqatStaffCodeRoutes);
 import { startMiqatNightlyJobs } from "./jobs/miqat-nightly.job";
 
 // 404 handler

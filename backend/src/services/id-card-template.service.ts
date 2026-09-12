@@ -1,5 +1,69 @@
 import { supabase } from '../config/supabase';
 
+// Campus/school tokens are identical for every recipient type — shared here instead of
+// repeated (with drifting, inconsistent subsets) inside each role's token block below.
+const CAMPUS_SCHOOL_TOKENS: Record<string, string> = {
+  '{{campus_name}}': 'Campus Name',
+  '{{campus_address}}': 'Campus Address',
+  '{{campus_phone}}': 'Campus Phone',
+  '{{campus_code}}': 'Campus Code',
+  '{{campus_email}}': 'Campus Email',
+  '{{school_name}}': 'School Name',
+  '{{school_address}}': 'School Address',
+  '{{school_phone}}': 'School Phone',
+  '{{school_email}}': 'School Email',
+  '{{school_logo}}': 'School Logo',
+  '{{school_website}}': 'School Website',
+  '{{school_motto}}': 'School Motto',
+};
+
+// Shared base for every "staff table" role (teacher/staff/librarian/counselor/media_officer/
+// fina_supervisor/admin all live in the same `staff` table with the same columns — see
+// backend/schema.sql `staff`).
+const STAFF_TABLE_TOKENS: Record<string, string> = {
+  '{{first_name}}': 'First Name',
+  '{{last_name}}': 'Last Name',
+  '{{email}}': 'Email Address',
+  '{{phone}}': 'Phone Number',
+  '{{date_of_birth}}': 'Date of Birth',
+  '{{gender}}': 'Gender',
+  '{{address}}': 'Address',
+  '{{photo_url}}': 'Profile Photo',
+  '{{employee_id}}': 'Employee ID',
+  '{{role}}': 'Role/Position',
+  '{{department}}': 'Department',
+  '{{joining_date}}': 'Joining Date',
+  '{{qualification}}': 'Qualification',
+  '{{specialization}}': 'Specialization',
+  '{{blood_group}}': 'Blood Group',
+  '{{emergency_contact}}': 'Emergency Contact',
+  ...CAMPUS_SCHOOL_TOKENS,
+};
+
+// Parent-specific fields sourced from the real `parents` table columns (backend/schema.sql).
+const PARENT_TOKENS: Record<string, string> = {
+  '{{first_name}}': 'First Name',
+  '{{last_name}}': 'Last Name',
+  '{{full_name}}': 'Full Name',
+  '{{email}}': 'Email Address',
+  '{{phone}}': 'Phone Number',
+  '{{photo_url}}': 'Profile Photo',
+  '{{occupation}}': 'Occupation',
+  '{{workplace}}': 'Workplace',
+  '{{cnic}}': 'CNIC / National ID',
+  '{{address}}': 'Address',
+  '{{city}}': 'City',
+  '{{state}}': 'State/Province',
+  '{{zip_code}}': 'Zip/Postal Code',
+  '{{country}}': 'Country',
+  '{{emergency_contact_name}}': 'Emergency Contact Name',
+  '{{emergency_contact_relation}}': 'Emergency Contact Relation',
+  '{{emergency_contact_phone}}': 'Emergency Contact Phone',
+  '{{children_names}}': "Child(ren)'s Name(s)",
+  '{{children_count}}': 'Number of Children',
+  ...CAMPUS_SCHOOL_TOKENS,
+};
+
 // Available substitution tokens by user type
 export const SUBSTITUTION_TOKENS = {
   student: {
@@ -82,22 +146,9 @@ export const SUBSTITUTION_TOKENS = {
     '{{previous_class}}': 'Previous Class',
     '{{transfer_certificate}}': 'Transfer Certificate Number',
     
-    // === CAMPUS INFORMATION ===
-    '{{campus_name}}': 'Campus Name',
-    '{{campus_address}}': 'Campus Address',
-    '{{campus_phone}}': 'Campus Phone',
-    '{{campus_code}}': 'Campus Code',
-    '{{campus_email}}': 'Campus Email',
-    
-    // === SCHOOL INFORMATION ===
-    '{{school_name}}': 'School Name',
-    '{{school_address}}': 'School Address',
-    '{{school_phone}}': 'School Phone',
-    '{{school_email}}': 'School Email',
-    '{{school_logo}}': 'School Logo',
-    '{{school_website}}': 'School Website',
-    '{{school_motto}}': 'School Motto',
-    
+    // === CAMPUS & SCHOOL INFORMATION ===
+    ...CAMPUS_SCHOOL_TOKENS,
+
     // === VALIDITY ===
     '{{valid_from}}': 'Valid From',
     '{{valid_until}}': 'Valid Until',
@@ -118,7 +169,7 @@ export const SUBSTITUTION_TOKENS = {
     '{{gender}}': 'Gender',
     '{{address}}': 'Address',
     '{{photo_url}}': 'Profile Photo',
-    
+
     // Teacher-specific fields
     '{{employee_id}}': 'Employee ID',
     '{{designation}}': 'Designation',
@@ -130,51 +181,18 @@ export const SUBSTITUTION_TOKENS = {
     '{{experience}}': 'Years of Experience',
     '{{blood_group}}': 'Blood Group',
     '{{emergency_contact}}': 'Emergency Contact',
-    
-    // Campus fields
-    '{{campus_name}}': 'Campus Name',
-    '{{campus_address}}': 'Campus Address',
-    '{{campus_phone}}': 'Campus Phone',
-    '{{campus_code}}': 'Campus Code',
-    
-    // School fields
-    '{{school_name}}': 'School Name',
-    '{{school_address}}': 'School Address',
-    '{{school_phone}}': 'School Phone',
-    '{{school_logo}}': 'School Logo',
+
+    ...CAMPUS_SCHOOL_TOKENS,
   },
-  staff: {
-    // Profile fields
-    '{{first_name}}': 'First Name',
-    '{{last_name}}': 'Last Name',
-    '{{email}}': 'Email Address',
-    '{{phone}}': 'Phone Number',
-    '{{date_of_birth}}': 'Date of Birth',
-    '{{gender}}': 'Gender',
-    '{{address}}': 'Address',
-    '{{photo_url}}': 'Profile Photo',
-    
-    // Staff-specific fields
-    '{{employee_id}}': 'Employee ID',
-    '{{role}}': 'Role/Position',
-    '{{department}}': 'Department',
-    '{{joining_date}}': 'Joining Date',
-    '{{qualification}}': 'Qualification',
-    '{{blood_group}}': 'Blood Group',
-    '{{emergency_contact}}': 'Emergency Contact',
-    
-    // Campus fields
-    '{{campus_name}}': 'Campus Name',
-    '{{campus_address}}': 'Campus Address',
-    '{{campus_phone}}': 'Campus Phone',
-    '{{campus_code}}': 'Campus Code',
-    
-    // School fields
-    '{{school_name}}': 'School Name',
-    '{{school_address}}': 'School Address',
-    '{{school_phone}}': 'School Phone',
-    '{{school_logo}}': 'School Logo',
-  },
+  // staff/librarian/counselor/media_officer/fina_supervisor/admin are all rows in the same
+  // `staff` table (see backend/schema.sql), distinguished only by `staff.role` — same fields.
+  staff: { ...STAFF_TABLE_TOKENS },
+  librarian: { ...STAFF_TABLE_TOKENS },
+  counselor: { ...STAFF_TABLE_TOKENS },
+  media_officer: { ...STAFF_TABLE_TOKENS },
+  fina_supervisor: { ...STAFF_TABLE_TOKENS },
+  admin: { ...STAFF_TABLE_TOKENS },
+  parent: { ...PARENT_TOKENS },
 };
 
 interface TemplateConfig {

@@ -11,16 +11,13 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
 import {
   Plus,
   Edit,
   Trash2,
   Copy,
   Award,
-  UserCircle,
-  Users,
-  Briefcase,
   Tag,
 } from 'lucide-react';
 import {
@@ -37,7 +34,9 @@ import {
   CertificateTemplate,
   CertificateRecipientType,
 } from '@/lib/api/certificate-template';
+import { CERTIFICATE_RECIPIENT_TYPES, getCertificateRecipientTypeOption } from '@/config/certificateRecipientTypes';
 import { CertificateCanvasRenderer } from '@/components/shared/CertificateCanvasRenderer';
+import { useCampus } from '@/context/CampusContext';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -63,6 +62,9 @@ const OCCASION_LABELS: Record<string, string> = {
 
 export default function CertificateTemplatesPage() {
   const router = useRouter();
+  const campusCtx = useCampus();
+  const schoolLogo = campusCtx?.selectedCampus?.logo_url ?? '';
+  const schoolName = campusCtx?.selectedCampus?.name ?? '';
   const [activeTab, setActiveTab] = useState<CertificateRecipientType>('student');
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,12 +111,8 @@ export default function CertificateTemplatesPage() {
   };
 
   const getRecipientIcon = (type: string) => {
-    switch (type) {
-      case 'student': return <UserCircle className="h-5 w-5" />;
-      case 'teacher': return <Users className="h-5 w-5" />;
-      case 'staff': return <Briefcase className="h-5 w-5" />;
-      default: return <Award className="h-5 w-5" />;
-    }
+    const Icon = getCertificateRecipientTypeOption(type)?.icon || Award;
+    return <Icon className="h-5 w-5" />;
   };
 
   const filteredTemplates = templates.filter(
@@ -127,7 +125,7 @@ export default function CertificateTemplatesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Certificate Templates</h1>
           <p className="text-muted-foreground mt-1">
-            Design and manage reusable A4 certificates for students, teachers, and staff
+            Design and manage reusable A4 certificates for any user type in your school
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -149,111 +147,112 @@ export default function CertificateTemplatesPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CertificateRecipientType)}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="student" className="gap-2">
-            <UserCircle className="h-4 w-4" />
-            Students
-          </TabsTrigger>
-          <TabsTrigger value="teacher" className="gap-2">
-            <Users className="h-4 w-4" />
-            Teachers
-          </TabsTrigger>
-          <TabsTrigger value="staff" className="gap-2">
-            <Briefcase className="h-4 w-4" />
-            Staff
-          </TabsTrigger>
-        </TabsList>
+      <div>
+        <Label className="text-sm text-muted-foreground mb-1.5 block">Recipient Type</Label>
+        <Select value={activeTab} onValueChange={(v) => setActiveTab(v as CertificateRecipientType)}>
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CERTIFICATE_RECIPIENT_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>
+                <span className="flex items-center gap-2">
+                  <t.icon className="h-4 w-4" />
+                  {t.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-        {(['student', 'teacher', 'staff'] as const).map((type) => (
-          <TabsContent key={type} value={type} className="space-y-4">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                <p className="text-muted-foreground mt-4">Loading templates...</p>
+      <div className="space-y-4">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground mt-4">Loading templates...</p>
+          </div>
+        ) : filteredTemplates.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                {getRecipientIcon(activeTab)}
               </div>
-            ) : filteredTemplates.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                    {getRecipientIcon(type)}
+              <h3 className="text-lg font-semibold mb-2">No Templates Yet</h3>
+              <p className="text-muted-foreground mb-6">
+                Create your first {getCertificateRecipientTypeOption(activeTab)?.label.toLowerCase() || activeTab} certificate template to get started
+              </p>
+              <Button onClick={() => router.push(`/admin/certificate-templates/builder?type=${activeTab}`)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Build Template
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredTemplates.map((template) => (
+              <Card key={template.id} className="overflow-hidden">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">{template.name}</CardTitle>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="gap-1 text-xs">
+                      <Tag className="h-3 w-3" />
+                      {OCCASION_LABELS[template.occasion] ?? template.occasion ?? 'General'}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs capitalize">
+                      {template.template_config.layout?.orientation || 'landscape'}
+                    </Badge>
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No Templates Yet</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Create your first {type} certificate template to get started
-                  </p>
-                  <Button onClick={() => router.push(`/admin/certificate-templates/builder?type=${type}`)} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Build Template
+                  {template.description && (
+                    <CardDescription className="mt-1.5 line-clamp-2">{template.description}</CardDescription>
+                  )}
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {/* Real live-rendered thumbnail */}
+                  <div
+                    className="relative rounded-lg border overflow-hidden bg-gray-100 dark:bg-slate-900 flex items-center justify-center"
+                    style={{ aspectRatio: `${template.template_config.layout.width} / ${template.template_config.layout.height}` }}
+                  >
+                    <CertificateCanvasRenderer
+                      layout={template.template_config.layout}
+                      design={template.template_config.design}
+                      fields={template.template_config.fields}
+                      scale={0.18}
+                      data={schoolLogo ? { school_logo: schoolLogo, school_name: schoolName, campus_name: schoolName } : undefined}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => router.push(`/admin/certificate-templates/builder?type=${activeTab}&edit=${template.id}`)}
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => handleDuplicate(template.id)}>
+                      <Copy className="h-4 w-4" />
+                      Duplicate
+                    </Button>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => setDeleteId(template.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
                   </Button>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTemplates.map((template) => (
-                  <Card key={template.id} className="overflow-hidden">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="gap-1 text-xs">
-                          <Tag className="h-3 w-3" />
-                          {OCCASION_LABELS[template.occasion] ?? template.occasion ?? 'General'}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs capitalize">
-                          {template.template_config.layout?.orientation || 'landscape'}
-                        </Badge>
-                      </div>
-                      {template.description && (
-                        <CardDescription className="mt-1.5 line-clamp-2">{template.description}</CardDescription>
-                      )}
-                    </CardHeader>
-
-                    <CardContent className="space-y-4">
-                      {/* Real live-rendered thumbnail */}
-                      <div
-                        className="relative rounded-lg border overflow-hidden bg-gray-100 dark:bg-slate-900 flex items-center justify-center"
-                        style={{ aspectRatio: `${template.template_config.layout.width} / ${template.template_config.layout.height}` }}
-                      >
-                        <CertificateCanvasRenderer
-                          layout={template.template_config.layout}
-                          design={template.template_config.design}
-                          fields={template.template_config.fields}
-                          scale={0.18}
-                        />
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 gap-2"
-                          onClick={() => router.push(`/admin/certificate-templates/builder?type=${activeTab}&edit=${template.id}`)}
-                        >
-                          <Edit className="h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => handleDuplicate(template.id)}>
-                          <Copy className="h-4 w-4" />
-                          Duplicate
-                        </Button>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="w-full gap-2"
-                        onClick={() => setDeleteId(template.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+            ))}
+          </div>
+        )}
+      </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

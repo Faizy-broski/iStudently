@@ -16,6 +16,16 @@ const createSchema = z.object({
 });
 
 class MiqatPermissionsController {
+  async list(req: AuthRequest, res: Response) {
+    try {
+      const status = req.query.status as 'pending' | 'approved' | 'rejected' | undefined;
+      const rows = await miqatService.listPermissions(req.profile?.school_id, status);
+      res.json({ success: true, data: rows });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
   /** Guardian or staff submits a request — early-departure collector fields are a child-safety requirement, spec §8.4. */
   async create(req: AuthRequest, res: Response) {
     try {
@@ -23,6 +33,18 @@ class MiqatPermissionsController {
       if (!parsed.success) {
         return res.status(400).json({ success: false, error: 'Invalid permission request', details: parsed.error.flatten() });
       }
+
+      // Staff can request on behalf of anyone in their school; a guardian
+      // may only request for their own linked children — checked here
+      // rather than trusted from the request body.
+      const staffRoles = ['admin', 'super_admin', 'teacher', 'staff'];
+      if (!staffRoles.includes(req.profile?.role)) {
+        const children = await miqatService.getChildrenForGuardian(req.profile.id);
+        if (!children.some((c) => c.profileId === parsed.data.person_id)) {
+          return res.status(403).json({ success: false, error: 'Not a guardian of this student' });
+        }
+      }
+
       const row = await miqatService.createPermission({
         ...parsed.data,
         school_id: req.profile?.school_id,

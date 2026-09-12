@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, CheckCircle2, Clock, XCircle, AlertTriangle } from 'lucide-react'
 import { getAuthToken } from '@/lib/api/schools'
 import { getSummary, MiqatDaySummaryRow } from '@/lib/api/miqat'
+import { useCampus } from '@/context/CampusContext'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -15,6 +16,7 @@ export default function MiqatDashboardPage() {
   const t = useTranslations('miqat.dashboard')
   const locale = useLocale()
   const isAr = locale === 'ar'
+  const campusId = useCampus()?.selectedCampus?.id
 
   const [rows, setRows] = useState<MiqatDaySummaryRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,11 +26,11 @@ export default function MiqatDashboardPage() {
       const token = await getAuthToken()
       if (!token) return
       const date = todayIso()
-      const res = await getSummary(date, date, token)
+      const res = await getSummary(date, date, token, campusId)
       if (res.success && res.data) setRows(res.data)
       setLoading(false)
     })()
-  }, [])
+  }, [campusId])
 
   const total = rows.length
   const present = rows.filter((r) => r.status === 'present').length

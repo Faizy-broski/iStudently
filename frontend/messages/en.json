@@ -779,6 +779,10 @@
     "write": "Write",
     "teacher_messaging_permissions": "Teacher Messaging Permissions",
     "vault": "AdminVault",
+    "miqat": "Miqat",
+    "devices": "Devices",
+    "cards": "Cards",
+    "permissions": "Permissions",
     "hifzi": "School Khalwa",
     "circles": "Circles",
     "curriculum": "Curriculum",
@@ -2437,7 +2441,7 @@
       "campus_number": "Campus Number",
       "phone": "Phone",
       "email": "Email",
-      "address": "Address",
+      "address": "Location",
       "city": "City",
       "state": "State",
       "zip_code": "Zip Code",
@@ -2566,7 +2570,7 @@
       "placeholder_desc": "Optional description",
       "label_type": "Service Type",
       "label_frequency": "Charge Frequency",
-      "label_default_charge": "Default Charge ($)",
+      "label_default_charge": "Default Charge",
       "label_mandatory_switch": "Mandatory for all students",
       "pricing_hint": "Set different prices per grade level. Leave blank to use the default charge.",
       "table_col_grade": "Grade Level",
@@ -8964,6 +8968,8 @@
       "vault_desc": "A secure records vault for facility/utilities, legal & licensing, financial & procurement, IT & security, and HR-confidential documents — dynamic per-category fields, AES-256-GCM encrypted secrets with a reveal-and-audit flow, an immutable audit log, and private watermarked attachments. Restricted to Admin, Super Admin, and Financial Admin.",
       "hifzi_name": "School Khalwa — Quran Memorization",
       "hifzi_desc": "Quran memorization management: circles, recitation tracking with error taxonomy and auto-grading, spaced-repetition review, daily assignments, attendance, and progress reports/heatmap.",
+      "miqat_name": "Miqat — Cryptographic Attendance",
+      "miqat_desc": "QR-card gate attendance with cryptographic card signing, geofencing, offline-first scanning, and automatic guardian notifications. Requires a scanner device (tablet/phone) at each gate.",
       "qirtasi_name": "Qirtasi قرطاسي — My Worksheet",
       "qirtasi_desc": "A curriculum-mapped worksheet library: upload, categorize by grade/subject/unit/lesson and pedagogical facets, browse, and download. Foundation slice — curriculum tree and faceted search only; AI generation, scan-and-grade, and marketplace are future phases.",
       "online_classes_name": "Online Learning",
@@ -12409,7 +12415,10 @@
       "ready_section_title": "Ready to use",
       "ready_section_empty": "Nothing ready yet — tagged photos appear here once processing finishes.",
       "post_as_story": "Post as story",
-      "story_posted": "Posted to stories."
+      "story_posted": "Posted to stories.",
+      "delete_button": "Delete",
+      "delete_confirm": "Click again to confirm deletion",
+      "delete_success": "Media deleted."
     },
     "posts": {
       "type_activity": "School activity",
@@ -12447,7 +12456,9 @@
       "class_goals_empty": "No goals set for this class yet.",
       "class_goal_create": "New goal",
       "class_goal_target_reached": "Goal reached! 🎉",
-      "class_goal_grade_placeholder": "Grade"
+      "class_goal_grade_placeholder": "Grade",
+      "class_goal_section_optional_placeholder": "Section (optional)",
+      "class_goal_whole_grade": "Whole grade"
     },
     "reactions": {
       "thumbs_up": "Nice",
@@ -13036,7 +13047,11 @@
       "revoke": "Revoke",
       "revokeSuccess": "Device revoked",
       "revokeError": "Failed to revoke device",
-      "noDevices": "No devices enrolled yet"
+      "noDevices": "No devices enrolled yet",
+      "selectTeacherFirst": "Select which teacher this device belongs to first",
+      "searchTeacherPlaceholder": "Search teacher by name…",
+      "searchTeachersError": "Failed to search teachers",
+      "change": "Change"
     },
     "dashboard": {
       "title": "Miqat — Today's Attendance",
@@ -13046,6 +13061,68 @@
       "absent": "Absent",
       "unclosedWarning": "{count} student(s) checked in but never checked out today",
       "noData": "No attendance recorded yet today"
+    },
+    "cards": {
+      "title": "Miqat Card Issuance",
+      "searchPlaceholder": "Search by first name…",
+      "searchError": "Failed to search students",
+      "issue": "Issue Card",
+      "reissueLost": "Report Lost & Reissue",
+      "issueError": "Failed to issue card",
+      "revisionLabel": "Revision",
+      "printNotice": "Print this QR code onto the student's card. Reissuing invalidates any previous card for this person.",
+      "noResults": "No students found matching that name — note this searches students only, not staff/admin accounts.",
+      "print": "Print",
+      "download": "Download",
+      "printError": "Failed to open print view",
+      "downloadError": "Failed to download QR code"
+    },
+    "permissions": {
+      "title": "Miqat Permission Requests",
+      "noPending": "No pending requests",
+      "lateArrival": "Late Arrival",
+      "earlyDeparture": "Early Departure",
+      "fullDay": "Full Day",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approved": "Request approved",
+      "rejected": "Request rejected",
+      "decideError": "Failed to record decision"
+    },
+    "guardian": {
+      "title": "Attendance",
+      "noChildren": "No linked children found",
+      "accumulatedLateness": "Accumulated Lateness This Month",
+      "minutes": "minutes",
+      "noRecords": "No attendance records yet this month",
+      "submitExcuse": "Submit an Excuse",
+      "reasonPlaceholder": "Reason for absence or lateness…",
+      "submit": "Submit",
+      "requestSubmitted": "Request submitted",
+      "requestError": "Failed to submit request",
+      "status": {
+        "present": "Present",
+        "late": "Late",
+        "absent": "Absent",
+        "excused": "Excused",
+        "unclosed": "Not checked out"
+      }
+    },
+    "reports": {
+      "title": "Miqat Reports",
+      "hrTimesheet": "HR Timesheet Export",
+      "ministryReport": "Ministry Statutory Report",
+      "download": "Download",
+      "ministryPlaceholderNotice": "Uses a placeholder layout until the Ministry's exact required format is provided.",
+      "exportError": "Export failed",
+      "patternFlags": "Attendance Pattern Flags",
+      "noFlags": "No unresolved flags",
+      "acknowledge": "Acknowledge",
+      "acknowledgeError": "Failed to acknowledge flag",
+      "sameWeekdayAbsences": "Repeated absence on the same weekday",
+      "gatePresentPeriodAbsent": "Present at gate but absent from class",
+      "chronicEarlyCheckout": "Chronic early checkout",
+      "teacherNotScanning": "Teacher not scanning attendance"
     }
   }
 }

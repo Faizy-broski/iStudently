@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { Loader2, Upload, ImageIcon, VideoIcon, CircleDot } from 'lucide-react'
+import { Loader2, Upload, ImageIcon, VideoIcon, CircleDot, Trash2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { listPendingTagging, listMyReadyMedia, uploadFinaMedia, type FinaMedia } from '@/lib/api/fina-media'
+import { listPendingTagging, listMyReadyMedia, uploadFinaMedia, deleteFinaMedia, type FinaMedia } from '@/lib/api/fina-media'
 import { createStory } from '@/lib/api/fina-stories'
 import { GatedMediaImage } from './GatedMediaImage'
 
@@ -27,6 +27,12 @@ export function MediaLibraryManager({ basePath }: { basePath: string }) {
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Two-click delete confirmation: first click arms the button (stores the id),
+  // second click within 3 s executes; clicking elsewhere or waiting disarms it.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
   const load = useCallback(() => {
     listPendingTagging().then((res) => setItems(res.data ?? []))
     listMyReadyMedia().then((res) => setReadyItems(res.data ?? []))
@@ -37,6 +43,17 @@ export function MediaLibraryManager({ basePath }: { basePath: string }) {
     const interval = setInterval(load, 8000)
     return () => clearInterval(interval)
   }, [load])
+
+  // Disarm confirm on any outside click
+  useEffect(() => {
+    if (!confirmDeleteId) return
+    const handler = () => {
+      setConfirmDeleteId(null)
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+    }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [confirmDeleteId])
 
   const handlePostAsStory = async (mediaId: string) => {
     const res = await createStory(mediaId)
@@ -57,6 +74,63 @@ export function MediaLibraryManager({ basePath }: { basePath: string }) {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  /**
+   * First click: arm confirmation (button turns red, auto-disarms after 3 s).
+   * Second click: execute delete and optimistically remove from local state.
+   */
+  const handleDeleteClick = async (e: React.MouseEvent, mediaId: string) => {
+    e.preventDefault()   // prevent Link navigation on pending-queue items
+    e.stopPropagation()
+
+    if (confirmDeleteId !== mediaId) {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+      setConfirmDeleteId(mediaId)
+      confirmTimerRef.current = setTimeout(() => setConfirmDeleteId(null), 3000)
+      return
+    }
+
+    // Confirmed — execute
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+    setConfirmDeleteId(null)
+    setDeleting(mediaId)
+    try {
+      const res = await deleteFinaMedia(mediaId)
+      if (res.error) {
+        toast.error(res.error)
+      } else {
+        toast.success(t('delete_success'))
+        // Optimistically remove from both lists so the grid updates immediately.
+        setItems((prev) => prev?.filter((m) => m.id !== mediaId) ?? prev)
+        setReadyItems((prev) => prev?.filter((m) => m.id !== mediaId) ?? prev)
+      }
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  /** Trash button with two-step confirmation, shared by both grids. */
+  const DeleteButton = ({ mediaId }: { mediaId: string }) => {
+    const armed = confirmDeleteId === mediaId
+    const busy = deleting === mediaId
+    return (
+      <button
+        onClick={(e) => handleDeleteClick(e, mediaId)}
+        disabled={busy}
+        className={[
+          'absolute top-1 right-1 rounded-full p-1.5 transition-all',
+          'opacity-0 group-hover:opacity-100',
+          armed ? 'bg-red-600 hover:bg-red-700 !opacity-100' : 'bg-black/60 hover:bg-black/80',
+          busy ? 'cursor-wait' : '',
+        ].join(' ')}
+        title={armed ? t('delete_confirm') : t('delete_button')}
+      >
+        {busy
+          ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+          : <Trash2 className="h-3.5 w-3.5 text-white" />}
+      </button>
+    )
   }
 
   return (
@@ -91,20 +165,23 @@ export function MediaLibraryManager({ basePath }: { basePath: string }) {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {items.map((item) => (
-              <Link key={item.id} href={`${basePath}/${item.id}/tag`} className="group">
-                <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                  {item.kind === 'image' ? (
-                    <GatedMediaImage mediaId={item.id} raw alt={item.id} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <VideoIcon className="h-8 w-8" />
+              <div key={item.id} className="relative group">
+                <Link href={`${basePath}/${item.id}/tag`} className="block">
+                  <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                    {item.kind === 'image' ? (
+                      <GatedMediaImage mediaId={item.id} raw thumb alt={item.id} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <VideoIcon className="h-8 w-8" />
+                      </div>
+                    )}
+                    <div className="absolute top-1.5 left-1.5 bg-black/60 rounded-full p-1">
+                      {item.kind === 'image' ? <ImageIcon className="h-3 w-3 text-white" /> : <VideoIcon className="h-3 w-3 text-white" />}
                     </div>
-                  )}
-                  <div className="absolute top-1.5 left-1.5 bg-black/60 rounded-full p-1">
-                    {item.kind === 'image' ? <ImageIcon className="h-3 w-3 text-white" /> : <VideoIcon className="h-3 w-3 text-white" />}
                   </div>
-                </div>
-              </Link>
+                </Link>
+                <DeleteButton mediaId={item.id} />
+              </div>
             ))}
           </div>
         )}
@@ -132,12 +209,13 @@ export function MediaLibraryManager({ basePath }: { basePath: string }) {
                 {item.kind === 'image' && (
                   <button
                     onClick={() => handlePostAsStory(item.id)}
-                    className="absolute bottom-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute bottom-1 left-1 bg-black/60 hover:bg-black/80 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
                     title={t('post_as_story')}
                   >
                     <CircleDot className="h-3.5 w-3.5 text-white" />
                   </button>
                 )}
+                <DeleteButton mediaId={item.id} />
               </div>
             ))}
           </div>

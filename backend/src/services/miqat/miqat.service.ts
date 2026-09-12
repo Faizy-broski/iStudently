@@ -25,6 +25,7 @@ export interface MiqatDevice {
   role: 'gate' | 'teacher' | 'admin';
   public_key: string;
   enrolled_by?: string;
+  person_id?: string | null; // which teacher this device belongs to — required for role='teacher', see migration comment
   status?: 'active' | 'revoked';
   app_version?: string;
   os_version?: string;
@@ -105,16 +106,86 @@ export class MiqatService {
     return data;
   }
 
-  async createEnrolmentCode(schoolId: string, role: 'gate' | 'teacher' | 'admin', createdBy: string) {
+  async createEnrolmentCode(schoolId: string, role: 'gate' | 'teacher' | 'admin', createdBy: string, personId?: string) {
     const code = require('crypto').randomBytes(9).toString('base64url'); // 12-char single-use code
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('miqat_enrolment_codes')
-      .insert({ code, school_id: schoolId, role, created_by: createdBy, expires_at: expiresAt })
+      .insert({ code, school_id: schoolId, role, created_by: createdBy, expires_at: expiresAt, person_id: personId ?? null })
       .select()
       .single();
     if (error) throw error;
     return data;
+  }
+
+  /** Today's timetabled (period, section) slots for one teacher, resolved from their profile_id. */
+  async getTeacherPeriodsForDate(teacherProfileId: string, schoolId: string, dayOfWeek: number) {
+    const { data: staffRow } = await supabase.from('staff').select('id').eq('profile_id', teacherProfileId).maybeSingle();
+    if (!staffRow) return [];
+
+    const { data, error } = await supabase
+      .from('timetable_entries')
+      .select('period_id, section_id, periods(period_name, sort_order), sections(name)')
+      .eq('school_id', schoolId)
+      .eq('teacher_id', staffRow.id)
+      .eq('day_of_week', dayOfWeek)
+      .eq('is_active', true)
+      .order('sort_order', { foreignTable: 'periods', ascending: true });
+    if (error) throw error;
+    return (data || []).map((r: any) => ({
+      periodId: r.period_id,
+      sectionId: r.section_id,
+      periodName: r.periods?.period_name ?? '',
+      sectionName: r.sections?.name ?? '',
+    }));
+  }
+
+  /**
+   * Full roster for one (section, period, date): every active student in the
+   * section, each tagged with whether they were present at the gate that day
+   * (pre-fill/grey-out, spec §7) and whether a period scan already exists
+   * for them (idempotent re-open of the class-scan screen).
+   */
+  async getPeriodRoster(schoolId: string, sectionId: string, periodId: string, date: string) {
+    const { data: students, error: studentsError } = await supabase
+      .from('students')
+      .select('profile_id, profile:profiles(first_name, last_name)')
+      .eq('section_id', sectionId)
+      .eq('school_id', schoolId);
+    if (studentsError) throw studentsError;
+
+    const dayStart = `${date}T00:00:00.000Z`;
+    const dayEnd = `${date}T23:59:59.999Z`;
+
+    const { data: gateEvents, error: gateError } = await supabase
+      .from('miqat_events')
+      .select('person_id')
+      .eq('school_id', schoolId)
+      .eq('scope', 'gate')
+      .eq('event_type', 'check_in')
+      .gte('device_time', dayStart)
+      .lte('device_time', dayEnd);
+    if (gateError) throw gateError;
+    const presentAtGate = new Set((gateEvents || []).map((e) => e.person_id));
+
+    const { data: periodEvents, error: periodError } = await supabase
+      .from('miqat_events')
+      .select('person_id, event_type')
+      .eq('school_id', schoolId)
+      .eq('scope', 'period')
+      .eq('period_id', periodId)
+      .gte('device_time', dayStart)
+      .lte('device_time', dayEnd);
+    if (periodError) throw periodError;
+    const alreadyScanned = new Map((periodEvents || []).map((e) => [e.person_id, e.event_type]));
+
+    return (students || []).map((s: any) => ({
+      personId: s.profile_id,
+      firstName: s.profile?.first_name ?? '',
+      lastName: s.profile?.last_name ?? '',
+      gateAbsent: !presentAtGate.has(s.profile_id),
+      periodStatus: alreadyScanned.get(s.profile_id) ?? null,
+    }));
   }
 
   async listDevices(schoolId: string) {
@@ -267,6 +338,109 @@ export class MiqatService {
 
   async getDay(personId: string, date: string) {
     const { data, error } = await supabase.from('miqat_days').select('*').eq('person_id', personId).eq('date', date).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  /** Resolves a guardian's linked children to {studentId, profileId, name} — profileId is what Miqat's person_id actually is. */
+  async getChildrenForGuardian(guardianProfileId: string): Promise<{ studentId: string; profileId: string; firstName: string; lastName: string }[]> {
+    const { data: parentRow } = await supabase.from('parents').select('id').eq('profile_id', guardianProfileId).maybeSingle();
+    if (!parentRow) return [];
+    const { data, error } = await supabase
+      .from('parent_student_links')
+      .select('student:students(id, profile_id, profile:profiles(first_name, last_name))')
+      .eq('parent_id', parentRow.id)
+      .eq('is_active', true);
+    if (error) throw error;
+    return (data || [])
+      .map((r: any) => r.student)
+      .filter(Boolean)
+      .map((s: any) => ({ studentId: s.id, profileId: s.profile_id, firstName: s.profile?.first_name ?? '', lastName: s.profile?.last_name ?? '' }));
+  }
+
+  async getDaysForPerson(personId: string, dateFrom: string, dateTo: string) {
+    const { data, error } = await supabase
+      .from('miqat_days')
+      .select('*')
+      .eq('person_id', personId)
+      .gte('date', dateFrom)
+      .lte('date', dateTo)
+      .order('date', { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+
+  /** De-dup guard so a persistent pattern doesn't re-raise a flag every single night it's checked. */
+  async hasRecentPatternFlag(personId: string, flagType: string, sinceIso: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('miqat_pattern_flags')
+      .select('id')
+      .eq('person_id', personId)
+      .eq('flag_type', flagType)
+      .gte('detected_at', sinceIso)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return !!data;
+  }
+
+  /** Which (teacher, period) combos are timetabled for a given day-of-week (0=Monday..6=Sunday, matching this codebase's existing convention). */
+  async getExpectedPeriodScans(schoolId: string, dayOfWeek: number): Promise<{ teacherProfileId: string; periodId: string }[]> {
+    const { data, error } = await supabase
+      .from('timetable_entries')
+      .select('period_id, staff!inner(profile_id)')
+      .eq('school_id', schoolId)
+      .eq('day_of_week', dayOfWeek)
+      .eq('is_active', true);
+    if (error) throw error;
+    return (data || [])
+      .filter((r: any) => r.staff?.profile_id)
+      .map((r: any) => ({ teacherProfileId: r.staff.profile_id, periodId: r.period_id }));
+  }
+
+  /** Set of "periodId:date" keys that had at least one period-scope scan, for cheap in-memory lookup across many (period, date) checks. */
+  async listScannedPeriodDateKeys(schoolId: string, dateFrom: string, dateTo: string): Promise<Set<string>> {
+    const { data, error } = await supabase
+      .from('miqat_events')
+      .select('period_id, device_time')
+      .eq('school_id', schoolId)
+      .eq('scope', 'period')
+      .gte('device_time', `${dateFrom}T00:00:00.000Z`)
+      .lte('device_time', `${dateTo}T23:59:59.999Z`);
+    if (error) throw error;
+    return new Set((data || []).map((r: any) => `${r.period_id}:${r.device_time.slice(0, 10)}`));
+  }
+
+  async getStaffSecretRef(personId: string): Promise<string | null> {
+    const { data, error } = await supabase.from('miqat_staff_rotating_secrets').select('secret_ref').eq('person_id', personId).maybeSingle();
+    if (error) throw error;
+    return data?.secret_ref ?? null;
+  }
+
+  async createStaffSecretRef(personId: string, secretRef: string): Promise<void> {
+    const { error } = await supabase.from('miqat_staff_rotating_secrets').insert({ person_id: personId, secret_ref: secretRef });
+    if (error) throw error;
+  }
+
+  async insertPatternFlag(schoolId: string, personId: string, flagType: string, details: Record<string, any>) {
+    const { error } = await supabase.from('miqat_pattern_flags').insert({ school_id: schoolId, person_id: personId, flag_type: flagType, details });
+    if (error) throw error;
+  }
+
+  async listActivePersonIds(schoolId: string, sinceDate: string): Promise<string[]> {
+    const { data, error } = await supabase.from('miqat_days').select('person_id').eq('school_id', schoolId).gte('date', sinceDate);
+    if (error) throw error;
+    return [...new Set((data || []).map((r) => r.person_id))];
+  }
+
+  async listPermissions(schoolId: string, status?: 'pending' | 'approved' | 'rejected') {
+    let query = supabase
+      .from('miqat_permissions')
+      .select('*, profiles!miqat_permissions_person_id_fkey(first_name, last_name)')
+      .eq('school_id', schoolId)
+      .order('created_at', { ascending: false });
+    if (status) query = query.eq('status', status);
+    const { data, error } = await query;
     if (error) throw error;
     return data;
   }

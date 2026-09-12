@@ -8,6 +8,7 @@ const router = Router();
 
 router.use(authenticate);
 router.use(requireMiqatEnabled);
+router.get('/', requireAdmin, miqatPermissionsController.list);
 router.post('/', miqatPermissionsController.create);
 router.patch('/:id', requireAdmin, miqatPermissionsController.decide);
 

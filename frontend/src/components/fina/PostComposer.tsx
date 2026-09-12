@@ -426,7 +426,7 @@ export function PostComposer({ wallHref }: { wallHref: string }) {
                           onClick={() => openInlineTagging(m.id)}
                           className="relative aspect-square rounded-md overflow-hidden border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100"
                         >
-                          <GatedMediaImage mediaId={m.id} raw alt="" className="w-full h-full object-cover opacity-60" />
+                          <GatedMediaImage mediaId={m.id} raw thumb alt="" className="w-full h-full object-cover opacity-60" />
                           <span className="absolute inset-0 flex items-center justify-center bg-black/25 text-white text-[10px] font-medium px-1 text-center">
                             {t('tap_to_tag')}
                           </span>

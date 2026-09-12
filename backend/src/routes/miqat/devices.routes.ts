@@ -12,6 +12,8 @@ const router = Router();
 // own registered private key (see devices.controller.ts comments).
 router.post('/enrol', miqatDevicesController.enrol);
 router.get('/:id/bootstrap', miqatDevicesController.bootstrap);
+router.get('/:id/my-periods', miqatDevicesController.myPeriods);
+router.get('/:id/period-roster', miqatDevicesController.periodRoster);
 
 router.use(authenticate);
 router.use(requireMiqatEnabled);

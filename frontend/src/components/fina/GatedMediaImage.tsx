@@ -10,6 +10,10 @@ interface GatedMediaImageProps {
   /** Staff-only pre-confirmation preview (bypasses the consent gate via the
    * dedicated /raw endpoint) — never use for general viewing. */
   raw?: boolean
+  /** With `raw`, ask the backend to resize before sending — use for small
+   * on-screen previews (grid thumbnails) so they don't download the full,
+   * un-resized original just to show it at 80px. Ignored without `raw`. */
+  thumb?: boolean
   alt: string
   className?: string
 }
@@ -21,7 +25,7 @@ interface GatedMediaImageProps {
  * so the bytes are fetched via authenticated JS fetch and rendered as a
  * local object URL, revoked on unmount/prop change to avoid leaking memory.
  */
-export function GatedMediaImage({ mediaId, variant = 'md', raw = false, alt, className }: GatedMediaImageProps) {
+export function GatedMediaImage({ mediaId, variant = 'md', raw = false, thumb = false, alt, className }: GatedMediaImageProps) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
@@ -32,7 +36,7 @@ export function GatedMediaImage({ mediaId, variant = 'md', raw = false, alt, cla
     setLoading(true)
     setFailed(false)
 
-    const load = raw ? getRawMediaPreviewUrl(mediaId) : getFinaMediaVariantUrl(mediaId, variant)
+    const load = raw ? getRawMediaPreviewUrl(mediaId, { thumb }) : getFinaMediaVariantUrl(mediaId, variant)
     load.then(({ url, error }) => {
       if (cancelled) {
         if (url) URL.revokeObjectURL(url)
@@ -52,7 +56,7 @@ export function GatedMediaImage({ mediaId, variant = 'md', raw = false, alt, cla
       cancelled = true
       if (currentUrl) URL.revokeObjectURL(currentUrl)
     }
-  }, [mediaId, variant, raw])
+  }, [mediaId, variant, raw, thumb])
 
   if (loading) {
     return (

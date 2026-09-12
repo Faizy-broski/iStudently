@@ -7,6 +7,8 @@ import { useGradeLevels, useSections } from '@/hooks/useAcademics'
 import { getStudents, Student } from '@/lib/api/students'
 import { getAllTeachers } from '@/lib/api/teachers'
 import { getAllStaff } from '@/lib/api/staff'
+import { getParentsWithChildren, Parent } from '@/lib/api/parents'
+import { getStudentGradesSummaryAPI } from '@/lib/api/grades'
 import {
   getTemplates,
   CertificateTemplate,
@@ -17,6 +19,7 @@ import { MultiSelectPopover } from '@/components/shared/MultiSelectPopover'
 import {
   buildStudentCertificateData,
   buildStaffCertificateData,
+  buildParentCertificateData,
   renderCertificatePageHtml,
 } from '@/lib/utils/certificateRender'
 import { openPrintPreview, openPdfDownload } from '@/lib/utils/printLayout'
@@ -26,7 +29,6 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -40,13 +42,11 @@ import {
   Loader2,
   Printer,
   Download,
-  UserCircle,
-  Users,
-  Briefcase,
   Settings,
   CheckSquare,
   Square,
 } from 'lucide-react'
+import { CERTIFICATE_RECIPIENT_TYPES } from '@/config/certificateRecipientTypes'
 import { toast } from 'sonner'
 
 const OCCASION_LABELS: Record<string, string> = {
@@ -129,7 +129,24 @@ export default function CertificateGeneratorPage() {
         }
       }, 300)
       return () => clearTimeout(debounceTimer)
+    } else if (recipientType === 'parent') {
+      const debounceTimer = setTimeout(async () => {
+        setLoadingRecipients(true)
+        try {
+          const res = await getParentsWithChildren({ limit: 2000, search: searchQuery || undefined })
+          if (res.success) setStaffMembers(res.data || [])
+          else if (res.error) toast.error(`Failed to load parents: ${res.error}`)
+        } catch {
+          toast.error('Failed to load parents')
+        } finally {
+          setLoadingRecipients(false)
+        }
+      }, 300)
+      return () => clearTimeout(debounceTimer)
     } else {
+      // teacher has its own dedicated table/API; every other type (staff, librarian, counselor,
+      // media_officer, fina_supervisor, admin) is a `staff` table row distinguished by
+      // `staff.role`, so the same getAllStaff(role) call fetches all of them.
       const debounceTimer = setTimeout(async () => {
         setLoadingRecipients(true)
         try {
@@ -137,7 +154,13 @@ export default function CertificateGeneratorPage() {
             const res = await getAllTeachers({ limit: 2000, search: searchQuery || undefined, campus_id: selectedCampus?.id })
             setStaffMembers(res.data || [])
           } else {
-            const res = await getAllStaff(1, 2000, searchQuery || undefined, 'staff', selectedCampus?.id)
+            const res = await getAllStaff(
+              1,
+              2000,
+              searchQuery || undefined,
+              recipientType as 'staff' | 'librarian' | 'counselor' | 'media_officer' | 'fina_supervisor' | 'admin',
+              selectedCampus?.id
+            )
             setStaffMembers(res.data || [])
           }
         } catch {
@@ -189,22 +212,48 @@ export default function CertificateGeneratorPage() {
   }
   const getRecipientSubtitle = (r: any) => {
     if (recipientType === 'student') return `${r.student_number || ''} · ${r.grade_level || r.grade?.name || ''}`
+    if (recipientType === 'parent') {
+      const names = (r.children || []).map((c: any) => `${c.profile?.first_name || ''} ${c.profile?.last_name || ''}`.trim()).filter(Boolean)
+      return names.length ? `Parent of ${names.join(', ')}` : 'No linked children'
+    }
     return `${r.employee_number || ''} · ${r.title || r.department || ''}`
   }
 
+  // Whether the selected template has a table field bound to real per-student grade data —
+  // only then is it worth fetching each selected student's subject grades before generating.
+  const templateHasGradesTable = (tpl: CertificateTemplate | null) =>
+    !!tpl?.template_config.fields.some((f) => f.type === 'table' && f.table?.dataSource === 'student_grades')
+
   // ── Build the certificate batch and print / download ───────────────────
-  const buildBodyHtml = () => {
+  const buildBodyHtml = async () => {
     if (!selectedTemplate) return ''
     const selected = recipientList.filter((r: any) => selectedRecipientIds.includes(r.id))
-    return selected
-      .map((r: any) => {
-        const data =
-          recipientType === 'student'
-            ? buildStudentCertificateData(r as Student, selectedCampus)
-            : buildStaffCertificateData(r, selectedCampus)
+    const needsGrades = recipientType === 'student' && templateHasGradesTable(selectedTemplate)
+
+    const pages = await Promise.all(
+      selected.map(async (r: any) => {
+        let data: Record<string, any>
+        if (recipientType === 'student') {
+          let gradesSummary
+          if (needsGrades) {
+            try {
+              const res = await getStudentGradesSummaryAPI(r.id, undefined, selectedCampus?.id)
+              gradesSummary = res.success ? res.data : undefined
+            } catch {
+              // A grades lookup failure shouldn't block the whole batch — the table just
+              // renders empty for this recipient.
+            }
+          }
+          data = buildStudentCertificateData(r as Student, selectedCampus, gradesSummary)
+        } else if (recipientType === 'parent') {
+          data = buildParentCertificateData(r as Parent, selectedCampus)
+        } else {
+          data = buildStaffCertificateData(r, selectedCampus)
+        }
         return renderCertificatePageHtml(selectedTemplate.template_config, data)
       })
-      .join('')
+    )
+    return pages.join('')
   }
 
   const validateBeforeGenerate = (): boolean => {
@@ -219,14 +268,15 @@ export default function CertificateGeneratorPage() {
     return true
   }
 
-  const handlePrintPreview = () => {
+  const handlePrintPreview = async () => {
     if (!validateBeforeGenerate() || !selectedTemplate) return
     setIsPrinting(true)
     try {
       const orientation = selectedTemplate.template_config.layout.orientation
+      const bodyHtml = await buildBodyHtml()
       openPrintPreview({
         title: selectedTemplate.name,
-        bodyHtml: `<div style="display:flex;flex-direction:column;align-items:center;">${buildBodyHtml()}</div>`,
+        bodyHtml: `<div style="display:flex;flex-direction:column;align-items:center;">${bodyHtml}</div>`,
         // The browser's print dialog defaults to portrait — without this, a landscape
         // certificate gets squeezed onto a narrower portrait page and half gets cut off.
         bodyStyles: `@page { size: A4 ${orientation}; margin: 10mm; } @media print { .print-page { page-break-after: always; } }`,
@@ -247,9 +297,10 @@ export default function CertificateGeneratorPage() {
     if (!validateBeforeGenerate() || !selectedTemplate) return
     setIsPrinting(true)
     try {
+      const bodyHtml = await buildBodyHtml()
       await openPdfDownload({
         title: selectedTemplate.name,
-        bodyHtml: `<div style="display:flex;flex-direction:column;align-items:center;">${buildBodyHtml()}</div>`,
+        bodyHtml: `<div style="display:flex;flex-direction:column;align-items:center;">${bodyHtml}</div>`,
         bodyStyles: '',
         school: {
           name: selectedCampus?.name || '',
@@ -286,13 +337,23 @@ export default function CertificateGeneratorPage() {
       </div>
 
       {/* Recipient type */}
-      <Tabs value={recipientType} onValueChange={(v) => setRecipientType(v as CertificateRecipientType)}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="student" className="gap-2"><UserCircle className="h-4 w-4" />Students</TabsTrigger>
-          <TabsTrigger value="teacher" className="gap-2"><Users className="h-4 w-4" />Teachers</TabsTrigger>
-          <TabsTrigger value="staff" className="gap-2"><Briefcase className="h-4 w-4" />Staff</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="max-w-xs">
+        <Select value={recipientType} onValueChange={(v) => setRecipientType(v as CertificateRecipientType)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CERTIFICATE_RECIPIENT_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>
+                <span className="flex items-center gap-2">
+                  <t.icon className="h-4 w-4" />
+                  {t.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Template picker */}
@@ -343,6 +404,7 @@ export default function CertificateGeneratorPage() {
                           design={template.template_config.design}
                           fields={template.template_config.fields}
                           scale={0.16}
+                          data={selectedCampus?.logo_url ? { school_logo: selectedCampus.logo_url, school_name: selectedCampus.name, campus_name: selectedCampus.name } : undefined}
                         />
                       </div>
                       <p className="text-sm font-medium truncate">{template.name}</p>

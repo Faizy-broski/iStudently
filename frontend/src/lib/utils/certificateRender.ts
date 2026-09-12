@@ -1,6 +1,8 @@
 import type { CertificateTemplateConfig } from '@/lib/api/certificate-template'
-import { substituteTokens } from '@/components/shared/CertificateCanvasRenderer'
+import { substituteTokens, resolveTableRows } from '@/components/shared/CertificateCanvasRenderer'
 import type { Student } from '@/lib/api/students'
+import type { Parent } from '@/lib/api/parents'
+import type { StudentCourseGradeSummary } from '@/lib/api/grades'
 import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 export { substituteTokens }
@@ -23,8 +25,17 @@ function currentAcademicYear(): string {
   return `${year}-${year + 1}`
 }
 
-/** Build the {{token}} -> value data map for a student recipient. */
-export function buildStudentCertificateData(student: Student, campus?: CampusLike | null): Record<string, any> {
+/**
+ * Build the {{token}} -> value data map for a student recipient.
+ * `gradesSummary`, when passed, powers a 'table' field with dataSource: 'student_grades'
+ * (see CertificateCanvasRenderer.tsx#resolveTableRows) — fetch it with
+ * getStudentGradesSummaryAPI only when the chosen template actually contains such a field.
+ */
+export function buildStudentCertificateData(
+  student: Student,
+  campus?: CampusLike | null,
+  gradesSummary?: StudentCourseGradeSummary[]
+): Record<string, any> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const profile: any = student.profile || {}
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,6 +76,17 @@ export function buildStudentCertificateData(student: Student, campus?: CampusLik
     current_date: formatDateWithPreference(new Date()),
     issue_date: formatDateWithPreference(new Date()),
     valid_until: formatDateWithPreference(new Date(new Date().getFullYear() + 1, 7, 31)),
+    ...(gradesSummary
+      ? {
+          __tables: {
+            student_grades: gradesSummary.map((g) => ({
+              Subject: g.course_title,
+              Grade: g.letter || '',
+              Percent: g.percent !== undefined && g.percent !== null ? `${g.percent}%` : '',
+            })),
+          },
+        }
+      : {}),
   }
 }
 
@@ -97,6 +119,47 @@ export function buildStaffCertificateData(member: any, campus?: CampusLike | nul
   }
 }
 
+/** Build the {{token}} -> value data map for a parent recipient. */
+export function buildParentCertificateData(parent: Parent, campus?: CampusLike | null): Record<string, any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const profile: any = parent.profile || {}
+  const children = parent.children || []
+  const childrenNames = children
+    .map((c) => `${c.profile?.first_name || ''} ${c.profile?.last_name || ''}`.trim())
+    .filter(Boolean)
+
+  return {
+    first_name: profile.first_name || '',
+    last_name: profile.last_name || '',
+    full_name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+    email: profile.email || '',
+    phone: profile.phone || '',
+    photo_url: profile.profile_photo_url || profile.avatar_url || '',
+    occupation: parent.occupation || '',
+    workplace: parent.workplace || '',
+    cnic: parent.cnic || '',
+    address: parent.address || '',
+    city: parent.city || '',
+    state: parent.state || '',
+    zip_code: parent.zip_code || '',
+    country: parent.country || '',
+    emergency_contact_name: parent.emergency_contact_name || '',
+    emergency_contact_relation: parent.emergency_contact_relation || '',
+    emergency_contact_phone: parent.emergency_contact_phone || '',
+    children_names: childrenNames.join(', '),
+    children_count: String(children.length),
+    academic_year: currentAcademicYear(),
+    campus_name: campus?.name || '',
+    campus_address: campus?.address || '',
+    campus_phone: campus?.phone || '',
+    school_name: campus?.name || '',
+    school_logo: campus?.logo_url || '',
+    school_principal: (campus as any)?.principal_name || (campus as any)?.principal || '',
+    current_date: formatDateWithPreference(new Date()),
+    issue_date: formatDateWithPreference(new Date()),
+  }
+}
+
 /**
  * Renders a single certificate as a static HTML string sized exactly to the template's
  * A4 layout — used as one `.print-page` inside the batch print/PDF bodyHtml
@@ -116,6 +179,26 @@ export function renderCertificatePageHtml(config: CertificateTemplateConfig, dat
         return isUrl
           ? `<div style="${posStyle}"><img src="${escapeHtml(value)}" style="width:100%;height:100%;object-fit:cover;" /></div>`
           : `<div style="${posStyle}"></div>`
+      }
+
+      if (field.type === 'table') {
+        const { columns, rows } = resolveTableRows(field, data)
+        const fontSize = field.table?.fontSize ?? 12
+        const headerHtml = field.table?.showHeader
+          ? `<thead><tr>${columns
+              .map(
+                (col) =>
+                  `<th style="border:1px solid #d1d5db;padding:4px 6px;background-color:${field.table?.headerBg || '#f3f4f6'};font-weight:bold;text-align:left;">${escapeHtml(col)}</th>`
+              )
+              .join('')}</tr></thead>`
+          : ''
+        const bodyHtml = `<tbody>${rows
+          .map(
+            (row) =>
+              `<tr>${row.map((cell) => `<td style="border:1px solid #d1d5db;padding:4px 6px;">${escapeHtml(cell)}</td>`).join('')}</tr>`
+          )
+          .join('')}</tbody>`
+        return `<div style="${posStyle}overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-size:${fontSize}px;">${headerHtml}${bodyHtml}</table></div>`
       }
 
       const align = field.style?.align === 'center' ? 'center' : field.style?.align === 'right' ? 'flex-end' : 'flex-start'

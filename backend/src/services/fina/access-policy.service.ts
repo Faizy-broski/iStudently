@@ -194,9 +194,19 @@ export async function sameClassAsAny(caller: CallerContext, targetStudentIds: st
 export async function listComposerAudienceOptions(caller: CallerContext) {
   const isSchoolWide = ['admin', 'media_officer'].includes(caller.role)
 
+  // caller.schoolId is a resolved CAMPUS id for a multi-campus admin (see
+  // fina-caller.ts), but sections/grade_levels rows can have that same id
+  // sitting in either their school_id or their campus_id column depending on
+  // how the row was created — the same split student.service.ts already
+  // works around when resolving grade levels there. A plain .eq('school_id',
+  // ...) here quietly returned zero sections for a campus whose sections
+  // were created with campus_id set instead, which left the grade picker
+  // populated (grade_levels happened to match) but the section picker stuck
+  // empty right after it — the class-goal "New goal" button can never
+  // enable without a section, so it read as simply not clickable.
   let sectionIds: string[] = []
   if (isSchoolWide) {
-    const { data } = await supabase.from('sections').select('id').eq('school_id', caller.schoolId)
+    const { data } = await supabase.from('sections').select('id').or(`school_id.eq.${caller.schoolId},campus_id.eq.${caller.schoolId}`)
     sectionIds = (data || []).map((s) => s.id as string)
   } else if (caller.role === 'teacher') {
     sectionIds = await getTeacherSectionIds(caller.profileId)
@@ -212,7 +222,7 @@ export async function listComposerAudienceOptions(caller: CallerContext) {
   // tell why. A teacher only sees the grades of their own taught sections.
   let gradeLevels: { id: string; name: string }[] = []
   if (isSchoolWide) {
-    const { data } = await supabase.from('grade_levels').select('id, name').eq('school_id', caller.schoolId).order('order_index', { ascending: true })
+    const { data } = await supabase.from('grade_levels').select('id, name').or(`school_id.eq.${caller.schoolId},campus_id.eq.${caller.schoolId}`).order('order_index', { ascending: true })
     gradeLevels = data || []
   } else {
     const gradeLevelIds = [...new Set((sections || []).map((s: any) => s.grade_level_id).filter(Boolean))]

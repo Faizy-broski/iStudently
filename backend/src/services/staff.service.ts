@@ -54,7 +54,7 @@ const determineRoleFromTitle = (title?: string): UserRole => {
 
 export const getAllStaff = async (
     schoolId: string,
-    options?: { page?: number; limit?: number; search?: string; role?: 'staff' | 'librarian' | 'teacher' | 'all' | 'employees' }
+    options?: { page?: number; limit?: number; search?: string; role?: 'staff' | 'librarian' | 'teacher' | 'counselor' | 'media_officer' | 'fina_supervisor' | 'admin' | 'all' | 'employees' }
 ): Promise<ApiResponse<{ data: Staff[], total: number, page: number, totalPages: number }>> => {
     try {
         const page = options?.page || 1

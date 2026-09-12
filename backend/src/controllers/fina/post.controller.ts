@@ -190,7 +190,8 @@ export const moderateComment = async (req: AuthRequest, res: Response) => {
 export const createClassGoal = async (req: AuthRequest, res: Response) => {
   try {
     const data = await classGoals.createClassGoal(await callerFrom(req), {
-      sectionId: req.body?.sectionId,
+      sectionId: req.body?.sectionId || undefined,
+      gradeLevelId: req.body?.gradeLevelId || undefined,
       reactionKind: req.body?.reactionKind,
       targetCount: Number(req.body?.targetCount),
     })

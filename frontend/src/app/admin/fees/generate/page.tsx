@@ -50,6 +50,8 @@ interface Student {
     profile: {
         first_name: string
         last_name: string
+        father_name?: string
+        grandfather_name?: string
     }
 }
 
@@ -263,7 +265,12 @@ export default function GenerateFeesPage() {
         if (!searchResults) return []
         return searchResults.map(student => ({
             value: student.id,
-            label: `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`.trim() || 'Unknown',
+            label: [
+                student.profile?.first_name,
+                student.profile?.father_name,
+                student.profile?.grandfather_name,
+                student.profile?.last_name,
+            ].filter(Boolean).join(' ') || 'Unknown',
             subtitle: `ID: ${student.student_number} • ${student.grade_levels?.name || student.grade_level || 'No Grade'}`
         }))
     }, [searchResults])
@@ -918,7 +925,12 @@ export default function GenerateFeesPage() {
                                     <div className="flex items-center justify-between p-3 border rounded-lg bg-green-50 border-green-200">
                                         <div>
                                             <p className="font-medium">
-                                                {selectedStudent.profile?.first_name} {selectedStudent.profile?.last_name}
+                                                {[
+                                                    selectedStudent.profile?.first_name,
+                                                    selectedStudent.profile?.father_name,
+                                                    selectedStudent.profile?.grandfather_name,
+                                                    selectedStudent.profile?.last_name,
+                                                ].filter(Boolean).join(' ')}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
                                                 {t('istudentlyId')}: {selectedStudent.student_number} • {selectedStudent.grade_levels?.name || selectedStudent.grade_level || t('takeAttendance_none')}

@@ -1,8 +1,8 @@
 import { supabase } from '../config/supabase';
 import { SUBSTITUTION_TOKENS as ID_CARD_SUBSTITUTION_TOKENS } from './id-card-template.service';
 
-// Certificate-only tokens layered on top of the ID card token catalog (student/teacher/staff
-// base fields — name, contact, academic, campus/school info, etc. are all shared).
+// Certificate-only tokens layered on top of the ID card token catalog (name, contact,
+// academic, campus/school info, etc. are all shared across every recipient type below).
 const CERTIFICATE_EXTRA_TOKENS: Record<string, string> = {
   '{{achievement_title}}': 'Achievement Title',
   '{{award_title}}': 'Award Title',
@@ -13,18 +13,31 @@ const CERTIFICATE_EXTRA_TOKENS: Record<string, string> = {
   '{{signature_2_title}}': 'Signature 2 Title',
 };
 
+// Every recipient type the certificate builder supports. Sourced from the same profile/staff
+// field catalog as ID cards (ID_CARD_SUBSTITUTION_TOKENS), layered with certificate-only extras.
+// Note: 'super_admin', 'inspector' and 'financial_admin' are deliberately excluded — none of
+// them has a per-campus roster to pick recipients from (super_admin/inspector span multiple
+// schools, and financial_admin is a Vault permission tier, not a real account type).
 export const CERTIFICATE_SUBSTITUTION_TOKENS = {
   student: { ...ID_CARD_SUBSTITUTION_TOKENS.student, ...CERTIFICATE_EXTRA_TOKENS },
   teacher: { ...ID_CARD_SUBSTITUTION_TOKENS.teacher, ...CERTIFICATE_EXTRA_TOKENS },
   staff: { ...ID_CARD_SUBSTITUTION_TOKENS.staff, ...CERTIFICATE_EXTRA_TOKENS },
+  librarian: { ...ID_CARD_SUBSTITUTION_TOKENS.librarian, ...CERTIFICATE_EXTRA_TOKENS },
+  counselor: { ...ID_CARD_SUBSTITUTION_TOKENS.counselor, ...CERTIFICATE_EXTRA_TOKENS },
+  media_officer: { ...ID_CARD_SUBSTITUTION_TOKENS.media_officer, ...CERTIFICATE_EXTRA_TOKENS },
+  fina_supervisor: { ...ID_CARD_SUBSTITUTION_TOKENS.fina_supervisor, ...CERTIFICATE_EXTRA_TOKENS },
+  admin: { ...ID_CARD_SUBSTITUTION_TOKENS.admin, ...CERTIFICATE_EXTRA_TOKENS },
+  parent: { ...ID_CARD_SUBSTITUTION_TOKENS.parent, ...CERTIFICATE_EXTRA_TOKENS },
 };
+
+export const CERTIFICATE_RECIPIENT_TYPES = Object.keys(CERTIFICATE_SUBSTITUTION_TOKENS);
 
 interface TemplateConfig {
   fields: Array<{
     id: string;
     label: string;
     token: string;
-    type: 'text' | 'image';
+    type: 'text' | 'image' | 'table';
     position: { x: number; y: number };
     size: { width: number; height: number };
     style?: {
@@ -33,6 +46,14 @@ interface TemplateConfig {
       fontFamily?: string;
       color?: string;
       align?: string;
+    };
+    table?: {
+      columns: Array<{ id: string; label: string }>;
+      rows: string[][];
+      showHeader: boolean;
+      dataSource: 'manual' | 'student_grades';
+      headerBg?: string;
+      fontSize?: number;
     };
   }>;
   layout: {
@@ -191,10 +212,21 @@ export class CertificateTemplateService {
     );
 
     for (const field of config.fields || []) {
-      const tokens = field.token.match(/\{\{[^}]+\}\}/g) || [];
-      for (const token of tokens) {
-        if (!allowedTokens.includes(token)) {
-          throw new Error(`Invalid token "${token}" for recipient type "${recipientType}"`);
+      // Table fields keep cell/column text in field.table instead of field.token — validate
+      // tokens used there too so a table can't sneak past the same integrity check.
+      const cellStrings = field.type === 'table'
+        ? [
+            ...(field.table?.columns || []).map((c) => c.label),
+            ...(field.table?.rows || []).flat(),
+          ]
+        : [field.token];
+
+      for (const str of cellStrings) {
+        const tokens = (str || '').match(/\{\{[^}]+\}\}/g) || [];
+        for (const token of tokens) {
+          if (!allowedTokens.includes(token)) {
+            throw new Error(`Invalid token "${token}" for recipient type "${recipientType}"`);
+          }
         }
       }
     }

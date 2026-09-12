@@ -71,6 +71,8 @@ import {
   MessageSquareWarning,
   Palette,
   Video,
+  ScanLine,
+  Smartphone,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -594,6 +596,20 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "attendance", href: "/admin/hifzi/attendance", icon: CalendarCheck },
       { title: "reports", href: "/admin/hifzi/reports", icon: BarChart3 },
       { title: "settings", href: "/admin/hifzi/settings", icon: Settings },
+    ],
+  },
+  {
+    title: "miqat",
+    href: "/admin/miqat/dashboard",
+    icon: ScanLine,
+    pluginRequired: "miqat",
+    subItems: [
+      { title: "dashboard", href: "/admin/miqat/dashboard", icon: LayoutDashboard },
+      { title: "devices", href: "/admin/miqat/devices", icon: Smartphone },
+      { title: "cards", href: "/admin/miqat/cards", icon: CreditCard },
+      { title: "permissions", href: "/admin/miqat/permissions", icon: ClipboardCheck },
+      { title: "reports", href: "/admin/miqat/reports", icon: BarChart3 },
+      { title: "settings", href: "/admin/miqat/settings", icon: Settings },
     ],
   },
   {
@@ -1211,6 +1227,12 @@ const parentMenuItems: SidebarMenuItem[] = [
       { title: "recitation", href: "/parent/hifzi", icon: Mic },
       { title: "quran", href: "/parent/hifzi/quran", icon: BookOpen },
     ],
+  },
+  {
+    title: "miqat",
+    href: "/parent/miqat",
+    icon: ScanLine,
+    pluginRequired: "miqat",
   },
   {
     title: "grievances",

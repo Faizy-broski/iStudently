@@ -8,9 +8,13 @@
 import cron from 'node-cron';
 import { supabase } from '../config/supabase';
 import { miqatService, MIQAT_PHOTOS_BUCKET } from '../services/miqat/miqat.service';
-import { classifyArrival, LatenessPolicy } from '../services/miqat/attendance-engine';
+import { classifyArrival, checkEscalationTriggers, DEFAULT_ESCALATION_CONFIG, LatenessPolicy } from '../services/miqat/attendance-engine';
 import { MIQAT_FLAG } from '../services/miqat/verification-flags';
 import { onMiqatMarkedAbsent } from '../listeners/fina-miqat-absence.listener';
+import { onMiqatEscalationTriggered } from '../listeners/fina-miqat-escalation.listener';
+import { onAttendanceStreakAchieved } from '../listeners/mizan-miqat-streak.listener';
+import { mizanService } from '../services/mizan/mizan.service';
+import { detectSameWeekdayAbsences, detectGatePresentButPeriodAbsent, detectChronicEarlyCheckout, detectTeacherNotScanning } from '../services/miqat/pattern-detection';
 
 const DEFAULT_TIMEZONE = 'Asia/Karachi'; // matches cron.service.ts's existing TODO: no per-school timezone column exists yet
 
@@ -89,6 +93,117 @@ async function recomputeDayForSchool(schoolId: string, date: string): Promise<vo
     if (status === 'absent') {
       await onMiqatMarkedAbsent(schoolId, personId, date);
     }
+
+    await checkAndNotifyEscalation(schoolId, personId, date, config.policy_json);
+    await checkAndFlagPatterns(schoolId, personId, date);
+
+    if (config.policy_json?.mizan_rewards_enabled) {
+      await checkAndCreditPunctualityStreak(schoolId, personId, date);
+    }
+  }
+}
+
+// School days off (weekends/holidays) never get a miqat_days row at all, so
+// "exactly 7 rows" would almost never be true — this codebase's
+// attendance_calendar integration isn't wired into Miqat, so there's no
+// authoritative school-day count to check against. MIN_SCHOOL_DAYS is a
+// documented heuristic (a typical school week), not an exact calendar match.
+const MIN_SCHOOL_DAYS_FOR_STREAK = 5;
+
+const STREAK_REASON = 'miqat_zero_lateness_week';
+
+/**
+ * Spec §14: a full week with zero lateness/absence credits Nuqra. Disabled
+ * by default per school. This job runs nightly against a rolling 7-day
+ * window, so without a guard it would re-credit the same ongoing streak
+ * every single night — hasRecentCredit() enforces "at most once per
+ * 7-day period" instead.
+ */
+async function checkAndCreditPunctualityStreak(schoolId: string, personId: string, date: string): Promise<void> {
+  const weekStart = daysBefore(date, 6);
+  const days = await miqatService.getDaysForPerson(personId, weekStart, date);
+  const allPresent = days.length >= MIN_SCHOOL_DAYS_FOR_STREAK && days.every((d: any) => d.status === 'present');
+  if (!allPresent) return;
+
+  const alreadyCredited = await mizanService.hasRecentCredit(personId, STREAK_REASON, `${weekStart}T00:00:00Z`);
+  if (alreadyCredited) return;
+
+  await onAttendanceStreakAchieved(schoolId, personId, 'zero_lateness_week');
+}
+
+function daysBefore(date: string, n: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Escalation figures, spec §8.1: consecutive late days, late events in a
+ * rolling 7-day window, and accumulated lateness. "Accumulated" has no
+ * defined window in the spec (it implies a running per-term/year total, and
+ * this codebase has no term-boundary integration for Miqat yet) — approximated
+ * here as a rolling 90-day sum, a documented simplification, not a claim of
+ * exact per-term accounting.
+ */
+async function checkAndNotifyEscalation(schoolId: string, personId: string, date: string, policyJson: Record<string, any>): Promise<void> {
+  const history = await miqatService.getDaysForPerson(personId, daysBefore(date, 90), date);
+  const sorted = [...history].sort((a: any, b: any) => b.date.localeCompare(a.date)); // newest first
+
+  let consecutiveLateDays = 0;
+  for (const day of sorted) {
+    if (day.status === 'late') consecutiveLateDays++;
+    else break;
+  }
+
+  const rollingWeekStart = daysBefore(date, 6);
+  const lateEventsInRollingWeek = sorted.filter((d: any) => d.date >= rollingWeekStart && d.status === 'late').length;
+  const accumulatedLatenessMinutes = sorted.reduce((sum: number, d: any) => sum + (d.lateness_minutes || 0), 0);
+
+  const triggers = checkEscalationTriggers(
+    { consecutiveLateDays, lateEventsInRollingWeek, accumulatedLatenessMinutes },
+    {
+      ...DEFAULT_ESCALATION_CONFIG,
+      accumulatedLatenessThresholdMinutes: policyJson?.accumulated_lateness_threshold_minutes ?? 300,
+    }
+  );
+
+  if (triggers.length > 0) {
+    await onMiqatEscalationTriggered(schoolId, personId, triggers);
+  }
+}
+
+const PATTERN_FLAG_COOLDOWN_DAYS = 14; // re-raising the same flag every single night once true would just be noise
+
+/**
+ * Spec §8.3 pattern detection, run nightly over a rolling ~6-week window
+ * (long enough for same-weekday and chronic patterns to surface, short
+ * enough to stay a cheap per-person query). teacher_not_scanning is NOT
+ * implemented here — it needs a join against timetable/attendance_records
+ * that Miqat's own tables don't carry, and is left as documented follow-up
+ * rather than faked.
+ */
+async function checkAndFlagPatterns(schoolId: string, personId: string, date: string): Promise<void> {
+  const windowStart = daysBefore(date, 42);
+  const history = await miqatService.getDaysForPerson(personId, windowStart, date);
+
+  const weekdayFlags = detectSameWeekdayAbsences(history.map((d: any) => ({ date: d.date, status: d.status })));
+  if (weekdayFlags.length > 0 && !(await miqatService.hasRecentPatternFlag(personId, 'same_weekday_absences', daysBefore(date, PATTERN_FLAG_COOLDOWN_DAYS)))) {
+    await miqatService.insertPatternFlag(schoolId, personId, 'same_weekday_absences', { flags: weekdayFlags });
+  }
+
+  const periodAbsentDays = detectGatePresentButPeriodAbsent(
+    history.map((d: any) => ({ date: d.date, gatePresent: !!d.first_check_in, periodsAbsent: d.periods_absent }))
+  );
+  if (periodAbsentDays.length > 0 && !(await miqatService.hasRecentPatternFlag(personId, 'gate_present_period_absent', daysBefore(date, PATTERN_FLAG_COOLDOWN_DAYS)))) {
+    await miqatService.insertPatternFlag(schoolId, personId, 'gate_present_period_absent', { dates: periodAbsentDays });
+  }
+
+  const checkoutPairs = history
+    .filter((d: any) => d.first_check_in && d.last_check_out)
+    .map((d: any) => ({ date: d.date, checkInMinutes: minutesSinceMidnightUTC(d.first_check_in), checkOutMinutes: minutesSinceMidnightUTC(d.last_check_out) }));
+  const earlyCheckoutDays = detectChronicEarlyCheckout(checkoutPairs);
+  if (earlyCheckoutDays.length > 0 && !(await miqatService.hasRecentPatternFlag(personId, 'chronic_early_checkout', daysBefore(date, PATTERN_FLAG_COOLDOWN_DAYS)))) {
+    await miqatService.insertPatternFlag(schoolId, personId, 'chronic_early_checkout', { dates: earlyCheckoutDays });
   }
 }
 
@@ -111,9 +226,48 @@ async function runNightlyRecompute(): Promise<void> {
   for (const schoolId of schoolIds) {
     try {
       await recomputeDayForSchool(schoolId, date);
+      await checkTeacherScanningForSchool(schoolId, date);
     } catch (err) {
       console.error(`Miqat nightly recompute failed for school ${schoolId}:`, err);
     }
+  }
+}
+
+/**
+ * Spec §8.3 — "a teacher repeatedly not scanning class attendance." Checked
+ * against the last 4 occurrences of `date`'s weekday within a 28-day
+ * lookback (a period on the same weekday recurs weekly, so this
+ * approximates "the last 4 times this class was timetabled"). Requires
+ * class-period scanning to actually be in use — before that ships, every
+ * timetabled period simply has zero scans and nothing here should be
+ * mistaken for teacher-specific data until it is.
+ */
+async function checkTeacherScanningForSchool(schoolId: string, date: string): Promise<void> {
+  const dayOfWeek = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday=0..Sunday=6, matching timetable.service.ts's existing convention
+  const expected = await miqatService.getExpectedPeriodScans(schoolId, dayOfWeek);
+  if (expected.length === 0) return;
+
+  const lookbackStart = daysBefore(date, 28);
+  const scannedKeys = await miqatService.listScannedPeriodDateKeys(schoolId, lookbackStart, date);
+
+  const candidateDates: string[] = [];
+  for (let i = 0; i < 28; i++) {
+    const d = daysBefore(date, i);
+    if ((new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7 === dayOfWeek) candidateDates.push(d);
+  }
+  const recentFour = candidateDates.slice(0, 4);
+
+  const byTeacher = new Map<string, { date: string; periodId: string; scanned: boolean }[]>();
+  for (const { teacherProfileId, periodId } of expected) {
+    const records = recentFour.map((d) => ({ date: d, periodId, scanned: scannedKeys.has(`${periodId}:${d}`) }));
+    byTeacher.set(teacherProfileId, [...(byTeacher.get(teacherProfileId) ?? []), ...records]);
+  }
+
+  for (const [teacherProfileId, records] of byTeacher) {
+    const flags = detectTeacherNotScanning(records);
+    if (flags.length === 0) continue;
+    if (await miqatService.hasRecentPatternFlag(teacherProfileId, 'teacher_not_scanning', daysBefore(date, PATTERN_FLAG_COOLDOWN_DAYS))) continue;
+    await miqatService.insertPatternFlag(schoolId, teacherProfileId, 'teacher_not_scanning', { flags });
   }
 }
 

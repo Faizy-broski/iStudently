@@ -208,6 +208,33 @@ class MiqatAttendanceController {
     }
   }
 
+  async myChildren(req: AuthRequest, res: Response) {
+    try {
+      const children = await miqatService.getChildrenForGuardian(req.profile.id);
+      res.json({ success: true, data: children });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /** Guardian's own child's day history — verified they're actually linked before returning anything (not just relying on the route's role gate). */
+  async childDays(req: AuthRequest, res: Response) {
+    try {
+      const { person_id, date_from, date_to } = req.query as { person_id?: string; date_from?: string; date_to?: string };
+      if (!person_id || !date_from || !date_to) {
+        return res.status(400).json({ success: false, error: 'person_id, date_from and date_to are required' });
+      }
+      const children = await miqatService.getChildrenForGuardian(req.profile.id);
+      if (!children.some((c) => c.profileId === person_id)) {
+        return res.status(403).json({ success: false, error: 'Not a guardian of this student' });
+      }
+      const days = await miqatService.getDaysForPerson(person_id, date_from, date_to);
+      res.json({ success: true, data: days });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
   async day(req: AuthRequest, res: Response) {
     try {
       const date = req.params.date;

@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Save,
   Eye,
@@ -39,6 +40,7 @@ import {
   Search,
   UserSquare2,
   Building2,
+  Table2,
 } from 'lucide-react';
 import {
   createTemplate,
@@ -48,12 +50,15 @@ import {
   getAvailableTokens,
   CertificateTemplateConfig,
   CertificateTemplateField,
+  CertificateTemplateTableConfig,
   CertificateRecipientType,
 } from '@/lib/api/certificate-template';
 import { CertificateCanvasRenderer } from '@/components/shared/CertificateCanvasRenderer';
 import { ImageDropzone } from '@/components/shared/ImageDropzone';
 import { FontFamilySelect } from '@/components/shared/FontFamilySelect';
 import { useLoadDesignFonts } from '@/config/design-fonts';
+import { CERTIFICATE_RECIPIENT_TYPES } from '@/config/certificateRecipientTypes';
+import { useCampus } from '@/context/CampusContext';
 import { toast } from 'sonner';
 
 interface AvailableToken {
@@ -82,6 +87,11 @@ export default function CertificateTemplateBuilderPage() {
   const recipientType = (searchParams?.get('type') || 'student') as CertificateRecipientType;
   const editId = searchParams?.get('edit');
 
+  // Read the real school logo from the campus context (same source as the sidebar logo)
+  const campusCtx = useCampus();
+  const schoolLogo = campusCtx?.selectedCampus?.logo_url ?? '';
+  const schoolName = campusCtx?.selectedCampus?.name ?? '';
+
   // Template metadata
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
@@ -109,6 +119,18 @@ export default function CertificateTemplateBuilderPage() {
   const [fieldSearchQuery, setFieldSearchQuery] = useState('');
 
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Keep the live preview canvas showing the real school logo (same as sidebar) at all times.
+  // This runs on mount and whenever the campus logo changes, merging the school_logo into
+  // whatever previewData is already set (e.g. after a backend Preview fetch).
+  useEffect(() => {
+    setPreviewData((prev) => ({
+      ...(prev || {}),
+      school_logo: schoolLogo,
+      school_name: schoolName,
+      campus_name: schoolName,
+    }));
+  }, [schoolLogo, schoolName]);
 
   useEffect(() => {
     loadTokens();
@@ -212,6 +234,86 @@ export default function CertificateTemplateBuilderPage() {
     setSelectedField(newField.id);
   };
 
+  // Free text box — the "Text/Token(s)" field already accepts plain typed text with no
+  // tokens at all, but there was no one-click way to drop a blank one onto the canvas the
+  // way there is for Logo/Photo.
+  const addTextField = () => {
+    const newField: CertificateTemplateField = {
+      id: `field_${Date.now()}`,
+      label: 'Text',
+      token: 'Double-click to edit this text',
+      type: 'text',
+      position: { x: 40, y: 100 + fields.length * 10 },
+      size: { width: 300, height: 30 },
+      style: { fontSize: 16, fontWeight: 'normal', color: '#374151', align: 'left' },
+    };
+    setFields([...fields, newField]);
+    setSelectedField(newField.id);
+  };
+
+  const addTableField = () => {
+    const newField: CertificateTemplateField = {
+      id: `field_${Date.now()}`,
+      label: 'Table',
+      token: '',
+      type: 'table',
+      position: { x: 40, y: 100 + fields.length * 10 },
+      size: { width: 400, height: 120 },
+      table: {
+        columns: [{ id: 'col_1', label: 'Column 1' }, { id: 'col_2', label: 'Column 2' }],
+        rows: [
+          ['', ''],
+          ['', ''],
+        ],
+        showHeader: true,
+        dataSource: 'manual',
+        headerBg: '#f3f4f6',
+        fontSize: 12,
+      },
+    };
+    setFields([...fields, newField]);
+    setSelectedField(newField.id);
+  };
+
+  // ── Table field editing helpers ─────────────────────────────────────────
+  const updateTable = (updates: Partial<CertificateTemplateTableConfig>) => {
+    if (!selectedField) return;
+    const current = fields.find((f) => f.id === selectedField)?.table;
+    if (!current) return;
+    updateField(selectedField, { table: { ...current, ...updates } });
+  };
+
+  const addTableColumn = () => {
+    const table = fields.find((f) => f.id === selectedField)?.table;
+    if (!table) return;
+    const nextIndex = table.columns.length + 1;
+    updateTable({
+      columns: [...table.columns, { id: `col_${Date.now()}`, label: `Column ${nextIndex}` }],
+      rows: table.rows.map((row) => [...row, '']),
+    });
+  };
+
+  const removeTableColumn = (colIndex: number) => {
+    const table = fields.find((f) => f.id === selectedField)?.table;
+    if (!table || table.columns.length <= 1) return;
+    updateTable({
+      columns: table.columns.filter((_, i) => i !== colIndex),
+      rows: table.rows.map((row) => row.filter((_, i) => i !== colIndex)),
+    });
+  };
+
+  const addTableRow = () => {
+    const table = fields.find((f) => f.id === selectedField)?.table;
+    if (!table) return;
+    updateTable({ rows: [...table.rows, table.columns.map(() => '')] });
+  };
+
+  const removeTableRow = (rowIndex: number) => {
+    const table = fields.find((f) => f.id === selectedField)?.table;
+    if (!table || table.rows.length <= 1) return;
+    updateTable({ rows: table.rows.filter((_, i) => i !== rowIndex) });
+  };
+
   const filteredTokens = availableTokens.filter(
     (token) =>
       token.label.toLowerCase().includes(fieldSearchQuery.toLowerCase()) ||
@@ -282,7 +384,13 @@ export default function CertificateTemplateBuilderPage() {
     try {
       const config: CertificateTemplateConfig = { fields, layout, design };
       const response = await previewTemplate({ template_config: config, recipient_type: recipientType });
-      setPreviewData(response.sample_data);
+      // Always prefer the sidebar's real campus logo over whatever the backend sample sends,
+      // so the preview matches what will actually appear on the printed certificate.
+      setPreviewData({
+        ...response.sample_data,
+        ...(schoolLogo ? { school_logo: schoolLogo } : {}),
+        ...(schoolName ? { school_name: schoolName, campus_name: schoolName } : {}),
+      });
       toast.success('Preview updated with sample data');
     } catch (error: any) {
       toast.error('Preview failed: ' + error.message);
@@ -389,7 +497,28 @@ export default function CertificateTemplateBuilderPage() {
               </div>
               <div>
                 <Label>Recipient Type</Label>
-                <Input value={recipientType} disabled className="capitalize" />
+                {editId ? (
+                  // Immutable once a template exists — updateTemplate never accepts a
+                  // recipient_type change (the tokens already chosen would stop matching).
+                  <Input
+                    value={CERTIFICATE_RECIPIENT_TYPES.find((t) => t.value === recipientType)?.label || recipientType}
+                    disabled
+                  />
+                ) : (
+                  <Select
+                    value={recipientType}
+                    onValueChange={(v) => router.replace(`/admin/certificate-templates/builder?type=${v}`)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CERTIFICATE_RECIPIENT_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -411,7 +540,7 @@ export default function CertificateTemplateBuilderPage() {
                       Add Field
                     </Button>
                   </div>
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex gap-2 pt-2 flex-wrap">
                     <Button size="sm" variant="outline" className="gap-1.5 flex-1" onClick={() => addQuickField('logo')}>
                       <Building2 className="h-3.5 w-3.5" />
                       Add Logo
@@ -419,6 +548,14 @@ export default function CertificateTemplateBuilderPage() {
                     <Button size="sm" variant="outline" className="gap-1.5 flex-1" onClick={() => addQuickField('photo')}>
                       <UserSquare2 className="h-3.5 w-3.5" />
                       Add Photo
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 flex-1" onClick={addTextField}>
+                      <Type className="h-3.5 w-3.5" />
+                      Add Text
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 flex-1" onClick={addTableField}>
+                      <Table2 className="h-3.5 w-3.5" />
+                      Add Table
                     </Button>
                   </div>
                 </CardHeader>
@@ -433,7 +570,13 @@ export default function CertificateTemplateBuilderPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 min-w-0">
-                          {field.type === 'image' ? <ImageIcon className="h-4 w-4 shrink-0" /> : <Type className="h-4 w-4 shrink-0" />}
+                          {field.type === 'image' ? (
+                            <ImageIcon className="h-4 w-4 shrink-0" />
+                          ) : field.type === 'table' ? (
+                            <Table2 className="h-4 w-4 shrink-0" />
+                          ) : (
+                            <Type className="h-4 w-4 shrink-0" />
+                          )}
                           <span className="text-sm font-medium truncate">{field.label}</span>
                         </div>
                         <Button
@@ -466,21 +609,148 @@ export default function CertificateTemplateBuilderPage() {
 
                         <div>
                           <Label>Type</Label>
-                          <Select
-                            value={selectedFieldData.type}
-                            onValueChange={(v: 'text' | 'image') => updateField(selectedField!, { type: v })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="text">Text</SelectItem>
-                              <SelectItem value="image">Image</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {selectedFieldData.type === 'table' ? (
+                            // Tables are a distinct shape (columns/rows, not a token) — created
+                            // via the "Add Table" quick action rather than switched into here.
+                            <Input value="Table" disabled />
+                          ) : (
+                            <Select
+                              value={selectedFieldData.type}
+                              onValueChange={(v: 'text' | 'image') => updateField(selectedField!, { type: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="text">Text</SelectItem>
+                                <SelectItem value="image">Image</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
 
-                        {selectedFieldData.type === 'text' ? (
+                        {selectedFieldData.type === 'table' ? (
+                          <div className="space-y-3">
+                            <div>
+                              <Label>Data Source</Label>
+                              <Select
+                                value={selectedFieldData.table?.dataSource || 'manual'}
+                                onValueChange={(v: 'manual' | 'student_grades') => updateTable({ dataSource: v })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="manual">Manual (type it yourself)</SelectItem>
+                                  <SelectItem value="student_grades" disabled={recipientType !== 'student'}>
+                                    Auto: Subjects &amp; Grades{recipientType !== 'student' ? ' (students only)' : ''}
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={selectedFieldData.table?.showHeader ?? true}
+                                onCheckedChange={(v) => updateTable({ showHeader: !!v })}
+                              />
+                              <Label className="!mt-0">Show header row</Label>
+                            </div>
+
+                            {selectedFieldData.table?.dataSource === 'student_grades' ? (
+                              <p className="text-xs text-muted-foreground">
+                                This table fills in automatically with each student&apos;s subjects and grades for
+                                the current term when certificates are generated — nothing to type here.
+                              </p>
+                            ) : (
+                              <>
+                                <div className="space-y-1.5">
+                                  <Label>Columns</Label>
+                                  {selectedFieldData.table?.columns.map((col, ci) => (
+                                    <div key={col.id} className="flex gap-2">
+                                      <Input
+                                        value={col.label}
+                                        onChange={(e) => {
+                                          const columns = selectedFieldData.table!.columns.map((c, i) =>
+                                            i === ci ? { ...c, label: e.target.value } : c
+                                          );
+                                          updateTable({ columns });
+                                        }}
+                                      />
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        disabled={selectedFieldData.table!.columns.length <= 1}
+                                        onClick={() => removeTableColumn(ci)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                  <Button size="sm" variant="outline" className="gap-1.5" onClick={addTableColumn}>
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add Column
+                                  </Button>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <Label>Rows</Label>
+                                  {selectedFieldData.table?.rows.map((row, ri) => (
+                                    <div key={ri} className="flex gap-2">
+                                      {row.map((cell, ci) => (
+                                        <Input
+                                          key={ci}
+                                          value={cell}
+                                          placeholder={selectedFieldData.table!.columns[ci]?.label}
+                                          onChange={(e) => {
+                                            const rows = selectedFieldData.table!.rows.map((r, i) =>
+                                              i === ri ? r.map((c, j) => (j === ci ? e.target.value : c)) : r
+                                            );
+                                            updateTable({ rows });
+                                          }}
+                                        />
+                                      ))}
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        disabled={selectedFieldData.table!.rows.length <= 1}
+                                        onClick={() => removeTableRow(ri)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                  <Button size="sm" variant="outline" className="gap-1.5" onClick={addTableRow}>
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add Row
+                                  </Button>
+                                  <p className="text-xs text-muted-foreground">
+                                    Cells can include tokens too, e.g. {'{{first_name}}'}
+                                  </p>
+                                </div>
+                              </>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label>Font Size</Label>
+                                <Input
+                                  type="number"
+                                  value={selectedFieldData.table?.fontSize ?? 12}
+                                  onChange={(e) => updateTable({ fontSize: +e.target.value })}
+                                />
+                              </div>
+                              <div>
+                                <Label>Header Color</Label>
+                                <Input
+                                  type="color"
+                                  value={selectedFieldData.table?.headerBg || '#f3f4f6'}
+                                  onChange={(e) => updateTable({ headerBg: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedFieldData.type === 'text' ? (
                           <div>
                             <Label>Text / Token(s)</Label>
                             <Textarea

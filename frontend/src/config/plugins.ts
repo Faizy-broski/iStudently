@@ -46,13 +46,14 @@ import {
   Video,
   Languages,
   FileStack,
-  Dna,
   Lock,
+  ScanLine,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
 import type { UserRole } from '@/types'
 import { SchoolKhalwaIcon } from '@/components/icons/SchoolKhalwaIcon'
+import { HumanAtlasIcon } from '@/components/icons/HumanAtlasIcon'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -117,6 +118,26 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: SchoolKhalwaIcon,
     category: 'Academics',
     settingsHref: '/admin/hifzi/settings',
+    sidebarInjections: [],
+  },
+
+  // ── Miqat مِیقات (Cryptographic QR Attendance) ───────────────────────────
+  // Standalone module with its own top-level sidebar entry per role (added
+  // directly in sidebar.ts, gated by pluginRequired: 'miqat'), mirroring
+  // hifzi/qirtasi's pattern — no sidebarInjections needed here. `id` stays
+  // 'miqat' to match active_plugins.miqat in school_settings (checked by
+  // backend/src/middlewares/miqat-enabled.middleware.ts) and every miqat_*
+  // DB table/route. Configuring geofence + policy at
+  // /admin/miqat/settings is a prerequisite before scanning actually works —
+  // linked here so activating the plugin takes the admin straight there.
+  {
+    id: 'miqat',
+    name: 'Miqat — Cryptographic Attendance',
+    description:
+      'QR-card gate attendance with cryptographic card signing, geofencing, offline-first scanning, and automatic guardian notifications. Requires a scanner device (tablet/phone) at each gate.',
+    icon: ScanLine,
+    category: 'Attendance',
+    settingsHref: '/admin/miqat/settings',
     sidebarInjections: [],
   },
 
@@ -817,14 +838,14 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     name: 'Human Atlas',
     description:
       'Interactive 3D whole-body anatomy explorer — 2,234 selectable structures across 15 systems from the BodyParts3D dataset, full-text search, an exploded-view slider, and short educational descriptions per structure. Self-contained, no login required.',
-    icon: Dna,
+    icon: HumanAtlasIcon,
     category: 'Resources',
     settingsHref: '/admin/resources/human-atlas',
     sidebarInjections: [
-      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/admin/resources/human-atlas', icon: Dna }], roles: ['admin'] },
-      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/teacher/resources/human-atlas', icon: Dna }], roles: ['teacher'] },
-      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/student/resources/human-atlas', icon: Dna }], roles: ['student'] },
-      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/parent/resources/human-atlas', icon: Dna }], roles: ['parent'] },
+      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/admin/resources/human-atlas', icon: HumanAtlasIcon }], roles: ['admin'] },
+      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/teacher/resources/human-atlas', icon: HumanAtlasIcon }], roles: ['teacher'] },
+      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/student/resources/human-atlas', icon: HumanAtlasIcon }], roles: ['student'] },
+      { parentTitle: 'resources', items: [{ title: 'human_atlas', href: '/parent/resources/human-atlas', icon: HumanAtlasIcon }], roles: ['parent'] },
     ],
   },
 

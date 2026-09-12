@@ -120,7 +120,13 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 // STAFF MANAGEMENT (Use for Staff AND Librarians)
 // ============================================================================
 
-export async function getAllStaff(page = 1, limit = 10, search?: string, role: 'staff' | 'librarian' | 'teacher' | 'all' | 'employees' = 'all', campusId?: string) {
+export async function getAllStaff(
+    page = 1,
+    limit = 10,
+    search?: string,
+    role: 'staff' | 'librarian' | 'teacher' | 'counselor' | 'media_officer' | 'fina_supervisor' | 'admin' | 'all' | 'employees' = 'all',
+    campusId?: string
+) {
     const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),

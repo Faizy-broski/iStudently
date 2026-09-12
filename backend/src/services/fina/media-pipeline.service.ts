@@ -336,3 +336,41 @@ export async function listMyReadyMedia(caller: CallerContext) {
   if (error) throw new Error(`Failed to load your media: ${error.message}`)
   return (data || []).map(toPublicMedia)
 }
+
+/**
+ * Deletes an unused media asset the caller uploaded (or, for an admin, any
+ * asset at their school). "Unused" is enforced explicitly, not left to the
+ * DB's ON DELETE CASCADE on fina_post_media/fina_stories — cascading would
+ * silently rip an image out of an already-published post or a live story,
+ * which must never happen. If either reference exists, this refuses.
+ */
+export async function deleteMedia(caller: CallerContext, mediaId: string): Promise<void> {
+  const { data: media, error } = await supabase.from('fina_media').select('*').eq('id', mediaId).maybeSingle()
+  if (error) throw new Error(`Failed to load media: ${error.message}`)
+  if (!media) throw new Error('Media not found')
+  if (media.school_id !== caller.schoolId) throw new Error('Access denied: media belongs to a different school')
+  if (media.uploader_id !== caller.profileId && caller.role !== 'admin') {
+    throw new Error('Access denied: you can only delete your own uploads')
+  }
+
+  const [{ count: postUseCount }, { count: storyUseCount }] = await Promise.all([
+    supabase.from('fina_post_media').select('*', { count: 'exact', head: true }).eq('media_id', mediaId),
+    supabase.from('fina_stories').select('*', { count: 'exact', head: true }).eq('media_id', mediaId),
+  ])
+  if ((postUseCount ?? 0) > 0) throw new Error('Cannot delete: this media is already attached to a post')
+  if ((storyUseCount ?? 0) > 0) throw new Error('Cannot delete: this media was used in a story')
+
+  const storageKeys = [media.storage_key, ...Object.values(media.variants || {})].filter(Boolean) as string[]
+  if (storageKeys.length > 0) {
+    const { error: storageError } = await supabase.storage.from(FINA_MEDIA_BUCKET).remove(storageKeys)
+    // Non-fatal: an orphaned storage object is a cheap, findable cleanup
+    // task; leaving the DB row behind because storage cleanup hiccuped
+    // would be worse (a permanently undeletable, permanently-erroring item).
+    if (storageError) console.error(`Failed to remove storage objects for media ${mediaId}:`, storageError.message)
+  }
+
+  const { error: deleteError } = await supabase.from('fina_media').delete().eq('id', mediaId)
+  if (deleteError) throw new Error(`Failed to delete media: ${deleteError.message}`)
+
+  await logAuditFromCaller(caller, 'media.deleted', { subjectType: 'media', subjectId: mediaId, meta: { kind: media.kind } })
+}

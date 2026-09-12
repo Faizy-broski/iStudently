@@ -180,7 +180,10 @@ export const moderateComment = (commentId: string, decision: 'approve' | 'reject
 export interface FinaClassGoal {
   id: string
   school_id: string
-  section_id: string
+  // Exactly one of these is set — a goal targets either a single section or
+  // a whole grade level (every section under it). See migration 303.
+  section_id: string | null
+  grade_level_id: string | null
   reaction_kind: ReactionKind
   target_count: number
   week_start: string
@@ -193,7 +196,8 @@ export const listClassGoals = (sectionId?: string) => {
   return apiFetch<FinaClassGoal[]>(`/fina/posts/class-goals${qs}`)
 }
 
-export const createClassGoal = (input: { sectionId: string; reactionKind: ReactionKind; targetCount: number }) =>
+// Exactly one of sectionId/gradeLevelId — see FinaClassGoal above.
+export const createClassGoal = (input: { sectionId?: string; gradeLevelId?: string; reactionKind: ReactionKind; targetCount: number }) =>
   apiFetch<FinaClassGoal>('/fina/posts/class-goals', { method: 'POST', body: JSON.stringify(input) })
 
 // ── Albums ───────────────────────────────────────────────────────────────

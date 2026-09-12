@@ -37,7 +37,13 @@ function toDateStr(d: Date): string {
 }
 
 export interface CreateClassGoalInput {
-  sectionId: string
+  /** Exactly one of sectionId/gradeLevelId must be set — see migration 303's
+   * header. gradeLevelId exists because the composer's section picker can
+   * legitimately be empty for a grade (no sections created yet, or none
+   * visible in the caller's resolved scope), which otherwise makes "New
+   * goal" permanently unusable for that grade with no way to tell why. */
+  sectionId?: string
+  gradeLevelId?: string
   reactionKind: string
   targetCount: number
 }
@@ -45,33 +51,69 @@ export interface CreateClassGoalInput {
 export async function createClassGoal(caller: CallerContext, input: CreateClassGoalInput) {
   if (!isValidReactionKind(input.reactionKind)) throw new Error(`Invalid reaction kind: ${input.reactionKind}`)
   if (!Number.isFinite(input.targetCount) || input.targetCount <= 0) throw new Error('targetCount must be a positive number')
-
-  const { data: section, error: sectionError } = await supabase
-    .from('sections')
-    .select('id, school_id')
-    .eq('id', input.sectionId)
-    .maybeSingle()
-  if (sectionError || !section) throw new Error('Section not found')
-  if (section.school_id !== caller.schoolId) throw new Error('Access denied')
+  if (!input.sectionId && !input.gradeLevelId) throw new Error('Either a section or a grade level is required')
+  if (input.sectionId && input.gradeLevelId) throw new Error('Provide a section or a grade level, not both')
 
   const now = new Date()
   const weekStart = mondayOf(now)
   const weekEnd = new Date(weekStart)
   weekEnd.setUTCDate(weekEnd.getUTCDate() + 6)
 
+  if (input.sectionId) {
+    const { data: section, error: sectionError } = await supabase
+      .from('sections')
+      .select('id, school_id, campus_id')
+      .eq('id', input.sectionId)
+      .maybeSingle()
+    if (sectionError || !section) throw new Error('Section not found')
+    // Same defensive school_id/campus_id check as listComposerAudienceOptions
+    // — a resolved caller.schoolId can be a campus id living in either
+    // column depending on how the row was created.
+    if (section.school_id !== caller.schoolId && section.campus_id !== caller.schoolId) throw new Error('Access denied')
+
+    const { data, error } = await supabase
+      .from('fina_class_goals')
+      .upsert(
+        {
+          school_id: caller.schoolId,
+          section_id: input.sectionId,
+          grade_level_id: null,
+          reaction_kind: input.reactionKind,
+          target_count: input.targetCount,
+          week_start: toDateStr(weekStart),
+          week_end: toDateStr(weekEnd),
+          created_by: caller.profileId,
+        },
+        { onConflict: 'section_id,reaction_kind,week_start' }
+      )
+      .select()
+      .single()
+    if (error) throw new Error(`Failed to create class goal: ${error.message}`)
+    return data
+  }
+
+  const { data: grade, error: gradeError } = await supabase
+    .from('grade_levels')
+    .select('id, school_id, campus_id')
+    .eq('id', input.gradeLevelId)
+    .maybeSingle()
+  if (gradeError || !grade) throw new Error('Grade level not found')
+  if (grade.school_id !== caller.schoolId && grade.campus_id !== caller.schoolId) throw new Error('Access denied')
+
   const { data, error } = await supabase
     .from('fina_class_goals')
     .upsert(
       {
         school_id: caller.schoolId,
-        section_id: input.sectionId,
+        section_id: null,
+        grade_level_id: input.gradeLevelId,
         reaction_kind: input.reactionKind,
         target_count: input.targetCount,
         week_start: toDateStr(weekStart),
         week_end: toDateStr(weekEnd),
         created_by: caller.profileId,
       },
-      { onConflict: 'section_id,reaction_kind,week_start' }
+      { onConflict: 'grade_level_id,reaction_kind,week_start' }
     )
     .select()
     .single()
@@ -79,8 +121,24 @@ export async function createClassGoal(caller: CallerContext, input: CreateClassG
   return data
 }
 
-async function computeProgress(goal: { id: string; school_id: string; section_id: string; reaction_kind: string; week_start: string; week_end: string }): Promise<number> {
-  const { data: students } = await supabase.from('students').select('profile_id').eq('section_id', goal.section_id)
+/** section_id XOR grade_level_id per the CHECK constraint added in migration
+ * 303 — a grade-scoped goal aggregates across every section under that
+ * grade, using the same audience_ref->section_ids matching rule a
+ * section-scoped goal already used, just widened to "any section in the
+ * grade" instead of "the one section". */
+async function computeProgress(goal: { id: string; school_id: string; section_id: string | null; grade_level_id: string | null; reaction_kind: string; week_start: string; week_end: string }): Promise<number> {
+  let sectionIds: string[]
+  if (goal.section_id) {
+    sectionIds = [goal.section_id]
+  } else if (goal.grade_level_id) {
+    const { data: gradeSections } = await supabase.from('sections').select('id').eq('grade_level_id', goal.grade_level_id)
+    sectionIds = (gradeSections || []).map((s: any) => s.id as string)
+    if (sectionIds.length === 0) return 0
+  } else {
+    return 0
+  }
+
+  const { data: students } = await supabase.from('students').select('profile_id').in('section_id', sectionIds)
   const studentProfileIds = new Set((students || []).map((s: any) => s.profile_id as string).filter(Boolean))
   if (studentProfileIds.size === 0) return 0
 
@@ -90,8 +148,9 @@ async function computeProgress(goal: { id: string; school_id: string; section_id
     .eq('school_id', goal.school_id)
     .eq('audience_type', 'classes')
     .eq('state', 'published')
+  const sectionIdSet = new Set(sectionIds)
   const matchingPostIds = (posts || [])
-    .filter((p: any) => (p.audience_ref?.section_ids || []).includes(goal.section_id))
+    .filter((p: any) => (p.audience_ref?.section_ids || []).some((sid: string) => sectionIdSet.has(sid)))
     .map((p: any) => p.id as string)
   if (matchingPostIds.length === 0) return 0
 

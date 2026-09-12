@@ -25,16 +25,58 @@ function getAuthorityKeys(): { publicKey: string; privateKey: string } {
   return devAuthorityKeys;
 }
 
+/**
+ * Shared device-signature check for the read endpoints below — same scheme
+ * as bootstrap() (sign `${purpose}:{deviceId}:{timestamp}`, ±60s). A plain
+ * function, not a class method: Express invokes controller methods as bare
+ * function references (`router.get(path, controller.method)`), so `this`
+ * is undefined at call time inside any method invoked that way — this
+ * exact bug already bit cards.controller.ts once, see its comment.
+ */
+async function authenticateDeviceRequest(req: AuthRequest, res: Response, purpose: string): Promise<any | null> {
+  const deviceId = req.params.id;
+  const { timestamp, signature } = req.query as { timestamp?: string; signature?: string };
+  if (!timestamp || !signature) {
+    res.status(400).json({ success: false, error: 'timestamp and signature query params are required' });
+    return null;
+  }
+  const ageSeconds = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(ageSeconds) || ageSeconds > 60) {
+    res.status(401).json({ success: false, error: 'Stale or invalid timestamp' });
+    return null;
+  }
+  const device = await miqatService.getDevice(deviceId);
+  if (!device || device.status !== 'active') {
+    res.status(403).json({ success: false, error: 'DEVICE_REVOKED' });
+    return null;
+  }
+  const canonical = `${purpose}:${deviceId}:${timestamp}`;
+  if (!verifyBatchSignature(canonical, signature, device.public_key)) {
+    res.status(401).json({ success: false, error: 'Invalid device signature' });
+    return null;
+  }
+  return device;
+}
+
 class MiqatDevicesController {
-  /** Admin generates a one-time enrolment code (15 min TTL, single-use). */
+  /**
+   * Admin generates a one-time enrolment code (15 min TTL, single-use). A
+   * 'teacher' code must name which teacher it's for — class-period scanning
+   * needs to resolve that device's own timetable, unlike gate/admin devices
+   * which stay anonymous by design.
+   */
   async generateCode(req: AuthRequest, res: Response) {
     try {
       const schoolId = req.profile?.school_id;
       const role = req.body?.role;
+      const personId = req.body?.person_id as string | undefined;
       if (!['gate', 'teacher', 'admin'].includes(role)) {
         return res.status(400).json({ success: false, error: 'role must be one of gate|teacher|admin' });
       }
-      const row = await miqatService.createEnrolmentCode(schoolId, role, req.profile.id);
+      if (role === 'teacher' && !personId) {
+        return res.status(400).json({ success: false, error: 'person_id (the teacher this device belongs to) is required for role=teacher' });
+      }
+      const row = await miqatService.createEnrolmentCode(schoolId, role, req.profile.id, personId);
       res.status(201).json({ success: true, data: { code: row.code, expires_at: row.expires_at } });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
@@ -67,6 +109,7 @@ class MiqatDevicesController {
         app_version,
         os_version,
         enrolled_by: codeRow.created_by,
+        person_id: codeRow.person_id ?? null,
       });
       await miqatService.markEnrolmentCodeDevice(code, device.id);
 
@@ -143,6 +186,7 @@ class MiqatDevicesController {
             policy_json: schoolConfig.policy_json,
             card_signing_keys_b64: cardSigningKeysB64,
             role: device.role,
+            person_id: device.person_id ?? null,
           },
           roster,
           revocation_list: revocationList,
@@ -151,6 +195,39 @@ class MiqatDevicesController {
           // whatever lateness/grace policy has been configured so far.
         },
       });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /** A teacher device's own timetabled periods for a given date (defaults to today). */
+  async myPeriods(req: AuthRequest, res: Response) {
+    try {
+      const device = await authenticateDeviceRequest(req, res, 'my-periods');
+      if (!device) return;
+      if (!device.person_id) {
+        return res.status(400).json({ success: false, error: 'This device is not linked to a teacher' });
+      }
+      const date = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+      const dayOfWeek = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+      const periods = await miqatService.getTeacherPeriodsForDate(device.person_id, device.school_id, dayOfWeek);
+      res.json({ success: true, data: periods });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /** Roster for one (section, period, date) — gate-absent pre-fill + already-scanned status included (spec §7). */
+  async periodRoster(req: AuthRequest, res: Response) {
+    try {
+      const device = await authenticateDeviceRequest(req, res, 'period-roster');
+      if (!device) return;
+      const { section_id, period_id, date } = req.query as { section_id?: string; period_id?: string; date?: string };
+      if (!section_id || !period_id || !date) {
+        return res.status(400).json({ success: false, error: 'section_id, period_id and date are required' });
+      }
+      const roster = await miqatService.getPeriodRoster(device.school_id, section_id, period_id, date);
+      res.json({ success: true, data: roster });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
     }

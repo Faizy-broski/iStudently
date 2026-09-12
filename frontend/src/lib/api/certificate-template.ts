@@ -24,13 +24,33 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   return response.json();
 }
 
-export type CertificateRecipientType = 'student' | 'teacher' | 'staff';
+export type CertificateRecipientType =
+  | 'student'
+  | 'teacher'
+  | 'staff'
+  | 'librarian'
+  | 'counselor'
+  | 'media_officer'
+  | 'fina_supervisor'
+  | 'admin'
+  | 'parent';
+
+export interface CertificateTemplateTableConfig {
+  columns: Array<{ id: string; label: string }>;
+  /** Manual cell values (may contain {{tokens}}). Ignored when dataSource !== 'manual'. */
+  rows: string[][];
+  showHeader: boolean;
+  /** 'student_grades' auto-fills from the recipient's real subject grades — student only. */
+  dataSource: 'manual' | 'student_grades';
+  headerBg?: string;
+  fontSize?: number;
+}
 
 export interface CertificateTemplateField {
   id: string;
   label: string;
   token: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'table';
   position: { x: number; y: number };
   size: { width: number; height: number };
   style?: {
@@ -40,6 +60,7 @@ export interface CertificateTemplateField {
     color?: string;
     align?: string;
   };
+  table?: CertificateTemplateTableConfig;
 }
 
 export interface CertificateTemplateConfig {

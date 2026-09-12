@@ -110,7 +110,7 @@ export function ModerationQueueList({ mode }: { mode: Mode }) {
                   <div className="flex gap-1.5">
                     {post.media.slice(0, 4).map((m) => (
                       <div key={m.id} className="h-16 w-16 rounded-md overflow-hidden bg-gray-50">
-                        <GatedMediaImage mediaId={m.id} raw alt="" className="w-full h-full object-cover" />
+                        <GatedMediaImage mediaId={m.id} raw thumb alt="" className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>

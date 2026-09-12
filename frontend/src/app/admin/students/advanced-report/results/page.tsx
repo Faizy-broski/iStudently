@@ -127,7 +127,7 @@ export default function AdvancedReportResultsPage() {
     }
     const val = row[fieldId]
     if (fieldId === 'is_active') return val ? 'Active' : 'Inactive'
-    if (fieldId === 'confidential_family_status') return getConfidentialFamilyStatusLabel(val)
+    if (fieldId === 'confidential_family_status') return getConfidentialFamilyStatusLabel(val) || '—'
     if ((fieldId === 'created_at' || fieldId === 'date_of_birth' || fieldId === 'date_of_joining') && val)
       return new Date(val).toLocaleDateString()
     return val != null ? String(val) : '—'
@@ -263,7 +263,11 @@ export default function AdvancedReportResultsPage() {
                         return (
                           <TableCell key={fieldId} className="whitespace-nowrap text-sm">
                             {fieldId === 'confidential_family_status' ? (
-                              <ConfidentialFamilyStatusBadge status={row[fieldId]} />
+                              row[fieldId] && row[fieldId] !== 'NONE' ? (
+                                <ConfidentialFamilyStatusBadge status={row[fieldId]} />
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )
                             ) : fieldId === 'is_active' ? (
                               <Badge className={display === 'Active'
                                 ? 'bg-green-500 text-white border-0'

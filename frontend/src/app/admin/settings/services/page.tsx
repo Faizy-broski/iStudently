@@ -19,6 +19,7 @@ import Link from 'next/link'
 import * as servicesApi from '@/lib/api/services'
 import { getAuthToken } from '@/lib/api/schools'
 import { useTranslations, useLocale } from 'next-intl'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 const fetcher = async (url: string) => {
     const token = await getAuthToken()
@@ -60,6 +61,7 @@ interface GradeLevel {
 export default function ServicesSettingsPage() {
     const t = useTranslations('school.services')
     const locale = useLocale()
+    const { formatCurrency } = useSchoolSettings()
     const campusContext = useCampus()
     const selectedCampus = campusContext?.selectedCampus
     const campusId = selectedCampus?.id || ''
@@ -187,12 +189,6 @@ export default function ServicesSettingsPage() {
             toast.error(error.message)
         }
     }
-
-    const formatCurrency = (amount: number) =>
-        new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-US', { 
-            style: 'currency', 
-            currency: locale === 'ar' ? 'SAR' : 'USD' 
-        }).format(amount)
 
     return (
         <div className="container mx-auto py-6 space-y-6">

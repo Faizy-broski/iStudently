@@ -1,8 +1,18 @@
 import { Request, Response } from 'express';
 import { IdCardTemplateService, SUBSTITUTION_TOKENS } from '../services/id-card-template.service';
+import { setupStatusService } from '../services/setup-status.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 const templateService = new IdCardTemplateService();
+
+// See certificate-template.controller.ts for why this exists: via.placeholder.com is no
+// longer reliable, so previews used it as a sample logo/photo and rendered a broken image.
+const SAMPLE_AVATAR_DATA_URI =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5e7eb"/>' +
+      '<circle cx="50" cy="38" r="18" fill="%239ca3af"/><path d="M18 88c0-20 14-32 32-32s32 12 32 32" fill="%239ca3af"/></svg>'
+  );
 
 export class IdCardTemplateController {
   /**
@@ -272,6 +282,18 @@ export class IdCardTemplateController {
         return res.status(400).json({ error: 'Missing required fields: template_config, user_type' });
       }
 
+      // Pull the admin's real campus so the preview shows their actual logo/name — see
+      // certificate-template.controller.ts#previewTemplate for the full rationale.
+      const campusId = req.profile?.school_id || req.profile?.campus_id;
+      let campus: any = null;
+      if (campusId) {
+        try {
+          campus = await setupStatusService.getCampusById(campusId);
+        } catch {
+          // Preview must never fail just because the campus lookup did — fall back below.
+        }
+      }
+
       // Generate sample data based on user type
       const sampleData: Record<string, any> = {
         first_name: 'John',
@@ -281,11 +303,11 @@ export class IdCardTemplateController {
         date_of_birth: '2005-01-15',
         gender: 'Male',
         address: '123 Main Street, City, State',
-        photo_url: 'https://via.placeholder.com/150',
-        school_name: 'Sample School',
-        school_address: '456 School Avenue, City, State',
-        school_phone: '+1234567891',
-        school_logo: 'https://via.placeholder.com/100',
+        photo_url: SAMPLE_AVATAR_DATA_URI,
+        school_name: campus?.name || 'Sample School',
+        school_address: campus?.address || '456 School Avenue, City, State',
+        school_phone: campus?.phone || '+1234567891',
+        school_logo: campus?.logo_url || SAMPLE_AVATAR_DATA_URI,
       };
 
       if (user_type === 'student') {

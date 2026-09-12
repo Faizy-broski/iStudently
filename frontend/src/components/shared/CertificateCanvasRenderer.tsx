@@ -20,6 +20,32 @@ export function substituteTokens(template: string, data: Record<string, any>): s
   return result.replace(/\{\{[^}]+\}\}/g, '')
 }
 
+/**
+ * Resolve what a 'table' field should actually show: either its own manually-typed
+ * columns/rows (tokens substituted per cell, same convention as text fields), or — when
+ * dataSource is 'student_grades' — the recipient's real per-subject grades, pre-computed
+ * into `data.__tables.student_grades` by buildStudentCertificateData/the preview endpoint.
+ */
+export function resolveTableRows(
+  field: CertificateTemplateField,
+  data?: Record<string, any>
+): { columns: string[]; rows: string[][] } {
+  const table = field.table
+  if (!table) return { columns: [], rows: [] }
+
+  if (table.dataSource === 'student_grades') {
+    const gradeRows: Array<Record<string, any>> = data?.__tables?.student_grades || []
+    return {
+      columns: ['Subject', 'Grade', 'Percent'],
+      rows: gradeRows.map((r) => [String(r.Subject ?? ''), String(r.Grade ?? ''), String(r.Percent ?? '')]),
+    }
+  }
+
+  const columns = table.columns.map((c) => (data ? substituteTokens(c.label, data) : c.label))
+  const rows = table.rows.map((row) => row.map((cell) => (data ? substituteTokens(cell, data) : cell)))
+  return { columns, rows }
+}
+
 interface CertificateCanvasRendererProps {
   layout: CertificateTemplateConfig['layout']
   design: CertificateTemplateConfig['design']
@@ -114,6 +140,59 @@ export function CertificateCanvasRenderer({
                     <ImageIcon className="h-6 w-6 text-gray-400" />
                   </div>
                 )}
+                {isSelected && <GripVertical className="absolute -top-2 -right-2 h-4 w-4 text-blue-500" />}
+              </div>
+            )
+          }
+
+          if (field.type === 'table') {
+            const { columns, rows } = resolveTableRows(field, data)
+            const fontSize = field.table?.fontSize ?? 12
+            return (
+              <div
+                key={field.id}
+                className={`absolute border-2 overflow-hidden ${interactive ? 'cursor-move' : ''} ${isSelected ? 'border-blue-500' : 'border-transparent'}`}
+                style={{
+                  left: `${field.position.x}px`,
+                  top: `${field.position.y}px`,
+                  width: `${field.size.width}px`,
+                  height: `${field.size.height}px`,
+                }}
+                onMouseDown={interactive ? (e) => onFieldMouseDown?.(e, field.id) : undefined}
+              >
+                <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse', fontSize: `${fontSize}px` }}>
+                  {field.table?.showHeader && (
+                    <thead>
+                      <tr>
+                        {columns.map((col, i) => (
+                          <th
+                            key={i}
+                            style={{
+                              border: '1px solid #d1d5db',
+                              padding: '4px 6px',
+                              backgroundColor: field.table?.headerBg || '#f3f4f6',
+                              fontWeight: 'bold',
+                              textAlign: 'left',
+                            }}
+                          >
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                  )}
+                  <tbody>
+                    {rows.map((row, ri) => (
+                      <tr key={ri}>
+                        {row.map((cell, ci) => (
+                          <td key={ci} style={{ border: '1px solid #d1d5db', padding: '4px 6px' }}>
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
                 {isSelected && <GripVertical className="absolute -top-2 -right-2 h-4 w-4 text-blue-500" />}
               </div>
             )

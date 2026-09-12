@@ -31,7 +31,7 @@ export const getAllStaff = async (req: Request, res: Response) => {
             page: Number(page),
             limit: Number(limit),
             search: search as string,
-            role: role as 'staff' | 'librarian' | 'teacher' | 'all' | 'employees'
+            role: role as 'staff' | 'librarian' | 'teacher' | 'counselor' | 'media_officer' | 'fina_supervisor' | 'admin' | 'all' | 'employees'
         })
 
         if (!result.success) {

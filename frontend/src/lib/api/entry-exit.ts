@@ -490,9 +490,16 @@ export async function deleteExceptionById(id: string): Promise<void> {
 export async function searchStudents(
   schoolId: string,
   query?: string,
+  campusId?: string,
 ): Promise<any[]> {
   const params = new URLSearchParams({ school_id: schoolId });
   if (query) params.append("search", query);
+  // student.controller.ts's getStudents() resolves the tenant to search from
+  // req.query.campus_id specifically (not school_id, which it ignores) —
+  // admin accounts aren't pinned to one campus on req.profile the way
+  // teacher/student/parent accounts are, so without this an admin managing
+  // a specific campus gets zero results even though matching students exist.
+  if (campusId) params.append("campus_id", campusId);
   return apiRequestToken(`/students?${params.toString()}`);
 }
 

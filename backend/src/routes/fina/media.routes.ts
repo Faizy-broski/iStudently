@@ -37,6 +37,7 @@ router.post('/:id/face-tags', requireRole(...STAFF_ROLES), ctrl.addFaceTag)
 router.delete('/:id/face-tags/:tagId', requireRole(...STAFF_ROLES), ctrl.removeFaceTag)
 router.post('/:id/no-identifiable-students', requireRole(...STAFF_ROLES), ctrl.setNoIdentifiableStudents)
 router.post('/:id/confirm-tagging', requireRole(...STAFF_ROLES), ctrl.confirmTagging)
+router.delete('/:id', requireRole(...STAFF_ROLES), ctrl.deleteMedia)
 
 // Gate-protected — open to any authenticated Al-Fina' role; the gate itself
 // (consent-gate.service.ts) decides full/blurred/denied per caller.

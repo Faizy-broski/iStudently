@@ -122,16 +122,33 @@ export const confirmTagging = (mediaId: string) =>
   apiFetch<FinaMedia>(`/fina/media/${mediaId}/confirm-tagging`, { method: 'POST' })
 
 /**
+ * Deletes an unused media asset. The backend refuses if the asset is already
+ * attached to any post or story — so this is safe to call without extra
+ * guards on the caller side. Only the uploader (or an admin) can delete.
+ */
+export const deleteFinaMedia = (mediaId: string) =>
+  apiFetch<null>(`/fina/media/${mediaId}`, { method: 'DELETE' })
+
+/**
  * Fetches the gate-protected raw preview of a not-yet-confirmed media item
  * (staff-only, used by the tagging screen) as a same-origin object URL.
  * Can't be a plain `<img src>` to a backend URL — the endpoint requires a
  * Bearer token, which <img> tags cannot attach. Caller MUST revoke the
  * returned URL (URL.revokeObjectURL) when done to avoid leaking memory.
+ *
+ * Pass `thumb: true` for small on-screen uses (the "needs tagging" grid) —
+ * pending media has no generated variants yet (those only exist once
+ * confirmTagging enqueues the variant job), so without this the grid was
+ * downloading the full, un-resized original for every little 80px square,
+ * which is what made "add photos" feel like it hung. `thumb` asks the
+ * backend to resize before sending instead of after. Leave it off for the
+ * single big tagging photo, which does need full resolution to identify faces.
  */
-export async function getRawMediaPreviewUrl(mediaId: string): Promise<{ url: string | null; error: string | null }> {
+export async function getRawMediaPreviewUrl(mediaId: string, opts?: { thumb?: boolean }): Promise<{ url: string | null; error: string | null }> {
   try {
     const token = await getAuthToken()
-    const res = await fetch(`${API_URL}${withCampusParam(`/fina/media/${mediaId}/raw`)}`, {
+    const path = `/fina/media/${mediaId}/raw${opts?.thumb ? '?thumb=1' : ''}`
+    const res = await fetch(`${API_URL}${withCampusParam(path)}`, {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...getImpersonationHeaders() },
     })
     if (res.status === 401) {

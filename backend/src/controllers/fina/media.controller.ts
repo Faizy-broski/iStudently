@@ -1,4 +1,5 @@
 import { Response } from 'express'
+import sharp from 'sharp'
 import { AuthRequest } from '../../middlewares/auth.middleware'
 import { supabase } from '../../config/supabase'
 import * as pipeline from '../../services/fina/media-pipeline.service'
@@ -85,6 +86,15 @@ export const getMediaForTagging = async (req: AuthRequest, res: Response) => {
   }
 }
 
+export const deleteMedia = async (req: AuthRequest, res: Response) => {
+  try {
+    await pipeline.deleteMedia(await callerFrom(req), req.params.id)
+    return res.json({ success: true })
+  } catch (error: any) {
+    return handleError(res, error)
+  }
+}
+
 export const listPendingTagging = async (req: AuthRequest, res: Response) => {
   try {
     const data = await pipeline.listPendingTagging(await callerFrom(req))
@@ -126,8 +136,22 @@ export const getRawMediaPreview = async (req: AuthRequest, res: Response) => {
     const { data: file, error } = await supabase.storage.from(FINA_MEDIA_BUCKET).download(fullRow.storage_key)
     if (error || !file) return res.status(500).json({ success: false, error: 'Failed to load media' })
 
-    const buffer = Buffer.from(await file.arrayBuffer())
+    let buffer = Buffer.from(await file.arrayBuffer())
     const contentType = fullRow.kind === 'video' ? 'video/mp4' : 'image/jpeg'
+
+    // Pending-tagging media has no generated variants yet (those only exist
+    // once confirmTagging enqueues the variant job — see media-pipeline
+    // .service.ts), so a small on-screen preview (the "needs tagging" grid,
+    // the moderation queue, the library grid) had no choice but to load this
+    // same full, un-resized original as every other consumer of this route —
+    // several MB for an 80px square, which is what made those grids feel
+    // like they'd hung. ?thumb=1 asks for it resized down before it's sent,
+    // instead of full-size. The single big tagging photo (no ?thumb) still
+    // gets the untouched original — that one genuinely needs the resolution.
+    if (fullRow.kind === 'image' && (req.query.thumb === '1' || req.query.thumb === 'true')) {
+      buffer = await sharp(buffer).resize({ width: 300, height: 300, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer()
+    }
+
     res.set('Content-Type', contentType)
     return res.send(buffer)
   } catch (error: any) {

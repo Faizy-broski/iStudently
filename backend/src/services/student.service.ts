@@ -34,7 +34,14 @@ function getStudentSortValue(student: any, key: StudentSortKey): string | number
   switch (key) {
     case 'student_number': return student.student_number || ''
     case 'name': return `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`.trim()
-    case 'grade': return student.grade?.name || student.grade_level || ''
+    // Sort by the grade's own order_index (the same column every other part
+    // of the app — academics dropdowns, rollover, subjects — orders grades
+    // by), not by the grade name text. Text sorting put "Grade 1" ahead of
+    // "Grade 7" but scattered anything whose name doesn't sort the same as
+    // its pedagogical order (e.g. KG1/KG2 ahead of Grade 1..12, or a grade
+    // renamed without renumbering). Students with no grade assigned sort
+    // last regardless of direction.
+    case 'grade': return student.grade?.order_index ?? Number.POSITIVE_INFINITY
     case 'status': return student.profile?.is_active ? 'active' : 'inactive'
     case 'contact': return student.profile?.phone || ''
     default: return ''
@@ -152,6 +159,29 @@ export class StudentService {
             filtered = filtered.filter((s: any) => !!s.is_active === isActive);
           }
 
+          // Sorting by grade needs order_index (the same column every other
+          // grade sort/dropdown in the app uses), but this RPC only returns
+          // grade_level_id, not order_index — look it up so "sort by grade"
+          // means the same pedagogical order here as it does everywhere else
+          // instead of falling back to alphabetical-by-name.
+          let gradeOrderById: Map<string, number> | undefined
+          if (sortKey === 'grade') {
+            const idsToLookUp = Array.from(new Set(
+              filtered.map((s: any) => s.grade_level_id).filter(Boolean)
+            ))
+            if (idsToLookUp.length > 0) {
+              const { data: gradeRows, error: gradeOrderError } = await supabase
+                .from('grade_levels')
+                .select('id, order_index')
+                .in('id', idsToLookUp)
+              if (gradeOrderError) {
+                console.error('Failed to resolve grade order for sorting:', gradeOrderError.message)
+              } else {
+                gradeOrderById = new Map((gradeRows || []).map((g: any) => [g.id, g.order_index]))
+              }
+            }
+          }
+
           // Sort before paginating — this RPC returns flat rows (first_name/
           // grade_level directly, not nested under .profile/.grade like the
           // standard query below), so it needs its own adapter rather than
@@ -161,7 +191,7 @@ export class StudentService {
               switch (sortKey) {
                 case 'student_number': return s.student_number || ''
                 case 'name': return `${s.first_name || ''} ${s.last_name || ''}`.trim()
-                case 'grade': return s.grade_level || ''
+                case 'grade': return gradeOrderById?.get(s.grade_level_id) ?? Number.POSITIVE_INFINITY
                 case 'status': return s.is_active ? 'active' : 'inactive'
                 case 'contact': return s.phone || ''
                 default: return ''
@@ -169,7 +199,9 @@ export class StudentService {
             }
             const av = valueFor(a)
             const bv = valueFor(b)
-            const cmp = studentSortCollator.compare(String(av), String(bv))
+            const cmp = typeof av === 'number' && typeof bv === 'number'
+              ? av - bv
+              : studentSortCollator.compare(String(av), String(bv))
             return sortDir === 'asc' ? cmp : -cmp
           })
 
@@ -306,7 +338,8 @@ export class StudentService {
         ),
         grade:grade_levels!grade_level_id(
           id,
-          name
+          name,
+          order_index
         ),
         section:sections!section_id(
           id,

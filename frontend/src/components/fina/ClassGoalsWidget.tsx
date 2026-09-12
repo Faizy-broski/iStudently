@@ -49,11 +49,16 @@ export function ClassGoalsWidget() {
 
   const sectionsForGrade = gradeLevelId ? sections.filter((s) => s.gradeLevelId === gradeLevelId) : sections
 
+  // Section is optional — picking just a grade level targets every section
+  // under it (see migration 303). Required a section on top of the grade
+  // before, which left "New goal" permanently disabled whenever a grade's
+  // section list came back empty (no sections yet, or none visible in the
+  // caller's resolved scope) with no way to tell why.
   const handleCreate = async () => {
-    if (!sectionId || targetCount <= 0) return
+    if (!gradeLevelId || targetCount <= 0) return
     setSaving(true)
     try {
-      await createClassGoal({ sectionId, reactionKind, targetCount })
+      await createClassGoal(sectionId ? { sectionId, reactionKind, targetCount } : { gradeLevelId, reactionKind, targetCount })
       setShowForm(false)
       load()
     } finally {
@@ -84,8 +89,10 @@ export function ClassGoalsWidget() {
                 {gradeLevels.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={sectionId} onValueChange={setSectionId} disabled={!gradeLevelId}>
-              <SelectTrigger className="h-8 w-40 text-xs"><SelectValue placeholder="Section" /></SelectTrigger>
+            <Select value={sectionId} onValueChange={setSectionId} disabled={!gradeLevelId || sectionsForGrade.length === 0}>
+              <SelectTrigger className="h-8 w-48 text-xs">
+                <SelectValue placeholder={sectionsForGrade.length === 0 ? t('class_goal_whole_grade') : t('class_goal_section_optional_placeholder')} />
+              </SelectTrigger>
               <SelectContent>
                 {sectionsForGrade.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
@@ -105,7 +112,7 @@ export function ClassGoalsWidget() {
               onChange={(e) => setTargetCount(Number(e.target.value))}
               className="h-8 w-20 text-xs"
             />
-            <Button size="sm" className="h-8 text-xs" disabled={saving || !sectionId} onClick={handleCreate}>
+            <Button size="sm" className="h-8 text-xs" disabled={saving || !gradeLevelId} onClick={handleCreate}>
               {t('class_goal_create')}
             </Button>
           </div>
@@ -122,7 +129,12 @@ export function ClassGoalsWidget() {
               return (
                 <div key={g.id} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span>{sections.find((s) => s.id === g.section_id)?.name ?? g.section_id} · {meta?.emoji} {meta ? tReactions(meta.i18nKey) : g.reaction_kind}</span>
+                    <span>
+                      {g.section_id
+                        ? sections.find((s) => s.id === g.section_id)?.name ?? g.section_id
+                        : gradeLevels.find((gl) => gl.id === g.grade_level_id)?.name ?? g.grade_level_id}
+                      {' · '}{meta?.emoji} {meta ? tReactions(meta.i18nKey) : g.reaction_kind}
+                    </span>
                     <span className="font-medium">{g.currentCount}/{g.target_count}</span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">

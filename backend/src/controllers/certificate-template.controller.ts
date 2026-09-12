@@ -1,8 +1,25 @@
 import { Response } from 'express';
-import { CertificateTemplateService } from '../services/certificate-template.service';
+import { CertificateTemplateService, CERTIFICATE_RECIPIENT_TYPES } from '../services/certificate-template.service';
+import { setupStatusService } from '../services/setup-status.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 const templateService = new CertificateTemplateService();
+
+// A tiny inline gray-silhouette SVG — used as the sample photo/logo in previews so the
+// builder never depends on an external placeholder service (which is exactly what broke
+// the "School Logo" preview: https://via.placeholder.com/* is no longer reliable).
+const SAMPLE_AVATAR_DATA_URI =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5e7eb"/>' +
+      '<circle cx="50" cy="38" r="18" fill="%239ca3af"/><path d="M18 88c0-20 14-32 32-32s32 12 32 32" fill="%239ca3af"/></svg>'
+  );
+
+const SAMPLE_STUDENT_GRADES = [
+  { Subject: 'Mathematics', Grade: 'A', Percent: '94%' },
+  { Subject: 'Science', Grade: 'B+', Percent: '88%' },
+  { Subject: 'English', Grade: 'A-', Percent: '91%' },
+];
 
 export class CertificateTemplateController {
   /**
@@ -62,8 +79,8 @@ export class CertificateTemplateController {
       if (!name || !recipient_type || !template_config) {
         return res.status(400).json({ error: 'Missing required fields: name, recipient_type, template_config' });
       }
-      if (!['student', 'teacher', 'staff'].includes(recipient_type)) {
-        return res.status(400).json({ error: 'Invalid recipient_type. Must be student, teacher, or staff' });
+      if (!CERTIFICATE_RECIPIENT_TYPES.includes(recipient_type)) {
+        return res.status(400).json({ error: `Invalid recipient_type. Must be one of: ${CERTIFICATE_RECIPIENT_TYPES.join(', ')}` });
       }
 
       const template = await templateService.createTemplate(
@@ -149,8 +166,8 @@ export class CertificateTemplateController {
     try {
       const { recipient_type } = req.params;
 
-      if (!['student', 'teacher', 'staff'].includes(recipient_type)) {
-        return res.status(400).json({ error: 'Invalid recipient_type. Must be student, teacher, or staff' });
+      if (!CERTIFICATE_RECIPIENT_TYPES.includes(recipient_type)) {
+        return res.status(400).json({ error: `Invalid recipient_type. Must be one of: ${CERTIFICATE_RECIPIENT_TYPES.join(', ')}` });
       }
 
       const tokens = templateService.getAvailableTokens(recipient_type);
@@ -178,15 +195,35 @@ export class CertificateTemplateController {
         return res.status(400).json({ error: 'Missing required fields: template_config, recipient_type' });
       }
 
+      // Pull the admin's real campus so the preview shows their actual logo/name instead of a
+      // fake one — this is also what fixes the broken "School Logo" preview image, whose old
+      // sample value (https://via.placeholder.com/100) points at a domain that no longer
+      // reliably resolves.
+      const campusId = req.profile?.school_id || req.profile?.campus_id;
+      let campus: any = null;
+      if (campusId) {
+        try {
+          campus = await setupStatusService.getCampusById(campusId);
+        } catch {
+          // Preview must never fail just because the campus lookup did — fall back below.
+        }
+      }
+
       const sampleData: Record<string, any> = {
         first_name: 'John',
         last_name: 'Doe',
+        full_name: 'John Doe',
         email: 'john.doe@example.com',
         phone: '+1234567890',
-        photo_url: 'https://via.placeholder.com/150',
-        school_name: 'Sample School',
-        school_logo: 'https://via.placeholder.com/100',
-        school_principal: 'Dr. Jane Smith',
+        photo_url: SAMPLE_AVATAR_DATA_URI,
+        campus_name: campus?.name || 'Sample School',
+        campus_address: campus?.address || '456 School Avenue, City, State',
+        campus_phone: campus?.phone || '+1234567891',
+        school_name: campus?.name || 'Sample School',
+        school_address: campus?.address || '456 School Avenue, City, State',
+        school_phone: campus?.phone || '+1234567891',
+        school_logo: campus?.logo_url || SAMPLE_AVATAR_DATA_URI,
+        school_principal: campus?.principal_name || 'Dr. Jane Smith',
         current_date: new Date().toLocaleDateString(),
         academic_year: '2025-2026',
       };
@@ -197,6 +234,10 @@ export class CertificateTemplateController {
           section: 'A',
           student_id: 'STU-2024-001',
         });
+        // Sample rows for a "table" field with dataSource: 'student_grades' — see
+        // CertificateCanvasRenderer.tsx / certificateRender.ts, which read this same shape
+        // for real recipients via getStudentGradesSummaryAPI.
+        sampleData.__tables = { student_grades: SAMPLE_STUDENT_GRADES };
       } else if (recipient_type === 'teacher') {
         Object.assign(sampleData, {
           designation: 'Senior Teacher',
@@ -208,6 +249,23 @@ export class CertificateTemplateController {
           role: 'Administrative Assistant',
           department: 'Administration',
           employee_id: 'EMP-S-001',
+        });
+      } else if (recipient_type === 'librarian') {
+        Object.assign(sampleData, { role: 'Librarian', department: 'Library', employee_id: 'EMP-L-001' });
+      } else if (recipient_type === 'counselor') {
+        Object.assign(sampleData, { role: 'School Counselor', department: 'Counseling', employee_id: 'EMP-C-001' });
+      } else if (recipient_type === 'media_officer') {
+        Object.assign(sampleData, { role: 'Media Officer', department: 'Communications', employee_id: 'EMP-M-001' });
+      } else if (recipient_type === 'fina_supervisor') {
+        Object.assign(sampleData, { role: 'Financial Supervisor', department: 'Finance', employee_id: 'EMP-F-001' });
+      } else if (recipient_type === 'admin') {
+        Object.assign(sampleData, { role: 'Administrator', department: 'Administration', employee_id: 'EMP-A-001' });
+      } else if (recipient_type === 'parent') {
+        Object.assign(sampleData, {
+          occupation: 'Engineer',
+          workplace: 'Acme Corp',
+          children_names: 'Jane Doe, Jack Doe',
+          children_count: '2',
         });
       }
 
