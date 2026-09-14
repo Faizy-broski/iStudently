@@ -11,13 +11,14 @@ export const getPendingSignups = async (req: AuthRequest, res: Response): Promis
     const schoolId = req.profile?.school_id
     if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' } as ApiResponse); return }
 
-    const { status, role, campus_id, search, page, limit } = req.query
+    const { status, role, campus_id, search, grade_level, page, limit } = req.query
 
     const result = await pendingSignupsService.getPendingSignups(schoolId, {
       status: status as string | undefined,
       role: role as string | undefined,
       campusId: campus_id as string | undefined,
       search: search as string | undefined,
+      gradeLevel: grade_level as string | undefined,
       page: page ? parseInt(page as string, 10) : undefined,
       limit: limit ? parseInt(limit as string, 10) : undefined,
     })
@@ -88,6 +89,25 @@ export const getPendingCount = async (req: AuthRequest, res: Response): Promise<
 
     const count = await pendingSignupsService.getPendingCount(schoolId)
     res.json({ success: true, data: { count } } as ApiResponse)
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message } as ApiResponse)
+  }
+}
+
+export const getStatusCounts = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' } as ApiResponse); return }
+
+    const { role, campus_id, search, grade_level } = req.query
+    const counts = await pendingSignupsService.getStatusCounts(schoolId, {
+      role: role as string | undefined,
+      campusId: campus_id as string | undefined,
+      search: search as string | undefined,
+      gradeLevel: grade_level as string | undefined,
+    })
+
+    res.json({ success: true, data: counts } as ApiResponse)
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message } as ApiResponse)
   }

@@ -365,6 +365,15 @@ export interface OpenPrintOptions {
    * Defaults to false (portrait).
    */
   landscape?: boolean
+  /**
+   * Extra raw HTML injected into <head>, right after PDF_FONT_LINK — e.g. an
+   * additional Google Fonts <link> for a module that offers its own font
+   * picker (the Certificate/ID Card builders' font library). Without this,
+   * only "Noto Sans Arabic" is ever available in this popup document, so any
+   * other font chosen in a template silently falls back on export even
+   * though it renders correctly in the live in-app canvas.
+   */
+  extraHeadHtml?: string
 }
 
 /**
@@ -403,7 +412,7 @@ export function openPrintPreview(options: OpenPrintOptions): void {
   const {
     title, bodyHtml, bodyStyles, school,
     pdfSettings, accentColor = DEFAULT_ACCENT, pluginActive = true,
-    reportLabel = "Student Report",
+    reportLabel = "Student Report", extraHeadHtml = "",
   } = options
 
   const printWindow = window.open("", "_blank")
@@ -420,6 +429,7 @@ export function openPrintPreview(options: OpenPrintOptions): void {
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
   ${PDF_FONT_LINK}
+  ${extraHeadHtml}
   <style>
     ${BASE_PRINT_STYLES}
     @page { margin: 15mm; }
@@ -463,6 +473,7 @@ ${bodyHtml}
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
   ${PDF_FONT_LINK}
+  ${extraHeadHtml}
   <style>
     ${BASE_PRINT_STYLES}
     ${buildPdfLayoutCss(marginTop, marginBottom, excludePrint)}
@@ -542,7 +553,7 @@ export async function openPdfDownload(
   const {
     title, bodyHtml, bodyStyles, school,
     pdfSettings, accentColor = DEFAULT_ACCENT, pluginActive = true,
-    landscape = false, reportLabel = "Student Report",
+    landscape = false, reportLabel = "Student Report", extraHeadHtml = "",
   } = options
 
   // A4 portrait: 794px wide @96dpi (210mm).  A4 landscape: 1123px wide (297mm).
@@ -693,6 +704,7 @@ window.addEventListener('DOMContentLoaded', function() {
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
   ${PDF_FONT_LINK}
+  ${extraHeadHtml}
   <style>
     ${BASE_PRINT_STYLES}
     ${layoutCss}

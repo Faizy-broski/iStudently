@@ -2,17 +2,34 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Pin, MessageCircle, Sparkles } from 'lucide-react'
+import { Pin, MessageCircle, Sparkles, MoreVertical, PinOff, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { setReaction, removeReaction, type FinaPost, type ReactionKind } from '@/lib/api/fina-posts'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { setReaction, removeReaction, deletePost, pinPost, type FinaPost, type ReactionKind } from '@/lib/api/fina-posts'
 import { useAuth } from '@/context/AuthContext'
 import { POST_TYPE_META } from './postTypeMeta'
 import { GatedMediaImage } from './GatedMediaImage'
 import { CommentsSection } from './CommentsSection'
 import { REACTION_LIST, SUPER_REACTION_ROLES, getReactionEmoji } from '@/lib/constants/reaction-config'
 
-export function PostCard({ post }: { post: FinaPost }) {
+export function PostCard({ post, onDeleted }: { post: FinaPost; onDeleted?: (postId: string) => void }) {
   const t = useTranslations('fina')
   const { profile } = useAuth()
   const meta = POST_TYPE_META[post.type]
@@ -25,6 +42,37 @@ export function PostCard({ post }: { post: FinaPost }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [isHonorRoll, setIsHonorRoll] = useState(post.isHonorRoll)
+  const [isPinned, setIsPinned] = useState(post.is_pinned)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Only an admin (the "principal" role, per moderation.service.ts#PRINCIPAL_ROLES) can
+  // remove or pin an already-published post from the wall — matches the backend check
+  // exactly, so this menu never offers an action the API would then reject.
+  const canModerate = profile?.role === 'admin'
+
+  const togglePin = async () => {
+    const next = !isPinned
+    setIsPinned(next) // optimistic
+    const res = await pinPost(post.id, next)
+    if (res.error) {
+      setIsPinned(!next) // revert
+      toast.error(res.error)
+    }
+  }
+
+  const confirmDelete = async () => {
+    setDeleting(true)
+    const res = await deletePost(post.id)
+    setDeleting(false)
+    if (res.error) {
+      toast.error(res.error)
+      return
+    }
+    setDeleteDialogOpen(false)
+    toast.success(t('wall.delete_post_success'))
+    onDeleted?.(post.id)
+  }
 
   // Positive & Skill-Based Reaction Engine: teacher/admin/fina_supervisor
   // reactions are ALWAYS a 3x golden super-reaction — no toggle. This hint
@@ -63,7 +111,7 @@ export function PostCard({ post }: { post: FinaPost }) {
           </span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              {post.is_pinned && (
+              {isPinned && (
                 <span className="inline-flex items-center gap-1 text-xs text-gray-400">
                   <Pin className="h-3 w-3" />{t('wall.pinned_label')}
                 </span>
@@ -77,6 +125,33 @@ export function PostCard({ post }: { post: FinaPost }) {
             </div>
             {post.title && <h3 className="font-semibold text-gray-900 mt-0.5">{post.title}</h3>}
           </div>
+          {canModerate && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label={t('wall.post_options')}
+                  className="shrink-0 text-gray-400 hover:text-gray-600 rounded-md p-1 -m-1 hover:bg-gray-50"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={togglePin}>
+                  {isPinned ? (
+                    <><PinOff className="h-4 w-4" />{t('wall.unpin_post')}</>
+                  ) : (
+                    <><Pin className="h-4 w-4" />{t('wall.pin_post')}</>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />{t('wall.delete_post')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {post.body && <p className="text-sm text-gray-700 whitespace-pre-wrap">{post.body}</p>}
@@ -155,6 +230,25 @@ export function PostCard({ post }: { post: FinaPost }) {
           <CommentsSection postId={post.id} postAuthorId={post.author_id} commentsEnabled={post.comments_enabled} />
         )}
       </CardContent>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('wall.delete_post_confirm_title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('wall.delete_post_confirm_desc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t('wall.delete_post_cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('wall.delete_post')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

@@ -23,6 +23,7 @@ import {
   renderCertificatePageHtml,
 } from '@/lib/utils/certificateRender'
 import { openPrintPreview, openPdfDownload } from '@/lib/utils/printLayout'
+import { DESIGN_FONTS } from '@/config/design-fonts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -59,6 +60,12 @@ const OCCASION_LABELS: Record<string, string> = {
   sports_day: 'Sports Day',
   custom: 'Custom',
 }
+
+// Loads every font in the certificate builder's font library (Arabic + English) into the
+// print-preview/PDF popup window — see FontFamilySelect.tsx for the same list used while
+// designing. Without this, a font chosen on a text field renders correctly in the live
+// canvas but falls back to the default font the moment a certificate is actually generated.
+const CERTIFICATE_FONTS_HEAD_HTML = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${DESIGN_FONTS.map((f) => `family=${f.googleFamily}`).join('&')}&display=swap">`
 
 export default function CertificateGeneratorPage() {
   const campusContext = useCampus()
@@ -287,6 +294,7 @@ export default function CertificateGeneratorPage() {
           logo_url: selectedCampus?.logo_url,
         },
         pluginActive: false,
+        extraHeadHtml: CERTIFICATE_FONTS_HEAD_HTML,
       })
     } finally {
       setIsPrinting(false)
@@ -310,6 +318,7 @@ export default function CertificateGeneratorPage() {
         },
         pluginActive: false,
         landscape: selectedTemplate.template_config.layout.orientation === 'landscape',
+        extraHeadHtml: CERTIFICATE_FONTS_HEAD_HTML,
       })
     } finally {
       setIsPrinting(false)

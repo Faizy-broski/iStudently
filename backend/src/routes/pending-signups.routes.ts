@@ -10,6 +10,9 @@ router.use(authenticate)
 // GET /api/pending-signups/count — pending count for badge
 router.get('/count', requireAdmin, pendingSignupsController.getPendingCount)
 
+// GET /api/pending-signups/status-counts — per-status counts for tab badges (?role=&campus_id=&search=)
+router.get('/status-counts', requireAdmin, pendingSignupsController.getStatusCounts)
+
 // GET /api/pending-signups — list with filters (?status=pending&role=teacher&page=1&limit=20)
 router.get('/', requireAdmin, pendingSignupsController.getPendingSignups)
 

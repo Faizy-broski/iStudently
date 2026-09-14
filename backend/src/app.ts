@@ -497,6 +497,17 @@ registerRoutes("/miqat/reports", miqatReportsRoutes);
 registerRoutes("/miqat/staff-code", miqatStaffCodeRoutes);
 import { startMiqatNightlyJobs } from "./jobs/miqat-nightly.job";
 
+// Forty Hadith of an-Nawawi module routes
+import hadithFortyProgressRoutes from "./routes/hadith-forty/progress.routes";
+import hadithFortyQuizRoutes from "./routes/hadith-forty/quiz.routes";
+import hadithFortyClassRoutes from "./routes/hadith-forty/class.routes";
+import hadithFortyContentRoutes from "./routes/hadith-forty/content.routes";
+
+registerRoutes("/hadith-forty", hadithFortyProgressRoutes);
+registerRoutes("/hadith-forty/quiz", hadithFortyQuizRoutes);
+registerRoutes("/hadith-forty/class", hadithFortyClassRoutes);
+registerRoutes("/hadith-forty/content", hadithFortyContentRoutes);
+
 // 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({

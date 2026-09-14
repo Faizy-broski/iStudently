@@ -164,9 +164,14 @@ export const getProfileFields = async (req: AuthRequest, res: Response): Promise
           source: 'custom_field',
           field_key: def.field_key,
           label_en: def.label,
-          label_ar: def.label,
+          // Was hardcoded to `def.label` (the English text) regardless of what the admin set
+          // on the Custom Fields page — so an Arabic translation never showed up anywhere
+          // that renders this list (e.g. the signup link builder in Arabic UI).
+          label_ar: def.label_ar || def.label,
           type: mappedType,
-          options: (mappedType === 'select' || mappedType === 'multi-select') ? def.options.map(o => ({ id: o, label_en: o, label_ar: o })) : undefined,
+          options: (mappedType === 'select' || mappedType === 'multi-select')
+            ? def.options.map((o, i) => ({ id: o, label_en: o, label_ar: def.options_ar?.[i] || o }))
+            : undefined,
           appliesToRoles: [role],
         })
         customFieldOrderInfo.push({ category_id: def.category_id, sort_order: def.sort_order })

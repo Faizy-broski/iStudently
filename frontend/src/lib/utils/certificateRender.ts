@@ -4,6 +4,7 @@ import type { Student } from '@/lib/api/students'
 import type { Parent } from '@/lib/api/parents'
 import type { StudentCourseGradeSummary } from '@/lib/api/grades'
 import { formatDateWithPreference } from '@/lib/utils/dateFormat'
+import { PDF_FONT_STACK } from '@/lib/utils/printLayout'
 
 export { substituteTokens }
 
@@ -198,12 +199,20 @@ export function renderCertificatePageHtml(config: CertificateTemplateConfig, dat
               `<tr>${row.map((cell) => `<td style="border:1px solid #d1d5db;padding:4px 6px;">${escapeHtml(cell)}</td>`).join('')}</tr>`
           )
           .join('')}</tbody>`
-        return `<div style="${posStyle}overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-size:${fontSize}px;">${headerHtml}${bodyHtml}</table></div>`
+        // Falls back to the Arabic-safe stack (not the builder's plain default) so a table
+        // with no explicit font still renders Arabic subject/grade text correctly on export.
+        return `<div style="${posStyle}overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-size:${fontSize}px;font-family:${PDF_FONT_STACK};">${headerHtml}${bodyHtml}</table></div>`
       }
 
       const align = field.style?.align === 'center' ? 'center' : field.style?.align === 'right' ? 'flex-end' : 'flex-start'
+      // font-family previously wasn't applied here at all, so any font chosen from the
+      // builder's font library (FontFamilySelect) rendered fine in the live canvas but
+      // silently reverted to the browser default the moment a certificate was actually
+      // printed or downloaded as a PDF. Falls back to the Arabic-safe stack (not just
+      // "default sans-serif") so unstyled Arabic text still renders correctly on export.
       const textStyle =
         `font-size:${field.style?.fontSize ?? 14}px;font-weight:${field.style?.fontWeight ?? 'normal'};` +
+        `font-family:${field.style?.fontFamily || PDF_FONT_STACK};` +
         `color:${field.style?.color ?? '#000000'};text-align:${field.style?.align ?? 'left'};` +
         `display:flex;align-items:center;justify-content:${align};overflow:hidden;line-height:1.3;`
 

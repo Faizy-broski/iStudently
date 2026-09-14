@@ -36,7 +36,6 @@ import {
 } from '@/lib/api/certificate-template';
 import { CERTIFICATE_RECIPIENT_TYPES, getCertificateRecipientTypeOption } from '@/config/certificateRecipientTypes';
 import { CertificateCanvasRenderer } from '@/components/shared/CertificateCanvasRenderer';
-import { useCampus } from '@/context/CampusContext';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -62,9 +61,6 @@ const OCCASION_LABELS: Record<string, string> = {
 
 export default function CertificateTemplatesPage() {
   const router = useRouter();
-  const campusCtx = useCampus();
-  const schoolLogo = campusCtx?.selectedCampus?.logo_url ?? '';
-  const schoolName = campusCtx?.selectedCampus?.name ?? '';
   const [activeTab, setActiveTab] = useState<CertificateRecipientType>('student');
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -219,7 +215,6 @@ export default function CertificateTemplatesPage() {
                       design={template.template_config.design}
                       fields={template.template_config.fields}
                       scale={0.18}
-                      data={schoolLogo ? { school_logo: schoolLogo, school_name: schoolName, campus_name: schoolName } : undefined}
                     />
                   </div>
 

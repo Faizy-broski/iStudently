@@ -141,9 +141,11 @@ export default function ParentCustomFieldsPage() {
             const customField: CustomField = {
               id: field.id,
               label: field.label,
+              label_ar: field.label_ar,
               type: field.type,
               value: '',
               options: field.options,
+              options_ar: field.options_ar,
               required: field.required,
               sort_order: field.sort_order,
               campus_scope: field.campus_scope,
@@ -407,14 +409,14 @@ export default function ParentCustomFieldsPage() {
       for (const { categoryId, categoryName, field } of allFields) {
         if (existingIds.has(field.id)) {
           await customFieldsApi.updateFieldDefinition(field.id, {
-            label: field.label, type: field.type, options: field.options,
+            label: field.label, label_ar: field.label_ar, type: field.type, options: field.options, options_ar: field.options_ar,
             required: field.required, sort_order: field.sort_order,
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
         } else {
           await customFieldsApi.createFieldDefinition({
             entity_type: 'parent', category_id: categoryId, category_name: categoryName,
-            label: field.label, type: field.type, options: field.options,
+            label: field.label, label_ar: field.label_ar, type: field.type, options: field.options, options_ar: field.options_ar,
             required: field.required, sort_order: field.sort_order,
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
@@ -674,7 +676,9 @@ function SortableCategoryItem({
     th_req: "Req",
     btn_save_order: "Save Order",
     field_label_placeholder: "Field label...",
+    field_label_ar_placeholder: "Arabic label (optional)",
     field_options_placeholder: "Male, Female, Other",
+    field_options_ar_placeholder: "Arabic options (optional, same order)",
     scope_this: "This Only",
     scope_selected: "Selected",
     scope_all: "All",

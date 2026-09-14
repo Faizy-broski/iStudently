@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -46,6 +47,21 @@ export default function GroupAssignStudentsPage() {
   // ── Candidate list (unpaginated — "select all" must cover every filtered match) ──
   const [filters, setFilters] = useState<FilterState>({});
   const [showInactive, setShowInactive] = useState(false);
+  // Same sort_key set the backend actually supports (student.controller.ts's
+  // VALID_SORT_KEYS) — no "section" key exists there, so the Section column
+  // stays a plain, non-sortable header below, matching what's real rather
+  // than offering a sort that would silently no-op.
+  type StudentSortKey = "student_number" | "name" | "grade" | "status";
+  const [sortKey, setSortKey] = useState<StudentSortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const toggleSort = (key: StudentSortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
   const { students, loading, refresh } = useStudents({
     limit: 1000,
     search: filters.search || undefined,
@@ -56,6 +72,8 @@ export default function GroupAssignStudentsPage() {
     // to active-only) since this page's own Status assign action is also
     // used to bulk-reactivate a batch of deactivated students.
     is_active: showInactive ? undefined : true,
+    sort_key: sortKey,
+    sort_dir: sortDir,
   });
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -370,11 +388,11 @@ export default function GroupAssignStudentsPage() {
                         onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
                       />
                     </TableHead>
-                    <TableHead>{tCommon("student")}</TableHead>
-                    <TableHead>{tStudents("student_info.th_student_id")}</TableHead>
-                    <TableHead>{tStudents("student_details.grade_level")}</TableHead>
+                    <SortableTableHead label={tCommon("student")} sortKey="name" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={tStudents("student_info.th_student_id")} sortKey="student_number" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={tStudents("student_details.grade_level")} sortKey="grade" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                     <TableHead>{tStudents("student_details.section")}</TableHead>
-                    <TableHead>{tCommon("status")}</TableHead>
+                    <SortableTableHead label={tCommon("status")} sortKey="status" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>

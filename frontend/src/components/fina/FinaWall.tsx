@@ -125,7 +125,13 @@ export function FinaWall() {
         </Card>
       ) : (
         <>
-          {posts.map((post) => <PostCard key={post.id} post={post} />)}
+          {posts.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              onDeleted={(id) => setPosts((prev) => (prev ? prev.filter((p) => p.id !== id) : prev))}
+            />
+          ))}
           {cursor && (
             <div className="flex justify-center pt-2">
               <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="gap-2">

@@ -39,6 +39,8 @@ export interface PendingSignupsFilters {
   role?: string
   campus_id?: string
   search?: string
+  /** Grade level name as submitted on the signup form (student/parent signups only). */
+  grade_level?: string
   page?: number
   limit?: number
 }
@@ -49,6 +51,7 @@ export async function getPendingSignups(filters?: PendingSignupsFilters) {
   if (filters?.role) params.set('role', filters.role)
   if (filters?.campus_id) params.set('campus_id', filters.campus_id)
   if (filters?.search) params.set('search', filters.search)
+  if (filters?.grade_level) params.set('grade_level', filters.grade_level)
   if (filters?.page) params.set('page', String(filters.page))
   if (filters?.limit) params.set('limit', String(filters.limit))
   const qs = params.toString() ? `?${params.toString()}` : ''
@@ -75,4 +78,21 @@ export async function rejectPendingSignup(id: string, reason?: string) {
 
 export async function getPendingCount() {
   return apiRequest<{ count: number }>('/pending-signups/count')
+}
+
+export interface StatusCounts {
+  all: number
+  pending: number
+  approved: number
+  rejected: number
+}
+
+export async function getStatusCounts(filters?: Pick<PendingSignupsFilters, 'role' | 'campus_id' | 'search' | 'grade_level'>) {
+  const params = new URLSearchParams()
+  if (filters?.role) params.set('role', filters.role)
+  if (filters?.campus_id) params.set('campus_id', filters.campus_id)
+  if (filters?.search) params.set('search', filters.search)
+  if (filters?.grade_level) params.set('grade_level', filters.grade_level)
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  return apiRequest<StatusCounts>(`/pending-signups/status-counts${qs}`)
 }

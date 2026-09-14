@@ -30,11 +30,14 @@ import {
   getPendingSignups,
   approvePendingSignup,
   rejectPendingSignup,
+  getStatusCounts,
   type PendingSignup,
+  type StatusCounts,
 } from '@/lib/api/pending-signups'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { arSA, enUS } from 'date-fns/locale'
 import { useCampus } from '@/context/CampusContext'
+import { useGradeLevels } from '@/hooks/useAcademics'
 
 const ROLE_COLORS: Record<string, string> = {
   teacher: 'bg-blue-100 text-blue-800',
@@ -70,14 +73,17 @@ export default function PendingApprovalsPage() {
   const dateFnsLocale = isAr ? arSA : enUS
   const campusContext = useCampus()
   const selectedCampusId = campusContext?.selectedCampus?.id
+  const { gradeLevels = [] } = useGradeLevels()
 
   type TabStatus = 'all' | 'pending' | 'approved' | 'rejected'
   const [activeTab, setActiveTab] = React.useState<TabStatus>('pending')
   const [signups, setSignups] = React.useState<PendingSignup[]>([])
   const [total, setTotal] = React.useState(0)
+  const [statusCounts, setStatusCounts] = React.useState<StatusCounts>({ all: 0, pending: 0, approved: 0, rejected: 0 })
   const [loading, setLoading] = React.useState(true)
   const [search, setSearch] = React.useState('')
   const [roleFilter, setRoleFilter] = React.useState('all')
+  const [gradeFilter, setGradeFilter] = React.useState('all')
 
   // Detail view
   const [detailItem, setDetailItem] = React.useState<PendingSignup | null>(null)
@@ -99,6 +105,7 @@ export default function PendingApprovalsPage() {
         role: roleFilter === 'all' ? undefined : roleFilter,
         search: search.trim() || undefined,
         campus_id: selectedCampusId || undefined,
+        grade_level: gradeFilter === 'all' ? undefined : gradeFilter,
       })
       if (res.success) {
         setSignups(res.data ?? [])
@@ -107,9 +114,21 @@ export default function PendingApprovalsPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, roleFilter, search, selectedCampusId])
+  }, [activeTab, roleFilter, search, selectedCampusId, gradeFilter])
 
   React.useEffect(() => { fetchSignups() }, [fetchSignups])
+
+  const fetchStatusCounts = React.useCallback(async () => {
+    const res = await getStatusCounts({
+      role: roleFilter === 'all' ? undefined : roleFilter,
+      search: search.trim() || undefined,
+      campus_id: selectedCampusId || undefined,
+      grade_level: gradeFilter === 'all' ? undefined : gradeFilter,
+    })
+    if (res.success && res.data) setStatusCounts(res.data)
+  }, [roleFilter, search, selectedCampusId, gradeFilter])
+
+  React.useEffect(() => { fetchStatusCounts() }, [fetchStatusCounts])
 
   const handleApprove = async () => {
     if (!approveTarget) return
@@ -121,6 +140,7 @@ export default function PendingApprovalsPage() {
         setApproveTarget(null)
         setDetailItem(null)
         fetchSignups()
+        fetchStatusCounts()
       } else {
         toast.error(res.error ?? 'Failed to approve')
       }
@@ -140,6 +160,7 @@ export default function PendingApprovalsPage() {
         setRejectReason('')
         setDetailItem(null)
         fetchSignups()
+        fetchStatusCounts()
       } else {
         toast.error(res.error ?? 'Failed to reject')
       }
@@ -148,14 +169,14 @@ export default function PendingApprovalsPage() {
     }
   }
 
-  const tabs: { key: TabStatus; label: string }[] = [
-    { key: 'all', label: t('tabAll') },
-    { key: 'pending', label: t('tabPending') },
-    { key: 'approved', label: t('tabApproved') },
-    { key: 'rejected', label: t('tabRejected') },
+  const tabs: { key: TabStatus; label: string; count: number }[] = [
+    { key: 'all', label: t('tabAll'), count: statusCounts.all },
+    { key: 'pending', label: t('tabPending'), count: statusCounts.pending },
+    { key: 'approved', label: t('tabApproved'), count: statusCounts.approved },
+    { key: 'rejected', label: t('tabRejected'), count: statusCounts.rejected },
   ]
 
-  const pendingCount = signups.filter(s => s.status === 'pending').length
+  const pendingCount = statusCounts.pending
 
   return (
     <div className="space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
@@ -169,25 +190,35 @@ export default function PendingApprovalsPage() {
             <Badge className="bg-red-500 text-white text-xs">{pendingCount}</Badge>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={fetchSignups} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={() => { fetchSignups(); fetchStatusCounts() }} disabled={loading}>
           <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
         </Button>
       </div>
 
       {/* Status Tabs */}
       <div className="flex gap-1 border-b">
-        {tabs.map(({ key, label }) => (
+        {tabs.map(({ key, label, count }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
             className={cn(
-              'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+              'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === key
                 ? 'border-[#022172] text-[#022172]'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
             {label}
+            {count > 0 && (
+              <Badge
+                className={cn(
+                  'h-5 min-w-5 justify-center px-1.5 text-[11px] rounded-full',
+                  activeTab === key ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'
+                )}
+              >
+                {count}
+              </Badge>
+            )}
           </button>
         ))}
       </div>
@@ -211,6 +242,17 @@ export default function PendingApprovalsPage() {
             <SelectItem value="all">{t('filterRole')}</SelectItem>
             {['teacher', 'student', 'parent', 'staff', 'librarian'].map(r => (
               <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={gradeFilter} onValueChange={setGradeFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{isAr ? 'جميع الصفوف' : 'All Grades'}</SelectItem>
+            {gradeLevels.map(g => (
+              <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>

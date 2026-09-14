@@ -92,17 +92,25 @@ const HIJRI_MONTHS_AR = [
 // Week number relative to the school's current academic year start date (not
 // the calendar/ISO week of the year) — a school created mid-year should show
 // as its own "Week 1", not whatever ISO week the calendar happens to be on.
+// Counts full 7-day blocks elapsed since the start date itself (day 0-6 of the
+// year = Week 1, day 7-13 = Week 2, ...) rather than snapping to the Monday of
+// each date's calendar week — that snapping made the count jump to "Week 2"
+// after as little as one day whenever the year didn't start on a Monday
+// (e.g. a Sunday start rolls into the next Monday almost immediately).
 function getAcademicWeek(date: Date, academicYearStartDate: string | null | undefined) {
   if (!academicYearStartDate) return 1
-  const start = new Date(academicYearStartDate)
+  // academicYearStartDate is a date-only string ("2026-09-13"). Parsing that
+  // with `new Date(...)` reads it as UTC midnight, which — in any timezone
+  // behind UTC — lands on the *previous* local day once converted back to
+  // local Y/M/D below, silently shifting the whole count by a day. Pull the
+  // Y/M/D components out directly instead of going through UTC.
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(academicYearStartDate)
+  const start = dateOnlyMatch
+    ? new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]))
+    : new Date(academicYearStartDate)
   if (isNaN(start.getTime())) return 1
-  const startOfWeek = (d: Date) => {
-    const s = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-    const day = s.getDay() || 7
-    s.setDate(s.getDate() - day + 1) // Monday of that week
-    return s
-  }
-  const diffDays = Math.round((startOfWeek(date).getTime() - startOfWeek(start).getTime()) / 86400000)
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const diffDays = Math.round((startOfDay(date).getTime() - startOfDay(start).getTime()) / 86400000)
   return Math.max(1, Math.floor(diffDays / 7) + 1)
 }
 

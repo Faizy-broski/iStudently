@@ -132,9 +132,11 @@ export default function StaffCustomFieldsPage() {
             const customField: CustomField = {
               id: field.id,
               label: field.label,
+              label_ar: field.label_ar,
               type: field.type,
               value: '',
               options: field.options,
+              options_ar: field.options_ar,
               required: field.required,
               sort_order: field.sort_order,
               campus_scope: field.campus_scope,
@@ -396,14 +398,14 @@ export default function StaffCustomFieldsPage() {
       for (const { categoryId, categoryName, field } of allFields) {
         if (existingIds.has(field.id)) {
           await customFieldsApi.updateFieldDefinition(field.id, {
-            label: field.label, type: field.type, options: field.options,
+            label: field.label, label_ar: field.label_ar, type: field.type, options: field.options, options_ar: field.options_ar,
             required: field.required, sort_order: field.sort_order,
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
         } else {
           await customFieldsApi.createFieldDefinition({
             entity_type: 'staff', category_id: categoryId, category_name: categoryName,
-            label: field.label, type: field.type, options: field.options,
+            label: field.label, label_ar: field.label_ar, type: field.type, options: field.options, options_ar: field.options_ar,
             required: field.required, sort_order: field.sort_order,
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
@@ -665,7 +667,9 @@ function SortableCategoryItem({
     th_req: t("customFields.columns.required"),
     btn_save_order: t("customFields.saveOrder"),
     field_label_placeholder: t("customFields.fieldLabelPlaceholder"),
+    field_label_ar_placeholder: t("customFields.fieldLabelArPlaceholder", { defaultValue: "Arabic label (optional)" }),
     field_options_placeholder: t("customFields.optionsPlaceholder"),
+    field_options_ar_placeholder: t("customFields.optionsArPlaceholder", { defaultValue: "Arabic options (optional, same order)" }),
     scope_this: t("customFields.thisOnly"),
     scope_selected: t("customFields.selected"),
     scope_all: t("customFields.all"),

@@ -784,6 +784,9 @@
     "cards": "Cards",
     "permissions": "Permissions",
     "hifzi": "School Khalwa",
+    "hadith_forty": "Forty Hadith",
+    "hadiths": "Hadiths",
+    "class_progress": "Class Progress",
     "circles": "Circles",
     "curriculum": "Curriculum",
     "compliance": "Compliance",
@@ -8972,6 +8975,8 @@
       "hifzi_desc": "Quran memorization management: circles, recitation tracking with error taxonomy and auto-grading, spaced-repetition review, daily assignments, attendance, and progress reports/heatmap.",
       "miqat_name": "Miqat — Cryptographic Attendance",
       "miqat_desc": "QR-card gate attendance with cryptographic card signing, geofencing, offline-first scanning, and automatic guardian notifications. Requires a scanner device (tablet/phone) at each gate.",
+      "hadith_forty_name": "الأربعون النووية — Forty Hadith of an-Nawawi",
+      "hadith_forty_desc": "Memorization and spaced review of an-Nawawi's 42 hadith — repetition tracking, a Leitner-box review ladder, a server-graded quiz per hadith, and a class progress view for teachers.",
       "qirtasi_name": "Qirtasi قرطاسي — My Worksheet",
       "qirtasi_desc": "A curriculum-mapped worksheet library: upload, categorize by grade/subject/unit/lesson and pedagogical facets, browse, and download. Foundation slice — curriculum tree and faceted search only; AI generation, scan-and-grade, and marketplace are future phases.",
       "online_classes_name": "Online Learning",
@@ -12460,7 +12465,15 @@
       "class_goal_target_reached": "Goal reached! 🎉",
       "class_goal_grade_placeholder": "Grade",
       "class_goal_section_optional_placeholder": "Section (optional)",
-      "class_goal_whole_grade": "Whole grade"
+      "class_goal_whole_grade": "Whole grade",
+      "post_options": "Post options",
+      "pin_post": "Pin to top",
+      "unpin_post": "Unpin",
+      "delete_post": "Delete post",
+      "delete_post_confirm_title": "Delete this post?",
+      "delete_post_confirm_desc": "This will permanently remove it from the wall. This action cannot be undone.",
+      "delete_post_cancel": "Cancel",
+      "delete_post_success": "Post deleted"
     },
     "reactions": {
       "thumbs_up": "Nice",
@@ -13417,6 +13430,95 @@
         "w10": "التَّفخيم والتَّرقيق",
         "wq": "التِّلاوة"
       }
+    }
+  },
+  "hadithForty": {
+    "loading": "Loading…",
+    "error": {
+      "load": "Failed to load the module. Please try again."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again."
+    },
+    "stats": {
+      "completed": "You've mastered all 42 hadith!",
+      "streak": "{days}-day streak — keep it up!",
+      "notStarted": "Start your first hadith today",
+      "keepGoing": "Keep going",
+      "mastery": "Mastery",
+      "masteredOf": "{mastered} of {total} mastered",
+      "mastered": "Mastered",
+      "learning": "Learning",
+      "repetitions": "Repetitions",
+      "dueToday": "Due today"
+    },
+    "actions": {
+      "startSession": "Start Today's Session",
+      "resume": "Resume"
+    },
+    "filters": {
+      "search": "Search hadith…",
+      "allCategories": "All Categories",
+      "all": "All",
+      "due": "Due",
+      "learning": "Learning",
+      "mastered": "Mastered",
+      "favorites": "Favorites",
+      "empty": "No hadith match your filters"
+    },
+    "card": {
+      "repetitionCount": "{count} repetitions",
+      "dueBadge": "Due",
+      "state": {
+        "new": "New",
+        "learning": "Learning",
+        "mastered": "Mastered"
+      }
+    },
+    "categories": {
+      "aqidah": "Creed",
+      "ibadah": "Worship",
+      "akhlaq": "Character",
+      "muamalat": "Transactions",
+      "usrah": "Family & Community",
+      "ilm": "Knowledge & Guidance",
+      "zuhd": "Asceticism"
+    },
+    "activity": {
+      "title": "This Week"
+    },
+    "settings": {
+      "dailyGoal": "Daily repetition goal",
+      "sessionCap": "Hadith per session",
+      "save": "Save",
+      "saved": "Settings saved",
+      "saveError": "Failed to save settings"
+    },
+    "sheet": {
+      "notePlaceholder": "Add a personal note…",
+      "startQuiz": "Start Quiz",
+      "next": "Next"
+    },
+    "review": {
+      "fail": "Still Learning",
+      "pass": "I Know It",
+      "passedToast": "Great — scheduled for later review",
+      "failedToast": "No problem — you'll see this again soon"
+    },
+    "quiz": {
+      "submit": "Submit",
+      "done": "Done",
+      "passed": "Well done — passed!",
+      "failed": "Not quite — review and try again"
+    },
+    "class": {
+      "title": "Class Progress — Forty Hadith",
+      "colStudent": "Student",
+      "colMastered": "Mastered",
+      "colLearning": "Learning",
+      "colRepetitions": "Repetitions",
+      "colDueToday": "Due Today",
+      "empty": "No students have started this module yet"
     }
   }
 }

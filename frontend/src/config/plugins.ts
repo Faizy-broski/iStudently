@@ -48,6 +48,7 @@ import {
   FileStack,
   Lock,
   ScanLine,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -138,6 +139,21 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: ScanLine,
     category: 'Attendance',
     settingsHref: '/admin/miqat/settings',
+    sidebarInjections: [],
+  },
+
+  // ── Forty Hadith of an-Nawawi (الأربعين النووية) ──────────────────────────
+  // Resources-section module (own README places it there, matching Mental
+  // Math/Qaida's URL convention under app/<role>/resources/), gated by
+  // pluginRequired: 'hadith_forty' — see sidebar.ts's Resources entries.
+  {
+    id: 'hadith_forty',
+    name: 'الأربعون النووية — Forty Hadith of an-Nawawi',
+    description:
+      'Memorization and spaced review of an-Nawawi\'s 42 hadith — repetition tracking, a Leitner-box review ladder, a server-graded quiz per hadith, and a class progress view for teachers.',
+    icon: BookOpen,
+    category: 'Academics',
+    settingsHref: '/admin/resources/hadith-forty/class',
     sidebarInjections: [],
   },
 

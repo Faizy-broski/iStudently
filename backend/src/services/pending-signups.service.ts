@@ -51,6 +51,8 @@ export interface PendingSignupsFilter {
   role?: string
   campusId?: string
   search?: string
+  /** Grade level name as submitted on the signup form (extra_data.grade_level) — student/parent signups only. */
+  gradeLevel?: string
   page?: number
   limit?: number
 }
@@ -128,6 +130,7 @@ export async function getPendingSignups(
   if (filters.status) query = query.eq('status', filters.status)
   if (filters.role) query = query.eq('role', filters.role)
   if (filters.campusId) query = query.eq('campus_id', filters.campusId)
+  if (filters.gradeLevel) query = query.eq('extra_data->>grade_level', filters.gradeLevel)
   if (filters.search) {
     query = query.or(
       `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
@@ -571,6 +574,51 @@ export async function getPendingCount(schoolId: string): Promise<number> {
     .eq('status', 'pending')
 
   return count ?? 0
+}
+
+export interface StatusCountsFilter {
+  role?: string
+  campusId?: string
+  search?: string
+  gradeLevel?: string
+}
+
+/** Per-status counts (all/pending/approved/rejected) for the tab badges, honoring the same role/campus/search filters as the list. */
+export async function getStatusCounts(
+  schoolId: string,
+  filters: StatusCountsFilter = {}
+): Promise<{ all: number; pending: number; approved: number; rejected: number }> {
+  const buildQuery = (status?: 'pending' | 'approved' | 'rejected') => {
+    let query = supabase
+      .from('pending_signups')
+      .select('id', { count: 'exact', head: true })
+      .eq('school_id', schoolId)
+
+    if (status) query = query.eq('status', status)
+    if (filters.role) query = query.eq('role', filters.role)
+    if (filters.campusId) query = query.eq('campus_id', filters.campusId)
+    if (filters.gradeLevel) query = query.eq('extra_data->>grade_level', filters.gradeLevel)
+    if (filters.search) {
+      query = query.or(
+        `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
+      )
+    }
+    return query
+  }
+
+  const [all, pending, approved, rejected] = await Promise.all([
+    buildQuery(),
+    buildQuery('pending'),
+    buildQuery('approved'),
+    buildQuery('rejected'),
+  ])
+
+  return {
+    all: all.count ?? 0,
+    pending: pending.count ?? 0,
+    approved: approved.count ?? 0,
+    rejected: rejected.count ?? 0,
+  }
 }
 
 // ── Email helpers ───────────────────────────────────────────────────────────

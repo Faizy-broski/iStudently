@@ -614,6 +614,16 @@ const adminMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "hadith_forty",
+    href: "/admin/resources/hadith-forty",
+    icon: BookOpen,
+    pluginRequired: "hadith_forty",
+    subItems: [
+      { title: "hadiths", href: "/admin/resources/hadith-forty", icon: BookOpen },
+      { title: "class_progress", href: "/admin/resources/hadith-forty/class", icon: Users },
+    ],
+  },
+  {
     title: "grievances",
     href: "/admin/grievances",
     icon: MessageSquareWarning,
@@ -911,6 +921,16 @@ const teacherMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "hadith_forty",
+    href: "/teacher/resources/hadith-forty",
+    icon: BookOpen,
+    pluginRequired: "hadith_forty",
+    subItems: [
+      { title: "hadiths", href: "/teacher/resources/hadith-forty", icon: BookOpen },
+      { title: "class_progress", href: "/teacher/resources/hadith-forty/class", icon: Users },
+    ],
+  },
+  {
     title: "grievances",
     href: "/teacher/grievances",
     icon: MessageSquareWarning,
@@ -1092,6 +1112,12 @@ const studentMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "hadith_forty",
+    href: "/student/resources/hadith-forty",
+    icon: BookOpen,
+    pluginRequired: "hadith_forty",
+  },
+  {
     title: "grievances",
     href: "/student/grievances",
     icon: MessageSquareWarning,
@@ -1236,6 +1262,12 @@ const parentMenuItems: SidebarMenuItem[] = [
     href: "/parent/miqat",
     icon: ScanLine,
     pluginRequired: "miqat",
+  },
+  {
+    title: "hadith_forty",
+    href: "/parent/resources/hadith-forty",
+    icon: BookOpen,
+    pluginRequired: "hadith_forty",
   },
   {
     title: "grievances",

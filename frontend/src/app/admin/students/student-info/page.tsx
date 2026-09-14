@@ -17,6 +17,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal";
 import { EditStudentForm } from "@/components/admin";
+import RelativesTab from "@/components/admin/RelativesTab";
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
 import { ConfidentialFamilyStatusDialog } from "@/components/shared/ConfidentialFamilyStatusDialog";
 import { type Student, getStudentById, bulkDeleteStudents, bulkUpdateStudentStatus } from "@/lib/api/students";
@@ -115,6 +116,8 @@ export default function StudentInfoPage() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showParentDialog, setShowParentDialog] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [familyStudent, setFamilyStudent] = useState<Student | null>(null);
+  const [showFamilyDialog, setShowFamilyDialog] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const itemsPerPage = 10;
   const [appendConfig, setAppendConfig] = useState<StudentListAppendConfig | null>(null);
@@ -600,6 +603,15 @@ export default function StudentInfoPage() {
                                     <Users className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
                                     {t("view_parent_details")}
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setFamilyStudent(student);
+                                      setShowFamilyDialog(true);
+                                    }}
+                                  >
+                                    <Users className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                    {locale === 'ar' ? 'عرض الإخوة/الأخوات والصف' : 'View Family (Siblings & Grades)'}
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => {
                                     setCredentialsData({
                                       id: student.id,
@@ -748,6 +760,25 @@ export default function StudentInfoPage() {
                   </div>
                 </div>
               )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Family Dialog — siblings + each one's grade, so cross-grade families
+              (e.g. one child in Grade 9, another in Grade 6) are visible at a glance
+              directly from the students list, without opening each student's profile. */}
+          <Dialog open={showFamilyDialog} onOpenChange={(open) => { setShowFamilyDialog(open); if (!open) setFamilyStudent(null); }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {locale === 'ar' ? 'العائلة' : 'Family'}
+                  {familyStudent && (
+                    <span className="ml-2 rtl:mr-2 rtl:ml-0 text-sm font-normal text-muted-foreground">
+                      — {[familyStudent.profile?.first_name, familyStudent.profile?.last_name].filter(Boolean).join(' ')}
+                    </span>
+                  )}
+                </DialogTitle>
+              </DialogHeader>
+              {familyStudent && <RelativesTab studentId={familyStudent.id} />}
             </DialogContent>
           </Dialog>
         </>
