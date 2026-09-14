@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 import { miqatService } from '../../services/miqat/miqat.service';
 import { verifyDeviceCertificate, issueDeviceCertificate, verifyBatchSignature, generateP256KeyPair } from '../../services/miqat/device-crypto';
-import { decryptKey } from '../../services/miqat/key-management';
+import { decryptKeyOrThrowFriendly } from '../../services/miqat/key-management';
 import { getMasterKey } from '../../services/miqat/master-key';
 import { config } from '../../config/env';
 
@@ -169,9 +169,24 @@ class MiqatDevicesController {
       // scans locally while offline (spec §11). Current + previous key, for
       // the rotation overlap window (spec §5 Layer 1).
       const masterKey = getMasterKey();
-      const cardSigningKeysB64 = [schoolConfig.card_signing_key_ref, schoolConfig.previous_key_ref]
-        .filter((ref): ref is string => !!ref)
-        .map((ref) => decryptKey(ref, masterKey).toString('base64'));
+      // A broken previous_key_ref (rotation-overlap key) shouldn't block
+      // bootstrap entirely if the current key still decrypts fine — skip
+      // individually-undecryptable refs rather than failing the whole
+      // request, but still surface each failure in the logs.
+      const cardSigningKeysB64 = [
+        ['card_signing_key_ref', schoolConfig.card_signing_key_ref],
+        ['previous_key_ref', schoolConfig.previous_key_ref],
+      ]
+        .filter((entry): entry is [string, string] => !!entry[1])
+        .map(([label, ref]) => {
+          try {
+            return decryptKeyOrThrowFriendly(ref, masterKey, `school ${device.school_id}'s ${label}`).toString('base64');
+          } catch (err: any) {
+            console.error(err.message);
+            return null;
+          }
+        })
+        .filter((b64): b64 is string => b64 !== null);
 
       res.json({
         success: true,

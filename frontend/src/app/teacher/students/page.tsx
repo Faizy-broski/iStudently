@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, Eye, ChevronLeft, ChevronRight, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
-import { type Student } from "@/lib/api/students";
+import { type CoursePeriodStudent } from "@/lib/api/courses";
 import { useTeacherStudents } from "@/hooks/useTeacherStudents";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
@@ -33,6 +33,8 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
+import { ExportButton } from "@/components/shared/ExportButton";
+import type { ExportColumn } from "@/lib/utils/tableExport";
 
 export default function TeacherStudentInfoPage() {
   const t = useTranslations('teacherPages.students');
@@ -66,7 +68,7 @@ export default function TeacherStudentInfoPage() {
     }
   }, [error, hasInitialized, t]);
 
-  const handleViewDetails = (student: Student) => {
+  const handleViewDetails = (student: CoursePeriodStudent) => {
     router.push(`/teacher/students/${student.id}`);
   };
 
@@ -98,20 +100,37 @@ export default function TeacherStudentInfoPage() {
     );
   };
 
+  const exportColumns: ExportColumn<CoursePeriodStudent>[] = [
+    { key: 'student_number', label: t('studentId'), accessor: (s) => s.student_number },
+    { key: 'name', label: t('name'), accessor: (s) => `${s.profile?.first_name || ''} ${s.profile?.last_name || ''}`.trim() },
+    { key: 'grade', label: t('grade'), accessor: (s) => s.grade_level || '' },
+    { key: 'status', label: t('status'), accessor: (s) => (s.profile?.is_active ? t('active') : t('inactive')) },
+    { key: 'phone', label: t('contact'), accessor: (s) => s.profile?.phone || '' },
+  ];
+
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white dark:bg-linear-to-r dark:from-[#57A3CC] dark:to-white">
-          {t('pageTitle')}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          {t('pageSubtitle')}
-          {sectionCount > 0 && (
-            <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-              {t('sectionsCount', { count: sectionCount })}
-            </span>
-          )}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white dark:bg-linear-to-r dark:from-[#57A3CC] dark:to-white">
+            {t('pageTitle')}
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            {t('pageSubtitle')}
+            {sectionCount > 0 && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                {t('sectionsCount', { count: sectionCount })}
+              </span>
+            )}
+          </p>
+        </div>
+        <ExportButton
+          reportKey="teacher_students"
+          columns={exportColumns}
+          rows={students}
+          filename="my_students"
+          title={t('pageTitle')}
+        />
       </div>
 
 

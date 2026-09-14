@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { z } from 'zod';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 import { miqatService } from '../../services/miqat/miqat.service';
-import { decryptKey } from '../../services/miqat/key-management';
+import { decryptKeyOrThrowFriendly } from '../../services/miqat/key-management';
 import { getMasterKey } from '../../services/miqat/master-key';
 import { signCardPayload } from '../../services/miqat/card-crypto';
 
@@ -19,7 +19,7 @@ class MiqatCardsController {
       if (!cfg) return res.status(400).json({ success: false, error: 'Configure the school (geofence, signing key) before issuing cards' });
 
       const card = await miqatService.issueCard(parsed.data.person_id, req.profile.id);
-      const rawKey = decryptKey(cfg.card_signing_key_ref, getMasterKey());
+      const rawKey = decryptKeyOrThrowFriendly(cfg.card_signing_key_ref, getMasterKey(), `school ${schoolId}'s card signing key`);
       const encoded = signCardPayload(
         {
           schoolId,

@@ -43,6 +43,7 @@ import { format } from "date-fns";
 import { ar, enUS } from "date-fns/locale";
 import { useTranslations, useLocale } from "next-intl";
 import { getStaffScore, getLogs, type PerformanceScore, type StaffPerformanceLog } from "@/lib/api/performance";
+import { grievancesApi } from "@/lib/api/grievances";
 
 // Helper to get initials
 const getInitials = (firstName?: string | null, lastName?: string | null) => {
@@ -104,6 +105,7 @@ export default function TeacherDetailsPage() {
   const [perfScore, setPerfScore] = useState<PerformanceScore | null>(null);
   const [perfLogs,  setPerfLogs]  = useState<StaffPerformanceLog[]>([]);
   const [perfLoading, setPerfLoading] = useState(false);
+  const [complaintCount, setComplaintCount] = useState<number | null>(null);
 
   // Fetch all teachers for navigation
   const { teachers, total, loading: teachersLoading } = useTeachers(1, 1000);
@@ -173,6 +175,17 @@ export default function TeacherDetailsPage() {
       setPerfLogs(logsResult.data);
     }).catch(() => {}).finally(() => setPerfLoading(false));
   }, [activeTab, currentTeacher?.id]);
+
+  // Complaints naming this teacher as the person involved — surfaced as a
+  // plain count on their administration file. limit:1 since only the
+  // pagination total is needed, not the rows themselves.
+  useEffect(() => {
+    if (activeTab !== "performance" || !currentTeacher?.profile_id) return;
+    grievancesApi
+      .list("all", { person_involved_profile_id: currentTeacher.profile_id, limit: 1 })
+      .then((res) => setComplaintCount(res.success ? res.pagination?.total ?? 0 : null))
+      .catch(() => setComplaintCount(null));
+  }, [activeTab, currentTeacher?.profile_id]);
 
   // Navigate using employee_number for readable URLs
   const navigateToTeacher = (teacher: Staff) => {
@@ -495,7 +508,7 @@ export default function TeacherDetailsPage() {
           ) : (
             <div className="space-y-6">
               {perfScore && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <Card className="flex flex-col items-center justify-center py-6 col-span-1">
                     <CardContent className="flex flex-col items-center gap-3">
                       <div className="relative h-28 w-28">
@@ -544,6 +557,18 @@ export default function TeacherDetailsPage() {
                         <span className="text-sm text-muted-foreground">Total Incidents</span>
                       </div>
                       <p className="text-2xl font-bold text-blue-600">{perfScore.log_count}</p>
+                    </CardContent>
+                  </Card>
+                  <Card
+                    className="col-span-1 cursor-pointer hover:border-primary/40 transition-colors"
+                    onClick={() => router.push(`/admin/grievances?person_involved_profile_id=${currentTeacher?.profile_id}`)}
+                  >
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm text-muted-foreground">Complaints</span>
+                      </div>
+                      <p className="text-2xl font-bold text-orange-600">{complaintCount ?? "—"}</p>
                     </CardContent>
                   </Card>
                 </div>

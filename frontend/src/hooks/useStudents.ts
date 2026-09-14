@@ -12,6 +12,7 @@ interface UseStudentsOptions {
   grade_level?: string | string[];
   section_id?: string;
   is_active?: boolean;
+  has_siblings?: boolean;
   sort_key?: 'student_number' | 'name' | 'grade' | 'status' | 'contact';
   sort_dir?: 'asc' | 'desc';
 }
@@ -19,11 +20,11 @@ interface UseStudentsOptions {
 export function useStudents(options: UseStudentsOptions = {}) {
   const { user } = useAuth();
   const campusContext = useCampus();
-  const { page = 1, limit = 10, search, grade_level, section_id, is_active, sort_key, sort_dir } = options;
+  const { page = 1, limit = 10, search, grade_level, section_id, is_active, has_siblings, sort_key, sort_dir } = options;
 
   // Create a cache key that includes all parameters INCLUDING campus
   const cacheKey = user
-    ? ['students', user.id, campusContext?.selectedCampus?.id, page, limit, search, grade_level, section_id, is_active, sort_key, sort_dir]
+    ? ['students', user.id, campusContext?.selectedCampus?.id, page, limit, search, grade_level, section_id, is_active, has_siblings, sort_key, sort_dir]
     : null;
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -39,6 +40,7 @@ export function useStudents(options: UseStudentsOptions = {}) {
         section_id: section_id || undefined,
         campus_id: campusContext?.selectedCampus?.id,
         is_active,
+        has_siblings,
         sort_key,
         sort_dir,
       });

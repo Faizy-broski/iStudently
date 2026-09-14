@@ -45,6 +45,8 @@ export interface Grievance {
   submitter_profile_id: string | null
   submitter_name?: string
   person_involved_profile_id: string | null
+  grade_level_id: string | null
+  subject_id: string | null
   is_anonymous: boolean
   is_confidential: boolean
   status: GrievanceStatus
@@ -150,6 +152,8 @@ export const grievancesApi = {
     priority?: GrievancePriority
     department?: string
     person_involved_profile_id?: string
+    grade_level_id?: string
+    subject_id?: string
     is_anonymous?: boolean
     is_confidential?: boolean
     attachments?: { file_name: string; file_url: string; file_type?: string; file_size?: number }[]
@@ -161,6 +165,8 @@ export const grievancesApi = {
     priority?: string
     category_id?: string
     search?: string
+    /** Admin-only (view must be 'all') — complaints naming this staff/teacher profile as the person involved. */
+    person_involved_profile_id?: string
     page?: number
     limit?: number
   }) => {
@@ -169,6 +175,7 @@ export const grievancesApi = {
     if (params?.priority) query.append('priority', params.priority)
     if (params?.category_id) query.append('category_id', params.category_id)
     if (params?.search) query.append('search', params.search)
+    if (params?.person_involved_profile_id) query.append('person_involved_profile_id', params.person_involved_profile_id)
     if (params?.page) query.append('page', String(params.page))
     if (params?.limit) query.append('limit', String(params.limit))
     return apiRequest<Grievance[]>(`/grievances?${query.toString()}`) as Promise<PaginatedResponse<Grievance[]>>

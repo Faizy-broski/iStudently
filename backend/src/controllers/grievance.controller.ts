@@ -35,6 +35,8 @@ export class GrievanceController {
         department: req.body.department,
         submitter_profile_id: profile.id,
         person_involved_profile_id: req.body.person_involved_profile_id,
+        grade_level_id: req.body.grade_level_id,
+        subject_id: req.body.subject_id,
         is_anonymous: req.body.is_anonymous,
         is_confidential: req.body.is_confidential,
         attachments: req.body.attachments,
@@ -61,6 +63,7 @@ export class GrievanceController {
         priority: req.query.priority as string,
         category_id: req.query.category_id as string,
         search: req.query.search as string,
+        person_involved_profile_id: req.query.person_involved_profile_id as string,
         page: req.query.page ? parseInt(req.query.page as string) : undefined,
         limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
       })

@@ -13,6 +13,8 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
+import { ExportButton } from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/lib/utils/tableExport'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -295,6 +297,19 @@ export default function PaymentsPage() {
         URL.revokeObjectURL(url)
     }
 
+    const exportColumns: ExportColumn<Student>[] = [
+        { key: 'name', label: t('student'), accessor: (s) => formatStudentName(s) },
+        { key: 'student_number', label: t('istudentlyId'), accessor: (s) => s.student_number || '' },
+        { key: 'grade', label: t('gradeLevel'), accessor: (s) => s.grade_levels?.name || '' },
+        { key: 'section', label: tCommon('section'), accessor: (s) => s.sections?.name || '' },
+        { key: 'ethnicity', label: t('ethnicity'), accessor: (s) => s.custom_fields?.ethnicity || '' },
+        { key: 'gender', label: t('gender'), accessor: (s) => s.custom_fields?.gender || '' },
+        { key: 'address', label: t('mailingAddress'), accessor: (s) => getStudentAddress(s).address },
+        { key: 'city', label: t('city'), accessor: (s) => getStudentAddress(s).city },
+        { key: 'state', label: t('state'), accessor: (s) => getStudentAddress(s).state },
+        { key: 'zip_code', label: t('zipCode'), accessor: (s) => getStudentAddress(s).zip_code },
+    ]
+
     if (campusLoading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -398,6 +413,13 @@ export default function PaymentsPage() {
                     >
                         <IconDownload className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </Button>
+                    <ExportButton
+                        reportKey="fee_payments"
+                        columns={exportColumns}
+                        rows={filteredStudents}
+                        filename="fee_payments"
+                        title={t('title')}
+                    />
                 </div>
                 <div className="relative">
                     <Input

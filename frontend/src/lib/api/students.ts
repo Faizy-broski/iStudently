@@ -124,6 +124,8 @@ export interface Student {
   }
   grade?: { id: string; name: string } | null
   section?: { id: string; name: string } | null
+  /** Number of other active students sharing at least one active guardian (parent_student_links). Returned by GET /students. */
+  sibling_count?: number
   custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
   // Present only on create, when no username/password was supplied and the
   // backend auto-generated one (e.g. when email was left blank).
@@ -190,6 +192,8 @@ export async function getStudents(params?: {
   section_id?: string | string[]
   /** Filter by active status. Omit to include both active and inactive students. */
   is_active?: boolean
+  /** Filter to students who have at least one sibling (shared active guardian) in this school, or those who don't. Omit to include both. */
+  has_siblings?: boolean
   /** Column to sort by BEFORE pagination — must be server-side so students of the
    *  same grade/etc. land on consecutive pages instead of scattered across them. */
   sort_key?: 'student_number' | 'name' | 'grade' | 'status' | 'contact'
@@ -215,6 +219,7 @@ export async function getStudents(params?: {
     }
   }
   if (params?.is_active !== undefined) queryParams.append('is_active', String(params.is_active))
+  if (params?.has_siblings !== undefined) queryParams.append('has_siblings', String(params.has_siblings))
   if (params?.sort_key) queryParams.append('sort_key', params.sort_key)
   if (params?.sort_dir) queryParams.append('sort_dir', params.sort_dir)
 

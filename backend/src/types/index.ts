@@ -2294,6 +2294,8 @@ export interface Grievance {
   department: string | null
   submitter_profile_id: string
   person_involved_profile_id: string | null
+  grade_level_id: string | null
+  subject_id: string | null
   is_anonymous: boolean
   is_confidential: boolean
   status: GrievanceStatus
@@ -2315,6 +2317,8 @@ export interface CreateGrievanceDTO {
   department?: string
   submitter_profile_id: string
   person_involved_profile_id?: string
+  grade_level_id?: string
+  subject_id?: string
   is_anonymous?: boolean
   is_confidential?: boolean
   attachments?: { file_name: string; file_url: string; file_type?: string; file_size?: number }[]

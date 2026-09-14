@@ -13,9 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Loader2, Upload, X, Send } from "lucide-react"
+import { Loader2, Upload, X, Send, Search } from "lucide-react"
 import { grievancesApi, type GrievanceCategory, type GrievancePriority, type GrievanceSettings } from "@/lib/api/grievances"
 import { useAuth } from "@/context/AuthContext"
+import { useGradeLevels, useSubjects } from "@/hooks/useAcademics"
+import { getAllTeachers, type Staff } from "@/lib/api/teachers"
 
 const PRIORITIES: GrievancePriority[] = ["low", "normal", "high", "urgent", "critical"]
 const DEPARTMENT_KEYS = [
@@ -35,17 +37,41 @@ export function GrievanceSubmitForm({ listHref }: GrievanceSubmitFormProps) {
 
   const [categories, setCategories] = useState<GrievanceCategory[]>([])
   const [settings, setSettings] = useState<GrievanceSettings | null>(null)
+  const { gradeLevels } = useGradeLevels()
+  const { subjects } = useSubjects()
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [priority, setPriority] = useState<GrievancePriority>("normal")
   const [department, setDepartment] = useState("")
+  const [gradeLevelId, setGradeLevelId] = useState("")
+  const [subjectId, setSubjectId] = useState("")
+  const [teacherQuery, setTeacherQuery] = useState("")
+  const [teacherResults, setTeacherResults] = useState<Staff[]>([])
+  const [selectedTeacher, setSelectedTeacher] = useState<Staff | null>(null)
+  const [searchingTeachers, setSearchingTeachers] = useState(false)
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [isConfidential, setIsConfidential] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Cascades once a grade is picked; shows every subject beforehand rather
+  // than an empty list, since narrowing is a convenience here, not a hard
+  // requirement (a complaint isn't always about a grade-scoped subject).
+  const visibleSubjects = gradeLevelId ? subjects.filter((s) => s.grade_level_id === gradeLevelId) : subjects
+
+  const handleTeacherSearch = async () => {
+    if (teacherQuery.trim().length < 2) return
+    setSearchingTeachers(true)
+    try {
+      const { data } = await getAllTeachers({ search: teacherQuery.trim(), limit: 10 })
+      setTeacherResults(data)
+    } finally {
+      setSearchingTeachers(false)
+    }
+  }
 
   useEffect(() => {
     grievancesApi.getCategories().then((res) => {
@@ -85,6 +111,9 @@ export function GrievanceSubmitForm({ listHref }: GrievanceSubmitFormProps) {
         category_id: categoryId || undefined,
         priority,
         department: department || undefined,
+        grade_level_id: gradeLevelId || undefined,
+        subject_id: subjectId || undefined,
+        person_involved_profile_id: selectedTeacher?.profile_id || undefined,
         is_anonymous: isAnonymous,
         is_confidential: isConfidential,
       })
@@ -166,6 +195,75 @@ export function GrievanceSubmitForm({ listHref }: GrievanceSubmitFormProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>{t("label_grade_level")}</Label>
+              <Select
+                value={gradeLevelId}
+                onValueChange={(v) => { setGradeLevelId(v); setSubjectId("") }}
+              >
+                <SelectTrigger><SelectValue placeholder={t("select_grade_level_placeholder")} /></SelectTrigger>
+                <SelectContent>
+                  {gradeLevels.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>{t("label_subject")}</Label>
+              <Select value={subjectId} onValueChange={setSubjectId}>
+                <SelectTrigger><SelectValue placeholder={t("select_subject_placeholder")} /></SelectTrigger>
+                <SelectContent>
+                  {visibleSubjects.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("label_teacher")}</Label>
+            {selectedTeacher ? (
+              <div className="flex items-center justify-between rounded-md border p-2 text-sm">
+                <span>{selectedTeacher.profile?.first_name} {selectedTeacher.profile?.last_name}</span>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedTeacher(null)}>
+                  {t("change_teacher")}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    value={teacherQuery}
+                    onChange={(e) => setTeacherQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleTeacherSearch() } }}
+                    placeholder={t("search_teacher_placeholder")}
+                  />
+                  <Button type="button" variant="outline" onClick={handleTeacherSearch} disabled={searchingTeachers}>
+                    {searchingTeachers ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {teacherResults.length > 0 && (
+                  <div className="divide-y rounded-md border">
+                    {teacherResults.map((tch) => (
+                      <button
+                        key={tch.id}
+                        type="button"
+                        className="w-full text-start p-2 text-sm hover:bg-muted/50"
+                        onClick={() => { setSelectedTeacher(tch); setTeacherResults([]); setTeacherQuery("") }}
+                      >
+                        {tch.profile?.first_name} {tch.profile?.last_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <div className="space-y-3 rounded-lg border p-4">

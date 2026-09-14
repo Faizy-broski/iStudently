@@ -32,3 +32,26 @@ export function decryptKey(ciphertext: string, masterKey: Buffer): Buffer {
   decipher.setAuthTag(authTag);
   return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 }
+
+/**
+ * Same as decryptKey, but turns Node's raw GCM auth-tag failure ("Unsupported
+ * state or unable to authenticate data" — meaningless to an admin and to
+ * anyone reading logs) into a diagnosable message. This failure has exactly
+ * one real-world cause: the ciphertext was encrypted under a different
+ * MIQAT_MASTER_KEY than the one currently configured (e.g. a value created
+ * while running on the dev fallback — a fresh random key generated per
+ * process, see master-key.ts — before a real MIQAT_MASTER_KEY was set in
+ * .env, or the env var was later changed/rotated without re-encrypting
+ * existing secrets). `context` names what was being decrypted so the log
+ * line/response points at the fix (rotate that specific secret) instead of
+ * a bare crypto error.
+ */
+export function decryptKeyOrThrowFriendly(ciphertext: string, masterKey: Buffer, context: string): Buffer {
+  try {
+    return decryptKey(ciphertext, masterKey);
+  } catch (err: any) {
+    const friendly = `Could not decrypt ${context}: it was encrypted under a different MIQAT_MASTER_KEY than the one currently configured (most likely MIQAT_MASTER_KEY changed since this secret was created). It must be rotated/regenerated. Original error: ${err.message}`;
+    console.error(`[miqat/key-management] ${friendly}`);
+    throw new Error(friendly);
+  }
+}

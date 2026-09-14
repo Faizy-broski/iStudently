@@ -84,6 +84,13 @@
       "label_priority": "الأولوية",
       "label_department": "القسم (اختياري)",
       "select_department_placeholder": "اختر القسم",
+      "label_grade_level": "المرحلة الدراسية (اختياري)",
+      "select_grade_level_placeholder": "اختر المرحلة الدراسية",
+      "label_subject": "المادة (اختياري)",
+      "select_subject_placeholder": "اختر المادة",
+      "label_teacher": "المعلّم (اختياري)",
+      "search_teacher_placeholder": "ابحث عن معلّم بالاسم…",
+      "change_teacher": "تغيير",
       "confidential_title": "شكوى سرية",
       "confidential_desc": "تقيّد إمكانية الاطلاع — الشخص المعني بشكواك لن يتمكن أبداً من الاطلاع عليها.",
       "anonymous_title": "التقديم بشكل مجهول",
@@ -1905,8 +1912,13 @@
           "qualifications": "المؤهلات",
           "date_of_joining": "تاريخ الانضمام",
           "employment_type": "نوع التوظيف",
-          "linked_students": "الطلاب المرتبطون"
-        }
+          "linked_students": "الطلاب المرتبطون",
+          "siblings": "الأشقاء (العائلة)"
+        },
+        "family": "العائلة",
+        "family_all": "كل الطلاب",
+        "family_with_siblings": "لديهم أشقاء فقط",
+        "family_without_siblings": "بدون أشقاء فقط"
       }
     },
     "billing_elements": {
@@ -4200,7 +4212,13 @@
         "btn_cancel": "إلغاء",
         "msg_delete_success": "تم حذف {count} طالب",
         "msg_delete_partial": "تم حذف {count} طالب، وفشل حذف {errors}",
-        "msg_delete_failed": "فشل حذف الطلاب"
+        "msg_delete_failed": "فشل حذف الطلاب",
+        "th_siblings": "الأشقاء",
+        "siblings_badge_title": "{count} من الأشقاء في هذه المدرسة",
+        "filter_family_label": "العائلة:",
+        "filter_family_all": "كل الطلاب",
+        "filter_family_with_siblings": "لديهم أشقاء",
+        "filter_family_without_siblings": "بدون أشقاء"
       },
       "group_assign": {
         "title": "تعيين جماعي",
@@ -13042,7 +13060,13 @@
       "photoRetentionDays": "مدة الاحتفاظ (أيام)",
       "save": "حفظ الإعدادات",
       "saveSuccess": "تم حفظ إعدادات ميقات",
-      "saveError": "فشل حفظ الإعدادات"
+      "saveError": "فشل حفظ الإعدادات",
+      "rotateKeyTitle": "مفتاح توقيع البطاقات",
+      "rotateKeyDesc": "يُنشئ مفتاح توقيع جديدًا تمامًا لهذه المدرسة. استخدم هذا الخيار إذا بدأ إصدار البطاقات أو تفعيل الأجهزة يفشل بخطأ في فك التشفير — غالبًا بسبب تغيّر مفتاح التشفير في الخادم. تبقى البطاقات الحالية صالحة لفترة انتقالية قصيرة، ثم يجب إعادة إصدارها.",
+      "rotateKeyButton": "تدوير مفتاح التوقيع",
+      "rotateKeyConfirm": "سيتم إنشاء مفتاح توقيع جديد. ستحتاج البطاقات الصادرة قبل هذه اللحظة إلى إعادة الإصدار قريبًا. المتابعة؟",
+      "rotateKeySuccess": "تم تدوير مفتاح التوقيع",
+      "rotateKeyError": "فشل تدوير مفتاح التوقيع"
     },
     "devices": {
       "title": "أجهزة مسح ميقات",

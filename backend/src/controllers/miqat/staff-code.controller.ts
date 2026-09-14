@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 import { miqatService, MiqatEvent } from '../../services/miqat/miqat.service';
-import { encryptKey, decryptKey } from '../../services/miqat/key-management';
+import { encryptKey, decryptKey, decryptKeyOrThrowFriendly } from '../../services/miqat/key-management';
 import { getMasterKey } from '../../services/miqat/master-key';
 import { generateRotatingCode, verifyRotatingCode } from '../../services/miqat/rotating-code';
 import { isDuplicateScan, inferDirection, MiqatEventLike } from '../../services/miqat/anti-replay';
@@ -14,7 +14,21 @@ const STEP_SECONDS = 30;
 async function getOrCreateStaffSecret(personId: string): Promise<Buffer> {
   const masterKey = getMasterKey();
   const existingRef = await miqatService.getStaffSecretRef(personId);
-  if (existingRef) return decryptKey(existingRef, masterKey);
+  if (existingRef) {
+    try {
+      return decryptKey(existingRef, masterKey);
+    } catch (err: any) {
+      // Undecryptable under the current MIQAT_MASTER_KEY (almost always: the
+      // key changed since this secret was created). Self-heal instead of
+      // hard-failing every "mine"/"verify" call for this person forever —
+      // regenerate under the current key. Any staff QR currently on screen
+      // goes stale, which is expected and harmless (it refreshes every ~25s).
+      console.error(`[miqat/staff-code] Regenerating undecryptable rotating secret for person ${personId}: ${err.message}`);
+      const raw = crypto.randomBytes(32);
+      await miqatService.replaceStaffSecretRef(personId, encryptKey(raw, masterKey));
+      return raw;
+    }
+  }
 
   const raw = crypto.randomBytes(32);
   await miqatService.createStaffSecretRef(personId, encryptKey(raw, masterKey));
@@ -47,7 +61,7 @@ class MiqatStaffCodeController {
       const secretRef = await miqatService.getStaffSecretRef(personId);
       if (!secretRef) return res.status(404).json({ success: false, error: 'No rotating code enrolled for this person' });
 
-      const secret = decryptKey(secretRef, getMasterKey());
+      const secret = decryptKeyOrThrowFriendly(secretRef, getMasterKey(), `person ${personId}'s rotating-code secret`);
       if (!verifyRotatingCode(code, secret)) {
         return res.status(401).json({ success: false, error: 'Invalid or expired code' });
       }

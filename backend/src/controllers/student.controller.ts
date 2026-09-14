@@ -33,6 +33,8 @@ export class StudentController {
       const sectionIdParam = req.query.section_id
       const isActiveParam = req.query.is_active as string | undefined
       const isActive = isActiveParam === undefined ? undefined : isActiveParam === 'true'
+      const hasSiblingsParam = req.query.has_siblings as string | undefined
+      const hasSiblings = hasSiblingsParam === undefined ? undefined : hasSiblingsParam === 'true'
       const VALID_SORT_KEYS = ['student_number', 'name', 'grade', 'status', 'contact'] as const
       const sortKeyParam = req.query.sort_key as string | undefined
       const sortKey = (VALID_SORT_KEYS as readonly string[]).includes(sortKeyParam || '')
@@ -64,7 +66,8 @@ export class StudentController {
         sectionIds,
         isActive,
         sortKey,
-        sortDir
+        sortDir,
+        hasSiblings
       )
 
       const sanitizedStudents = stripConfidentialFamilyStatus(result.students, req.profile?.role)

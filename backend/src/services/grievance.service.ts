@@ -319,6 +319,8 @@ export class GrievanceService {
         department: dto.department || null,
         submitter_profile_id: dto.submitter_profile_id,
         person_involved_profile_id: dto.person_involved_profile_id || null,
+        grade_level_id: dto.grade_level_id || null,
+        subject_id: dto.subject_id || null,
         is_anonymous: !!dto.is_anonymous,
         is_confidential: !!dto.is_confidential,
         status: 'submitted',
@@ -369,6 +371,8 @@ export class GrievanceService {
       priority?: string
       category_id?: string
       search?: string
+      /** Complaints naming this staff/teacher profile as the person involved — used by their admin-facing profile page to show a complaint count. */
+      person_involved_profile_id?: string
       page?: number
       limit?: number
     }
@@ -408,6 +412,13 @@ export class GrievanceService {
     if (filters.priority) query = query.eq('priority', filters.priority)
     if (filters.category_id) query = query.eq('category_id', filters.category_id)
     if (filters.search) query = query.or(`title.ilike.%${filters.search}%,complaint_number.ilike.%${filters.search}%`)
+    // Admin-only (view === 'all' already required isAdmin above) — a staff
+    // member's own complaint history about themselves is exactly the
+    // confidential case excluded a few lines up, so this filter can only
+    // ever surface complaints naming someone else.
+    if (filters.person_involved_profile_id && view === 'all') {
+      query = query.eq('person_involved_profile_id', filters.person_involved_profile_id)
+    }
 
     // Critical priority always surfaces first, per spec.
     query = query

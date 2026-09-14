@@ -17,6 +17,52 @@ function redactProfileEmail<T extends { profile?: { email?: string | null } | nu
   return record
 }
 
+/**
+ * Builds a student_id -> sibling_count map for a school, where "sibling"
+ * means another active student sharing at least one active guardian via
+ * parent_student_links (the same relationship count_siblings() in the DB
+ * uses for fee-discount logic — this mirrors it in application code so the
+ * result can be batch-attached to a whole page of students in one query
+ * instead of one RPC call per row).
+ */
+async function getSiblingCountMap(schoolId: string): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from('parent_student_links')
+    .select('student_id, parent_id, students!inner(school_id)')
+    .eq('students.school_id', schoolId)
+    .eq('is_active', true)
+
+  if (error || !data) {
+    if (error) console.error('Failed to load sibling links:', error.message)
+    return new Map()
+  }
+
+  const studentsByParent = new Map<string, Set<string>>()
+  for (const row of data as any[]) {
+    if (!row.parent_id || !row.student_id) continue
+    if (!studentsByParent.has(row.parent_id)) studentsByParent.set(row.parent_id, new Set())
+    studentsByParent.get(row.parent_id)!.add(row.student_id)
+  }
+
+  const siblingSetByStudent = new Map<string, Set<string>>()
+  for (const siblingSet of studentsByParent.values()) {
+    if (siblingSet.size < 2) continue
+    for (const studentId of siblingSet) {
+      if (!siblingSetByStudent.has(studentId)) siblingSetByStudent.set(studentId, new Set())
+      const targetSet = siblingSetByStudent.get(studentId)!
+      for (const otherId of siblingSet) {
+        if (otherId !== studentId) targetSet.add(otherId)
+      }
+    }
+  }
+
+  const result = new Map<string, number>()
+  for (const [studentId, siblings] of siblingSetByStudent) {
+    result.set(studentId, siblings.size)
+  }
+  return result
+}
+
 export type StudentSortKey = 'student_number' | 'name' | 'grade' | 'status' | 'contact'
 
 const studentSortCollator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
@@ -87,9 +133,16 @@ export class StudentService {
     sectionIds?: string[],
     isActive?: boolean,
     sortKey: StudentSortKey = 'name',
-    sortDir: 'asc' | 'desc' = 'asc'
+    sortDir: 'asc' | 'desc' = 'asc',
+    hasSiblings?: boolean
   ) {
     const offset = (page - 1) * limit
+
+    // Loaded whenever a sibling filter is active, or unconditionally so the
+    // "family" badge (sibling_count) can be shown in the UI even without
+    // filtering by it. School rosters are small enough (see the in-memory
+    // sort/paginate note below) for this extra query to be cheap.
+    const siblingCountMap = await getSiblingCountMap(schoolId)
 
     // Resolve grade level name(s) to id(s) up front. Filtering must go through
     // grade_level_id — the legacy students.grade_level text column is written
@@ -157,6 +210,11 @@ export class StudentService {
           }
           if (isActive !== undefined) {
             filtered = filtered.filter((s: any) => !!s.is_active === isActive);
+          }
+          if (hasSiblings !== undefined) {
+            filtered = filtered.filter((s: any) =>
+              hasSiblings ? siblingCountMap.has(s.student_id) : !siblingCountMap.has(s.student_id)
+            );
           }
 
           // Sorting by grade needs order_index (the same column every other
@@ -257,7 +315,8 @@ export class StudentService {
               email: student.email,
               is_active: student.is_active
             },
-            parent_links: parentLinksMap.get(student.student_id) || []
+            parent_links: parentLinksMap.get(student.student_id) || [],
+            sibling_count: siblingCountMap.get(student.student_id) || 0
           }));
 
           return {
@@ -388,6 +447,22 @@ export class StudentService {
       query = query.eq('profile.is_active', isActive)
     }
 
+    // Apply the "has siblings" family filter (by id, resolved from
+    // siblingCountMap above rather than a query-level filter, since the
+    // relationship spans parent_student_links rather than a column on
+    // students itself).
+    if (hasSiblings !== undefined) {
+      const siblingIds = Array.from(siblingCountMap.keys())
+      if (hasSiblings) {
+        if (siblingIds.length === 0) {
+          return { students: [], pagination: { total: 0, page, limit, totalPages: 0 } }
+        }
+        query = query.in('id', siblingIds)
+      } else if (siblingIds.length > 0) {
+        query = query.not('id', 'in', `(${siblingIds.join(',')})`)
+      }
+    }
+
     // Fetch all matching rows (no server-side pagination/count) so sorting
     // can happen correctly in application code, then paginate in memory —
     // school rosters are small enough (dozens to low hundreds) for this to
@@ -405,7 +480,10 @@ export class StudentService {
     const paginated = sorted.slice(offset, offset + limit)
 
     return {
-      students: paginated.map((student: any) => redactProfileEmail(student)),
+      students: paginated.map((student: any) => redactProfileEmail({
+        ...student,
+        sibling_count: siblingCountMap.get(student.id) || 0
+      })),
       pagination: {
         total,
         page,

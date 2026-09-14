@@ -422,6 +422,17 @@ export class MiqatService {
     if (error) throw error;
   }
 
+  /**
+   * Overwrites an existing secret_ref in place — used to self-heal a row
+   * whose ciphertext can no longer be decrypted (e.g. MIQAT_MASTER_KEY
+   * changed after it was created), which createStaffSecretRef's plain
+   * insert would reject as a duplicate person_id.
+   */
+  async replaceStaffSecretRef(personId: string, secretRef: string): Promise<void> {
+    const { error } = await supabase.from('miqat_staff_rotating_secrets').update({ secret_ref: secretRef }).eq('person_id', personId);
+    if (error) throw error;
+  }
+
   async insertPatternFlag(schoolId: string, personId: string, flagType: string, details: Record<string, any>) {
     const { error } = await supabase.from('miqat_pattern_flags').insert({ school_id: schoolId, person_id: personId, flag_type: flagType, details });
     if (error) throw error;

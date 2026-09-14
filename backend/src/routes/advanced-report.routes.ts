@@ -140,6 +140,8 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
     const sectionId   = req.query.section_id    as string | undefined
     const department  = req.query.department    as string | undefined
     const userId      = req.query.user_id       as string | undefined
+    const hasSiblingsParam = req.query.has_siblings as string | undefined
+    const hasSiblings = hasSiblingsParam === undefined ? undefined : hasSiblingsParam === 'true'
     const page  = Math.max(1, parseInt(req.query.page  as string) || 1)
     const limit = Math.min(2000, parseInt(req.query.limit as string) || 1000)
     const offset = (page - 1) * limit
@@ -170,6 +172,39 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
       const { data: rows, error } = await q.range(offset, offset + limit - 1)
 
       if (error) throw error
+
+      // Family/siblings: same shared-active-guardian relationship as
+      // parents' `linked_students` field above, computed school-wide (not
+      // just within this page) since a sibling may fall on another page.
+      const { data: linkRows } = await supabase
+        .from('parent_student_links')
+        .select('student_id, parent_id, students!inner(student_number, school_id)')
+        .eq('students.school_id', effectiveId)
+        .eq('is_active', true)
+
+      const studentsByParent = new Map<string, Set<string>>()
+      const numberByStudentId = new Map<string, string>()
+      for (const row of (linkRows ?? []) as any[]) {
+        if (!row.parent_id || !row.student_id) continue
+        if (!studentsByParent.has(row.parent_id)) studentsByParent.set(row.parent_id, new Set())
+        studentsByParent.get(row.parent_id)!.add(row.student_id)
+        const linkedStudent = Array.isArray(row.students) ? row.students[0] : row.students
+        if (linkedStudent?.student_number) numberByStudentId.set(row.student_id, linkedStudent.student_number)
+      }
+      const siblingNumbersByStudent = new Map<string, string[]>()
+      for (const siblingSet of studentsByParent.values()) {
+        if (siblingSet.size < 2) continue
+        for (const sid of siblingSet) {
+          const list = siblingNumbersByStudent.get(sid) ?? []
+          for (const otherId of siblingSet) {
+            if (otherId === sid) continue
+            const num = numberByStudentId.get(otherId)
+            if (num) list.push(num)
+          }
+          siblingNumbersByStudent.set(sid, list)
+        }
+      }
+
       data = (rows ?? []).map((s: any) => {
         const p = Array.isArray(s.profile) ? s.profile[0] : s.profile
         return {
@@ -187,8 +222,17 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
           created_at: s.created_at,
           custom_fields: s.custom_fields ?? {},
           confidential_family_status: s.confidential_family_status,
+          siblings: siblingNumbersByStudent.get(s.id)?.join(', ') || '—',
         }
       })
+
+      // Family filter — restrict to students who do/don't have a sibling on
+      // record, resolved from the same school-wide sibling map above.
+      if (hasSiblings !== undefined) {
+        data = data.filter((s: any) =>
+          hasSiblings ? siblingNumbersByStudent.has(s.id) : !siblingNumbersByStudent.has(s.id)
+        )
+      }
     }
 
     // ── Teachers / Staff / Librarians ─────────────────────────────────────

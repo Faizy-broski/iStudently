@@ -81,6 +81,13 @@
       "label_priority": "Priority",
       "label_department": "Department (Optional)",
       "select_department_placeholder": "Select department",
+      "label_grade_level": "Grade Level (Optional)",
+      "select_grade_level_placeholder": "Select grade level",
+      "label_subject": "Subject (Optional)",
+      "select_subject_placeholder": "Select subject",
+      "label_teacher": "Teacher (Optional)",
+      "search_teacher_placeholder": "Search teacher by name…",
+      "change_teacher": "Change",
       "confidential_title": "Confidential Complaint",
       "confidential_desc": "Restricts visibility — the person your complaint concerns will never be able to view it.",
       "anonymous_title": "Submit Anonymously",
@@ -1906,8 +1913,13 @@
           "date_of_joining": "Date of Joining",
           "employment_type": "Employment Type",
           "linked_students": "Linked Students",
-          "confidential_family_status": "Confidential Family Status"
-        }
+          "confidential_family_status": "Confidential Family Status",
+          "siblings": "Siblings (Family)"
+        },
+        "family": "Family",
+        "family_all": "All students",
+        "family_with_siblings": "With siblings only",
+        "family_without_siblings": "Without siblings only"
       }
     },
     "billing_elements": {
@@ -4201,7 +4213,13 @@
         "btn_cancel": "Cancel",
         "msg_delete_success": "Deleted {count} student(s)",
         "msg_delete_partial": "Deleted {count} student(s), {errors} failed",
-        "msg_delete_failed": "Failed to delete students"
+        "msg_delete_failed": "Failed to delete students",
+        "th_siblings": "Siblings",
+        "siblings_badge_title": "{count, plural, one {# sibling in this school} other {# siblings in this school}}",
+        "filter_family_label": "Family:",
+        "filter_family_all": "All students",
+        "filter_family_with_siblings": "With siblings",
+        "filter_family_without_siblings": "Without siblings"
       },
       "group_assign": {
         "title": "Group Assign",
@@ -13043,7 +13061,13 @@
       "photoRetentionDays": "Retention (days)",
       "save": "Save Settings",
       "saveSuccess": "Miqat settings saved",
-      "saveError": "Failed to save settings"
+      "saveError": "Failed to save settings",
+      "rotateKeyTitle": "Card Signing Key",
+      "rotateKeyDesc": "Generates a brand-new signing key for this school. Use this if card issuance or device enrolment starts failing with a decryption error — usually caused by the server's encryption key changing. Existing cards keep working for a brief overlap window, but should be reissued afterward.",
+      "rotateKeyButton": "Rotate Signing Key",
+      "rotateKeyConfirm": "This generates a new signing key. Cards issued before this point will need to be reissued soon. Continue?",
+      "rotateKeySuccess": "Signing key rotated",
+      "rotateKeyError": "Failed to rotate signing key"
     },
     "devices": {
       "title": "Miqat Scanner Devices",

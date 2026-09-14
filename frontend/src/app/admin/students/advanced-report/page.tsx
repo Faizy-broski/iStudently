@@ -31,7 +31,7 @@ const ROLE_CONFIGS: Record<ReportRole, RoleConfig> = {
   student: {
     icon: <GraduationCap className="h-4 w-4" />,
     entityType: 'student',
-    standardFieldKeys: ['student_number','first_name','last_name','father_name','grandfather_name','email','phone','grade_level_name','section_name','is_active','confidential_family_status','created_at'],
+    standardFieldKeys: ['student_number','first_name','last_name','father_name','grandfather_name','email','phone','grade_level_name','section_name','is_active','confidential_family_status','siblings','created_at'],
   },
   teacher: {
     icon: <UserCheck className="h-4 w-4" />,
@@ -189,6 +189,9 @@ export default function AdvancedReportPage() {
   const [selectedGradeId, setSelectedGradeId] = useState<string>('')
   const [selectedSectionId, setSelectedSectionId] = useState<string>('')
   const [department, setDepartment] = useState('')
+  // undefined = all students; true = only students with a sibling on record
+  // (shared active guardian via parent_student_links); false = only those without.
+  const [hasSiblings, setHasSiblings] = useState<string>('_all')
   const [selectedPerson, setSelectedPerson] = useState<PersonOption | null>(null)
 
   const roleConfig = ROLE_CONFIGS[selectedRole]
@@ -233,6 +236,7 @@ export default function AdvancedReportPage() {
     setSelectedGradeId('')
     setSelectedSectionId('')
     setDepartment('')
+    setHasSiblings('_all')
     setSelectedPerson(null)
     setSelectedFields(ROLE_CONFIGS[role].standardFieldKeys.slice(0, 3))
   }
@@ -270,6 +274,7 @@ export default function AdvancedReportPage() {
       if (selectedRole === 'student') {
         if (selectedGradeId) params.set('grade_level_id', selectedGradeId)
         if (selectedSectionId) params.set('section_id', selectedSectionId)
+        if (hasSiblings !== '_all') params.set('has_siblings', hasSiblings)
       }
       if (['teacher', 'staff', 'librarian'].includes(selectedRole) && department.trim()) {
         params.set('department', department.trim())
@@ -291,6 +296,9 @@ export default function AdvancedReportPage() {
       activeFilters.push(`${t('section')}: ${s?.name ?? selectedSectionId}`)
     }
     if (department) activeFilters.push(`${t('department')}: ${department}`)
+    if (selectedRole === 'student' && hasSiblings !== '_all') {
+      activeFilters.push(`${t('family')}: ${hasSiblings === 'true' ? t('family_with_siblings') : t('family_without_siblings')}`)
+    }
   }
 
   return (
@@ -346,7 +354,7 @@ export default function AdvancedReportPage() {
         <CardContent className="space-y-5">
 
           {selectedRole === 'student' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>{t('grade_level')}</Label>
                 <Select
@@ -375,6 +383,22 @@ export default function AdvancedReportPage() {
                   <SelectContent>
                     <SelectItem value="_all">{t('all_sections')}</SelectItem>
                     {sections.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  {t('family')}
+                </Label>
+                <Select value={hasSiblings} onValueChange={setHasSiblings}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('family_all')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">{t('family_all')}</SelectItem>
+                    <SelectItem value="true">{t('family_with_siblings')}</SelectItem>
+                    <SelectItem value="false">{t('family_without_siblings')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -425,7 +449,7 @@ export default function AdvancedReportPage() {
                 </span>
               ))}
               <button
-                onClick={() => { setSelectedGradeId(''); setSelectedSectionId(''); setDepartment(''); setSelectedPerson(null) }}
+                onClick={() => { setSelectedGradeId(''); setSelectedSectionId(''); setDepartment(''); setHasSiblings('_all'); setSelectedPerson(null) }}
                 className="text-xs text-destructive hover:underline ml-1"
               >
                 {t('clear_all')}

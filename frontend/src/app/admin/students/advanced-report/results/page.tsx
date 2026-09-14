@@ -40,6 +40,7 @@ export default function AdvancedReportResultsPage() {
   const department   = searchParams.get('department')     ?? undefined
   const userId       = searchParams.get('user_id')        ?? undefined
   const userLabel    = searchParams.get('user_label')     ?? undefined
+  const hasSiblings  = searchParams.get('has_siblings')    ?? undefined
 
   const roleLabel = t(`roles.${role}`)
 
@@ -85,6 +86,7 @@ export default function AdvancedReportResultsPage() {
         if (sectionId)    qs.set('section_id',     sectionId)
         if (department)   qs.set('department',     department)
         if (userId)       qs.set('user_id',        userId)
+        if (hasSiblings)  qs.set('has_siblings',   hasSiblings)
 
         const res = await fetch(`${API_URL}/advanced-report/${role}?${qs}`, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -99,7 +101,7 @@ export default function AdvancedReportResultsPage() {
       }
     }
     fetchData()
-  }, [selectedFields, role, campusId, gradeLevelId, sectionId, department, userId])
+  }, [selectedFields, role, campusId, gradeLevelId, sectionId, department, userId, hasSiblings])
 
   const customFieldLabelMap = useMemo(() =>
     Object.fromEntries(customFields.map(f => [`custom_${f.field_key}`, f.label])),

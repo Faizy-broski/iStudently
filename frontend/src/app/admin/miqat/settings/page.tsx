@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Save, MapPin } from 'lucide-react'
+import { Loader2, Save, MapPin, KeyRound } from 'lucide-react'
 import { getAuthToken } from '@/lib/api/schools'
 import { getSchoolConfig, upsertSchoolConfig, MiqatSchoolConfig } from '@/lib/api/miqat'
 import { toast } from 'sonner'
@@ -28,6 +28,7 @@ export default function MiqatSettingsPage() {
   const [officialStart, setOfficialStart] = useState('07:00')
   const [gracePeriod, setGracePeriod] = useState('5')
   const [existing, setExisting] = useState<MiqatSchoolConfig | null>(null)
+  const [rotating, setRotating] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -90,6 +91,32 @@ export default function MiqatSettingsPage() {
       setExisting(res.data ?? null)
     } else {
       toast.error(res.error || t('saveError'))
+    }
+  }
+
+  const handleRotateKey = async () => {
+    const token = await getAuthToken()
+    if (!token) return
+    if (!window.confirm(t('rotateKeyConfirm'))) return
+    setRotating(true)
+    const res = await upsertSchoolConfig(
+      {
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        radius_m: parseInt(radiusM, 10),
+        max_accuracy_m: parseInt(maxAccuracyM, 10),
+        photo_retention_days: parseInt(photoRetentionDays, 10),
+        policy_json: existing?.policy_json ?? {},
+        rotate_signing_key: true,
+      },
+      token
+    )
+    setRotating(false)
+    if (res.success) {
+      toast.success(t('rotateKeySuccess'))
+      setExisting(res.data ?? null)
+    } else {
+      toast.error(res.error || t('rotateKeyError'))
     }
   }
 
@@ -163,6 +190,19 @@ export default function MiqatSettingsPage() {
         {saving ? <Loader2 className="h-4 w-4 me-2 animate-spin" /> : <Save className="h-4 w-4 me-2" />}
         {t('save')}
       </Button>
+
+      {existing && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">{t('rotateKeyTitle')}</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">{t('rotateKeyDesc')}</p>
+            <Button type="button" variant="destructive" onClick={handleRotateKey} disabled={rotating}>
+              {rotating ? <Loader2 className="h-4 w-4 me-2 animate-spin" /> : <KeyRound className="h-4 w-4 me-2" />}
+              {t('rotateKeyButton')}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

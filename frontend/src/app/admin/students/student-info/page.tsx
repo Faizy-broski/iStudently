@@ -18,6 +18,8 @@ import { useCampus } from "@/context/CampusContext";
 import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal";
 import { EditStudentForm } from "@/components/admin";
 import RelativesTab from "@/components/admin/RelativesTab";
+import { ExportButton } from "@/components/shared/ExportButton";
+import type { ExportColumn } from "@/lib/utils/tableExport";
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
 import { ConfidentialFamilyStatusDialog } from "@/components/shared/ConfidentialFamilyStatusDialog";
 import { type Student, getStudentById, bulkDeleteStudents, bulkUpdateStudentStatus } from "@/lib/api/students";
@@ -119,6 +121,10 @@ export default function StudentInfoPage() {
   const [familyStudent, setFamilyStudent] = useState<Student | null>(null);
   const [showFamilyDialog, setShowFamilyDialog] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
+  // undefined = all students; true = only students with a sibling in this
+  // school (shared active guardian via parent_student_links); false = only
+  // students with no sibling on record.
+  const [siblingFilter, setSiblingFilter] = useState<"all" | "with" | "without">("all");
   const itemsPerPage = 10;
   const [appendConfig, setAppendConfig] = useState<StudentListAppendConfig | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -227,6 +233,7 @@ export default function StudentInfoPage() {
     section_id: studentFilters.sectionId || undefined,
     // Undefined = include both active and inactive; true = active only
     is_active: showInactive ? undefined : true,
+    has_siblings: siblingFilter === "all" ? undefined : siblingFilter === "with",
     sort_key: sortKey,
     sort_dir: sortDir,
   });
@@ -368,6 +375,20 @@ export default function StudentInfoPage() {
   // no client-side re-sort needed here.
   const filteredStudents = students;
 
+  const exportColumns: ExportColumn<Student>[] = [
+    { key: 'student_number', label: t('th_student_id'), accessor: (s) => s.student_number },
+    {
+      key: 'name',
+      label: tCommon('name'),
+      accessor: (s) => [s.profile?.first_name, s.profile?.father_name, s.profile?.grandfather_name, s.profile?.last_name].filter(Boolean).join(' '),
+    },
+    { key: 'grade', label: tCommon('grade'), accessor: (s) => s.grade?.name || s.grade_level || '' },
+    { key: 'status', label: tCommon('status'), accessor: (s) => (s.profile?.is_active ? tCommon('active') : tCommon('inactive')) },
+    { key: 'phone', label: t('th_contact'), accessor: (s) => s.profile?.phone || '' },
+    { key: 'email', label: 'Email', accessor: (s) => s.profile?.email || '' },
+    { key: 'siblings', label: t('th_siblings'), accessor: (s) => String(s.sibling_count || 0) },
+  ];
+
   return (
     <div className="p-6 space-y-6">
       {showEditForm && selectedStudent ? (
@@ -380,11 +401,20 @@ export default function StudentInfoPage() {
       ) : (
         // Student List View
         <>
-          <div>
-            <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white dark:bg-linear-to-r dark:from-[#57A3CC] dark:to-white">
-              {t("title")}
-            </h1>
-            <p className="text-muted-foreground mt-2">{t("subtitle")}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white dark:bg-linear-to-r dark:from-[#57A3CC] dark:to-white">
+                {t("title")}
+              </h1>
+              <p className="text-muted-foreground mt-2">{t("subtitle")}</p>
+            </div>
+            <ExportButton
+              reportKey="students_list"
+              columns={exportColumns}
+              rows={filteredStudents}
+              filename="students"
+              title={t("title")}
+            />
           </div>
 
           {/* Universal Filter Bar */}
@@ -397,15 +427,34 @@ export default function StudentInfoPage() {
                   currentFilters={studentFilters}
                   onFilterChange={handleStudentFilterChange}
                 />
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showInactive}
-                    onChange={(e) => { setShowInactive(e.target.checked); setCurrentPage(1); }}
-                    className="rounded border-gray-300"
-                  />
-                  {tCommon("showInactive")}
-                </label>
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showInactive}
+                      onChange={(e) => { setShowInactive(e.target.checked); setCurrentPage(1); }}
+                      className="rounded border-gray-300"
+                    />
+                    {tCommon("showInactive")}
+                  </label>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    {t("filter_family_label")}
+                    <Select
+                      value={siblingFilter}
+                      onValueChange={(v) => { setSiblingFilter(v as typeof siblingFilter); setCurrentPage(1); }}
+                    >
+                      <SelectTrigger className="h-8 w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("filter_family_all")}</SelectItem>
+                        <SelectItem value="with">{t("filter_family_with_siblings")}</SelectItem>
+                        <SelectItem value="without">{t("filter_family_without_siblings")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -562,6 +611,16 @@ export default function StudentInfoPage() {
                                   <div className="font-medium truncate flex items-center gap-2">
                                     <span>{fullName || tCommon("noData")}</span>
                                     <ConfidentialFamilyStatusBadge status={student.confidential_family_status} />
+                                    {!!student.sibling_count && (
+                                      <Badge
+                                        variant="outline"
+                                        className="gap-1 text-xs font-normal shrink-0"
+                                        title={t("siblings_badge_title", { count: student.sibling_count })}
+                                      >
+                                        <Users className="h-3 w-3" />
+                                        {student.sibling_count}
+                                      </Badge>
+                                    )}
                                   </div>
                                   <div className="text-sm text-muted-foreground truncate">{student.profile?.email || tCommon("noData")}</div>
                                 </div>
