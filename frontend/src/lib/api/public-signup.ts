@@ -5,9 +5,13 @@ import { API_URL } from '@/config/api'
 export interface SignupCustomField {
   id: string
   label: string
+  /** Arabic translation of `label`, shown instead of it when the signup page is viewed in Arabic. */
+  label_ar?: string
   type: 'text' | 'select' | 'textarea' | 'date' | 'checkbox' | 'multi-select'
   required: boolean
   options?: string[]
+  /** Position-matched Arabic translation of `options` — same convention as custom_field_definitions.options_ar. */
+  options_ar?: string[]
   placeholder?: string
 }
 

@@ -3,9 +3,13 @@ import { apiRequest } from './index'
 export interface SignupCustomField {
   id: string
   label: string
+  /** Arabic translation of `label`, shown instead of it when the signup page is viewed in Arabic. */
+  label_ar?: string
   type: 'text' | 'select' | 'textarea' | 'date' | 'checkbox' | 'multi-select'
   required: boolean
   options?: string[]
+  /** Position-matched Arabic translation of `options` — same convention as custom_field_definitions.options_ar. */
+  options_ar?: string[]
   placeholder?: string
   source?: 'custom' | 'profile_field'
   mapping?: { table: 'profiles' | 'parents' | 'staff'; column: string }
@@ -118,8 +122,10 @@ export async function deleteSignupLink(id: string) {
   return apiRequest<void>(`/signup-links/${id}`, { method: 'DELETE' })
 }
 
-export async function getProfileFields(role: string) {
-  return apiRequest<ProfileFieldDef[]>(`/signup-links/profile-fields?role=${role}`)
+export async function getProfileFields(role: string, campusId?: string) {
+  const qs = new URLSearchParams({ role })
+  if (campusId) qs.set('campus_id', campusId)
+  return apiRequest<ProfileFieldDef[]>(`/signup-links/profile-fields?${qs}`)
 }
 
 /** Build the full public URL for a signup token */

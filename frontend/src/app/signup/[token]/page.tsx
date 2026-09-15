@@ -22,6 +22,7 @@ import {
   getSignupLinkInfo,
   submitSignup,
   type SignupLinkInfo,
+  type SignupCustomField,
 } from '@/lib/api/public-signup'
 
 const ROLE_COLORS: Record<string, string> = {
@@ -48,6 +49,31 @@ function passwordStrength(password: string): { score: number; label: string; col
 }
 
 type PageState = 'loading' | 'invalid' | 'form' | 'success'
+
+/**
+ * The label to actually show for a custom field, given the applicant's
+ * chosen locale — mirrors getFieldLabel() in lib/api/custom-fields.ts, but
+ * reimplemented locally (no side-effecting imports) since this is a public,
+ * unauthenticated page.
+ */
+function fieldLabel(field: SignupCustomField, locale: string): string {
+  return locale === 'ar' && field.label_ar ? field.label_ar : field.label
+}
+
+/**
+ * The option list to actually render for a select/multi-select custom
+ * field, given the applicant's locale. `value` is always the original
+ * (English) string — what's actually submitted/stored — while `label` is
+ * the Arabic translation at the same index when one exists and the locale
+ * is Arabic, else the same as `value`. Mirrors getFieldOptions().
+ */
+function fieldOptions(field: SignupCustomField, locale: string): { value: string; label: string }[] {
+  const options = field.options || []
+  return options.map((value, i) => {
+    const arLabel = field.options_ar?.[i]
+    return { value, label: locale === 'ar' && arLabel ? arLabel : value }
+  })
+}
 
 // Language toggle — writes the locale cookie directly then hard-reloads.
 // Signup links are shared via copy/paste and are commonly opened in fresh/incognito
@@ -173,7 +199,7 @@ export default function SignupPage() {
         const value = form.extra_fields[field.id]
         const isEmpty = field.type === 'multi-select' ? !Array.isArray(value) || value.length === 0 : !value
         if (field.required && isEmpty) {
-          extraErrs[field.id] = `${field.label} is required`
+          extraErrs[field.id] = `${fieldLabel(field, locale)} is required`
         }
       }
       if (Object.keys(extraErrs).length > 0) errs.extra_fields = extraErrs
@@ -395,7 +421,7 @@ export default function SignupPage() {
                   >
                     {field.type !== 'checkbox' && (
                       <label htmlFor={field.id} className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-                        {field.label} {field.required && <span className="text-red-500 dark:text-red-400">*</span>}
+                        {fieldLabel(field, locale)} {field.required && <span className="text-red-500 dark:text-red-400">*</span>}
                       </label>
                     )}
                     {field.type === 'select' ? (
@@ -407,28 +433,28 @@ export default function SignupPage() {
                           <SelectValue placeholder={field.placeholder || 'Select...'} />
                         </SelectTrigger>
                         <SelectContent>
-                          {field.options?.map(opt => (
-                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          {fieldOptions(field, locale).map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     ) : field.type === 'multi-select' ? (
                       <div className={cn('space-y-1.5 rounded-md border p-2.5', (errors as any).extra_fields?.[field.id] ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-slate-600')}>
-                        {field.options?.map(opt => {
+                        {fieldOptions(field, locale).map(opt => {
                           const selected: string[] = Array.isArray(form.extra_fields[field.id]) ? form.extra_fields[field.id] : []
-                          const checked = selected.includes(opt)
+                          const checked = selected.includes(opt.value)
                           return (
-                            <label key={opt} className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                            <label key={opt.value} className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
                               <Checkbox
                                 checked={checked}
                                 disabled={submitting}
                                 onCheckedChange={(val) => setForm(f => {
                                   const current: string[] = Array.isArray(f.extra_fields[field.id]) ? f.extra_fields[field.id] : []
-                                  const next = val ? [...current, opt] : current.filter(o => o !== opt)
+                                  const next = val ? [...current, opt.value] : current.filter(o => o !== opt.value)
                                   return { ...f, extra_fields: { ...f.extra_fields, [field.id]: next } }
                                 })}
                               />
-                              {opt}
+                              {opt.label}
                             </label>
                           )
                         })}
@@ -440,7 +466,7 @@ export default function SignupPage() {
                           disabled={submitting}
                           onCheckedChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: !!val } }))}
                         />
-                        {field.label} {field.required && <span className="text-red-500 dark:text-red-400">*</span>}
+                        {fieldLabel(field, locale)} {field.required && <span className="text-red-500 dark:text-red-400">*</span>}
                       </label>
                     ) : (
                       <Input

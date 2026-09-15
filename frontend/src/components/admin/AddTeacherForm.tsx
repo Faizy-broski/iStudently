@@ -14,11 +14,11 @@ import { toast } from "sonner"
 import { ChevronLeft, ChevronRight, Check, Copy, Eye, EyeOff } from "lucide-react"
 import { StudentPhotoUpload } from "@/components/ui/student-photo-upload"
 import { useAuth } from "@/context/AuthContext"
-import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields"
+import { getFieldDefinitions, getFieldLabel, CustomFieldDefinition } from "@/lib/api/custom-fields"
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import * as teachersApi from "@/lib/api/teachers"
 import { useCampus } from "@/context/CampusContext"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 // Standard Field Definitions with Sort Orders for Teachers
 const STANDARD_FIELDS = [
@@ -55,6 +55,7 @@ interface AddTeacherFormProps {
 
 export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProps) {
   const t = useTranslations('teachers')
+  const locale = useLocale()
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
   const { profile } = useAuth();
@@ -63,7 +64,13 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('');
   const { currencySymbol } = useSchoolSettings();
 
-  const getDisplayLabel = (fieldId: string, fallback: string): string => {
+  // fieldId matches only the handful of STANDARD_FIELDS with a dedicated
+  // i18n key; a custom field (which carries its own label/label_ar from the
+  // admin's custom-fields settings) falls through to getFieldLabel, which
+  // picks label_ar when the site is in Arabic and one was saved — this used
+  // to just return the raw (always-English) `fallback` for every custom
+  // field, silently ignoring any Arabic translation an admin configured.
+  const getDisplayLabel = (fieldId: string, fallback: string, field?: Pick<CustomFieldDefinition, 'label' | 'label_ar'>): string => {
     const map: Record<string, string> = {
       first_name: t('fields.firstName'),
       last_name: t('fields.lastName'),
@@ -81,7 +88,8 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
       username: t('fields.username'),
       password: t('form.password'),
     }
-    return map[fieldId] || fallback
+    if (map[fieldId]) return map[fieldId]
+    return field ? getFieldLabel(field, locale) : fallback
   }
 
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
@@ -410,7 +418,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     return (
       <div key={field.id} className={`${widthClass} space-y-2`}>
         <Label htmlFor={field.id}>
-          {getDisplayLabel(field.id, field.label)}
+          {getDisplayLabel(field.id, field.label, field.isCustom ? field : undefined)}
           {field.required && <span className="text-red-500 ml-1">*</span>}
         </Label>
 

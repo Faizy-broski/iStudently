@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { usePayrollSettings } from '@/hooks/useSalary'
@@ -107,53 +108,54 @@ function SettingsForm({ values, onChange, currencySymbol = '$' }: {
     onChange: (patch: Partial<SettingsFields>) => void
     currencySymbol?: string
 }) {
+    const t = useTranslations('salary.settings')
     return (
         <div className="grid gap-6 md:grid-cols-2">
             {/* Attendance Deduction Rules */}
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Attendance Deduction Rules</CardTitle>
-                    <CardDescription className="text-xs">Configure late and absence deductions</CardDescription>
+                    <CardTitle className="text-base">{t('attendanceRulesTitle')}</CardTitle>
+                    <CardDescription className="text-xs">{t('attendanceRulesSubtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label className="text-xs">Grace late count</Label>
+                            <Label className="text-xs">{t('graceLateCount')}</Label>
                             <Input type="number" value={values.grace_late_count}
                                 onChange={e => onChange({ grace_late_count: parseInt(e.target.value) || 0 })} />
-                            <p className="text-xs text-muted-foreground mt-1">Allowed late arrivals before deduction</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('graceLateCountHint')}</p>
                         </div>
                         <div>
-                            <Label className="text-xs">Late threshold (minutes)</Label>
+                            <Label className="text-xs">{t('lateThreshold')}</Label>
                             <Input type="number" value={values.late_threshold_minutes}
                                 onChange={e => onChange({ late_threshold_minutes: parseInt(e.target.value) || 0 })} />
-                            <p className="text-xs text-muted-foreground mt-1">Minutes late before counting</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('lateThresholdHint')}</p>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label className="text-xs">Deduction type</Label>
+                            <Label className="text-xs">{t('deductionType')}</Label>
                             <Select value={values.deduction_type}
                                 onValueChange={v => onChange({ deduction_type: v as any })}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="per_minute">Per minute</SelectItem>
-                                    <SelectItem value="percentage">Percentage</SelectItem>
-                                    <SelectItem value="fixed">Fixed amount</SelectItem>
+                                    <SelectItem value="per_minute">{t('perMinute')}</SelectItem>
+                                    <SelectItem value="percentage">{t('percentage')}</SelectItem>
+                                    <SelectItem value="fixed">{t('fixedAmount')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div>
-                            <Label className="text-xs">Deduction value</Label>
+                            <Label className="text-xs">{t('deductionValue')}</Label>
                             <Input type="number" step="0.01" value={values.deduction_value}
                                 onChange={e => onChange({ deduction_value: parseFloat(e.target.value) || 0 })} />
                         </div>
                     </div>
                     <div>
-                        <Label className="text-xs">Absence deduction (%)</Label>
+                        <Label className="text-xs">{t('absenceDeductionPercent')}</Label>
                         <Input type="number" value={values.absence_deduction_percent} className="w-28"
                             onChange={e => onChange({ absence_deduction_percent: parseFloat(e.target.value) || 0 })} />
-                        <p className="text-xs text-muted-foreground mt-1">Percent of daily wage deducted for absence</p>
+                        <p className="text-xs text-muted-foreground mt-1">{t('absenceDeductionHint')}</p>
                     </div>
                 </CardContent>
             </Card>
@@ -161,21 +163,21 @@ function SettingsForm({ values, onChange, currencySymbol = '$' }: {
             {/* Attendance Bonus */}
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Attendance Bonus</CardTitle>
-                    <CardDescription className="text-xs">Bonus for full attendance</CardDescription>
+                    <CardTitle className="text-base">{t('attendanceBonusTitle')}</CardTitle>
+                    <CardDescription className="text-xs">{t('attendanceBonusSubtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <Label className="text-xs">Enable attendance bonus</Label>
+                        <Label className="text-xs">{t('enableAttendanceBonus')}</Label>
                         <Switch checked={values.attendance_bonus_enabled}
                             onCheckedChange={v => onChange({ attendance_bonus_enabled: v })} />
                     </div>
                     {values.attendance_bonus_enabled && (
                         <div>
-                            <Label className="text-xs">Bonus amount ({currencySymbol})</Label>
+                            <Label className="text-xs">{t('bonusAmount', { symbol: currencySymbol })}</Label>
                             <Input type="number" step="0.01" value={values.attendance_bonus_amount}
                                 onChange={e => onChange({ attendance_bonus_amount: parseFloat(e.target.value) || 0 })} />
-                            <p className="text-xs text-muted-foreground mt-1">Bonus when there are no late arrivals/absences during the month</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('attendanceBonusHint')}</p>
                         </div>
                     )}
                 </CardContent>
@@ -184,27 +186,27 @@ function SettingsForm({ values, onChange, currencySymbol = '$' }: {
             {/* Monthly Bonus */}
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Monthly Bonus</CardTitle>
-                    <CardDescription className="text-xs">One-time bonus applied to all staff this month</CardDescription>
+                    <CardTitle className="text-base">{t('monthlyBonusTitle')}</CardTitle>
+                    <CardDescription className="text-xs">{t('monthlyBonusSubtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <Label className="text-xs">Enable monthly bonus</Label>
+                        <Label className="text-xs">{t('enableMonthlyBonus')}</Label>
                         <Switch checked={values.monthly_bonus_enabled}
                             onCheckedChange={v => onChange({ monthly_bonus_enabled: v })} />
                     </div>
                     {values.monthly_bonus_enabled && (
                         <>
                             <div>
-                                <Label className="text-xs">Amount ({currencySymbol})</Label>
+                                <Label className="text-xs">{t('amount', { symbol: currencySymbol })}</Label>
                                 <Input type="number" step="0.01" min="0" className="w-36"
                                     value={values.monthly_bonus_amount}
                                     onChange={e => onChange({ monthly_bonus_amount: parseFloat(e.target.value) || 0 })} />
                             </div>
                             <div>
-                                <Label className="text-xs">Reason</Label>
+                                <Label className="text-xs">{t('reason')}</Label>
                                 <Textarea value={values.monthly_bonus_reason} className="h-16 resize-none"
-                                    placeholder="e.g. Eid bonus"
+                                    placeholder={t('monthlyBonusReasonPlaceholder')}
                                     onChange={e => onChange({ monthly_bonus_reason: e.target.value })} />
                             </div>
                         </>
@@ -215,27 +217,27 @@ function SettingsForm({ values, onChange, currencySymbol = '$' }: {
             {/* Monthly Deduction */}
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Monthly Deduction</CardTitle>
-                    <CardDescription className="text-xs">One-time deduction applied to all staff this month</CardDescription>
+                    <CardTitle className="text-base">{t('monthlyDeductionTitle')}</CardTitle>
+                    <CardDescription className="text-xs">{t('monthlyDeductionSubtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <Label className="text-xs">Enable monthly deduction</Label>
+                        <Label className="text-xs">{t('enableMonthlyDeduction')}</Label>
                         <Switch checked={values.monthly_deduction_enabled}
                             onCheckedChange={v => onChange({ monthly_deduction_enabled: v })} />
                     </div>
                     {values.monthly_deduction_enabled && (
                         <>
                             <div>
-                                <Label className="text-xs">Amount ({currencySymbol})</Label>
+                                <Label className="text-xs">{t('amount', { symbol: currencySymbol })}</Label>
                                 <Input type="number" step="0.01" min="0" className="w-36"
                                     value={values.monthly_deduction_amount}
                                     onChange={e => onChange({ monthly_deduction_amount: parseFloat(e.target.value) || 0 })} />
                             </div>
                             <div>
-                                <Label className="text-xs">Reason</Label>
+                                <Label className="text-xs">{t('reason')}</Label>
                                 <Textarea value={values.monthly_deduction_reason} className="h-16 resize-none"
-                                    placeholder="e.g. Equipment damage"
+                                    placeholder={t('monthlyDeductionReasonPlaceholder')}
                                     onChange={e => onChange({ monthly_deduction_reason: e.target.value })} />
                             </div>
                         </>
@@ -246,15 +248,15 @@ function SettingsForm({ values, onChange, currencySymbol = '$' }: {
             {/* Salary Advance */}
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Salary Advance</CardTitle>
-                    <CardDescription className="text-xs">Configure advance request limits</CardDescription>
+                    <CardTitle className="text-base">{t('salaryAdvanceTitle')}</CardTitle>
+                    <CardDescription className="text-xs">{t('salaryAdvanceSubtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div>
-                        <Label className="text-xs">Maximum advance (%)</Label>
+                        <Label className="text-xs">{t('maxAdvance')}</Label>
                         <Input type="number" value={values.max_advance_percent} className="w-28"
                             onChange={e => onChange({ max_advance_percent: parseFloat(e.target.value) || 0 })} />
-                        <p className="text-xs text-muted-foreground mt-1">Percentage of base salary allowed as advance</p>
+                        <p className="text-xs text-muted-foreground mt-1">{t('maxAdvanceHint')}</p>
                     </div>
                 </CardContent>
             </Card>
@@ -262,18 +264,18 @@ function SettingsForm({ values, onChange, currencySymbol = '$' }: {
             {/* Working Hours */}
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Working Hours</CardTitle>
-                    <CardDescription className="text-xs">Define standard work schedule</CardDescription>
+                    <CardTitle className="text-base">{t('workingHoursTitle')}</CardTitle>
+                    <CardDescription className="text-xs">{t('workingHoursSubtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label className="text-xs">Expected check-in time</Label>
+                            <Label className="text-xs">{t('expectedCheckIn')}</Label>
                             <Input type="time" value={values.expected_check_in}
                                 onChange={e => onChange({ expected_check_in: e.target.value })} />
                         </div>
                         <div>
-                            <Label className="text-xs">Working days/month</Label>
+                            <Label className="text-xs">{t('workingDaysPerMonth')}</Label>
                             <Input type="number" value={values.working_days_per_month}
                                 onChange={e => onChange({ working_days_per_month: parseInt(e.target.value) || 0 })} />
                         </div>
@@ -299,6 +301,7 @@ function PolicyGroupDialog({
     initial?: SalaryPolicyGroup | null
     currencySymbol?: string
 }) {
+    const t = useTranslations('salary.settings')
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
     const [fields, setFields] = useState<SettingsFields>(defaultFields())
@@ -336,7 +339,7 @@ function PolicyGroupDialog({
     }, [open, initial])
 
     const handleSave = async () => {
-        if (!name.trim()) { toast.error('Policy name is required'); return }
+        if (!name.trim()) { toast.error(t('policyNameRequired')); return }
         setSaving(true)
         try {
             await onSave(name.trim(), description.trim(), fields)
@@ -351,25 +354,25 @@ function PolicyGroupDialog({
         <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>{initial ? 'Edit Policy Group' : 'New Policy Group'}</DialogTitle>
+                    <DialogTitle>{initial ? t('editPolicyGroup') : t('newPolicyGroup')}</DialogTitle>
                     <DialogDescription>
                         {initial
-                            ? 'Update the salary settings for this policy group.'
-                            : 'Create a named salary policy and assign teachers to it.'}
+                            ? t('updatePolicyDesc')
+                            : t('createPolicyDesc')}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-2">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <Label>Policy Name <span className="text-destructive">*</span></Label>
+                            <Label>{t('policyName')} <span className="text-destructive">*</span></Label>
                             <Input value={name} onChange={e => setName(e.target.value)}
-                                placeholder="e.g. Senior Staff, Part-time Teachers" />
+                                placeholder={t('policyNamePlaceholder')} />
                         </div>
                         <div>
-                            <Label>Description</Label>
+                            <Label>{t('description')}</Label>
                             <Input value={description} onChange={e => setDescription(e.target.value)}
-                                placeholder="Optional short description" />
+                                placeholder={t('descriptionPlaceholder')} />
                         </div>
                     </div>
                     <Separator />
@@ -377,10 +380,10 @@ function PolicyGroupDialog({
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+                    <Button variant="outline" onClick={onClose} disabled={saving}>{t('cancel')}</Button>
                     <Button onClick={handleSave} disabled={saving}>
                         <IconDeviceFloppy className="mr-2 h-4 w-4" />
-                        {saving ? 'Saving…' : 'Save Policy'}
+                        {saving ? t('saving') : t('savePolicy')}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -405,6 +408,7 @@ function TeacherAssignmentDialog({
     onAssign: (staffIds: string[]) => Promise<void>
     onRemove: (staffId: string) => Promise<void>
 }) {
+    const t = useTranslations('salary.settings')
     const [search, setSearch] = useState('')
     const [selected, setSelected] = useState<Set<string>>(new Set())
     const [assigning, setAssigning] = useState(false)
@@ -434,7 +438,7 @@ function TeacherAssignmentDialog({
         try {
             await onAssign(Array.from(selected))
             setSelected(new Set())
-            toast.success(`${selected.size} teacher(s) assigned`)
+            toast.success(t('teachersAssigned', { count: selected.size }))
         } catch (e: any) {
             toast.error(e.message)
         }
@@ -445,7 +449,7 @@ function TeacherAssignmentDialog({
         setRemovingId(staffId)
         try {
             await onRemove(staffId)
-            toast.success('Teacher removed from policy')
+            toast.success(t('teacherRemoved'))
         } catch (e: any) {
             toast.error(e.message)
         }
@@ -461,10 +465,10 @@ function TeacherAssignmentDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <IconUsers className="h-5 w-5" />
-                        Manage Teachers — {policyGroup.name}
+                        {t('manageTeachersTitle', { name: policyGroup.name })}
                     </DialogTitle>
                     <DialogDescription>
-                        Assign teachers to this policy. A teacher can only belong to one policy at a time.
+                        {t('manageTeachersDesc')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -473,13 +477,13 @@ function TeacherAssignmentDialog({
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <p className="text-sm font-semibold">
-                                Assigned to this policy
+                                {t('assignedToPolicy')}
                                 <Badge variant="secondary" className="ml-2">{assignedHere.length}</Badge>
                             </p>
                         </div>
                         {assignedHere.length === 0 ? (
                             <p className="text-xs text-muted-foreground py-2 border rounded-lg text-center">
-                                No teachers assigned yet
+                                {t('noTeachersAssigned')}
                             </p>
                         ) : (
                             <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
@@ -516,13 +520,13 @@ function TeacherAssignmentDialog({
                     <div className="flex flex-col gap-2 flex-1 min-h-0">
                         <div className="flex items-center justify-between">
                             <p className="text-sm font-semibold">
-                                Available teachers
-                                <Badge variant="outline" className="ml-2">{available.length} unassigned</Badge>
+                                {t('availableTeachers')}
+                                <Badge variant="outline" className="ml-2">{t('teachersCount', { count: available.length })} {t('unassigned')}</Badge>
                             </p>
                             {selected.size > 0 && (
                                 <Button size="sm" onClick={handleAssign} disabled={assigning}>
                                     <IconPlus className="h-3.5 w-3.5 mr-1" />
-                                    {assigning ? 'Assigning…' : `Add ${selected.size} selected`}
+                                    {assigning ? t('assigning') : t('addSelected', { count: selected.size })}
                                 </Button>
                             )}
                         </div>
@@ -531,7 +535,7 @@ function TeacherAssignmentDialog({
                             <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 className="pl-8 h-8 text-sm"
-                                placeholder="Search by name or employee number…"
+                                placeholder={t('searchTeachersPlaceholder')}
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                             />
@@ -539,7 +543,7 @@ function TeacherAssignmentDialog({
 
                         <div className="border rounded-lg divide-y overflow-y-auto flex-1 min-h-0">
                             {filtered.length === 0 && (
-                                <p className="text-xs text-muted-foreground py-4 text-center">No teachers found</p>
+                                <p className="text-xs text-muted-foreground py-4 text-center">{t('noTeachersFound')}</p>
                             )}
                             {filtered.map(t => {
                                 const inOther = !!t.assigned_policy
@@ -596,6 +600,7 @@ function PolicyGroupCard({
     onManageTeachers: () => void
     onDelete: () => void
 }) {
+    const t = useTranslations('salary.settings')
     return (
         <Card className="group relative">
             <CardHeader className="pb-3">
@@ -615,23 +620,23 @@ function PolicyGroupCard({
             <CardContent className="space-y-3">
                 {/* Key settings summary */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <span>Check-in: <span className="text-foreground font-medium">{group.expected_check_in}</span></span>
-                    <span>Work days: <span className="text-foreground font-medium">{group.working_days_per_month}/mo</span></span>
-                    <span>Late deduction: <span className="text-foreground font-medium capitalize">{group.deduction_type.replace('_', ' ')}</span></span>
-                    <span>Absence: <span className="text-foreground font-medium">{group.absence_deduction_percent}%</span></span>
+                    <span>{t('checkIn')} <span className="text-foreground font-medium">{group.expected_check_in}</span></span>
+                    <span>{t('workDays')} <span className="text-foreground font-medium">{group.working_days_per_month}/mo</span></span>
+                    <span>{t('lateDeduction')} <span className="text-foreground font-medium capitalize">{group.deduction_type.replace('_', ' ')}</span></span>
+                    <span>{t('absence')} <span className="text-foreground font-medium">{group.absence_deduction_percent}%</span></span>
                     {group.attendance_bonus_enabled && (
                         <span className="col-span-2 text-green-600 dark:text-green-400">
-                            Attendance bonus: {currencySymbol}{group.attendance_bonus_amount}
+                            {t('attendanceBonusLine', { symbol: currencySymbol, amount: group.attendance_bonus_amount })}
                         </span>
                     )}
                     {group.monthly_bonus_enabled && (
                         <span className="col-span-2 text-green-600 dark:text-green-400">
-                            Monthly bonus: {currencySymbol}{group.monthly_bonus_amount}
+                            {t('monthlyBonusLine', { symbol: currencySymbol, amount: group.monthly_bonus_amount })}
                         </span>
                     )}
                     {group.monthly_deduction_enabled && (
                         <span className="col-span-2 text-orange-600 dark:text-orange-400">
-                            Monthly deduction: {currencySymbol}{group.monthly_deduction_amount}
+                            {t('monthlyDeductionLine', { symbol: currencySymbol, amount: group.monthly_deduction_amount })}
                         </span>
                     )}
                 </div>
@@ -639,11 +644,11 @@ function PolicyGroupCard({
                 <div className="flex items-center gap-2 pt-1">
                     <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={onManageTeachers}>
                         <IconUsers className="h-3.5 w-3.5 mr-1" />
-                        Manage Teachers
+                        {t('manageTeachersBtn')}
                     </Button>
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onEdit}>
                         <IconEdit className="h-3.5 w-3.5 mr-1" />
-                        Edit
+                        {t('edit')}
                     </Button>
                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={onDelete}>
                         <IconTrash className="h-3.5 w-3.5" />
@@ -657,6 +662,9 @@ function PolicyGroupCard({
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function SalarySettingsPage() {
+    const t = useTranslations('salary.settings')
+    const locale = useLocale()
+    const isAr = locale === 'ar'
     const { profile } = useAuth()
     const campusContext = useCampus()
     const schoolId = profile?.school_id || null
@@ -736,7 +744,7 @@ export default function SalarySettingsPage() {
         try {
             await updatePayrollSettings(schoolId, defaultFields as any, campusId)
             mutateSettings()
-            toast.success('Default settings saved')
+            toast.success(t('defaultSettingsSaved'))
         } catch (e: any) {
             toast.error(e.message)
         }
@@ -747,10 +755,10 @@ export default function SalarySettingsPage() {
         if (!schoolId) return
         if (editingPolicy) {
             await updatePolicyGroup(editingPolicy.id, schoolId, { name, description, ...fields, campus_id: campusId ?? null })
-            toast.success('Policy updated')
+            toast.success(t('policyUpdated'))
         } else {
             await createPolicyGroup(schoolId, { name, description, ...fields, campus_id: campusId ?? null } as any)
-            toast.success('Policy created')
+            toast.success(t('policyCreated'))
         }
         await loadData()
         setEditingPolicy(null)
@@ -761,7 +769,7 @@ export default function SalarySettingsPage() {
         setDeletingLoading(true)
         try {
             await deletePolicyGroup(deletingPolicy.id, schoolId)
-            toast.success('Policy deleted')
+            toast.success(t('policyDeleted'))
             await loadData()
         } catch (e: any) {
             toast.error(e.message)
@@ -788,18 +796,18 @@ export default function SalarySettingsPage() {
     const unassignedCount = allTeachers.filter(t => !t.assigned_policy).length
 
     return (
-        <div className="container mx-auto py-6 space-y-8">
+        <div className="container mx-auto py-6 space-y-8" dir={isAr ? 'rtl' : 'ltr'}>
             {/* Header */}
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" asChild>
                     <Link href="/admin/salary"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight dark:text-white">Salary Settings</h1>
+                    <h1 className="text-3xl font-bold tracking-tight dark:text-white">{t('pageTitle')}</h1>
                     {campusId && campusContext?.selectedCampus && (
-                        <p className="text-sm text-muted-foreground">Campus: {campusContext.selectedCampus.name}</p>
+                        <p className="text-sm text-muted-foreground">{t('campusLabel', { name: campusContext.selectedCampus.name })}</p>
                     )}
-                    <p className="text-muted-foreground text-sm">Configure salary deductions, bonuses, and advance rules</p>
+                    <p className="text-muted-foreground text-sm">{t('pageSubtitle')}</p>
                 </div>
             </div>
 
@@ -812,11 +820,11 @@ export default function SalarySettingsPage() {
                     <div className="flex items-center gap-3">
                         <IconSettings className="h-5 w-5 text-muted-foreground" />
                         <div>
-                            <p className="font-semibold text-sm">Default Settings</p>
+                            <p className="font-semibold text-sm">{t('defaultSettings')}</p>
                             <p className="text-xs text-muted-foreground">
-                                Applied to all teachers not assigned to a policy group
+                                {t('appliedToAll')}
                                 {unassignedCount > 0 && (
-                                    <Badge variant="outline" className="ml-2">{unassignedCount} teachers</Badge>
+                                    <Badge variant="outline" className="ml-2">{t('teachersCount', { count: unassignedCount })}</Badge>
                                 )}
                             </p>
                         </div>
@@ -838,7 +846,7 @@ export default function SalarySettingsPage() {
                         </div>
                         <Button onClick={handleSaveDefault} disabled={savingDefault}>
                             <IconDeviceFloppy className="mr-2 h-4 w-4" />
-                            {savingDefault ? 'Saving…' : 'Save Default Settings'}
+                            {savingDefault ? t('saving') : t('saveDefaultSettings')}
                         </Button>
                     </div>
                 )}
@@ -848,15 +856,14 @@ export default function SalarySettingsPage() {
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-lg font-semibold">Policy Groups</h2>
+                        <h2 className="text-lg font-semibold">{t('policyGroups')}</h2>
                         <p className="text-sm text-muted-foreground">
-                            Create named salary policies and assign specific teachers to each.
-                            A teacher can only belong to one policy at a time.
+                            {t('policyGroupsDesc')}
                         </p>
                     </div>
                     <Button onClick={() => { setEditingPolicy(null); setPolicyDialogOpen(true) }}>
                         <IconPlus className="mr-2 h-4 w-4" />
-                        New Policy
+                        {t('newPolicy')}
                     </Button>
                 </div>
 
@@ -872,14 +879,14 @@ export default function SalarySettingsPage() {
                 ) : policyGroups.length === 0 ? (
                     <div className="border-2 border-dashed rounded-xl p-10 text-center text-muted-foreground">
                         <IconUsers className="h-8 w-8 mx-auto mb-3 opacity-40" />
-                        <p className="font-medium">No policy groups yet</p>
+                        <p className="font-medium">{t('noPolicyGroupsYet')}</p>
                         <p className="text-sm mt-1">
-                            Create a policy to apply different salary rules to specific groups of teachers.
+                            {t('noPolicyGroupsDesc')}
                         </p>
                         <Button variant="outline" className="mt-4"
                             onClick={() => { setEditingPolicy(null); setPolicyDialogOpen(true) }}>
                             <IconPlus className="mr-2 h-4 w-4" />
-                            Create First Policy
+                            {t('createFirstPolicy')}
                         </Button>
                     </div>
                 ) : (
@@ -922,20 +929,19 @@ export default function SalarySettingsPage() {
             <AlertDialog open={!!deletingPolicy} onOpenChange={v => { if (!v) setDeletingPolicy(null) }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete "{deletingPolicy?.name}"?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('deletePolicyTitle', { name: deletingPolicy?.name ?? '' })}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            All teacher assignments in this policy will be removed. Teachers will fall back to the
-                            default settings. This cannot be undone.
+                            {t('deletePolicyDesc')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={deletingLoading}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={deletingLoading}>{t('cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             disabled={deletingLoading}
                             onClick={handleDeletePolicy}
                         >
-                            {deletingLoading ? 'Deleting…' : 'Delete Policy'}
+                            {deletingLoading ? t('deleting') : t('deletePolicy')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

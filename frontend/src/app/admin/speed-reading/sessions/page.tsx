@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
 import { Mic, MicOff, Eye, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,10 @@ import { listSessionLogs, deleteSessionLog, type SessionLog } from '@/lib/api/sp
 import { useAuth } from '@/context/AuthContext'
 
 export default function AdminReadingSessionsPage() {
+  const t = useTranslations('speedReading')
+  const ts = useTranslations('speedReading.sessions')
+  const locale = useLocale()
+  const isAr = locale === 'ar'
   const router = useRouter()
   const { profile } = useAuth()
   const [logs, setLogs] = useState<SessionLog[]>([])
@@ -57,11 +62,11 @@ export default function AdminReadingSessionsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Student Reading Sessions</h1>
-          {!loading && <p className="text-sm text-muted-foreground mt-0.5">{total} sessions total</p>}
+          <h1 className="text-2xl font-bold">{ts('title')}</h1>
+          {!loading && <p className="text-sm text-muted-foreground mt-0.5">{ts('sessionsTotal', { total })}</p>}
         </div>
       </div>
 
@@ -69,14 +74,14 @@ export default function AdminReadingSessionsPage() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 border-b">
             <tr>
-              <th className="text-left px-4 py-3 font-medium">Student</th>
-              <th className="text-left px-4 py-3 font-medium">Reading Text</th>
-              <th className="text-left px-4 py-3 font-medium">Date</th>
-              <th className="text-center px-4 py-3 font-medium">WPM</th>
-              <th className="text-center px-4 py-3 font-medium">Accuracy</th>
-              <th className="text-center px-4 py-3 font-medium">Points</th>
-              <th className="text-center px-4 py-3 font-medium">Recording</th>
-              <th className="text-right px-4 py-3 font-medium">Action</th>
+              <th className="text-left px-4 py-3 font-medium">{ts('colStudent')}</th>
+              <th className="text-left px-4 py-3 font-medium">{ts('colReadingText')}</th>
+              <th className="text-left px-4 py-3 font-medium">{ts('colDate')}</th>
+              <th className="text-center px-4 py-3 font-medium">{ts('colWpm')}</th>
+              <th className="text-center px-4 py-3 font-medium">{ts('colAccuracy')}</th>
+              <th className="text-center px-4 py-3 font-medium">{ts('colPoints')}</th>
+              <th className="text-center px-4 py-3 font-medium">{ts('colRecording')}</th>
+              <th className="text-right px-4 py-3 font-medium">{ts('colAction')}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -93,7 +98,7 @@ export default function AdminReadingSessionsPage() {
             ) : logs.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
-                  No sessions yet.
+                  {t('noSessions')}
                 </td>
               </tr>
             ) : (
@@ -121,9 +126,9 @@ export default function AdminReadingSessionsPage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     {log.audio_url ? (
-                      <Mic className="h-4 w-4 text-green-500 mx-auto" aria-label="Has recording" />
+                      <Mic className="h-4 w-4 text-green-500 mx-auto" aria-label={ts('hasRecording')} />
                     ) : (
-                      <MicOff className="h-4 w-4 text-muted-foreground mx-auto" aria-label="No recording" />
+                      <MicOff className="h-4 w-4 text-muted-foreground mx-auto" aria-label={ts('noRecording')} />
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -134,7 +139,7 @@ export default function AdminReadingSessionsPage() {
                         onClick={() => router.push(`/admin/speed-reading/sessions/${log.id}`)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
-                        Review
+                        {ts('review')}
                       </Button>
                       <Button
                         size="sm"
@@ -157,7 +162,7 @@ export default function AdminReadingSessionsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
+            {ts('pageOf', { page, totalPages })}
           </p>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
@@ -173,15 +178,15 @@ export default function AdminReadingSessionsPage() {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Session</AlertDialogTitle>
+            <AlertDialogTitle>{ts('deleteSession')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this reading session and its recording. This action cannot be undone.
+              {ts('deleteSessionConfirm')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {deleting ? '...' : 'Delete'}
+              {deleting ? ts('deleting') : ts('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

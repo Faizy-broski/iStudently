@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { useTranslations, useLocale } from 'next-intl'
 import {
   Dialog,
   DialogContent,
@@ -61,16 +62,6 @@ import {
 import { uploadImage, uploadMessageAttachment } from '@/lib/api/media-upload'
 import { useStaff } from '@/hooks/useStaff'
 import { useCampus } from '@/context/CampusContext'
-
-const WEEKLY_DAYS_OPTIONS = [
-  { id: 'Sun', label: 'Sun' },
-  { id: 'Mon', label: 'Mon' },
-  { id: 'Tue', label: 'Tue' },
-  { id: 'Wed', label: 'Wed' },
-  { id: 'Thu', label: 'Thu' },
-  { id: 'Fri', label: 'Fri' },
-  { id: 'Sat', label: 'Sat' },
-]
 
 const COURSE_CATEGORIES = [
   'Robotics & AI',
@@ -147,6 +138,20 @@ export function TrainingSessionFormModal({
   sessionToEdit,
   onSaved,
 }: TrainingSessionFormModalProps) {
+  const t = useTranslations('adminTrainingSessions.form')
+  const locale = useLocale()
+  const isAr = locale === 'ar'
+
+  const WEEKLY_DAYS_OPTIONS = [
+    { id: 'Sun', label: t('daySun') },
+    { id: 'Mon', label: t('dayMon') },
+    { id: 'Tue', label: t('dayTue') },
+    { id: 'Wed', label: t('dayWed') },
+    { id: 'Thu', label: t('dayThu') },
+    { id: 'Fri', label: t('dayFri') },
+    { id: 'Sat', label: t('daySat') },
+  ]
+
   const campusCtx = useCampus()
   const campusId = campusCtx?.selectedCampus?.id
   const { staffList } = useStaff()
@@ -268,7 +273,7 @@ export function TrainingSessionFormModal({
   const handleAddCustomCategory = () => {
     const trimmed = customCategoryInput.trim()
     if (!trimmed) {
-      toast.error('Category name cannot be empty')
+      toast.error(t('categoryEmpty'))
       return
     }
     if (!categoriesList.includes(trimmed)) {
@@ -277,7 +282,7 @@ export function TrainingSessionFormModal({
     setValue('category', trimmed)
     setCustomCategoryInput('')
     setIsAddingCategory(false)
-    toast.success(`Category "${trimmed}" added!`)
+    toast.success(t('categoryAdded', { name: trimmed }))
   }
 
   const deliveryMode = watch('delivery_mode')
@@ -297,9 +302,9 @@ export function TrainingSessionFormModal({
     setUploadingBanner(false)
     if (res.success && res.data?.url) {
       setValue('cover_image_url', res.data.url)
-      toast.success('Cover image uploaded successfully')
+      toast.success(t('coverUploaded'))
     } else {
-      toast.error(res.error || 'Failed to upload cover image')
+      toast.error(res.error || t('coverUploadFailed'))
     }
   }
 
@@ -311,9 +316,9 @@ export function TrainingSessionFormModal({
     setUploadingSyllabus(false)
     if (res.success && res.data?.url) {
       setValue('syllabus_pdf_url', res.data.url)
-      toast.success('Syllabus PDF uploaded successfully')
+      toast.success(t('syllabusUploaded'))
     } else {
-      toast.error(res.error || 'Failed to upload syllabus PDF')
+      toast.error(res.error || t('syllabusUploadFailed'))
     }
   }
 
@@ -325,9 +330,9 @@ export function TrainingSessionFormModal({
     setUploadingSignature(false)
     if (res.success && res.data?.url) {
       setValue('digital_signature_url', res.data.url)
-      toast.success('Digital signature uploaded successfully')
+      toast.success(t('signatureUploaded'))
     } else {
-      toast.error(res.error || 'Failed to upload signature')
+      toast.error(res.error || t('signatureUploadFailed'))
     }
   }
 
@@ -405,24 +410,24 @@ export function TrainingSessionFormModal({
       if (sessionToEdit) {
         const res = await trainingApi.updateSession(sessionToEdit.id, dto, campusId)
         if (res.success) {
-          toast.success('Training session updated successfully!')
+          toast.success(t('sessionUpdated'))
           onSaved?.()
           onClose()
         } else {
-          toast.error(res.error || 'Failed to update training session')
+          toast.error(res.error || t('updateFailed'))
         }
       } else {
         const res = await trainingApi.createSession(dto, campusId)
         if (res.success && res.data) {
-          toast.success('Training session created successfully!')
+          toast.success(t('sessionCreated'))
           onSaved?.()
           onClose()
         } else {
-          toast.error(res.error || 'Failed to create training session')
+          toast.error(res.error || t('createFailed'))
         }
       }
     } catch (e: any) {
-      toast.error(e.message || 'Error saving training session')
+      toast.error(e.message || t('errorSaving'))
     } finally {
       setIsSubmitting(false)
     }
@@ -430,16 +435,16 @@ export function TrainingSessionFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background">
+      <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background" dir={isAr ? 'rtl' : 'ltr'}>
         <DialogHeader className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border bg-gradient-to-r from-[#57A3CC]/10 to-[#022172]/10 pr-10">
           <div className="flex items-center gap-2 text-[#022172] dark:text-[#57A3CC]">
             <Sparkles className="h-5 w-5 shrink-0" />
             <DialogTitle className="text-lg sm:text-xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white leading-tight">
-              {sessionToEdit ? 'Edit Training Session & Certificate Spec' : 'Complete Training Session & Certificate Builder'}
+              {sessionToEdit ? t('editTitle') : t('createTitle')}
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground mt-1">
-            Configure full training session parameters, schedule, access control, media, and auto-certificate criteria.
+            {t('dialogDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -449,23 +454,23 @@ export function TrainingSessionFormModal({
               <TabsList className="flex w-max min-w-full md:grid md:grid-cols-5 bg-muted/60 p-1 h-auto min-h-[42px] gap-1">
                 <TabsTrigger value="basic" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
                   <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                  <span>1. Basic Info</span>
+                  <span>{t('tab1')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="schedule" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
                   <Calendar className="h-3.5 w-3.5 shrink-0" />
-                  <span>2. Schedule & Delivery</span>
+                  <span>{t('tab2')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="access" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
                   <Users className="h-3.5 w-3.5 shrink-0" />
-                  <span>3. Access & Pricing</span>
+                  <span>{t('tab3')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="media" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
                   <UploadCloud className="h-3.5 w-3.5 shrink-0" />
-                  <span>4. Media & Syllabus</span>
+                  <span>{t('tab4')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="certificate" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
                   <Award className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
-                  <span>5. Certificates</span>
+                  <span>{t('tab5')}</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -474,11 +479,11 @@ export function TrainingSessionFormModal({
             <TabsContent value="basic" className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="title" className="font-semibold text-sm">
-                  Session Title <span className="text-destructive">*</span>
+                  {t('sessionTitle')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="title"
-                  placeholder='e.g., "Introduction to Robotics"'
+                  placeholder={t('sessionTitlePlaceholder')}
                   {...register('title')}
                   className="bg-background"
                 />
@@ -487,12 +492,12 @@ export function TrainingSessionFormModal({
 
               <div className="space-y-1.5">
                 <Label htmlFor="description" className="font-semibold text-sm">
-                  Description & Curriculum
+                  {t('descriptionLabel')}
                 </Label>
                 <Textarea
                   id="description"
                   rows={4}
-                  placeholder="Outline course goals, key topics, prerequisites, and learning outcomes…"
+                  placeholder={t('descriptionPlaceholder')}
                   {...register('description')}
                   className="bg-background"
                 />
@@ -501,7 +506,7 @@ export function TrainingSessionFormModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="font-semibold text-sm">Course Category</Label>
+                    <Label className="font-semibold text-sm">{t('courseCategory')}</Label>
                     {!isAddingCategory && (
                       <button
                         type="button"
@@ -509,7 +514,7 @@ export function TrainingSessionFormModal({
                         className="text-xs font-semibold text-[#022172] dark:text-[#57A3CC] hover:underline flex items-center gap-1 transition-colors"
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        Add New Category
+                        {t('addNewCategory')}
                       </button>
                     )}
                   </div>
@@ -517,7 +522,7 @@ export function TrainingSessionFormModal({
                   {isAddingCategory ? (
                     <div className="flex items-center gap-2">
                       <Input
-                        placeholder="Enter custom category name..."
+                        placeholder={t('customCategoryPlaceholder')}
                         value={customCategoryInput}
                         onChange={(e) => setCustomCategoryInput(e.target.value)}
                         className="bg-background text-xs"
@@ -535,7 +540,7 @@ export function TrainingSessionFormModal({
                         onClick={handleAddCustomCategory}
                         className="bg-[#022172] text-white text-xs shrink-0"
                       >
-                        Add
+                        {t('add')}
                       </Button>
                       <Button
                         type="button"
@@ -544,7 +549,7 @@ export function TrainingSessionFormModal({
                         onClick={() => setIsAddingCategory(false)}
                         className="text-xs shrink-0"
                       >
-                        Cancel
+                        {t('cancel')}
                       </Button>
                     </div>
                   ) : (
@@ -563,7 +568,7 @@ export function TrainingSessionFormModal({
                           }}
                         >
                           <SelectTrigger className="bg-background">
-                            <SelectValue placeholder="Select Category" />
+                            <SelectValue placeholder={t('selectCategory')} />
                           </SelectTrigger>
                           <SelectContent>
                             {categoriesList.map((cat) => (
@@ -572,7 +577,7 @@ export function TrainingSessionFormModal({
                               </SelectItem>
                             ))}
                             <SelectItem value="__ADD_NEW__" className="text-purple-600 dark:text-purple-400 font-semibold border-t mt-1">
-                              + Add Custom Category...
+                              {t('addCustomCategoryOption')}
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -582,19 +587,19 @@ export function TrainingSessionFormModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-sm">Skill Level</Label>
+                  <Label className="font-semibold text-sm">{t('skillLevel')}</Label>
                   <Controller
                     name="skill_level"
                     control={control}
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select Skill Level" />
+                          <SelectValue placeholder={t('selectSkillLevel')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="beginner">Beginner</SelectItem>
-                          <SelectItem value="intermediate">Intermediate</SelectItem>
-                          <SelectItem value="advanced">Advanced</SelectItem>
+                          <SelectItem value="beginner">{t('beginner')}</SelectItem>
+                          <SelectItem value="intermediate">{t('intermediate')}</SelectItem>
+                          <SelectItem value="advanced">{t('advanced')}</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -608,7 +613,7 @@ export function TrainingSessionFormModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="start_date" className="font-semibold text-sm">
-                    Start Date & Time <span className="text-destructive">*</span>
+                    {t('startDateTime')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="start_date"
@@ -623,7 +628,7 @@ export function TrainingSessionFormModal({
 
                 <div className="space-y-1.5">
                   <Label htmlFor="end_date" className="font-semibold text-sm">
-                    End Date & Time <span className="text-destructive">*</span>
+                    {t('endDateTime')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="end_date"
@@ -639,7 +644,7 @@ export function TrainingSessionFormModal({
 
               {/* Weekly Days Multi-select */}
               <div className="space-y-2 pt-1">
-                <Label className="font-semibold text-sm">Weekly Days</Label>
+                <Label className="font-semibold text-sm">{t('weeklyDays')}</Label>
                 <Controller
                   name="weekly_days"
                   control={control}
@@ -681,9 +686,9 @@ export function TrainingSessionFormModal({
               <div className="space-y-3 pt-2 border-t border-border">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <Label className="font-semibold text-sm">Daily Session Times</Label>
+                    <Label className="font-semibold text-sm">{t('dailySessionTimes')}</Label>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Set uniform times for all days or specify different times per day
+                      {t('dailyTimesHint')}
                     </p>
                   </div>
                   <div className="inline-flex rounded-lg border border-border p-1 bg-muted/40 gap-1 self-start sm:self-auto">
@@ -696,7 +701,7 @@ export function TrainingSessionFormModal({
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      Uniform Time
+                      {t('uniformTime')}
                     </button>
                     <button
                       type="button"
@@ -707,7 +712,7 @@ export function TrainingSessionFormModal({
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      Different Time Per Day
+                      {t('differentTimePerDay')}
                     </button>
                   </div>
                 </div>
@@ -716,11 +721,11 @@ export function TrainingSessionFormModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="daily_time_range" className="font-semibold text-xs text-muted-foreground">
-                        Session Time Range
+                        {t('sessionTimeRange')}
                       </Label>
                       <Input
                         id="daily_time_range"
-                        placeholder='e.g., "04:00 PM – 06:00 PM"'
+                        placeholder={t('sessionTimeRangePlaceholder')}
                         {...register('daily_time_range')}
                         className="bg-background"
                       />
@@ -728,13 +733,13 @@ export function TrainingSessionFormModal({
 
                     <div className="space-y-1.5">
                       <Label htmlFor="total_duration_hours" className="font-semibold text-xs text-muted-foreground">
-                        Total Duration (Hours)
+                        {t('totalDurationHours')}
                       </Label>
                       <Input
                         id="total_duration_hours"
                         type="number"
                         min="0"
-                        placeholder="e.g., 20"
+                        placeholder={t('totalDurationPlaceholder')}
                         {...register('total_duration_hours')}
                         className="bg-background"
                       />
@@ -744,17 +749,17 @@ export function TrainingSessionFormModal({
                   <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-border">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <span className="text-xs font-bold text-foreground">
-                        Per-Day Schedule Breakdown ({selectedWeeklyDays.length} Days Selected)
+                        {t('perDayBreakdown', { count: selectedWeeklyDays.length })}
                       </span>
                       <div className="flex items-center gap-2">
                         <Label htmlFor="total_duration_hours" className="text-xs text-muted-foreground whitespace-nowrap">
-                          Total Hours:
+                          {t('totalHours')}
                         </Label>
                         <Input
                           id="total_duration_hours"
                           type="number"
                           min="0"
-                          placeholder="e.g., 20"
+                          placeholder={t('totalDurationPlaceholder')}
                           {...register('total_duration_hours')}
                           className="bg-background text-xs h-8 w-28"
                         />
@@ -763,7 +768,7 @@ export function TrainingSessionFormModal({
 
                     {selectedWeeklyDays.length === 0 ? (
                       <p className="text-xs text-muted-foreground italic p-3 bg-background rounded-md border border-dashed">
-                        Please select at least one day in &quot;Weekly Days&quot; above to set per-day session times.
+                        {t('selectDaysHint')}
                       </p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -773,7 +778,7 @@ export function TrainingSessionFormModal({
                               {dayId}
                             </Badge>
                             <Input
-                              placeholder='e.g., "02:00 PM – 04:00 PM"'
+                              placeholder={t('perDayTimePlaceholder')}
                               value={perDayTimes[dayId] || ''}
                               onChange={(e) =>
                                 setPerDayTimes((prev) => ({ ...prev, [dayId]: e.target.value }))
@@ -790,19 +795,19 @@ export function TrainingSessionFormModal({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-sm">Delivery Mode</Label>
+                  <Label className="font-semibold text-sm">{t('deliveryMode')}</Label>
                   <Controller
                     name="delivery_mode"
                     control={control}
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select Delivery Mode" />
+                          <SelectValue placeholder={t('selectDeliveryMode')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="in_person">In-Person</SelectItem>
-                          <SelectItem value="online">Online</SelectItem>
-                          <SelectItem value="hybrid">Hybrid</SelectItem>
+                          <SelectItem value="in_person">{t('inPerson')}</SelectItem>
+                          <SelectItem value="online">{t('online')}</SelectItem>
+                          <SelectItem value="hybrid">{t('hybrid')}</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -812,17 +817,17 @@ export function TrainingSessionFormModal({
                 <div className="space-y-1.5">
                   <Label htmlFor="location_venue_link" className="font-semibold text-sm">
                     {deliveryMode === 'in_person'
-                      ? 'Location / Venue Address'
+                      ? t('locationVenueAddress')
                       : deliveryMode === 'online'
-                      ? 'Online Video Link (Zoom / Teams)'
-                      : 'Location & Online Link'}
+                      ? t('onlineVideoLink')
+                      : t('locationAndOnlineLink')}
                   </Label>
                   <Input
                     id="location_venue_link"
                     placeholder={
                       deliveryMode === 'in_person'
-                        ? 'e.g. Lab 2 - Main Campus'
-                        : 'e.g. https://zoom.us/j/123456789'
+                        ? t('locationPlaceholderInPerson')
+                        : t('locationPlaceholderOnline')
                     }
                     {...register('location_venue_link')}
                     className="bg-background"
@@ -835,7 +840,7 @@ export function TrainingSessionFormModal({
             <TabsContent value="access" className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-sm">Instructor / Trainer</Label>
+                  <Label className="font-semibold text-sm">{t('instructorTrainer')}</Label>
                   <Controller
                     name="instructor_id"
                     control={control}
@@ -854,12 +859,12 @@ export function TrainingSessionFormModal({
                         }}
                       >
                         <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select Instructor / Staff" />
+                          <SelectValue placeholder={t('selectInstructor')} />
                         </SelectTrigger>
                         <SelectContent>
                           {staffList?.map((s) => (
                             <SelectItem key={s.id} value={s.id}>
-                              {s.first_name} {s.last_name} ({s.designation || 'Staff'})
+                              {s.first_name} {s.last_name} ({s.designation || t('staffFallback')})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -870,11 +875,11 @@ export function TrainingSessionFormModal({
 
                 <div className="space-y-1.5">
                   <Label htmlFor="instructor_name" className="font-semibold text-sm">
-                    Custom Instructor Name (Optional)
+                    {t('customInstructorName')}
                   </Label>
                   <Input
                     id="instructor_name"
-                    placeholder='e.g., "Eng. Ahmed Hassan"'
+                    placeholder={t('customInstructorPlaceholder')}
                     {...register('instructor_name')}
                     className="bg-background"
                   />
@@ -884,13 +889,13 @@ export function TrainingSessionFormModal({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                 <div className="space-y-1.5">
                   <Label htmlFor="total_seats" className="font-semibold text-sm">
-                    Total Seats <span className="text-destructive">*</span>
+                    {t('totalSeats')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="total_seats"
                     type="number"
                     min="1"
-                    placeholder="e.g., 15"
+                    placeholder={t('totalSeatsPlaceholder')}
                     {...register('total_seats')}
                     className="bg-background"
                   />
@@ -901,31 +906,31 @@ export function TrainingSessionFormModal({
 
                 <div className="space-y-1.5">
                   <Label htmlFor="course_fee" className="font-semibold text-sm">
-                    Course Fee (LYD / USD)
+                    {t('courseFee')}
                   </Label>
                   <Input
                     id="course_fee"
                     type="number"
                     min="0"
-                    placeholder="0 for Free"
+                    placeholder={t('courseFeePlaceholder')}
                     {...register('course_fee')}
                     className="bg-background"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-sm">Initial Status</Label>
+                  <Label className="font-semibold text-sm">{t('initialStatus')}</Label>
                   <Controller
                     name="status"
                     control={control}
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select Status" />
+                          <SelectValue placeholder={t('selectStatus')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="open">Open — Accept Registrations</SelectItem>
-                          <SelectItem value="closed">Closed</SelectItem>
+                          <SelectItem value="open">{t('statusOpenOption')}</SelectItem>
+                          <SelectItem value="closed">{t('statusClosedOption')}</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -934,16 +939,16 @@ export function TrainingSessionFormModal({
               </div>
 
               <div className="space-y-2 pt-2">
-                <Label className="font-semibold text-sm">Target Audience</Label>
+                <Label className="font-semibold text-sm">{t('targetAudience')}</Label>
                 <Controller
                   name="target_audience"
                   control={control}
                   render={({ field }) => (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
-                        { id: 'both', label: 'Both (Internal & External)', desc: 'Open to enrolled students & public' },
-                        { id: 'internal', label: 'Internal Only', desc: 'Strictly for registered school students' },
-                        { id: 'external', label: 'External Only', desc: 'Public participants outside school' },
+                        { id: 'both', label: t('audienceBoth'), desc: t('audienceBothDesc') },
+                        { id: 'internal', label: t('audienceInternal'), desc: t('audienceInternalDesc') },
+                        { id: 'external', label: t('audienceExternal'), desc: t('audienceExternalDesc') },
                       ].map((aud) => {
                         const active = field.value === aud.id
                         return (
@@ -975,7 +980,7 @@ export function TrainingSessionFormModal({
 
               <div className="space-y-1.5 pt-1">
                 <Label htmlFor="registration_deadline" className="font-semibold text-sm">
-                  Registration Deadline (Optional)
+                  {t('registrationDeadline')}
                 </Label>
                 <Input
                   id="registration_deadline"
@@ -995,9 +1000,9 @@ export function TrainingSessionFormModal({
                     <UploadCloud className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">Cover Image / Banner</p>
+                    <p className="font-semibold text-sm">{t('coverImageBanner')}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Banner image for the public course registration page (.png, .jpg)
+                      {t('coverImageHint')}
                     </p>
                   </div>
 
@@ -1015,7 +1020,7 @@ export function TrainingSessionFormModal({
                         className="text-xs text-destructive border-destructive/30"
                         onClick={() => setValue('cover_image_url', '')}
                       >
-                        Remove Cover Image
+                        {t('removeCoverImage')}
                       </Button>
                     </div>
                   ) : (
@@ -1033,7 +1038,7 @@ export function TrainingSessionFormModal({
                         ) : (
                           <UploadCloud className="h-4 w-4" />
                         )}
-                        Upload Cover Image
+                        {t('uploadCoverImage')}
                       </Button>
                       <input
                         id="cover-upload-input"
@@ -1052,9 +1057,9 @@ export function TrainingSessionFormModal({
                     <FileText className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">Syllabus / PDF Attachment</p>
+                    <p className="font-semibold text-sm">{t('syllabusAttachment')}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Downloadable course curriculum and detailed agenda (.pdf)
+                      {t('syllabusHint')}
                     </p>
                   </div>
 
@@ -1063,10 +1068,10 @@ export function TrainingSessionFormModal({
                       <div className="p-3 bg-card border rounded-md flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 truncate">
                           <FileText className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                          <span className="truncate font-medium">Syllabus_Curriculum.pdf</span>
+                          <span className="truncate font-medium">{t('syllabusFilename')}</span>
                         </div>
                         <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700">
-                          Uploaded
+                          {t('uploaded')}
                         </Badge>
                       </div>
                       <Button
@@ -1076,7 +1081,7 @@ export function TrainingSessionFormModal({
                         className="text-xs text-destructive border-destructive/30"
                         onClick={() => setValue('syllabus_pdf_url', '')}
                       >
-                        Remove PDF
+                        {t('removePdf')}
                       </Button>
                     </div>
                   ) : (
@@ -1094,7 +1099,7 @@ export function TrainingSessionFormModal({
                         ) : (
                           <FileText className="h-4 w-4" />
                         )}
-                        Upload Syllabus PDF
+                        {t('uploadSyllabusPdf')}
                       </Button>
                       <input
                         id="pdf-upload-input"
@@ -1116,10 +1121,10 @@ export function TrainingSessionFormModal({
                   <div className="space-y-0.5">
                     <p className="font-bold text-sm text-foreground flex items-center gap-2">
                       <Award className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                      Enable Automatic Certificate Issuance
+                      {t('enableAutoIssuance')}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Automatically generate & award verified digital certificates upon completing session criteria
+                      {t('autoIssuanceHint')}
                     </p>
                   </div>
                   <Controller
@@ -1136,19 +1141,19 @@ export function TrainingSessionFormModal({
                 <div className="space-y-6">
                   {/* Template Selection */}
                   <div className="space-y-1.5">
-                    <Label className="font-semibold text-sm">Certificate Template Design</Label>
+                    <Label className="font-semibold text-sm">{t('certTemplateDesign')}</Label>
                     <Controller
                       name="certificate_template"
                       control={control}
                       render={({ field }) => (
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger className="bg-background">
-                            <SelectValue placeholder="Select Certificate Template" />
+                            <SelectValue placeholder={t('selectCertTemplate')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="standard_attendance">Standard Certificate of Attendance</SelectItem>
-                            <SelectItem value="completion_excellence">Certificate of Completion & Excellence</SelectItem>
-                            <SelectItem value="custom_professional">Custom Professional Credential</SelectItem>
+                            <SelectItem value="standard_attendance">{t('templateStandardAttendance')}</SelectItem>
+                            <SelectItem value="completion_excellence">{t('templateCompletionExcellence')}</SelectItem>
+                            <SelectItem value="custom_professional">{t('templateCustomProfessional')}</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
@@ -1158,7 +1163,7 @@ export function TrainingSessionFormModal({
                   {/* Criteria Multi-select Checkboxes */}
                   <div className="space-y-3 p-4 bg-card rounded-lg border border-border">
                     <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
-                      Auto-Issuance Qualification Criteria
+                      {t('qualificationCriteria')}
                     </Label>
                     <div className="space-y-3">
                       {/* Attendance Rate Criterion */}
@@ -1176,7 +1181,7 @@ export function TrainingSessionFormModal({
                             )}
                           />
                           <Label htmlFor="req-attendance" className="text-sm font-medium cursor-pointer">
-                            Minimum Attendance Rate Required
+                            {t('minAttendanceRequired')}
                           </Label>
                         </div>
                         {requireAttendance && (
@@ -1208,7 +1213,7 @@ export function TrainingSessionFormModal({
                             )}
                           />
                           <Label htmlFor="req-grade" className="text-sm font-medium cursor-pointer">
-                            Minimum Passing Exam Grade Required
+                            {t('minGradeRequired')}
                           </Label>
                         </div>
                         {requireGrade && (
@@ -1239,7 +1244,7 @@ export function TrainingSessionFormModal({
                           )}
                         />
                         <Label htmlFor="req-payment" className="text-sm font-medium cursor-pointer">
-                          Full Payment Cleared & Verified
+                          {t('paymentClearedRequired')}
                         </Label>
                       </div>
                     </div>
@@ -1249,18 +1254,18 @@ export function TrainingSessionFormModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="authorized_signatory" className="font-semibold text-sm">
-                        Authorized Signatory Name & Title
+                        {t('authorizedSignatory')}
                       </Label>
                       <Input
                         id="authorized_signatory"
-                        placeholder='e.g., "Dr. Ali Ahmad - Center Director"'
+                        placeholder={t('authorizedSignatoryPlaceholder')}
                         {...register('authorized_signatory')}
                         className="bg-background"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="font-semibold text-sm">Digital Signature & Stamp (.png)</Label>
+                      <Label className="font-semibold text-sm">{t('digitalSignature')}</Label>
                       <div className="flex items-center gap-3">
                         {digitalSignatureUrl ? (
                           <div className="flex items-center gap-2">
@@ -1276,7 +1281,7 @@ export function TrainingSessionFormModal({
                               className="text-xs text-destructive"
                               onClick={() => setValue('digital_signature_url', '')}
                             >
-                              Remove
+                              {t('remove')}
                             </Button>
                           </div>
                         ) : (
@@ -1294,7 +1299,7 @@ export function TrainingSessionFormModal({
                               ) : (
                                 <UploadCloud className="h-3.5 w-3.5" />
                               )}
-                              Upload Transparent Seal
+                              {t('uploadTransparentSeal')}
                             </Button>
                             <input
                               id="sig-upload-input"
@@ -1315,10 +1320,10 @@ export function TrainingSessionFormModal({
                       <div className="space-y-0.5">
                         <p className="font-semibold text-sm flex items-center gap-2">
                           <QrCode className="h-4 w-4 text-[#022172] dark:text-[#57A3CC]" />
-                          Verification QR Code
+                          {t('verificationQr')}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Auto-generate unique QR code on each certificate linking to public verification page
+                          {t('verificationQrHint')}
                         </p>
                       </div>
                       <Controller
@@ -1333,7 +1338,7 @@ export function TrainingSessionFormModal({
 
                   {/* Distribution Method Checkboxes */}
                   <div className="space-y-2 pt-1">
-                    <Label className="font-semibold text-sm">Certificate Distribution Methods</Label>
+                    <Label className="font-semibold text-sm">{t('distributionMethods')}</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="flex items-center space-x-2 border p-3 rounded-lg bg-card">
                         <Controller
@@ -1348,7 +1353,7 @@ export function TrainingSessionFormModal({
                           )}
                         />
                         <Label htmlFor="dist-dashboard" className="text-xs font-medium cursor-pointer">
-                          Available in Student/Parent Dashboard
+                          {t('distDashboard')}
                         </Label>
                       </div>
 
@@ -1365,7 +1370,7 @@ export function TrainingSessionFormModal({
                           )}
                         />
                         <Label htmlFor="dist-email" className="text-xs font-medium cursor-pointer">
-                          Send Automatically via Email (PDF)
+                          {t('distEmail')}
                         </Label>
                       </div>
                     </div>
@@ -1377,7 +1382,7 @@ export function TrainingSessionFormModal({
 
           <DialogFooter className="border-t border-border pt-4 mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               type="submit"
@@ -1385,7 +1390,7 @@ export function TrainingSessionFormModal({
               className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white gap-2 w-full sm:w-auto"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {sessionToEdit ? 'Update Training Session' : 'Save & Publish Session'}
+              {sessionToEdit ? t('updateSession') : t('savePublish')}
             </Button>
           </DialogFooter>
         </form>

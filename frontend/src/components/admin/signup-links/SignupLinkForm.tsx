@@ -111,7 +111,13 @@ export function SignupLinkForm({ mode, initial }: SignupLinkFormProps) {
   }, [campusId])
 
   React.useEffect(() => {
-    getProfileFields(form.role).then(res => {
+    // Same campus resolution as the grade-levels effect above — a
+    // campus-scoped custom field is stored under that campus's school_id
+    // (see custom-fields.controller.ts's createFieldDefinition), so this
+    // must match the campus context the field was created under or it
+    // silently never shows up as a toggle-able option here.
+    const cid = mode === 'edit' ? form.campus_id : campusId
+    getProfileFields(form.role, cid).then(res => {
       if (res.success && res.data) {
         setProfileFields(res.data)
         // Reset config for newly loaded fields (preserve any the user already toggled)
@@ -125,7 +131,7 @@ export function SignupLinkForm({ mode, initial }: SignupLinkFormProps) {
         })
       }
     })
-  }, [form.role])
+  }, [form.role, form.campus_id, campusId, mode])
 
   // Edit mode: once the role's profile fields and this campus's grade levels
   // have both loaded, reconstruct which toggles were on from the link's
@@ -229,7 +235,8 @@ export function SignupLinkForm({ mode, initial }: SignupLinkFormProps) {
           : gradeLevels
         custom_fields.push({
           id: 'grade_level',
-          label: isAr ? 'الصف الدراسي' : 'Grade Level',
+          label: 'Grade Level',
+          label_ar: 'الصف الدراسي',
           type: 'select',
           required: true,
           options: offeredGrades.map(g => g.name),
@@ -248,21 +255,31 @@ export function SignupLinkForm({ mode, initial }: SignupLinkFormProps) {
           // School-defined custom field — no fixed column, so no mapping.
           // On approval this falls through into the entity's custom_fields JSONB,
           // keyed by field_key, same storage the Custom Fields feature reads from.
+          //
+          // Store BOTH languages here, not just whichever the admin building
+          // this link happens to be viewing the UI in (isAr ? ... : ...
+          // previously baked in only one language permanently) — the public
+          // signup page resolves label/options by the *applicant's* locale
+          // at render time (see fieldLabel/fieldOptions in signup/[token]/page.tsx).
           custom_fields.push({
             id: pf.field_key!,
-            label: isAr ? pf.label_ar : pf.label_en,
+            label: pf.label_en,
+            label_ar: pf.label_ar,
             type: pf.type,
             required: cfg.required,
             options: pf.options ? pf.options.map(o => o.id) : undefined,
+            options_ar: pf.options ? pf.options.map(o => o.label_ar) : undefined,
           })
           continue
         }
         custom_fields.push({
           id: pf.column!,
-          label: isAr ? pf.label_ar : pf.label_en,
+          label: pf.label_en,
+          label_ar: pf.label_ar,
           type: pf.type,
           required: cfg.required,
           options: pf.options ? pf.options.map(o => o.id) : undefined,
+          options_ar: pf.options ? pf.options.map(o => o.label_ar) : undefined,
           source: 'profile_field',
           mapping: { table: pf.table!, column: pf.column! },
         })

@@ -2,7 +2,8 @@
 
 import * as React from 'react'
 import { useLocale } from 'next-intl'
-import { Download, FileSpreadsheet, FileText, Settings2, ChevronDown } from 'lucide-react'
+import { toast } from 'sonner'
+import { Download, FileSpreadsheet, FileText, Settings2, ChevronDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -43,6 +44,7 @@ export function ExportButton<T>({ reportKey, columns, rows, filename, title, cla
   const { profile } = useAuth()
   const { defaultTemplate } = useExportTemplates(reportKey)
   const [managerOpen, setManagerOpen] = React.useState(false)
+  const [exportingPdf, setExportingPdf] = React.useState(false)
 
   const effectiveColumns = React.useMemo((): ExportColumn<T>[] => {
     if (!defaultTemplate) return columns
@@ -62,8 +64,16 @@ export function ExportButton<T>({ reportKey, columns, rows, filename, title, cla
     exportRowsToExcel(effectiveColumns, rows, filename, { locale })
   }
 
-  const handleExportPdf = () => {
-    exportRowsToPdf(effectiveColumns, rows, filename, { locale, title: title || filename, branding })
+  const handleExportPdf = async () => {
+    setExportingPdf(true)
+    try {
+      await exportRowsToPdf(effectiveColumns, rows, filename, { locale, title: title || filename, branding })
+    } catch (err) {
+      toast.error(isAr ? 'فشل تصدير PDF' : 'Failed to export PDF')
+      console.error(err)
+    } finally {
+      setExportingPdf(false)
+    }
   }
 
   return (
@@ -81,8 +91,12 @@ export function ExportButton<T>({ reportKey, columns, rows, filename, title, cla
             <FileSpreadsheet className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0 text-green-600" />
             {isAr ? 'تصدير إلى Excel' : 'Export to Excel'}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleExportPdf} disabled={rows.length === 0}>
-            <FileText className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0 text-red-600" />
+          <DropdownMenuItem onClick={handleExportPdf} disabled={rows.length === 0 || exportingPdf}>
+            {exportingPdf ? (
+              <Loader2 className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0 animate-spin" />
+            ) : (
+              <FileText className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0 text-red-600" />
+            )}
             {isAr ? 'تصدير إلى PDF' : 'Export to PDF'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />

@@ -16,6 +16,60 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 
+// jsPDF's built-in fonts (helvetica/times/courier) only cover WinAnsi —
+// any Arabic text drawn with them comes out as mojibake (bytes reinterpreted
+// as the wrong Latin-1-ish glyphs), regardless of the *UI's* locale, since
+// the underlying row data (e.g. a student's name) can be Arabic even when
+// the admin exporting it is viewing the English UI. Noto Sans Arabic covers
+// both Arabic and Latin, so it's loaded once and used for every PDF export
+// rather than trying to detect "is this Arabic" per field.
+const ARABIC_FONT_URL = '/fonts/NotoSansArabic-Regular.ttf'
+const ARABIC_FONT_NAME = 'NotoSansArabic'
+let arabicFontBase64Promise: Promise<string> | null = null
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = ''
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
+
+async function loadArabicFontBase64(): Promise<string> {
+  if (!arabicFontBase64Promise) {
+    arabicFontBase64Promise = fetch(ARABIC_FONT_URL)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to load ${ARABIC_FONT_URL}: ${res.status}`)
+        return res.arrayBuffer()
+      })
+      .then(arrayBufferToBase64)
+      .catch((err) => {
+        arabicFontBase64Promise = null // allow retry on the next export
+        throw err
+      })
+  }
+  return arabicFontBase64Promise
+}
+
+/**
+ * Embeds the bundled Arabic/Latin font into a jsPDF document and switches to
+ * it, so both English and Arabic table content render correctly. Falls back
+ * to jsPDF's default font (Arabic will be unreadable, but the export still
+ * succeeds) if the font file can't be fetched for some reason.
+ */
+async function useUnicodeFont(pdf: jsPDF): Promise<void> {
+  try {
+    const base64 = await loadArabicFontBase64()
+    pdf.addFileToVFS(`${ARABIC_FONT_NAME}.ttf`, base64)
+    pdf.addFont(`${ARABIC_FONT_NAME}.ttf`, ARABIC_FONT_NAME, 'normal')
+    pdf.setFont(ARABIC_FONT_NAME)
+  } catch (err) {
+    console.error('Falling back to default PDF font — Arabic text will not render correctly:', err)
+  }
+}
+
 /** One column to include in an export — the shape <ExportButton> and export templates share. */
 export interface ExportColumn<T = Record<string, unknown>> {
   /** Stable identifier, matched against export_templates.columns[].key. */
@@ -54,14 +108,15 @@ export interface ExportPdfOptions {
   orientation?: 'portrait' | 'landscape'
 }
 
-export function exportRowsToPdf<T>(
+export async function exportRowsToPdf<T>(
   columns: ExportColumn<T>[],
   rows: T[],
   filename: string,
   options: ExportPdfOptions = {}
-): void {
+): Promise<void> {
   const { title, branding, locale = 'en', orientation = columns.length > 6 ? 'landscape' : 'portrait' } = options
   const pdf = new jsPDF({ orientation })
+  await useUnicodeFont(pdf)
   const pageWidth = pdf.internal.pageSize.getWidth()
 
   let cursorY = 15
@@ -85,8 +140,16 @@ export function exportRowsToPdf<T>(
     head,
     body,
     startY: cursorY + 3,
-    styles: { fontSize: 8, halign: locale === 'ar' ? 'right' : 'left' },
-    headStyles: { fillColor: [2, 33, 114] }, // #022172 — the app's brand navy
+    // jspdf-autotable defaults to its own built-in font unless told
+    // otherwise — pass the embedded Arabic/Latin font explicitly for both
+    // the header row and body cells, not just the title text above. Only the
+    // 'normal' weight of that font was registered (addFont above), but
+    // autoTable's header defaults to fontStyle 'bold' — without pinning it
+    // back to 'normal' here, jsPDF can't find a "NotoSansArabic bold" and
+    // silently falls back to its built-in font for header cells, which
+    // would reintroduce mojibake for any Arabic column label.
+    styles: { fontSize: 8, halign: locale === 'ar' ? 'right' : 'left', font: ARABIC_FONT_NAME },
+    headStyles: { fillColor: [2, 33, 114], font: ARABIC_FONT_NAME, fontStyle: 'normal' }, // #022172 — the app's brand navy
   })
 
   pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`)

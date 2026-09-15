@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslations, useLocale } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,16 +33,6 @@ import {
   getAttachmentBlobUrl,
 } from '@/lib/api/vault'
 
-const FIELD_TYPES: { value: VaultFieldType; label: string }[] = [
-  { value: 'text', label: 'Text' },
-  { value: 'number', label: 'Number' },
-  { value: 'date', label: 'Date' },
-  { value: 'select', label: 'Select (one)' },
-  { value: 'multi_select', label: 'Select (multiple)' },
-  { value: 'encrypted_text', label: 'Encrypted Text' },
-  { value: 'file', label: 'File' },
-]
-
 function isExpiringSoon(expiryDate: string | null): 'expired' | 'soon' | null {
   if (!expiryDate) return null
   const days = (new Date(expiryDate).getTime() - Date.now()) / 86_400_000
@@ -67,6 +58,16 @@ function ManageFieldsDialog({
   onChanged: () => void
   campusId: string | null
 }) {
+  const t = useTranslations('adminVault')
+  const FIELD_TYPES: { value: VaultFieldType; label: string }[] = [
+    { value: 'text', label: t('fieldTypeText') },
+    { value: 'number', label: t('fieldTypeNumber') },
+    { value: 'date', label: t('fieldTypeDate') },
+    { value: 'select', label: t('fieldTypeSelectOne') },
+    { value: 'multi_select', label: t('fieldTypeSelectMultiple') },
+    { value: 'encrypted_text', label: t('fieldTypeEncrypted') },
+    { value: 'file', label: t('fieldTypeFile') },
+  ]
   const [fieldKey, setFieldKey] = useState('')
   const [labelEn, setLabelEn] = useState('')
   const [labelAr, setLabelAr] = useState('')
@@ -87,7 +88,7 @@ function ManageFieldsDialog({
 
   const handleAdd = async () => {
     if (!fieldKey.trim() || !labelEn.trim() || !labelAr.trim()) {
-      toast.error('Field key and both labels are required')
+      toast.error(t('fieldKeyAndLabelsRequired'))
       return
     }
     setSaving(true)
@@ -103,11 +104,11 @@ function ManageFieldsDialog({
         is_required: isRequired,
       }, campusId)
       if (res.success) {
-        toast.success('Field added')
+        toast.success(t('fieldAdded'))
         setFieldKey(''); setLabelEn(''); setLabelAr(''); setFieldType('text'); setOptions(''); setIsSecret(false); setIsRequired(false)
         onChanged()
       } else {
-        toast.error(res.error || 'Failed to add field')
+        toast.error(res.error || t('failedAddField'))
       }
     } finally {
       setSaving(false)
@@ -116,36 +117,36 @@ function ManageFieldsDialog({
 
   const handleDelete = async (id: string) => {
     const res = await deleteFieldDefinition(id, campusId)
-    if (res.success) { toast.success('Field removed'); onChanged() }
-    else toast.error(res.error || 'Failed to remove field')
+    if (res.success) { toast.success(t('fieldRemoved')); onChanged() }
+    else toast.error(res.error || t('failedRemoveField'))
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Settings2 className="h-5 w-5" /> Manage Fields</DialogTitle>
-          <DialogDescription>Custom fields shown on every record in this category.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2"><Settings2 className="h-5 w-5" /> {t('manageFieldsDialogTitle')}</DialogTitle>
+          <DialogDescription>{t('manageFieldsDialogDesc')}</DialogDescription>
         </DialogHeader>
 
         {/* Existing fields: independently bounded/scrolling so a large field
             count never pushes the "Add a field" form out of reach. */}
         <div className="space-y-2 shrink-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-medium text-muted-foreground">{fieldDefs.length} field{fieldDefs.length === 1 ? '' : 's'}</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('fieldCount', { count: fieldDefs.length })}</p>
             {fieldDefs.length > 6 && (
               <div className="relative w-48">
                 <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search fields..." className="h-7 pl-7 text-xs" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('searchFieldsPlaceholder')} className="h-7 pl-7 text-xs" />
               </div>
             )}
           </div>
 
           {fieldDefs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No custom fields yet for this category.</p>
+            <p className="text-sm text-muted-foreground">{t('noCustomFieldsYet')}</p>
           ) : (
             <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-lg border p-1.5">
-              {filteredFieldDefs.length === 0 && <p className="p-2 text-sm text-muted-foreground">No fields match &quot;{search}&quot;.</p>}
+              {filteredFieldDefs.length === 0 && <p className="p-2 text-sm text-muted-foreground">{t('noFieldsMatch', { search })}</p>}
               {filteredFieldDefs.map((f) => (
                 <div key={f.id} className="flex items-center justify-between gap-2 rounded-md border bg-background p-2">
                   <div className="min-w-0">
@@ -167,7 +168,7 @@ function ManageFieldsDialog({
             onClick={() => setFormOpen((v) => !v)}
             className="flex w-full items-center justify-between text-sm font-semibold"
           >
-            Add a field
+            {t('addAField')}
             {formOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
 
@@ -175,46 +176,46 @@ function ManageFieldsDialog({
             <div className="mt-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Field Key</Label>
-                  <Input value={fieldKey} onChange={(e) => setFieldKey(e.target.value)} placeholder="meter_serial_number" disabled={saving} />
+                  <Label className="text-xs">{t('fieldKey')}</Label>
+                  <Input value={fieldKey} onChange={(e) => setFieldKey(e.target.value)} placeholder={t('fieldKeyPlaceholder')} disabled={saving} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Type</Label>
+                  <Label className="text-xs">{t('type')}</Label>
                   <Select value={fieldType} onValueChange={(v) => setFieldType(v as VaultFieldType)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {FIELD_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                      {FIELD_TYPES.map((ft) => <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Label (English)</Label>
-                  <Input value={labelEn} onChange={(e) => setLabelEn(e.target.value)} placeholder="Meter Serial Number" disabled={saving} />
+                  <Label className="text-xs">{t('labelEnglish')}</Label>
+                  <Input value={labelEn} onChange={(e) => setLabelEn(e.target.value)} placeholder={t('labelEnglishPlaceholder')} disabled={saving} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Label (Arabic)</Label>
-                  <Input value={labelAr} onChange={(e) => setLabelAr(e.target.value)} dir="rtl" placeholder="رقم العداد التسلسلي" disabled={saving} />
+                  <Label className="text-xs">{t('labelArabic')}</Label>
+                  <Input value={labelAr} onChange={(e) => setLabelAr(e.target.value)} dir="rtl" placeholder={t('labelArabicPlaceholder')} disabled={saving} />
                 </div>
                 {(fieldType === 'select' || fieldType === 'multi_select') && (
                   <div className="col-span-2 space-y-1.5">
-                    <Label className="text-xs">Options (comma-separated)</Label>
-                    <Input value={options} onChange={(e) => setOptions(e.target.value)} placeholder="MONTHLY, QUARTERLY, ANNUALLY" disabled={saving} />
+                    <Label className="text-xs">{t('optionsCommaSeparated')}</Label>
+                    <Input value={options} onChange={(e) => setOptions(e.target.value)} placeholder={t('optionsPlaceholder')} disabled={saving} />
                   </div>
                 )}
               </div>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
                   <Switch checked={isSecret} onCheckedChange={setIsSecret} disabled={saving} />
-                  <Label className="text-xs">Encrypted secret</Label>
+                  <Label className="text-xs">{t('encryptedSecret')}</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch checked={isRequired} onCheckedChange={setIsRequired} disabled={saving} />
-                  <Label className="text-xs">Required</Label>
+                  <Label className="text-xs">{t('required')}</Label>
                 </div>
               </div>
               <Button size="sm" onClick={handleAdd} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Add Field
+                {t('addField')}
               </Button>
             </div>
           )}
@@ -241,6 +242,7 @@ function AddRecordDialog({
   onCreated: () => void
   campusId: string | null
 }) {
+  const t = useTranslations('adminVault')
   const [title, setTitle] = useState('')
   const [subCategory, setSubCategory] = useState('')
   const [expiryDate, setExpiryDate] = useState('')
@@ -262,9 +264,9 @@ function AddRecordDialog({
       const res = await uploadAttachment(file, campusId)
       if (res.success && res.data) {
         setAttachmentKeys((prev) => [...prev, res.data!.storageKey])
-        toast.success('Attachment uploaded')
+        toast.success(t('attachmentUploaded'))
       } else {
-        toast.error(res.error || 'Upload failed')
+        toast.error(res.error || t('uploadFailed'))
       }
     } finally {
       setUploading(false)
@@ -273,7 +275,7 @@ function AddRecordDialog({
 
   const handleSave = async () => {
     if (!title.trim() || !subCategory.trim()) {
-      toast.error('Title and sub-category are required')
+      toast.error(t('titleAndSubCategoryRequired'))
       return
     }
     setSaving(true)
@@ -287,11 +289,11 @@ function AddRecordDialog({
         attachments: attachmentKeys,
       }, campusId)
       if (res.success) {
-        toast.success('Record created')
+        toast.success(t('recordCreated'))
         onCreated()
         onOpenChange(false)
       } else {
-        toast.error(res.error || 'Failed to create record')
+        toast.error(res.error || t('failedCreateRecord'))
       }
     } finally {
       setSaving(false)
@@ -302,33 +304,33 @@ function AddRecordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Vault Record</DialogTitle>
+          <DialogTitle>{t('newVaultRecord')}</DialogTitle>
           <DialogDescription>{VAULT_CATEGORIES.find((c) => c.value === category)?.label}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Title *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Main Campus - Building A Transformer" disabled={saving} />
+            <Label className="text-xs">{t('titleField')}</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('titlePlaceholder')} disabled={saving} />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Sub-category *</Label>
-            <Input value={subCategory} onChange={(e) => setSubCategory(e.target.value)} placeholder="ELECTRICITY_METER" disabled={saving} />
+            <Label className="text-xs">{t('subCategory')}</Label>
+            <Input value={subCategory} onChange={(e) => setSubCategory(e.target.value)} placeholder={t('subCategoryPlaceholder')} disabled={saving} />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Expiry Date</Label>
+            <Label className="text-xs">{t('expiryDate')}</Label>
             <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} disabled={saving} />
           </div>
 
           {fieldDefs.length > 0 && (
             <div className="space-y-3 border-t pt-3">
-              <p className="text-sm font-semibold">Custom fields</p>
+              <p className="text-sm font-semibold">{t('customFields')}</p>
               {fieldDefs.map((f) => (
                 <div key={f.id} className="space-y-1.5">
                   <Label className="text-xs">{f.label_en} {f.is_secret && <Lock className="inline h-3 w-3 ml-1" />}</Label>
                   {f.field_type === 'select' ? (
                     <Select value={customValues[f.field_key] ?? ''} onValueChange={(v) => setCustomValues((p) => ({ ...p, [f.field_key]: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Choose..." /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t('chooseOption')} /></SelectTrigger>
                       <SelectContent>{f.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
                     </Select>
                   ) : (
@@ -345,18 +347,18 @@ function AddRecordDialog({
           )}
 
           <div className="space-y-1.5 border-t pt-3">
-            <Label className="text-xs">Attachments</Label>
+            <Label className="text-xs">{t('attachments')}</Label>
             <input type="file" onChange={handleFile} disabled={uploading || saving} accept="image/jpeg,image/png,image/webp,application/pdf" />
-            {attachmentKeys.length > 0 && <p className="text-xs text-muted-foreground">{attachmentKeys.length} file(s) attached</p>}
-            {uploading && <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</p>}
+            {attachmentKeys.length > 0 && <p className="text-xs text-muted-foreground">{t('filesAttached', { count: attachmentKeys.length })}</p>}
+            {uploading && <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> {t('uploading')}</p>}
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>{t('cancel')}</Button>
           <Button onClick={handleSave} disabled={saving || uploading}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
-            Create Record
+            {t('createRecord')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -367,6 +369,7 @@ function AddRecordDialog({
 // ── Record card ──────────────────────────────────────────────────────────────
 
 function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultRecord; fieldDefs: VaultFieldDefinition[]; onDeleted: () => void; campusId: string | null }) {
+  const t = useTranslations('adminVault')
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [revealing, setRevealing] = useState<string | null>(null)
   const expiryState = isExpiringSoon(record.expiry_date)
@@ -376,7 +379,7 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
     try {
       const res = await revealSecret(record.id, fieldKey, campusId)
       if (res.success && res.data) setRevealed((p) => ({ ...p, [fieldKey]: res.data!.value }))
-      else toast.error(res.error || 'Failed to reveal secret')
+      else toast.error(res.error || t('failedRevealSecret'))
     } finally {
       setRevealing(null)
     }
@@ -384,14 +387,14 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
 
   const handleDelete = async () => {
     const res = await deleteRecord(record.id, campusId)
-    if (res.success) { toast.success('Record deleted'); onDeleted() }
-    else toast.error(res.error || 'Failed to delete record')
+    if (res.success) { toast.success(t('recordDeleted')); onDeleted() }
+    else toast.error(res.error || t('failedDeleteRecord'))
   }
 
   const handleViewAttachment = async (index: number) => {
     const res = await getAttachmentBlobUrl(record.id, index, campusId)
     if (res.success && res.url) window.open(res.url, '_blank', 'noopener,noreferrer')
-    else toast.error(res.error || 'Failed to load attachment')
+    else toast.error(res.error || t('failedLoadAttachment'))
   }
 
   return (
@@ -404,7 +407,7 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
               <Badge variant="outline" className="text-[10px]">{record.sub_category}</Badge>
               {record.expiry_date && (
                 <Badge variant={expiryState === 'expired' ? 'destructive' : expiryState === 'soon' ? 'default' : 'outline'} className="text-[10px]">
-                  Expires {new Date(record.expiry_date).toLocaleDateString()}
+                  {t('expires', { date: new Date(record.expiry_date).toLocaleDateString() })}
                 </Badge>
               )}
             </div>
@@ -428,7 +431,7 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
                 ) : (
                   <Button size="sm" variant="outline" className="h-6 text-xs gap-1" onClick={() => handleReveal(f.field_key)} disabled={revealing === f.field_key}>
                     {revealing === f.field_key ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
-                    Reveal
+                    {t('reveal')}
                   </Button>
                 )
               ) : (
@@ -441,7 +444,7 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
           <div className="flex flex-wrap gap-1.5 pt-1.5 border-t">
             {record.attachments.map((_, i) => (
               <Button key={i} size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleViewAttachment(i)}>
-                <Paperclip className="h-3 w-3" /> Attachment {i + 1}
+                <Paperclip className="h-3 w-3" /> {t('attachmentLabel', { index: i + 1 })}
               </Button>
             ))}
           </div>
@@ -454,6 +457,9 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function AdminVaultPage() {
+  const t = useTranslations('adminVault')
+  const locale = useLocale()
+  const isAr = locale === 'ar'
   const { isPluginActive, loading: settingsLoading } = useSchoolSettings()
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id ?? null
@@ -481,19 +487,19 @@ export default function AdminVaultPage() {
   if (!isPluginActive('vault')) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-64px)] text-muted-foreground">
-        AdminVault isn&apos;t enabled for your school.
+        {t('notEnabled')}
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto py-6 space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[#022172] dark:text-white flex items-center gap-2">
-            <Lock className="h-6 w-6" /> AdminVault
+            <Lock className="h-6 w-6" /> {t('pageTitle')}
           </h1>
-          <p className="text-muted-foreground text-sm">Facility, legal, financial, IT, and HR records — encrypted, audited, access-controlled.</p>
+          <p className="text-muted-foreground text-sm">{t('pageSubtitle')}</p>
         </div>
       </div>
 
@@ -506,13 +512,13 @@ export default function AdminVaultPage() {
       </Tabs>
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{loading ? 'Loading…' : `${records.length} record(s)`}</p>
+        <p className="text-sm text-muted-foreground">{loading ? t('loading') : t('recordsCount', { count: records.length })}</p>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setManageFieldsOpen(true)}>
-            <Settings2 className="h-4 w-4" /> Manage Fields
+            <Settings2 className="h-4 w-4" /> {t('manageFields')}
           </Button>
           <Button size="sm" className="gap-1.5" onClick={() => setAddRecordOpen(true)}>
-            <Plus className="h-4 w-4" /> New Record
+            <Plus className="h-4 w-4" /> {t('newRecord')}
           </Button>
         </div>
       </div>
@@ -524,7 +530,7 @@ export default function AdminVaultPage() {
       ) : records.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border bg-white py-16 text-center dark:bg-gray-900">
           <EyeOff className="h-10 w-10 text-gray-300" />
-          <p className="text-sm font-medium text-muted-foreground">No records in this category yet.</p>
+          <p className="text-sm font-medium text-muted-foreground">{t('noRecordsYet')}</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

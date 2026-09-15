@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
 import { Plus, ClipboardList, Copy, Trash2, Eye, Users, BookOpen, CheckCircle, Edit, Sparkles, Award } from 'lucide-react'
 import { toast } from 'sonner'
-import { format } from 'date-[#57A3CC]'
 import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,19 +36,28 @@ function capacityColor(pct: number): string {
 }
 
 function StatusBadge({ status }: { status: TrainingSession['status'] }) {
+  const t = useTranslations('adminTrainingSessions')
   const map: Record<string, string> = {
     open: 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300',
     full: 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300',
     closed: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   }
+  const labels: Record<string, string> = {
+    open: t('statusOpen'),
+    full: t('statusFull'),
+    closed: t('statusClosed'),
+  }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${map[status] ?? ''}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {labels[status] ?? status}
     </span>
   )
 }
 
 export default function TrainingPage() {
+  const t = useTranslations('adminTrainingSessions')
+  const locale = useLocale()
+  const isAr = locale === 'ar'
   const router = useRouter()
   const { sessions, isLoading, mutate } = useTrainingSessions()
   const campusCtx = useCampus()
@@ -66,7 +75,7 @@ export default function TrainingPage() {
     const url = `${appUrl}/register/training/${token}`
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(url)
-        .then(() => toast.success('Registration link copied to clipboard'))
+        .then(() => toast.success(t('linkCopied')))
         .catch(() => fallbackCopy(url))
     } else {
       fallbackCopy(url)
@@ -82,9 +91,9 @@ export default function TrainingPage() {
     el.select()
     try {
       document.execCommand('copy')
-      toast.success('Registration link copied to clipboard')
+      toast.success(t('linkCopied'))
     } catch {
-      toast.error('Could not copy — please copy the link manually: ' + text)
+      toast.error(t('copyFailedManual', { url: text }))
     }
     document.body.removeChild(el)
   }
@@ -94,10 +103,10 @@ export default function TrainingPage() {
     const res = await trainingApi.deleteSession(id, campusId)
     setDeletingId(null)
     if (res.success || (res as any).status === 204) {
-      toast.success('Session deleted')
+      toast.success(t('sessionDeleted'))
       mutate()
     } else {
-      toast.error(res.error ?? 'Failed to delete session')
+      toast.error(res.error ?? t('failedDeleteSession'))
     }
   }
 
@@ -117,15 +126,15 @@ export default function TrainingPage() {
   const full = sessions.filter((s) => s.status === 'full').length
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
       {/* System Standard Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white dark:bg-gradient-to-r dark:from-[#57A3CC] dark:to-white">
-            Training Sessions & Certificates
+            {t('pageTitle')}
           </h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">
-            Manage training courses, schedules, pricing, media curriculum, and automated certificate issuance
+            {t('pageSubtitle')}
           </p>
         </div>
         <Button
@@ -133,17 +142,17 @@ export default function TrainingPage() {
           className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white shadow-sm gap-2"
         >
           <Plus className="h-4 w-4" />
-          New Session Spec
+          {t('newSessionSpec')}
         </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Sessions', value: sessions.length, icon: ClipboardList },
-          { label: 'Open', value: open, icon: BookOpen },
-          { label: 'Full', value: full, icon: CheckCircle },
-          { label: 'Total Registrations', value: totalRegistrations, icon: Users },
+          { label: t('statTotalSessions'), value: sessions.length, icon: ClipboardList },
+          { label: t('statOpen'), value: open, icon: BookOpen },
+          { label: t('statFull'), value: full, icon: CheckCircle },
+          { label: t('statTotalRegistrations'), value: totalRegistrations, icon: Users },
         ].map(({ label, value, icon: Icon }) => (
           <Card key={label} className="shadow-sm border-border bg-card">
             <CardContent className="pt-6 flex items-center gap-3">
@@ -172,13 +181,13 @@ export default function TrainingPage() {
         <Card className="shadow-sm border-border">
           <CardContent className="pt-12 pb-12 flex flex-col items-center text-center gap-3">
             <ClipboardList className="h-12 w-12 text-muted-foreground/40" />
-            <p className="font-medium text-lg">No training sessions yet</p>
+            <p className="font-medium text-lg">{t('noSessionsYet')}</p>
             <p className="text-muted-foreground text-sm">
-              Create your first complete training session & certificate spec to generate a public registration page.
+              {t('noSessionsDesc')}
             </p>
             <Button onClick={handleOpenCreate} className="mt-2 bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
               <Plus className="mr-2 h-4 w-4" />
-              Create Session Spec
+              {t('createSessionSpec')}
             </Button>
           </CardContent>
         </Card>
@@ -218,11 +227,11 @@ export default function TrainingPage() {
                           </Badge>
                         )}
                         <Badge variant="outline" className="text-xs capitalize">
-                          {session.target_audience} Audience
+                          {t('audienceSuffix', { audience: session.target_audience })}
                         </Badge>
                         {session.certificate_settings?.enable_auto_issuance && (
                           <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 gap-1">
-                            <Award className="h-3 w-3" /> Auto-Cert
+                            <Award className="h-3 w-3" /> {t('autoCert')}
                           </Badge>
                         )}
                       </div>
@@ -234,21 +243,21 @@ export default function TrainingPage() {
 
                       <div className="flex items-center gap-4 text-xs text-muted-foreground pt-0.5">
                         {session.instructor_name && (
-                          <span>Instructor: <strong>{session.instructor_name}</strong></span>
+                          <span>{t('instructor')} <strong>{session.instructor_name}</strong></span>
                         )}
                         {session.location_venue_link && (
-                          <span>Venue/Link: <strong>{session.location_venue_link}</strong></span>
+                          <span>{t('venueLink')} <strong>{session.location_venue_link}</strong></span>
                         )}
-                        <span>Fee: <strong>{session.course_fee > 0 ? `${session.course_fee} LYD` : 'Free'}</strong></span>
+                        <span>{t('fee')} <strong>{session.course_fee > 0 ? t('feeCurrency', { amount: session.course_fee }) : t('free')}</strong></span>
                       </div>
 
                       {/* Capacity bar */}
                       <div className="mt-3 space-y-1">
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span>
-                            {session.registered_seats} of {session.total_seats} seats taken
+                            {t('seatsTaken', { registered: session.registered_seats, total: session.total_seats })}
                           </span>
-                          <span>{session.available_seats} remaining</span>
+                          <span>{t('seatsRemaining', { count: session.available_seats })}</span>
                         </div>
                         <div className="h-2 rounded-full bg-muted overflow-hidden">
                           <div
@@ -264,7 +273,7 @@ export default function TrainingPage() {
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/admin/training/${session.id}`}>
                           <Eye className="h-4 w-4 mr-1" />
-                          View
+                          {t('view')}
                         </Link>
                       </Button>
                       <Button
@@ -274,7 +283,7 @@ export default function TrainingPage() {
                         className="text-[#022172] dark:text-[#57A3CC]"
                       >
                         <Edit className="h-4 w-4 mr-1" />
-                        Edit Spec
+                        {t('editSpec')}
                       </Button>
                       <Button
                         variant="outline"
@@ -282,7 +291,7 @@ export default function TrainingPage() {
                         onClick={() => copyLink(session.public_token)}
                       >
                         <Copy className="h-4 w-4 mr-1" />
-                        Copy Link
+                        {t('copyLink')}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -296,19 +305,18 @@ export default function TrainingPage() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Session?</AlertDialogTitle>
+                            <AlertDialogTitle>{t('deleteSessionTitle')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will permanently delete &ldquo;{session.title}&rdquo; and all{' '}
-                              {session.registered_seats} registration(s). This cannot be undone.
+                              {t('deleteSessionDesc', { title: session.title, count: session.registered_seats })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                             <AlertDialogAction
                               className="bg-destructive text-white hover:bg-destructive/90"
                               onClick={() => handleDelete(session.id)}
                             >
-                              {deletingId === session.id ? 'Deleting…' : 'Delete'}
+                              {deletingId === session.id ? t('deleting') : t('delete')}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

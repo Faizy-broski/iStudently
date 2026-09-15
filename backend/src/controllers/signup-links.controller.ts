@@ -151,7 +151,16 @@ export const getProfileFields = async (req: AuthRequest, res: Response): Promise
     // ProfileFieldDef itself doesn't carry those, only used here for sorting.
     const customFieldOrderInfo: { category_id: string; sort_order: number }[] = []
 
-    const schoolId = req.profile?.school_id
+    // Admin accounts aren't pinned to a single campus — a field created with
+    // campus_scope 'this_campus' is stored under that campus's school_id,
+    // not the admin's own profile.school_id, so this must resolve the same
+    // effective school id the Custom Fields admin page uses (campus_id
+    // query param first, same as custom-fields.controller.ts's
+    // getFieldDefinitions), or a campus-scoped teacher/staff/etc. custom
+    // field silently never appears here even though it displays fine on
+    // its own admin page.
+    const campusId = req.query.campus_id as string | undefined
+    const schoolId = campusId || req.profile?.school_id
     const entityType = roleToCustomFieldEntityType(role)
     if (schoolId && entityType) {
       const definitions = await customFieldsService.getFieldDefinitions(schoolId, entityType)
