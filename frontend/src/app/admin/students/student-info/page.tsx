@@ -22,7 +22,7 @@ import { ExportButton } from "@/components/shared/ExportButton";
 import type { ExportColumn } from "@/lib/utils/tableExport";
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
 import { ConfidentialFamilyStatusDialog } from "@/components/shared/ConfidentialFamilyStatusDialog";
-import { type Student, getStudentById, bulkDeleteStudents, bulkUpdateStudentStatus } from "@/lib/api/students";
+import { type Student, getStudents, getStudentById, bulkDeleteStudents, bulkUpdateStudentStatus } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { UniversalFilter, type FilterState } from "@/components/filters/UniversalFilter";
@@ -375,6 +375,33 @@ export default function StudentInfoPage() {
   // no client-side re-sort needed here.
   const filteredStudents = students;
 
+  // ExportButton's `rows` prop is just the current page (itemsPerPage=10) —
+  // fine for the on-screen table, but exporting that directly silently
+  // limited every Excel/PDF export to 10 students unless a filter happened
+  // to narrow the *server-side* result to one page's worth. This re-issues
+  // the same query (same filters, sort, campus) with a limit high enough to
+  // cover every matching student in one page, ignoring the on-screen
+  // pagination entirely.
+  const fetchAllStudentsForExport = async (): Promise<Student[]> => {
+    const res = await getStudents({
+      limit: Math.max(total, 1),
+      search: studentFilters.search || undefined,
+      grade_level: studentFilters.gradeNames?.length
+        ? studentFilters.gradeNames
+        : studentFilters.gradeName
+          ? [studentFilters.gradeName]
+          : undefined,
+      section_id: studentFilters.sectionId || undefined,
+      campus_id: campusContext?.selectedCampus?.id,
+      is_active: showInactive ? undefined : true,
+      has_siblings: siblingFilter === "all" ? undefined : siblingFilter === "with",
+      sort_key: sortKey,
+      sort_dir: sortDir,
+    });
+    if (!res.success || !res.data) throw new Error(res.error || 'Failed to load students for export');
+    return res.data;
+  };
+
   const exportColumns: ExportColumn<Student>[] = [
     { key: 'student_number', label: t('th_student_id'), accessor: (s) => s.student_number },
     {
@@ -412,6 +439,7 @@ export default function StudentInfoPage() {
               reportKey="students_list"
               columns={exportColumns}
               rows={filteredStudents}
+              fetchAllRows={fetchAllStudentsForExport}
               filename="students"
               title={t("title")}
             />
