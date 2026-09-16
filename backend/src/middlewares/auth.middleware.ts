@@ -221,6 +221,18 @@ export const authenticate = async (
     const authHeader = req.headers.authorization
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // TEMP DEBUG (remove after diagnosing the /enrol 401): proves definitively
+      // whether this exact request/URL is reaching `authenticate` at all, and
+      // via which mount path — narrows "route ordering bug" vs "wrong process/
+      // stale deploy/reverse-proxy routing to somewhere else" instantly from
+      // the pm2 logs, instead of guessing further.
+      console.error('🔴 AUTH_DEBUG no-token-401:', {
+        method: req.method,
+        originalUrl: req.originalUrl,
+        baseUrl: req.baseUrl,
+        path: req.path,
+        time: new Date().toISOString(),
+      })
       return res.status(401).json({
         success: false,
         error: 'No token provided. Please include Authorization header.'

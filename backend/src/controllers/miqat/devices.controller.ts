@@ -90,6 +90,11 @@ class MiqatDevicesController {
    * enrolment code IS its credential (spec §5 Layer 4).
    */
   async enrol(req: AuthRequest, res: Response) {
+    // TEMP DEBUG (remove after diagnosing the /enrol 401): if this line never
+    // appears in pm2 logs for a real enrol attempt, the request is being
+    // rejected before it ever reaches this handler — i.e. by authenticate
+    // middleware, a stale process, or a proxy layer, not by anything in here.
+    console.error('🟢 ENROL_DEBUG handler reached:', { method: req.method, originalUrl: req.originalUrl, time: new Date().toISOString() });
     try {
       const { code, public_key, label, app_version, os_version } = req.body || {};
       if (!code || !public_key) {
