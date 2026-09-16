@@ -248,9 +248,13 @@ export class MiqatService {
     // Minimal viable bootstrap payload: active cards + person names for this
     // school's students/staff, scoped so a stolen device only ever holds one
     // school's roster. Full class/period/timetable joins are a later pass.
+    // miqat_cards has two FKs into profiles (person_id — the card owner, and
+    // issued_by — the admin who issued it), so the bare `profiles!inner(...)`
+    // embed shorthand is ambiguous ("more than one relationship was found").
+    // `profiles!person_id!inner(...)` disambiguates by naming the FK column.
     const { data, error } = await supabase
       .from('miqat_cards')
-      .select('person_id, revision, status, profiles!inner(id, first_name, last_name, role, school_id)')
+      .select('person_id, revision, status, profiles!person_id!inner(id, first_name, last_name, role, school_id)')
       .eq('profiles.school_id', schoolId)
       .eq('status', 'active');
     if (error) throw error;
@@ -260,9 +264,10 @@ export class MiqatService {
   async getRevocationList(schoolId: string): Promise<Record<string, number>> {
     // person_id -> minimum_accepted_revision. Any card scanned below this
     // revision is CARD_REVOKED (spec §5 Layer 1).
+    // Same person_id-vs-issued_by ambiguity as getRosterBootstrap above.
     const { data, error } = await supabase
       .from('miqat_cards')
-      .select('person_id, revision, profiles!inner(school_id)')
+      .select('person_id, revision, profiles!person_id!inner(school_id)')
       .eq('profiles.school_id', schoolId)
       .order('revision', { ascending: false });
     if (error) throw error;
