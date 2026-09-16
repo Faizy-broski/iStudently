@@ -390,6 +390,9 @@ export class StudentService {
           grandfather_name,
           email,
           phone,
+          gender,
+          date_of_birth,
+          national_id,
           avatar_url,
           profile_photo_url,
           username,
@@ -505,8 +508,13 @@ export class StudentService {
           id,
           first_name,
           last_name,
+          father_name,
+          grandfather_name,
           email,
           phone,
+          gender,
+          date_of_birth,
+          national_id,
           avatar_url,
           profile_photo_url,
           is_active,
@@ -960,7 +968,8 @@ export class StudentService {
     // Update profile if profile data is provided
     if (updateData.first_name || updateData.father_name || updateData.grandfather_name ||
         updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url ||
-        updateData.is_active !== undefined) {
+        updateData.is_active !== undefined || updateData.gender !== undefined ||
+        updateData.date_of_birth !== undefined || updateData.national_id !== undefined) {
       const profileUpdates: any = {}
       if (updateData.first_name !== undefined) profileUpdates.first_name = updateData.first_name
       if (updateData.father_name !== undefined) profileUpdates.father_name = updateData.father_name
@@ -970,6 +979,14 @@ export class StudentService {
       if (updateData.phone !== undefined) profileUpdates.phone = updateData.phone
       if (updateData.profile_photo_url !== undefined) profileUpdates.profile_photo_url = updateData.profile_photo_url
       if (updateData.is_active !== undefined) profileUpdates.is_active = updateData.is_active
+      // gender/date_of_birth/national_id are real profiles columns (set on
+      // create — see createStudent above) that this update path never wrote
+      // before, silently discarding any edit even though the DTO declared
+      // them; the frontend had been working around this by duplicating the
+      // values into custom_fields.personal instead of the real columns.
+      if (updateData.gender !== undefined) profileUpdates.gender = updateData.gender
+      if (updateData.date_of_birth !== undefined) profileUpdates.date_of_birth = updateData.date_of_birth
+      if (updateData.national_id !== undefined) profileUpdates.national_id = updateData.national_id
 
       if (Object.keys(profileUpdates).length > 0 && existing.profile_id) {
         const { error: profileError } = await supabase

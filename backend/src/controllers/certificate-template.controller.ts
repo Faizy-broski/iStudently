@@ -165,12 +165,13 @@ export class CertificateTemplateController {
   async getAvailableTokens(req: AuthRequest, res: Response) {
     try {
       const { recipient_type } = req.params;
+      const locale = req.query.locale as string | undefined;
 
       if (!CERTIFICATE_RECIPIENT_TYPES.includes(recipient_type)) {
         return res.status(400).json({ error: `Invalid recipient_type. Must be one of: ${CERTIFICATE_RECIPIENT_TYPES.join(', ')}` });
       }
 
-      const tokens = templateService.getAvailableTokens(recipient_type);
+      const tokens = templateService.getAvailableTokens(recipient_type, locale);
 
       const tokensArray = Object.entries(tokens).map(([token, label]) => ({
         token,

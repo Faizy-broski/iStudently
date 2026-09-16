@@ -154,8 +154,9 @@ export const deleteTemplate = async (id: string) => {
 };
 
 // Get available tokens for a recipient type
-export const getAvailableTokens = async (recipientType: CertificateRecipientType) => {
-  return apiRequest<{ tokens: CertificateAvailableToken[] }>(`/certificate-templates/tokens/${recipientType}`);
+export const getAvailableTokens = async (recipientType: CertificateRecipientType, locale?: string) => {
+  const qs = locale ? `?locale=${locale}` : '';
+  return apiRequest<{ tokens: CertificateAvailableToken[] }>(`/certificate-templates/tokens/${recipientType}${qs}`);
 };
 
 // Preview template with sample data

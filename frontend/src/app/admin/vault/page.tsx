@@ -13,12 +13,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
-import { Lock, Plus, Trash2, Eye, EyeOff, Paperclip, Settings2, Loader2, Search, ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Lock, Plus, Trash2, Eye, EyeOff, Paperclip, Settings2, Loader2, Search, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { useCampus } from '@/context/CampusContext'
 import {
   VAULT_CATEGORIES,
   type VaultCategory,
+  type CustomVaultCategory,
   type VaultFieldDefinition,
   type VaultFieldType,
   type VaultRecord,
@@ -31,6 +42,10 @@ import {
   revealSecret,
   uploadAttachment,
   getAttachmentBlobUrl,
+  listCustomCategories,
+  createCustomCategory,
+  deleteCustomCategory,
+  updateCustomCategory,
 } from '@/lib/api/vault'
 
 function isExpiringSoon(expiryDate: string | null): 'expired' | 'soon' | null {
@@ -231,6 +246,7 @@ function AddRecordDialog({
   open,
   onOpenChange,
   category,
+  categories,
   fieldDefs,
   onCreated,
   campusId,
@@ -238,11 +254,13 @@ function AddRecordDialog({
   open: boolean
   onOpenChange: (v: boolean) => void
   category: VaultCategory
+  categories: { value: VaultCategory; label: string; label_ar: string }[]
   fieldDefs: VaultFieldDefinition[]
   onCreated: () => void
   campusId: string | null
 }) {
   const t = useTranslations('adminVault')
+  const isAr = useLocale() === 'ar'
   const [title, setTitle] = useState('')
   const [subCategory, setSubCategory] = useState('')
   const [expiryDate, setExpiryDate] = useState('')
@@ -305,7 +323,7 @@ function AddRecordDialog({
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('newVaultRecord')}</DialogTitle>
-          <DialogDescription>{VAULT_CATEGORIES.find((c) => c.value === category)?.label}</DialogDescription>
+          <DialogDescription>{isAr ? categories.find((c) => c.value === category)?.label_ar : categories.find((c) => c.value === category)?.label}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -372,6 +390,8 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
   const t = useTranslations('adminVault')
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [revealing, setRevealing] = useState<string | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const expiryState = isExpiringSoon(record.expiry_date)
 
   const handleReveal = async (fieldKey: string) => {
@@ -386,9 +406,15 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
   }
 
   const handleDelete = async () => {
-    const res = await deleteRecord(record.id, campusId)
-    if (res.success) { toast.success(t('recordDeleted')); onDeleted() }
-    else toast.error(res.error || t('failedDeleteRecord'))
+    setDeleting(true)
+    try {
+      const res = await deleteRecord(record.id, campusId)
+      if (res.success) { toast.success(t('recordDeleted')); onDeleted() }
+      else toast.error(res.error || t('failedDeleteRecord'))
+    } finally {
+      setDeleting(false)
+      setConfirmDeleteOpen(false)
+    }
   }
 
   const handleViewAttachment = async (index: number) => {
@@ -412,11 +438,30 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
               )}
             </div>
           </div>
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive shrink-0" onClick={handleDelete}>
+          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive shrink-0" onClick={() => setConfirmDeleteOpen(true)}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteRecordTitle', { title: record.title })}</AlertDialogTitle>
+            <AlertDialogDescription>{t('deleteRecordDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={(e) => { e.preventDefault(); handleDelete() }}
+            >
+              {deleting ? t('deleting') : t('deleteRecordConfirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <CardContent className="space-y-2">
         {fieldDefs.map((f) => {
           const raw = record.custom_fields?.[f.field_key]
@@ -454,6 +499,241 @@ function RecordCard({ record, fieldDefs, onDeleted, campusId }: { record: VaultR
   )
 }
 
+// ── Manage Categories dialog ─────────────────────────────────────────────────
+
+function ManageCategoriesDialog({
+  open,
+  onOpenChange,
+  customCategories,
+  onChanged,
+  campusId,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  customCategories: CustomVaultCategory[]
+  onChanged: () => void
+  campusId: string | null
+}) {
+  const t = useTranslations('adminVault')
+  const isAr = useLocale() === 'ar'
+  const [idVal, setIdVal] = useState('')
+  const [labelEn, setLabelEn] = useState('')
+  const [labelAr, setLabelAr] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editLabelEn, setEditLabelEn] = useState('')
+  const [editLabelAr, setEditLabelAr] = useState('')
+  const [updating, setUpdating] = useState(false)
+
+  const handleStartEdit = (cat: CustomVaultCategory) => {
+    setEditingId(cat.id)
+    setEditLabelEn(cat.label_en)
+    setEditLabelAr(cat.label_ar)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditLabelEn('')
+    setEditLabelAr('')
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingId) return
+    if (!editLabelEn.trim() || !editLabelAr.trim()) {
+      toast.error(t('categoryLabelsRequired', { defaultValue: 'English and Arabic labels are required' }))
+      return
+    }
+    setUpdating(true)
+    try {
+      const res = await updateCustomCategory(editingId, { label_en: editLabelEn.trim(), label_ar: editLabelAr.trim() }, campusId)
+      if (res.success) {
+        toast.success(t('categoryUpdated', { defaultValue: 'Category updated' }))
+        handleCancelEdit()
+        onChanged()
+      } else {
+        toast.error(res.error || t('failedToUpdateCategory', { defaultValue: 'Failed to update category' }))
+      }
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleAdd = async () => {
+    if (!idVal.trim() || !labelEn.trim() || !labelAr.trim()) {
+      toast.error(t('categoryAllFieldsRequired', { defaultValue: 'All fields are required' }))
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await createCustomCategory({ id: idVal.trim().toLowerCase().replace(/\s+/g, '_'), label_en: labelEn.trim(), label_ar: labelAr.trim() }, campusId)
+      if (res.success) {
+        toast.success(t('categoryAdded', { defaultValue: 'Category added' }))
+        setIdVal(''); setLabelEn(''); setLabelAr('')
+        onChanged()
+      } else {
+        toast.error(res.error || t('failedToAddCategory', { defaultValue: 'Failed to add category' }))
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    setDeleting(id)
+    try {
+      const res = await deleteCustomCategory(id, campusId)
+      if (res.success) {
+        toast.success(t('categoryDeleted', { defaultValue: 'Category deleted' }))
+        if (editingId === id) handleCancelEdit()
+        onChanged()
+      } else {
+        toast.error(res.error || t('failedToDeleteCategory', { defaultValue: 'Failed to delete category' }))
+      }
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{isAr ? 'إدارة تبويبات الخزنة' : 'Manage Vault Categories'}</DialogTitle>
+          <DialogDescription>
+            {isAr
+              ? 'أضف أو عدّل أو احذف أي تبويب، بما في ذلك التبويبات الافتراضية.'
+              : 'Add, edit, or remove any category tab — including the default ones.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* All categories — built-in and custom are equally editable/deletable;
+            the backend stores them together (school_settings.vault_custom_categories),
+            seeded from DEFAULT_VAULT_CATEGORIES until a school customizes anything. */}
+        {customCategories.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{isAr ? 'التبويبات' : 'Categories'}</p>
+            <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+              {customCategories.map(c => (
+                <div key={c.id} className="rounded-lg border px-3 py-2 bg-background">
+                  {editingId === c.id ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground font-mono">{c.id}</span>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            className="h-7 px-2 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={handleSaveEdit}
+                            disabled={updating || !editLabelEn.trim() || !editLabelAr.trim()}
+                          >
+                            {updating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                            {isAr ? 'حفظ' : 'Save'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs gap-1"
+                            onClick={handleCancelEdit}
+                            disabled={updating}
+                          >
+                            <X className="h-3 w-3" />
+                            {isAr ? 'إلغاء' : 'Cancel'}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          value={editLabelEn}
+                          onChange={e => setEditLabelEn(e.target.value)}
+                          placeholder="English Label"
+                          disabled={updating}
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          value={editLabelAr}
+                          onChange={e => setEditLabelAr(e.target.value)}
+                          dir="rtl"
+                          placeholder="الاسم بالعربية"
+                          disabled={updating}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {c.label_en} {c.label_ar && <span className="text-muted-foreground font-normal">({c.label_ar})</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">{c.id}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs gap-1"
+                          onClick={() => handleStartEdit(c)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                          {isAr ? 'تعديل' : 'Edit'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                          onClick={() => handleDelete(c.id)}
+                          disabled={deleting === c.id}
+                        >
+                          {deleting === c.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                          {isAr ? 'حذف' : 'Delete'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Add new category */}
+        <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{isAr ? 'إضافة تبويب جديد' : 'Add New Tab'}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="col-span-2 space-y-1">
+              <Label className="text-xs">{isAr ? 'المعرف (بالإنجليزية فقط، أرقام وشرطات سفلية)' : 'ID (English, underscores only)'}</Label>
+              <Input
+                value={idVal}
+                onChange={e => setIdVal(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                placeholder="e.g. safety_records"
+                disabled={saving}
+                className="font-mono text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{isAr ? 'الاسم بالإنجليزية' : 'English Label'}</Label>
+              <Input value={labelEn} onChange={e => setLabelEn(e.target.value)} placeholder="Safety Records" disabled={saving} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{isAr ? 'الاسم بالعربية' : 'Arabic Label'}</Label>
+              <Input value={labelAr} onChange={e => setLabelAr(e.target.value)} dir="rtl" placeholder="سجلات السلامة" disabled={saving} />
+            </div>
+          </div>
+          <Button size="sm" onClick={handleAdd} disabled={saving || !idVal || !labelEn || !labelAr} className="gap-1.5 w-full">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {isAr ? 'إضافة التبويب' : 'Add Tab'}
+          </Button>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{isAr ? 'إغلاق' : 'Close'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function AdminVaultPage() {
@@ -466,9 +746,17 @@ export default function AdminVaultPage() {
   const [category, setCategory] = useState<VaultCategory>('facility_utilities')
   const [records, setRecords] = useState<VaultRecord[]>([])
   const [fieldDefs, setFieldDefs] = useState<VaultFieldDefinition[]>([])
+  const [customCategories, setCustomCategories] = useState<CustomVaultCategory[]>([])
   const [loading, setLoading] = useState(false)
   const [manageFieldsOpen, setManageFieldsOpen] = useState(false)
   const [addRecordOpen, setAddRecordOpen] = useState(false)
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false)
+
+  const refreshCategories = useCallback(() => {
+    listCustomCategories(campusId).then(res => {
+      if (res.success) setCustomCategories(res.data ?? [])
+    })
+  }, [campusId])
 
   const refresh = useCallback(() => {
     setLoading(true)
@@ -481,6 +769,7 @@ export default function AdminVaultPage() {
   }, [category, campusId])
 
   useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { refreshCategories() }, [refreshCategories])
 
   if (settingsLoading) return null
 
@@ -492,6 +781,17 @@ export default function AdminVaultPage() {
     )
   }
 
+  // `customCategories` (from listCustomCategories) is already the complete,
+  // authoritative list — the backend returns the 5 built-ins (as-shipped, or
+  // edited/renamed) plus any school-added ones, all equally editable. Spreading
+  // the static VAULT_CATEGORIES on top used to duplicate every built-in tab
+  // the moment a school customized anything; only fall back to the static
+  // list before the initial fetch resolves, so tabs aren't empty for a beat.
+  const allCategories: { value: VaultCategory; label: string; label_ar: string }[] =
+    customCategories.length > 0
+      ? customCategories.map(c => ({ value: c.id, label: c.label_en, label_ar: c.label_ar }))
+      : VAULT_CATEGORIES
+
   return (
     <div className="container mx-auto py-6 space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between">
@@ -501,12 +801,21 @@ export default function AdminVaultPage() {
           </h1>
           <p className="text-muted-foreground text-sm">{t('pageSubtitle')}</p>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => setManageCategoriesOpen(true)}
+        >
+          <Settings2 className="h-4 w-4" />
+          {isAr ? 'إدارة التبويبات' : 'Manage Tabs'}
+        </Button>
       </div>
 
       <Tabs value={category} onValueChange={(v) => setCategory(v as VaultCategory)}>
         <TabsList className="flex-wrap h-auto">
-          {VAULT_CATEGORIES.map((c) => (
-            <TabsTrigger key={c.value} value={c.value}>{c.label}</TabsTrigger>
+          {allCategories.map((c) => (
+            <TabsTrigger key={c.value} value={c.value}>{isAr ? c.label_ar : c.label}</TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
@@ -539,7 +848,14 @@ export default function AdminVaultPage() {
       )}
 
       <ManageFieldsDialog open={manageFieldsOpen} onOpenChange={setManageFieldsOpen} category={category} fieldDefs={fieldDefs} onChanged={refresh} campusId={campusId} />
-      <AddRecordDialog open={addRecordOpen} onOpenChange={setAddRecordOpen} category={category} fieldDefs={fieldDefs} onCreated={refresh} campusId={campusId} />
+      <AddRecordDialog open={addRecordOpen} onOpenChange={setAddRecordOpen} category={category} categories={allCategories} fieldDefs={fieldDefs} onCreated={refresh} campusId={campusId} />
+      <ManageCategoriesDialog
+        open={manageCategoriesOpen}
+        onOpenChange={setManageCategoriesOpen}
+        customCategories={customCategories}
+        onChanged={refreshCategories}
+        campusId={campusId}
+      />
     </div>
   )
 }

@@ -445,7 +445,8 @@
     "contact_relationship": "صلة القرابة",
     "contact_phone": "هاتف جهة الاتصال",
     "confirm_delete": "تأكيد الحذف",
-    "delete_warning": "هل أنت متأكد أنك تريد حذف هذا؟ لا يمكن التراجع عن هذا الإجراء."
+    "delete_warning": "هل أنت متأكد أنك تريد حذف هذا؟ لا يمكن التراجع عن هذا الإجراء.",
+    "sn": "م"
   },
   "topbar": {
     "searchPlaceholder": "ابحث في الصفحات...",
@@ -2321,6 +2322,31 @@
         "msg_save_success": "تم حفظ الإعدادات بنجاح",
         "msg_save_error": "فشل في حفظ الإعدادات",
         "msg_loading": "جاري التحميل..."
+      }
+    },
+    "certificateTemplates": {
+      "builder": {
+        "msg_load_fields_failed": "فشل تحميل الحقول المتاحة",
+        "default_field_title": "العنوان",
+        "default_certificate_text": "شهادة تقدير",
+        "default_field_recipient_name": "اسم المستلم",
+        "default_field_school_logo": "شعار المدرسة",
+        "default_field_recipient_photo": "صورة المستلم",
+        "default_field_text": "نص",
+        "default_text_placeholder": "انقر نقرًا مزدوجًا لتعديل هذا النص",
+        "default_field_table": "جدول",
+        "default_column": "العمود {n}",
+        "tab_fields": "الحقول",
+        "tab_design": "التصميم",
+        "btn_add_field": "إضافة حقل",
+        "btn_add_logo": "إضافة شعار",
+        "btn_add_photo": "إضافة صورة",
+        "btn_add_text": "إضافة نص",
+        "btn_add_table": "إضافة جدول",
+        "dialog_select_field_title": "اختر حقلاً لإضافته",
+        "search_fields_placeholder": "البحث في الحقول...",
+        "no_fields_found": "لم يتم العثور على حقول",
+        "fields_available_count": "{count} حقل متاح"
       }
     }
   },
@@ -8632,7 +8658,26 @@
     "name": "الاسم",
     "totalPoints": "مجموع النقاط",
     "bestWpm": "أفضل سرعة (ك/د)",
-    "sessions": "الجلسات",
+    "sessions": {
+      "title": "جلسات قراءة الطلاب",
+      "sessionsTotal": "{total} جلسة إجمالاً",
+      "colStudent": "الطالب",
+      "colReadingText": "النص المقروء",
+      "colDate": "التاريخ",
+      "colWpm": "كلمة/دقيقة",
+      "colAccuracy": "الدقة",
+      "colPoints": "النقاط",
+      "colRecording": "التسجيل",
+      "colAction": "الإجراء",
+      "hasRecording": "يحتوي على تسجيل",
+      "noRecording": "بدون تسجيل",
+      "review": "مراجعة",
+      "pageOf": "صفحة {page} من {totalPages}",
+      "deleteSession": "حذف الجلسة",
+      "deleteSessionConfirm": "سيؤدي هذا إلى حذف جلسة القراءة هذه وتسجيلها نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+      "deleting": "...",
+      "delete": "حذف"
+    },
     "badge": "الشارة",
     "manageTexts": "إدارة النصوص",
     "addText": "إضافة نص",
@@ -8690,27 +8735,7 @@
     "wordsReadCorrectly": "الكلمات المقروءة بشكل صحيح",
     "comprehensionBonus": "مكافأة الاستيعاب",
     "viewLeaderboard": "عرض لوحة المتصدرين",
-    "readAnother": "قراءة نص آخر",
-    "sessions": {
-      "title": "جلسات قراءة الطلاب",
-      "sessionsTotal": "{total} جلسة إجمالاً",
-      "colStudent": "الطالب",
-      "colReadingText": "النص المقروء",
-      "colDate": "التاريخ",
-      "colWpm": "كلمة/دقيقة",
-      "colAccuracy": "الدقة",
-      "colPoints": "النقاط",
-      "colRecording": "التسجيل",
-      "colAction": "الإجراء",
-      "hasRecording": "يحتوي على تسجيل",
-      "noRecording": "بدون تسجيل",
-      "review": "مراجعة",
-      "pageOf": "صفحة {page} من {totalPages}",
-      "deleteSession": "حذف الجلسة",
-      "deleteSessionConfirm": "سيؤدي هذا إلى حذف جلسة القراءة هذه وتسجيلها نهائياً. لا يمكن التراجع عن هذا الإجراء.",
-      "deleting": "...",
-      "delete": "حذف"
-    }
+    "readAnother": "قراءة نص آخر"
   },
   "quiz": {
     "title": "الاختبارات",
@@ -13750,7 +13775,19 @@
     "recordDeleted": "تم حذف السجل",
     "failedDeleteRecord": "فشل حذف السجل",
     "failedLoadAttachment": "فشل تحميل المرفق",
-    "attachmentLabel": "مرفق {index}"
+    "attachmentLabel": "مرفق {index}",
+    "deleting": "جارٍ الحذف…",
+    "deleteRecordTitle": "حذف \"{title}\"؟",
+    "deleteRecordDesc": "سيؤدي هذا إلى حذف هذا السجل وجميع مرفقاته نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+    "deleteRecordConfirm": "حذف السجل",
+    "categoryLabelsRequired": "التسمية بالإنجليزية والعربية مطلوبتان",
+    "categoryUpdated": "تم تحديث التبويب",
+    "failedToUpdateCategory": "فشل تحديث التبويب",
+    "categoryAllFieldsRequired": "جميع الحقول مطلوبة",
+    "categoryAdded": "تمت إضافة التبويب",
+    "failedToAddCategory": "فشلت إضافة التبويب",
+    "categoryDeleted": "تم حذف التبويب",
+    "failedToDeleteCategory": "فشل حذف التبويب"
   },
   "adminTrainingSessions": {
     "pageTitle": "الدورات التدريبية والشهادات",

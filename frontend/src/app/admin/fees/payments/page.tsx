@@ -14,7 +14,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
 import { ExportButton } from '@/components/shared/ExportButton'
-import type { ExportColumn } from '@/lib/utils/tableExport'
+import { serialNumberColumn, type ExportColumn } from '@/lib/utils/tableExport'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -298,6 +298,7 @@ export default function PaymentsPage() {
     }
 
     const exportColumns: ExportColumn<Student>[] = [
+        serialNumberColumn<Student>(),
         { key: 'name', label: t('student'), accessor: (s) => formatStudentName(s) },
         { key: 'student_number', label: t('istudentlyId'), accessor: (s) => s.student_number || '' },
         { key: 'grade', label: t('gradeLevel'), accessor: (s) => s.grade_levels?.name || '' },
@@ -493,6 +494,7 @@ export default function PaymentsPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-gray-100 dark:bg-gray-800">
+                                    <TableHead className="text-[#3d8fb5] font-semibold w-12">{tCommon('sn')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('student')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('istudentlyId')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('gradeLevel')}</TableHead>
@@ -517,8 +519,9 @@ export default function PaymentsPage() {
                                             key={student.id}
                                             className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}
                                         >
+                                            <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                                             <TableCell>
-                                                <Link 
+                                                <Link
                                                     href={`/admin/fees/payments/${student.id}`}
                                                     className="text-[#3d8fb5] hover:underline"
                                                 >

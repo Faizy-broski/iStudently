@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { useCampus } from "@/context/CampusContext";
 import { useProfileView } from "@/context/ProfileViewContext";
 import { useSchoolSettings } from "@/context/SchoolSettingsContext";
-import { type Student } from "@/lib/api/students";
+import { type Student, getStudentByNumber } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { getParentById, type Parent } from "@/lib/api/parents";
 import { getLastLogin } from "@/lib/api/auth";
@@ -91,8 +91,16 @@ export default function StudentDetailsPage() {
   const [reassignOpen, setReassignOpen] = useState(false);
   const [showConfidentialDialog, setShowConfidentialDialog] = useState(false);
 
+  // Only fetched for the Previous/Next Student nav — the current student
+  // itself is always fetched directly by number below, never located by
+  // searching this list. It previously WAS the only way this page found the
+  // current student, via `limit: 0` when prevNext was off meaning "don't
+  // need this list" — but limit 0 is falsy, so it was silently dropped by
+  // the API layer and then defaulted to 10 by the backend, meaning only the
+  // first 10 students (by default sort) could ever be found here; every
+  // other real, visible student showed "Student Not Found".
   const { students, total, loading: studentsLoading, updateStudent, refresh } = useStudents(
-    prevNextEnabled ? { page: 1, limit: 1000 } : { page: 1, limit: 0 }
+    prevNextEnabled ? { page: 1, limit: 1000 } : { page: 1, limit: 1 }
   );
 
   const currentIndex = prevNextEnabled ? students.findIndex((s) => s.student_number === studentNumber) : -1;
@@ -154,13 +162,24 @@ export default function StudentDetailsPage() {
   );
 
   useEffect(() => {
+    let cancelled = false;
     const fetchStudent = async () => {
       setLoading(true);
       try {
-        const student = students.find((s) => s.student_number === studentNumber);
+        // Prefer a match already in the prev/next list (when loaded) so
+        // in-place edits there are reflected immediately; otherwise always
+        // fall back to fetching this student directly by number — never
+        // rely solely on the list containing them, since that list is
+        // capped (1000 rows) or deliberately minimal when prev/next nav is
+        // disabled.
+        let student = students.find((s) => s.student_number === studentNumber) ?? null;
+        if (!student) {
+          const res = await getStudentByNumber(studentNumber, campusContext?.selectedCampus?.id);
+          if (res.success && res.data) student = res.data;
+        }
+        if (cancelled) return;
+        setCurrentStudent(student);
         if (student) {
-          setCurrentStudent(student);
-
           if (student.profile_id) {
             getLastLogin(student.profile_id).then((res) => {
               if (res.success && res.data) setLastLogin(res.data.last_sign_in);
@@ -198,15 +217,14 @@ export default function StudentDetailsPage() {
       }
     };
 
-    if (students.length > 0) {
-      fetchStudent();
-    }
+    fetchStudent();
 
     getFieldDefinitions('student', campusContext?.selectedCampus?.id).then((res) => {
       if (res.success && res.data) setCustomFieldDefs(res.data);
     }).catch(() => {});
 
     return () => {
+      cancelled = true;
       clearViewedProfile();
     };
   }, [studentNumber, students, setViewedProfile, clearViewedProfile, campusContext?.selectedCampus?.id]);

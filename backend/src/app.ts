@@ -111,6 +111,7 @@ import finaReportRoutes from "./routes/fina/report.routes";
 import vaultFieldDefinitionsRoutes from "./routes/vault/field-definitions.routes";
 import vaultRecordsRoutes from "./routes/vault/records.routes";
 import vaultMediaRoutes from "./routes/vault/media.routes";
+import vaultCategoriesRoutes from "./routes/vault/categories.routes";
 import "./services/fina/stories.service"; // side effect: registers the 'expire_stories' fina_jobs handler
 // The next two imports also register their fina_jobs handlers as a side
 // effect of being loaded — named imports here (not bare side-effect
@@ -458,6 +459,7 @@ registerRoutes("/fina/reports", finaReportRoutes);
 registerRoutes("/vault/field-definitions", vaultFieldDefinitionsRoutes);
 registerRoutes("/vault/records", vaultRecordsRoutes);
 registerRoutes("/vault/media", vaultMediaRoutes);
+registerRoutes("/vault/categories", vaultCategoriesRoutes);
 registerRoutes("/quran", quranReferenceRoutes);
 registerRoutes("/hifzi/settings", hifziSettingsRoutes);
 registerRoutes("/hifzi/circles", hifziCirclesRoutes);

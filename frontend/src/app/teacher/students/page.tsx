@@ -34,10 +34,11 @@ import { MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
 import { ExportButton } from "@/components/shared/ExportButton";
-import type { ExportColumn } from "@/lib/utils/tableExport";
+import { serialNumberColumn, type ExportColumn } from "@/lib/utils/tableExport";
 
 export default function TeacherStudentInfoPage() {
   const t = useTranslations('teacherPages.students');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [gradeFilter, setGradeFilter] = useState("all");
@@ -101,6 +102,9 @@ export default function TeacherStudentInfoPage() {
   };
 
   const exportColumns: ExportColumn<CoursePeriodStudent>[] = [
+    // `rows` passed to ExportButton below is just the current page — number
+    // starting from this page's offset so it lines up with the on-screen #.
+    serialNumberColumn<CoursePeriodStudent>((currentPage - 1) * itemsPerPage + 1),
     { key: 'student_number', label: t('studentId'), accessor: (s) => s.student_number },
     { key: 'name', label: t('name'), accessor: (s) => `${s.profile?.first_name || ''} ${s.profile?.last_name || ''}`.trim() },
     { key: 'grade', label: t('grade'), accessor: (s) => s.grade_level || '' },
@@ -188,6 +192,7 @@ export default function TeacherStudentInfoPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
+                  <TableHead className="w-12">{tCommon('sn')}</TableHead>
                   <TableHead>{t('studentId')}</TableHead>
                   <TableHead>{t('name')}</TableHead>
                   <TableHead>{t('grade')}</TableHead>
@@ -199,12 +204,12 @@ export default function TeacherStudentInfoPage() {
               <TableBody>
                 {students.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {t('noStudentsFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  students.map((student) => {
+                  students.map((student, index) => {
                     const fullName = `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`.trim();
                     const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                     return (
@@ -213,6 +218,7 @@ export default function TeacherStudentInfoPage() {
                         className="hover:bg-muted/50 cursor-pointer"
                         onClick={() => handleViewDetails(student)}
                       >
+                        <TableCell className="text-muted-foreground">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
                         <TableCell className="font-medium">{student.student_number}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">

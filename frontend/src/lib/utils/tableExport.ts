@@ -78,8 +78,29 @@ export interface ExportColumn<T = Record<string, unknown>> {
   label: string
   /** Arabic header, used instead of `label` when the export is generated in Arabic. */
   label_ar?: string
-  /** Pulls this column's display value out of one row. Defaults to `String(row[key] ?? '')`. */
-  accessor?: (row: T) => string | number | null | undefined
+  /**
+   * Pulls this column's display value out of one row. Defaults to
+   * `String(row[key] ?? '')`. `index` is the row's position within the
+   * exported set (0-based) — used by `serialNumberColumn()` below for an
+   * S.N/# column; most accessors can ignore it.
+   */
+  accessor?: (row: T, index: number) => string | number | null | undefined
+}
+
+/**
+ * A ready-made "S.N" / serial-number export column — numbers each row by
+ * its position in the exported set. Pass `startAt` to continue numbering
+ * across pages (e.g. `(currentPage - 1) * pageSize + 1`) so it matches an
+ * on-screen "#" column that does the same; omitted, numbering restarts at 1
+ * for whatever rows are actually being exported.
+ */
+export function serialNumberColumn<T>(startAt: number = 1): ExportColumn<T> {
+  return {
+    key: '_sn',
+    label: 'S.N',
+    label_ar: 'م',
+    accessor: (_row, index) => startAt + index,
+  }
 }
 
 /** Minimal branding info for the PDF header — same shape as printLayout.ts's PrintSchool. */
@@ -92,13 +113,13 @@ function resolveLabel(col: ExportColumn<any>, locale: 'en' | 'ar'): string {
   return locale === 'ar' && col.label_ar ? col.label_ar : col.label
 }
 
-function resolveValue<T>(col: ExportColumn<T>, row: T): string {
-  const raw = col.accessor ? col.accessor(row) : (row as Record<string, unknown>)[col.key]
+function resolveValue<T>(col: ExportColumn<T>, row: T, index: number): string {
+  const raw = col.accessor ? col.accessor(row, index) : (row as Record<string, unknown>)[col.key]
   return raw === null || raw === undefined ? '' : String(raw)
 }
 
 function toRows<T>(columns: ExportColumn<T>[], rows: T[]): string[][] {
-  return rows.map((row) => columns.map((col) => resolveValue(col, row)))
+  return rows.map((row, index) => columns.map((col) => resolveValue(col, row, index)))
 }
 
 export interface ExportPdfOptions {

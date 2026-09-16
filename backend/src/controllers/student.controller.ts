@@ -210,8 +210,14 @@ export class StudentController {
     try {
       const schoolId = req.profile?.school_id
       const studentNumber = req.params.studentNumber
+      // Admin accounts aren't pinned to one campus — without this, an
+      // org-wide admin viewing a campus other than their own profile's
+      // school_id could never look a student up by number directly (same
+      // pattern already fixed for GET /students' campus_id handling).
+      const campusId = req.query.campus_id as string | undefined
+      const effectiveSchoolId = (campusId && campusId.trim() !== '') ? campusId : schoolId
 
-      if (!schoolId) {
+      if (!effectiveSchoolId) {
         res.status(403).json({
           success: false,
           error: 'No school associated with your account'
@@ -219,7 +225,7 @@ export class StudentController {
         return
       }
 
-      const student = await studentService.getStudentByNumber(studentNumber, schoolId)
+      const student = await studentService.getStudentByNumber(studentNumber, effectiveSchoolId)
 
       if (!student) {
         res.status(404).json({

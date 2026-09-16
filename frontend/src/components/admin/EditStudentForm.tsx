@@ -21,7 +21,7 @@ import { type Student, updateStudent } from "@/lib/api/students";
 import { getFieldDefinitions, getFieldLabel, getFieldOptions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders } from "@/lib/utils/field-ordering";
 import { useTranslations, useLocale } from "next-intl";
-import { useGradeLevels } from "@/hooks/useAcademics";
+import { useGradeLevels, useSections } from "@/hooks/useAcademics";
 import { StudentPhotoUpload } from "@/components/ui/student-photo-upload";
 import {
   CONFIDENTIAL_FAMILY_STATUS_OPTIONS,
@@ -56,17 +56,21 @@ interface EditStudentFormProps {
 interface FormData {
   // Personal Information
   firstName: string;
+  fatherName: string;
+  grandfatherName: string;
   lastName: string;
   email: string;
   phone: string;
   gender: string;
   dateOfBirth: string;
+  nationalId: string;
   address: string;
   studentPhoto: string;
   confidentialFamilyStatus: ConfidentialFamilyStatus;
 
   studentNumber: string;
   gradeLevel: string;
+  sectionId: string;
   username: string;
   admissionDate: string;
   previousSchool: string;
@@ -94,6 +98,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
   const [activeTab, setActiveTab] = useState('personal');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { gradeLevels } = useGradeLevels();
+  const { sections: allSections } = useSections();
 
   // Admin-defined custom field definitions + their current values (keyed by
   // category_id -> field_key), seeded from the student's existing custom_fields
@@ -216,17 +221,26 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
   // Initialize form data with student information
   const [formData, setFormData] = useState<FormData>({
     firstName: student.profile?.first_name || '',
+    fatherName: student.profile?.father_name || '',
+    grandfatherName: student.profile?.grandfather_name || '',
     lastName: student.profile?.last_name || '',
     email: student.profile?.email || '',
     phone: student.profile?.phone || '',
-    gender: student.custom_fields?.personal?.gender || '',
-    dateOfBirth: student.custom_fields?.personal?.date_of_birth ?
-      new Date(student.custom_fields.personal.date_of_birth).toISOString().split('T')[0] : '',
+    // gender/date_of_birth are real profiles columns, but earlier versions of
+    // this form only ever wrote them into custom_fields.personal (the backend
+    // update path silently ignored the top-level DTO fields) — prefer the
+    // real column when present, falling back to that legacy JSONB copy for
+    // students edited before the backend fix.
+    gender: student.profile?.gender || student.custom_fields?.personal?.gender || '',
+    dateOfBirth: (student.profile?.date_of_birth || student.custom_fields?.personal?.date_of_birth) ?
+      new Date(student.profile?.date_of_birth || student.custom_fields?.personal?.date_of_birth).toISOString().split('T')[0] : '',
+    nationalId: student.profile?.national_id || '',
     address: student.custom_fields?.personal?.address || '',
 studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo || '',
     confidentialFamilyStatus: (student.confidential_family_status as ConfidentialFamilyStatus) || 'NONE',
     studentNumber: student.student_number || '',
     gradeLevel: student.grade_level || '',
+    sectionId: student.section?.id || '',
     // profile.username is the real login username (source of truth for resolve-username);
     // custom_fields.system.username is a legacy display-only copy that can drift out of
     // sync with it, so only fall back to that when the real field isn't populated.
@@ -306,12 +320,16 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
     try {
       const updateData: any = {
         first_name: formData.firstName,
+        father_name: formData.fatherName,
+        grandfather_name: formData.grandfatherName,
         last_name: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         student_number: formData.studentNumber,
         grade_level: formData.gradeLevel,
+        section_id: formData.sectionId || null,
         username: formData.username || undefined,
+        national_id: formData.nationalId || undefined,
         ...(canWriteConfidentialFamilyStatus(user?.role) ? {
           confidential_family_status: formData.confidentialFamilyStatus,
         } : {}),
@@ -451,6 +469,24 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                   />
                 </div>
                 <div>
+                  <Label htmlFor="fatherName">{tFields("father_name")}</Label>
+                  <Input
+                    id="fatherName"
+                    value={formData.fatherName}
+                    onChange={(e) => handleInputChange('fatherName', e.target.value)}
+                    placeholder={tFields("father_name")}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="grandfatherName">{tFields("grandfather_name")}</Label>
+                  <Input
+                    id="grandfatherName"
+                    value={formData.grandfatherName}
+                    onChange={(e) => handleInputChange('grandfatherName', e.target.value)}
+                    placeholder={tFields("grandfather_name")}
+                  />
+                </div>
+                <div>
                   <Label htmlFor="lastName">{tFields("last_name")} *</Label>
                   <Input
                     id="lastName"
@@ -458,6 +494,15 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                     onChange={(e) => handleInputChange('lastName', e.target.value)}
                     placeholder={tFields("last_name")}
                     required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nationalId">{tFields("national_id")}</Label>
+                  <Input
+                    id="nationalId"
+                    value={formData.nationalId}
+                    onChange={(e) => handleInputChange('nationalId', e.target.value)}
+                    placeholder={tFields("national_id")}
                   />
                 </div>
                 <div>
@@ -588,7 +633,10 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                 </div>
                 <div>
                   <Label htmlFor="gradeLevel">{tFields("grade_level")}</Label>
-                  <Select value={formData.gradeLevel} onValueChange={(value) => handleInputChange('gradeLevel', value)}>
+                  <Select value={formData.gradeLevel} onValueChange={(value) => {
+                    handleInputChange('gradeLevel', value);
+                    handleInputChange('sectionId', ''); // reset section when grade changes
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder={t("select_grade")} />
                     </SelectTrigger>
@@ -598,6 +646,30 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                           {grade.name}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="sectionId">{tFields("section")}</Label>
+                  <Select
+                    value={formData.sectionId}
+                    onValueChange={(value) => handleInputChange('sectionId', value)}
+                    disabled={!formData.gradeLevel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("select_section", { defaultValue: "Select section" })} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allSections
+                        .filter(s => {
+                          const gl = gradeLevels.find(g => g.name === formData.gradeLevel);
+                          return gl ? s.grade_level_id === gl.id : true;
+                        })
+                        .map((section) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            {section.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

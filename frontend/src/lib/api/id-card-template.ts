@@ -164,8 +164,9 @@ export const deleteTemplate = async (id: string) => {
 };
 
 // Get available tokens for a user type
-export const getAvailableTokens = async (userType: string) => {
-  return apiRequest(`/id-card-templates/tokens/${userType}`);
+export const getAvailableTokens = async (userType: string, locale?: string) => {
+  const qs = locale ? `?locale=${locale}` : '';
+  return apiRequest(`/id-card-templates/tokens/${userType}${qs}`);
 };
 
 // Generate ID cards

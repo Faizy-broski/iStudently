@@ -60,6 +60,7 @@ import { useLoadDesignFonts } from '@/config/design-fonts';
 import { CERTIFICATE_RECIPIENT_TYPES } from '@/config/certificateRecipientTypes';
 import { useCampus } from '@/context/CampusContext';
 import { toast } from 'sonner';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface AvailableToken {
   token: string;
@@ -82,6 +83,8 @@ const A4 = { portrait: { width: 794, height: 1123 }, landscape: { width: 1123, h
 
 export default function CertificateTemplateBuilderPage() {
   useLoadDesignFonts();
+  const t = useTranslations('admin.certificateTemplates.builder');
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const recipientType = (searchParams?.get('type') || 'student') as CertificateRecipientType;
@@ -140,14 +143,14 @@ export default function CertificateTemplateBuilderPage() {
       addDefaultFields();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editId, recipientType]);
+  }, [editId, recipientType, locale]);
 
   const loadTokens = async () => {
     try {
-      const response = await getAvailableTokens(recipientType);
+      const response = await getAvailableTokens(recipientType, locale);
       setAvailableTokens(response.tokens);
     } catch (error: any) {
-      toast.error('Failed to load available fields');
+      toast.error(t('msg_load_fields_failed'));
     }
   };
 
@@ -171,8 +174,8 @@ export default function CertificateTemplateBuilderPage() {
     const defaults: CertificateTemplateField[] = [
       {
         id: 'title',
-        label: 'Title',
-        token: 'Certificate of Achievement',
+        label: t('default_field_title'),
+        token: t('default_certificate_text'),
         type: 'text',
         position: { x: 161, y: 150 },
         size: { width: 800, height: 50 },
@@ -180,7 +183,7 @@ export default function CertificateTemplateBuilderPage() {
       },
       {
         id: 'name',
-        label: 'Recipient Name',
+        label: t('default_field_recipient_name'),
         token: '{{first_name}} {{last_name}}',
         type: 'text',
         position: { x: 161, y: 260 },
@@ -189,7 +192,7 @@ export default function CertificateTemplateBuilderPage() {
       },
       {
         id: 'logo',
-        label: 'School Logo',
+        label: t('default_field_school_logo'),
         token: '{{school_logo}}',
         type: 'image',
         position: { x: 481, y: 50 },
@@ -224,7 +227,7 @@ export default function CertificateTemplateBuilderPage() {
     const isLogo = kind === 'logo';
     const newField: CertificateTemplateField = {
       id: `field_${Date.now()}`,
-      label: isLogo ? 'School Logo' : 'Recipient Photo',
+      label: isLogo ? t('default_field_school_logo') : t('default_field_recipient_photo'),
       token: isLogo ? '{{school_logo}}' : '{{photo_url}}',
       type: 'image',
       position: { x: isLogo ? (layout.width - 80) / 2 : 40, y: 40 },
@@ -240,8 +243,8 @@ export default function CertificateTemplateBuilderPage() {
   const addTextField = () => {
     const newField: CertificateTemplateField = {
       id: `field_${Date.now()}`,
-      label: 'Text',
-      token: 'Double-click to edit this text',
+      label: t('default_field_text'),
+      token: t('default_text_placeholder'),
       type: 'text',
       position: { x: 40, y: 100 + fields.length * 10 },
       size: { width: 300, height: 30 },
@@ -254,13 +257,13 @@ export default function CertificateTemplateBuilderPage() {
   const addTableField = () => {
     const newField: CertificateTemplateField = {
       id: `field_${Date.now()}`,
-      label: 'Table',
+      label: t('default_field_table'),
       token: '',
       type: 'table',
       position: { x: 40, y: 100 + fields.length * 10 },
       size: { width: 400, height: 120 },
       table: {
-        columns: [{ id: 'col_1', label: 'Column 1' }, { id: 'col_2', label: 'Column 2' }],
+        columns: [{ id: 'col_1', label: t('default_column', { n: 1 }) }, { id: 'col_2', label: t('default_column', { n: 2 }) }],
         rows: [
           ['', ''],
           ['', ''],
@@ -288,7 +291,7 @@ export default function CertificateTemplateBuilderPage() {
     if (!table) return;
     const nextIndex = table.columns.length + 1;
     updateTable({
-      columns: [...table.columns, { id: `col_${Date.now()}`, label: `Column ${nextIndex}` }],
+      columns: [...table.columns, { id: `col_${Date.now()}`, label: t('default_column', { n: nextIndex }) }],
       rows: table.rows.map((row) => [...row, '']),
     });
   };
@@ -525,8 +528,8 @@ export default function CertificateTemplateBuilderPage() {
 
           <Tabs defaultValue="fields" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="fields">Fields</TabsTrigger>
-              <TabsTrigger value="design">Design</TabsTrigger>
+              <TabsTrigger value="fields">{t('tab_fields')}</TabsTrigger>
+              <TabsTrigger value="design">{t('tab_design')}</TabsTrigger>
             </TabsList>
 
             {/* Fields Tab */}
@@ -534,28 +537,28 @@ export default function CertificateTemplateBuilderPage() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Fields</CardTitle>
+                    <CardTitle className="text-lg">{t('tab_fields')}</CardTitle>
                     <Button size="sm" onClick={openFieldSelector} className="gap-2">
                       <Plus className="h-4 w-4" />
-                      Add Field
+                      {t('btn_add_field')}
                     </Button>
                   </div>
                   <div className="flex gap-2 pt-2 flex-wrap">
                     <Button size="sm" variant="outline" className="gap-1.5 flex-1" onClick={() => addQuickField('logo')}>
                       <Building2 className="h-3.5 w-3.5" />
-                      Add Logo
+                      {t('btn_add_logo')}
                     </Button>
                     <Button size="sm" variant="outline" className="gap-1.5 flex-1" onClick={() => addQuickField('photo')}>
                       <UserSquare2 className="h-3.5 w-3.5" />
-                      Add Photo
+                      {t('btn_add_photo')}
                     </Button>
                     <Button size="sm" variant="outline" className="gap-1.5 flex-1" onClick={addTextField}>
                       <Type className="h-3.5 w-3.5" />
-                      Add Text
+                      {t('btn_add_text')}
                     </Button>
                     <Button size="sm" variant="outline" className="gap-1.5 flex-1" onClick={addTableField}>
                       <Table2 className="h-3.5 w-3.5" />
-                      Add Table
+                      {t('btn_add_table')}
                     </Button>
                   </div>
                 </CardHeader>
@@ -1059,14 +1062,14 @@ export default function CertificateTemplateBuilderPage() {
       <Dialog open={showFieldSelector} onOpenChange={setShowFieldSelector}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Select a Field to Add</DialogTitle>
+            <DialogTitle>{t('dialog_select_field_title')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search fields..."
+                placeholder={t('search_fields_placeholder')}
                 value={fieldSearchQuery}
                 onChange={(e) => setFieldSearchQuery(e.target.value)}
                 className="pl-9"
@@ -1076,7 +1079,7 @@ export default function CertificateTemplateBuilderPage() {
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-1">
                 {filteredTokens.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-4">No fields found</p>
+                  <p className="text-center text-muted-foreground py-4">{t('no_fields_found')}</p>
                 ) : (
                   filteredTokens.map((token) => (
                     <button
@@ -1099,7 +1102,7 @@ export default function CertificateTemplateBuilderPage() {
               </div>
             </ScrollArea>
 
-            <p className="text-xs text-muted-foreground text-center">{availableTokens.length} fields available</p>
+            <p className="text-xs text-muted-foreground text-center">{t('fields_available_count', { count: availableTokens.length })}</p>
           </div>
         </DialogContent>
       </Dialog>

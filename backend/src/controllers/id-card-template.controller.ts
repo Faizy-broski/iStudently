@@ -183,6 +183,7 @@ export class IdCardTemplateController {
     try {
       const { user_type } = req.params;
       const schoolId = req.profile?.school_id;
+      const locale = req.query.locale as string | undefined;
 
       if (!['student', 'teacher', 'staff'].includes(user_type)) {
         return res.status(400).json({ error: 'Invalid user_type. Must be student, teacher, or staff' });
@@ -191,9 +192,9 @@ export class IdCardTemplateController {
       // If school ID is available, get tokens with custom fields
       let tokens;
       if (schoolId) {
-        tokens = await templateService.getAvailableTokensWithCustomFields(user_type, schoolId);
+        tokens = await templateService.getAvailableTokensWithCustomFields(user_type, schoolId, locale);
       } else {
-        tokens = templateService.getAvailableTokens(user_type);
+        tokens = templateService.getAvailableTokens(user_type, locale);
       }
 
       // Convert to array format for easier dropdown consumption

@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase';
-import { SUBSTITUTION_TOKENS as ID_CARD_SUBSTITUTION_TOKENS } from './id-card-template.service';
+import { SUBSTITUTION_TOKENS as ID_CARD_SUBSTITUTION_TOKENS, localizeTokens } from './id-card-template.service';
 
 // Certificate-only tokens layered on top of the ID card token catalog (name, contact,
 // academic, campus/school info, etc. are all shared across every recipient type below).
@@ -267,7 +267,10 @@ export class CertificateTemplateService {
   /**
    * Get available tokens for a recipient type (static tokens)
    */
-  getAvailableTokens(recipientType: string) {
-    return CERTIFICATE_SUBSTITUTION_TOKENS[recipientType as keyof typeof CERTIFICATE_SUBSTITUTION_TOKENS] || {};
+  getAvailableTokens(recipientType: string, locale?: string) {
+    return localizeTokens(
+      CERTIFICATE_SUBSTITUTION_TOKENS[recipientType as keyof typeof CERTIFICATE_SUBSTITUTION_TOKENS] || {},
+      locale
+    );
   }
 }

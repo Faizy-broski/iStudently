@@ -9,19 +9,21 @@ import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { getImpersonationHeaders } from './abortable-fetch'
 
-export type VaultCategory =
-  | 'facility_utilities'
-  | 'legal_licensing'
-  | 'financial_procurement'
-  | 'it_security'
-  | 'hr_confidential'
+export type VaultCategory = string   // was a strict union — now open to support custom categories
 
-export const VAULT_CATEGORIES: { value: VaultCategory; label: string }[] = [
-  { value: 'facility_utilities', label: 'Facility & Utilities' },
-  { value: 'legal_licensing', label: 'Legal & Licensing' },
-  { value: 'financial_procurement', label: 'Financial & Procurement' },
-  { value: 'it_security', label: 'IT & Security' },
-  { value: 'hr_confidential', label: 'HR Confidential' },
+export interface CustomVaultCategory {
+  id: string
+  label_en: string
+  label_ar: string
+  created_at: string
+}
+
+export const VAULT_CATEGORIES: { value: VaultCategory; label: string; label_ar: string }[] = [
+  { value: 'facility_utilities', label: 'Facility & Utilities', label_ar: 'المرافق والخدمات' },
+  { value: 'legal_licensing', label: 'Legal & Licensing', label_ar: 'الشؤون القانونية والتراخيص' },
+  { value: 'financial_procurement', label: 'Financial & Procurement', label_ar: 'الشؤون المالية والمشتريات' },
+  { value: 'it_security', label: 'IT & Security', label_ar: 'تقنية المعلومات والأمن' },
+  { value: 'hr_confidential', label: 'HR Confidential', label_ar: 'الموارد البشرية (سري)' },
 ]
 
 export type VaultFieldType = 'text' | 'number' | 'date' | 'select' | 'multi_select' | 'encrypted_text' | 'file'
@@ -234,4 +236,40 @@ export async function getAttachmentBlobUrl(recordId: string, index: number, camp
   } catch (err: unknown) {
     return { success: false, error: err instanceof Error ? err.message : 'Network error' }
   }
+}
+
+// ── Custom Vault Categories ──────────────────────────────────────────────────
+
+export async function listCustomCategories(campusId?: string | null): Promise<ApiResponse<CustomVaultCategory[]>> {
+  return authFetch<CustomVaultCategory[]>(withCampus('/vault/categories', campusId))
+}
+
+export async function createCustomCategory(
+  data: { id: string; label_en: string; label_ar: string },
+  campusId?: string | null
+): Promise<ApiResponse<CustomVaultCategory[]>> {
+  return authFetch<CustomVaultCategory[]>(withCampus('/vault/categories', campusId), {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteCustomCategory(
+  id: string,
+  campusId?: string | null
+): Promise<ApiResponse<void>> {
+  return authFetch<void>(withCampus(`/vault/categories/${encodeURIComponent(id)}`, campusId), {
+    method: 'DELETE',
+  })
+}
+
+export async function updateCustomCategory(
+  id: string,
+  data: { label_en: string; label_ar: string },
+  campusId?: string | null
+): Promise<ApiResponse<CustomVaultCategory[]>> {
+  return authFetch<CustomVaultCategory[]>(withCampus(`/vault/categories/${encodeURIComponent(id)}`, campusId), {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
 }

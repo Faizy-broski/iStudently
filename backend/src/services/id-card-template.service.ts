@@ -195,6 +195,143 @@ export const SUBSTITUTION_TOKENS = {
   parent: { ...PARENT_TOKENS },
 };
 
+// Arabic label for every token above. Flat and keyed by the token string itself
+// (not mirroring the nested/spread role structure above) since a token's Arabic
+// label doesn't depend on which recipient type it happens to be listed under —
+// this avoids re-deriving the same composition twice and staying in sync.
+export const TOKEN_LABELS_AR: Record<string, string> = {
+  // Campus/school
+  '{{campus_name}}': 'اسم الفرع',
+  '{{campus_address}}': 'عنوان الفرع',
+  '{{campus_phone}}': 'هاتف الفرع',
+  '{{campus_code}}': 'رمز الفرع',
+  '{{campus_email}}': 'بريد الفرع الإلكتروني',
+  '{{school_name}}': 'اسم المدرسة',
+  '{{school_address}}': 'عنوان المدرسة',
+  '{{school_phone}}': 'هاتف المدرسة',
+  '{{school_email}}': 'بريد المدرسة الإلكتروني',
+  '{{school_logo}}': 'شعار المدرسة',
+  '{{school_website}}': 'الموقع الإلكتروني للمدرسة',
+  '{{school_motto}}': 'الشعار النصي للمدرسة',
+  // Shared profile fields
+  '{{first_name}}': 'الاسم الأول',
+  '{{last_name}}': 'اسم العائلة',
+  '{{full_name}}': 'الاسم الكامل',
+  '{{email}}': 'البريد الإلكتروني',
+  '{{phone}}': 'رقم الهاتف',
+  '{{date_of_birth}}': 'تاريخ الميلاد',
+  '{{gender}}': 'الجنس',
+  '{{address}}': 'العنوان',
+  '{{photo_url}}': 'الصورة الشخصية',
+  '{{blood_group}}': 'فصيلة الدم',
+  '{{emergency_contact}}': 'جهة اتصال الطوارئ',
+  // Staff/teacher
+  '{{employee_id}}': 'الرقم الوظيفي',
+  '{{role}}': 'الدور / المنصب',
+  '{{department}}': 'القسم',
+  '{{joining_date}}': 'تاريخ الالتحاق',
+  '{{qualification}}': 'المؤهل العلمي',
+  '{{specialization}}': 'التخصص',
+  '{{designation}}': 'المسمى الوظيفي',
+  '{{subjects}}': 'المواد التي يدرّسها',
+  '{{experience}}': 'سنوات الخبرة',
+  // Parent
+  '{{occupation}}': 'المهنة',
+  '{{workplace}}': 'مكان العمل',
+  '{{cnic}}': 'الرقم الوطني / الهوية',
+  '{{city}}': 'المدينة',
+  '{{state}}': 'المحافظة',
+  '{{zip_code}}': 'الرمز البريدي',
+  '{{country}}': 'الدولة',
+  '{{emergency_contact_name}}': 'اسم جهة اتصال الطوارئ',
+  '{{emergency_contact_relation}}': 'صلة جهة اتصال الطوارئ',
+  '{{emergency_contact_phone}}': 'هاتف جهة اتصال الطوارئ',
+  '{{children_names}}': 'أسماء الأبناء',
+  '{{children_count}}': 'عدد الأبناء',
+  // Student identification
+  '{{student_id}}': 'رقم هوية الطالب',
+  '{{student_number}}': 'رقم الطالب',
+  '{{admission_number}}': 'رقم القبول',
+  '{{roll_number}}': 'الرقم التسلسلي',
+  '{{registration_number}}': 'رقم التسجيل',
+  // Student academic
+  '{{grade_level}}': 'الصف الدراسي',
+  '{{class_name}}': 'اسم الفصل',
+  '{{section}}': 'الشعبة',
+  '{{section_name}}': 'اسم الشعبة',
+  '{{academic_year}}': 'العام الدراسي',
+  '{{admission_date}}': 'تاريخ القبول',
+  // Student personal
+  '{{age}}': 'العمر',
+  '{{nationality}}': 'الجنسية',
+  '{{religion}}': 'الديانة',
+  '{{caste}}': 'الطائفة',
+  '{{mother_tongue}}': 'اللغة الأم',
+  // Address
+  '{{street_address}}': 'عنوان الشارع',
+  '{{postal_code}}': 'الرمز البريدي',
+  '{{permanent_address}}': 'العنوان الدائم',
+  '{{current_address}}': 'العنوان الحالي',
+  // Student parent/guardian
+  '{{father_name}}': 'اسم الأب',
+  '{{mother_name}}': 'اسم الأم',
+  '{{parent_name}}': 'اسم ولي الأمر',
+  '{{guardian_name}}': 'اسم الوصي',
+  '{{parent_phone}}': 'هاتف ولي الأمر',
+  '{{father_phone}}': 'هاتف الأب',
+  '{{mother_phone}}': 'هاتف الأم',
+  '{{parent_email}}': 'بريد ولي الأمر الإلكتروني',
+  '{{father_occupation}}': 'مهنة الأب',
+  '{{mother_occupation}}': 'مهنة الأم',
+  // Student emergency
+  '{{emergency_phone}}': 'هاتف الطوارئ',
+  '{{emergency_name}}': 'اسم جهة اتصال الطوارئ',
+  '{{emergency_relation}}': 'صلة جهة اتصال الطوارئ',
+  // Student medical
+  '{{medical_conditions}}': 'الحالات الطبية',
+  '{{allergies}}': 'الحساسية',
+  '{{medications}}': 'الأدوية',
+  '{{special_needs}}': 'الاحتياجات الخاصة',
+  // Transport
+  '{{bus_route}}': 'خط الحافلة',
+  '{{transport_mode}}': 'وسيلة النقل',
+  '{{pickup_point}}': 'نقطة الاصطحاب',
+  '{{drop_point}}': 'نقطة الإنزال',
+  // Previous school
+  '{{previous_school}}': 'المدرسة السابقة',
+  '{{previous_class}}': 'الصف السابق',
+  '{{transfer_certificate}}': 'رقم شهادة النقل',
+  // Validity/dates
+  '{{valid_from}}': 'صالح من',
+  '{{valid_until}}': 'صالح حتى',
+  '{{issue_date}}': 'تاريخ الإصدار',
+  '{{expiry_date}}': 'تاريخ الانتهاء',
+  '{{current_date}}': 'التاريخ الحالي',
+  '{{current_year}}': 'السنة الحالية',
+  // Certificate-only extras (certificate-template.service.ts's CERTIFICATE_EXTRA_TOKENS)
+  '{{achievement_title}}': 'عنوان الإنجاز',
+  '{{award_title}}': 'عنوان الجائزة',
+  '{{issuing_authority}}': 'الجهة المانحة',
+  '{{signature_1_name}}': 'اسم التوقيع الأول',
+  '{{signature_1_title}}': 'المنصب - التوقيع الأول',
+  '{{signature_2_name}}': 'اسم التوقيع الثاني',
+  '{{signature_2_title}}': 'المنصب - التوقيع الثاني',
+};
+
+/**
+ * Swaps each token's label for its Arabic translation when `locale` is 'ar'
+ * (falling back to the English label for any token that somehow has none),
+ * otherwise returns the English catalog unchanged.
+ */
+export function localizeTokens(tokens: Record<string, string>, locale?: string): Record<string, string> {
+  if (locale !== 'ar') return tokens
+  const result: Record<string, string> = {}
+  for (const [token, label] of Object.entries(tokens)) {
+    result[token] = TOKEN_LABELS_AR[token] || label
+  }
+  return result
+}
+
 interface TemplateConfig {
   fields: Array<{
     id: string;
@@ -756,49 +893,55 @@ export class IdCardTemplateService {
   /**
    * Get available tokens for a user type (static tokens)
    */
-  getAvailableTokens(userType: string) {
-    return SUBSTITUTION_TOKENS[userType as keyof typeof SUBSTITUTION_TOKENS] || {};
+  getAvailableTokens(userType: string, locale?: string) {
+    return localizeTokens(SUBSTITUTION_TOKENS[userType as keyof typeof SUBSTITUTION_TOKENS] || {}, locale);
   }
 
   /**
    * Get available tokens for a user type including custom fields from database
    */
-  async getAvailableTokensWithCustomFields(userType: string, schoolId: string) {
+  async getAvailableTokensWithCustomFields(userType: string, schoolId: string, locale?: string) {
     // Get static tokens
-    const staticTokens = SUBSTITUTION_TOKENS[userType as keyof typeof SUBSTITUTION_TOKENS] || {};
-    
+    const staticTokens = localizeTokens(SUBSTITUTION_TOKENS[userType as keyof typeof SUBSTITUTION_TOKENS] || {}, locale);
+
     // Map entity type
     const entityType = userType === 'student' ? 'student' : userType === 'teacher' ? 'teacher' : 'staff';
-    
+
     // Fetch custom field definitions for this school
     const { data: customFields, error } = await supabase
       .from('custom_field_definitions')
-      .select('field_name, label, category_id, field_type')
+      .select('field_name, label, label_ar, category_id, field_type')
       .eq('school_id', schoolId)
       .eq('entity_type', entityType)
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
-    
+
     if (error) {
       console.error('Error fetching custom fields:', error);
       return staticTokens;
     }
-    
-    // Convert custom fields to tokens
+
+    // Convert custom fields to tokens — each field already carries whatever
+    // Arabic translation the school set on the Custom Fields admin page
+    // (custom_field_definitions.label_ar), same source used everywhere else
+    // custom field labels are localized (see signup-links.controller.ts).
+    const isAr = locale === 'ar'
+    const customPrefix = isAr ? 'مخصص' : 'Custom'
     const customTokens: Record<string, string> = {};
     if (customFields && customFields.length > 0) {
       customFields.forEach(field => {
         // Create a token key from field_name (e.g., "parent_occupation" -> "{{custom_parent_occupation}}")
         const tokenKey = `{{custom_${field.field_name}}}`;
-        customTokens[tokenKey] = `Custom: ${field.label}`;
+        const label = isAr ? (field.label_ar || field.label) : field.label
+        customTokens[tokenKey] = `${customPrefix}: ${label}`;
       });
     }
-    
+
     // Merge static tokens with custom tokens
     return {
       ...staticTokens,
       // Add a separator
-      '{{---}}': '--- Custom Fields ---',
+      '{{---}}': isAr ? '--- حقول مخصصة ---' : '--- Custom Fields ---',
       ...customTokens
     };
   }

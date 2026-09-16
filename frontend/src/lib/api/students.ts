@@ -115,6 +115,9 @@ export interface Student {
     last_name: string | null
     email: string | null
     phone: string | null
+    gender?: string | null
+    date_of_birth?: string | null
+    national_id?: string | null
     avatar_url: string | null
     profile_photo_url: string | null
     is_active: boolean
@@ -235,8 +238,11 @@ export async function getStudentById(id: string, campusId?: string) {
   return apiRequest<Student>(`/students/${id}${query ? `?${query}` : ''}`)
 }
 
-export async function getStudentByNumber(studentNumber: string) {
-  return apiRequest<Student>(`/students/number/${studentNumber}`)
+export async function getStudentByNumber(studentNumber: string, campusId?: string) {
+  const queryParams = new URLSearchParams()
+  if (campusId) queryParams.append('campus_id', campusId)
+  const query = queryParams.toString()
+  return apiRequest<Student>(`/students/number/${encodeURIComponent(studentNumber)}${query ? `?${query}` : ''}`)
 }
 
 export async function createStudent(data: CreateStudentDTO) {

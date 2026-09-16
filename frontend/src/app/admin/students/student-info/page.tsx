@@ -19,7 +19,7 @@ import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal";
 import { EditStudentForm } from "@/components/admin";
 import RelativesTab from "@/components/admin/RelativesTab";
 import { ExportButton } from "@/components/shared/ExportButton";
-import type { ExportColumn } from "@/lib/utils/tableExport";
+import { serialNumberColumn, type ExportColumn } from "@/lib/utils/tableExport";
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
 import { ConfidentialFamilyStatusDialog } from "@/components/shared/ConfidentialFamilyStatusDialog";
 import { type Student, getStudents, getStudentById, bulkDeleteStudents, bulkUpdateStudentStatus } from "@/lib/api/students";
@@ -403,6 +403,9 @@ export default function StudentInfoPage() {
   };
 
   const exportColumns: ExportColumn<Student>[] = [
+    // The export covers every matching student (via fetchAllStudentsForExport),
+    // not just the on-screen page, so numbering restarts at 1 for the full set.
+    serialNumberColumn<Student>(),
     { key: 'student_number', label: t('th_student_id'), accessor: (s) => s.student_number },
     {
       key: 'name',
@@ -588,6 +591,7 @@ export default function StudentInfoPage() {
                           className="rounded border-gray-300"
                         />
                       </TableHead>
+                      <TableHead className="w-12 text-left rtl:text-right">{tCommon("sn")}</TableHead>
                       <SortableTableHead className="text-left rtl:text-right" label={t("th_student_id")} sortKey="student_number" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                       <SortableTableHead className="text-left rtl:text-right" label={tCommon("name")} sortKey="name" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                       <SortableTableHead className="text-left rtl:text-right" label={tCommon("grade")} sortKey="grade" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
@@ -599,12 +603,12 @@ export default function StudentInfoPage() {
                   <TableBody>
                     {filteredStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           {t("no_students_found")}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredStudents.map((student) => {
+                      filteredStudents.map((student, index) => {
                         const fullName = [
                           student.profile?.first_name,
                           student.profile?.father_name,
@@ -627,6 +631,7 @@ export default function StudentInfoPage() {
                                 className="rounded border-gray-300"
                               />
                             </TableCell>
+                            <TableCell className="text-muted-foreground">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
                             <TableCell className="font-medium">{student.student_number}</TableCell>
                             <TableCell className="max-w-sm">
                               <div className="flex items-center gap-3">
