@@ -11,6 +11,7 @@ import { format } from 'date-fns'
 import {
   ArrowLeft, Copy, Download, Edit2, Loader2, QrCode,
   ToggleLeft, ToggleRight, Trash2, UserX, ArrowUpCircle,
+  Award, CheckCircle2, Mail, LayoutDashboard, AlertCircle,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,7 +40,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useTrainingSession, useRegistrations } from '@/hooks/useTraining'
 import {
   trainingApi, TrainingSession, CourseRegistration, TrainingPaymentStatus,
-  CreateTrainingSessionDTO,
+  CreateTrainingSessionDTO, IssuedCertificate,
 } from '@/lib/api/training'
 import { useCampus } from '@/context/CampusContext'
 
@@ -186,6 +187,70 @@ export default function TrainingDetailPage() {
     }
   }
 
+  const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({})
+  const [issuingCertFor, setIssuingCertFor] = useState<string | null>(null)
+  const [bulkIssuing, setBulkIssuing] = useState(false)
+  const [certPopoverRegId, setCertPopoverRegId] = useState<string | null>(null)
+  const [certsForPopover, setCertsForPopover] = useState<IssuedCertificate[]>([])
+  const [loadingCerts, setLoadingCerts] = useState(false)
+
+  const commitFinalScore = async (reg: CourseRegistration, raw: string) => {
+    const trimmed = raw.trim()
+    const value = trimmed === '' ? null : Number(trimmed)
+    if (value !== null && (Number.isNaN(value) || value < 0 || value > 100)) {
+      toast.error('Score must be between 0 and 100')
+      return
+    }
+    if (value === (reg.final_score ?? null)) return
+    const res = await trainingApi.setFinalScore(reg.id, sessionId, value, campusId)
+    if (res.success) {
+      mutateRegs()
+    } else {
+      toast.error(res.error ?? 'Failed to save score')
+    }
+  }
+
+  const templateId = session?.certificate_settings?.certificate_template_id ?? null
+
+  const issueCertificateFor = async (reg: CourseRegistration) => {
+    if (!templateId) {
+      toast.error('Pick a certificate template in Edit → Certificates before issuing')
+      return
+    }
+    setIssuingCertFor(reg.id)
+    const res = await trainingApi.issueCertificate(reg.id, sessionId, templateId, campusId)
+    setIssuingCertFor(null)
+    if (res.success) {
+      toast.success('Certificate issued')
+      if (certPopoverRegId === reg.id) openCertPopover(reg)
+    } else {
+      toast.error(res.error ?? 'Failed to issue certificate')
+    }
+  }
+
+  const bulkIssueCertificates = async () => {
+    if (!templateId) {
+      toast.error('Pick a certificate template in Edit → Certificates before issuing')
+      return
+    }
+    setBulkIssuing(true)
+    const res = await trainingApi.bulkIssueCertificates(sessionId, campusId)
+    setBulkIssuing(false)
+    if (res.success && res.data) {
+      toast.success(`Issued ${res.data.issued}, skipped ${res.data.skipped}${res.data.errors.length ? `, ${res.data.errors.length} failed` : ''}`)
+    } else {
+      toast.error(res.error ?? 'Bulk issuance failed')
+    }
+  }
+
+  const openCertPopover = async (reg: CourseRegistration) => {
+    setCertPopoverRegId(reg.id)
+    setLoadingCerts(true)
+    const res = await trainingApi.listCertificates(reg.id, sessionId, campusId)
+    setLoadingCerts(false)
+    setCertsForPopover(res.success && res.data ? res.data : [])
+  }
+
   const cancelReg = async (reg: CourseRegistration) => {
     const res = await trainingApi.cancelRegistration(reg.id, sessionId, campusId)
     if (res.success) {
@@ -287,6 +352,16 @@ export default function TrainingDetailPage() {
                 : <Download className="h-4 w-4 mr-1" />}
               Export CSV
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={bulkIssueCertificates}
+              disabled={bulkIssuing || !templateId}
+              title={templateId ? 'Issue certificates to every eligible confirmed participant' : 'Pick a certificate template in Edit → Certificates first'}
+            >
+              {bulkIssuing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Award className="h-4 w-4 mr-1" />}
+              Issue Eligible Certificates
+            </Button>
           </div>
         </div>
       </div>
@@ -346,6 +421,7 @@ export default function TrainingDetailPage() {
                       <TableHead>Contact</TableHead>
                       <TableHead>Payment</TableHead>
                       <TableHead>Attendance</TableHead>
+                      <TableHead>Score</TableHead>
                       <TableHead>QR</TableHead>
                       <TableHead>Registered</TableHead>
                       <TableHead>Actions</TableHead>
@@ -401,6 +477,17 @@ export default function TrainingDetailPage() {
                           </button>
                         </TableCell>
                         <TableCell>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="h-7 w-16 text-xs"
+                            value={scoreDrafts[reg.id] ?? (reg.final_score ?? '')}
+                            onChange={(e) => setScoreDrafts((prev) => ({ ...prev, [reg.id]: e.target.value }))}
+                            onBlur={(e) => commitFinalScore(reg, e.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell>
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
@@ -425,6 +512,67 @@ export default function TrainingDetailPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
+                            {tab !== 'waiting_list' && tab !== 'cancelled' && (
+                              <Popover
+                                open={certPopoverRegId === reg.id}
+                                onOpenChange={(o) => { if (o) openCertPopover(reg); else setCertPopoverRegId(null) }}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    title="Certificates"
+                                  >
+                                    <Award className="h-3.5 w-3.5" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72 space-y-2">
+                                  <p className="text-xs font-semibold">Certificates</p>
+                                  {loadingCerts ? (
+                                    <div className="flex justify-center py-4">
+                                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                    </div>
+                                  ) : certsForPopover.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">No certificates issued yet.</p>
+                                  ) : (
+                                    <ul className="space-y-1.5">
+                                      {certsForPopover.map((c) => (
+                                        <li key={c.id} className="flex items-center justify-between gap-2 text-xs border rounded p-1.5">
+                                          <span className="flex items-center gap-1">
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                                            {format(new Date(c.issued_at), 'MMM d, yyyy')}
+                                            {c.delivery_email && <Mail className="h-3 w-3 text-blue-600" />}
+                                            {c.delivery_dashboard && <LayoutDashboard className="h-3 w-3 text-muted-foreground" />}
+                                            {c.delivery_email_error && (
+                                              <span title={c.delivery_email_error}>
+                                                <AlertCircle className="h-3 w-3 text-destructive" />
+                                              </span>
+                                            )}
+                                          </span>
+                                          {c.download_url && (
+                                            <a href={c.download_url} target="_blank" rel="noreferrer" className="text-[#022172] dark:text-[#57A3CC] hover:underline">
+                                              Download
+                                            </a>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    className="w-full h-7 text-xs"
+                                    disabled={issuingCertFor === reg.id || !templateId}
+                                    onClick={() => issueCertificateFor(reg)}
+                                  >
+                                    {issuingCertFor === reg.id
+                                      ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                                      : <Award className="h-3.5 w-3.5 mr-1" />}
+                                    Issue New Certificate
+                                  </Button>
+                                </PopoverContent>
+                              </Popover>
+                            )}
                             {tab === 'waiting_list' && (
                               <Button
                                 variant="outline"

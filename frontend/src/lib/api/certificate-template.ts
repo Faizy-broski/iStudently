@@ -33,7 +33,8 @@ export type CertificateRecipientType =
   | 'media_officer'
   | 'fina_supervisor'
   | 'admin'
-  | 'parent';
+  | 'parent'
+  | 'training';
 
 export interface CertificateTemplateTableConfig {
   columns: Array<{ id: string; label: string }>;

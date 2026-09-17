@@ -1,6 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { trainingService } from '../services/training.service'
+import { trainingCertificateService } from '../services/training-certificate.service'
 import {
   CreateTrainingSessionDTO,
   UpdateTrainingSessionDTO,
@@ -212,6 +213,89 @@ export class TrainingController {
     } catch (err: any) {
       const status = err.message === 'Invalid payment status' ? 400 : 500
       res.status(status).json({ success: false, error: err.message })
+    }
+  }
+
+  async setFinalScore(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { session_id, final_score } = req.body
+      if (!session_id) {
+        res.status(400).json({ success: false, error: 'session_id is required' })
+        return
+      }
+      const data = await trainingService.setFinalScore(
+        req.params.id,
+        session_id,
+        this.effectiveId(req, 'body'),
+        final_score === null || final_score === undefined ? null : Number(final_score)
+      )
+      res.json({ success: true, data })
+    } catch (err: any) {
+      const status = err.message.includes('not found') ? 404 : err.message.includes('between 0 and 100') ? 400 : 500
+      res.status(status).json({ success: false, error: err.message })
+    }
+  }
+
+  async issueCertificate(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { session_id, template_id } = req.body
+      if (!session_id || !template_id) {
+        res.status(400).json({ success: false, error: 'session_id and template_id are required' })
+        return
+      }
+      const data = await trainingCertificateService.issueCertificate(
+        req.params.id,
+        session_id,
+        this.effectiveId(req, 'body'),
+        template_id,
+        req.profile?.id ?? null
+      )
+      res.status(201).json({ success: true, data })
+    } catch (err: any) {
+      const status = err.message.includes('not found') ? 404 : err.message.includes('already issued') ? 409 : 500
+      res.status(status).json({ success: false, error: err.message })
+    }
+  }
+
+  async bulkIssueCertificates(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const data = await trainingCertificateService.bulkIssueEligible(
+        req.params.id,
+        this.effectiveId(req, 'body'),
+        req.profile?.id ?? null
+      )
+      res.json({ success: true, data })
+    } catch (err: any) {
+      const status = err.message.includes('not found') || err.message.includes('No certificate template') ? 400 : 500
+      res.status(status).json({ success: false, error: err.message })
+    }
+  }
+
+  async listCertificates(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const sessionId = req.query.session_id as string | undefined
+      if (!sessionId) {
+        res.status(400).json({ success: false, error: 'session_id query param is required' })
+        return
+      }
+      const data = await trainingCertificateService.listForRegistration(
+        req.params.id,
+        sessionId,
+        this.effectiveId(req, 'query')
+      )
+      res.json({ success: true, data })
+    } catch (err: any) {
+      const status = err.message.includes('not found') ? 404 : 500
+      res.status(status).json({ success: false, error: err.message })
+    }
+  }
+
+  async verifyCertificate(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const data = await trainingCertificateService.verifyByCode(req.params.code)
+      res.json({ success: true, data })
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message })
     }
   }
 

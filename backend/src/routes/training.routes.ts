@@ -48,6 +48,20 @@ router.put('/registrations/:id/promote', requireRole('admin'), (req, res) =>
 router.delete('/registrations/:id', requireRole('admin'), (req, res) =>
   trainingController.hardDeleteRegistration(req as AuthRequest, res)
 )
+router.put('/registrations/:id/score', requireRole('admin'), (req, res) =>
+  trainingController.setFinalScore(req as AuthRequest, res)
+)
+
+// Certificates
+router.post('/registrations/:id/certificate/issue', requireRole('admin'), (req, res) =>
+  trainingController.issueCertificate(req as AuthRequest, res)
+)
+router.get('/registrations/:id/certificates', requireRole('admin'), (req, res) =>
+  trainingController.listCertificates(req as AuthRequest, res)
+)
+router.post('/sessions/:id/certificates/issue-bulk', requireRole('admin'), (req, res) =>
+  trainingController.bulkIssueCertificates(req as AuthRequest, res)
+)
 
 export default router
 
@@ -63,6 +77,9 @@ publicRouter.get('/:token/student-lookup', (req, res) =>
 )
 publicRouter.post('/:token/register', (req, res) =>
   trainingController.register(req as AuthRequest, res)
+)
+publicRouter.get('/verify/:code', (req, res) =>
+  trainingController.verifyCertificate(req as AuthRequest, res)
 )
 
 export { publicRouter as trainingPublicRouter }

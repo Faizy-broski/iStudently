@@ -127,8 +127,15 @@ export default function TeacherReportResultsPage() {
     const headers = selectedFields.map(getFieldLabel)
     const rows = filteredStudents.map((s) => selectedFields.map((f) => getFieldValue(s, f)))
     const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n')
+    // Without a UTF-8 BOM, Excel opens this CSV using the system's ANSI
+    // codepage instead of UTF-8, rendering every Arabic (or other non-Latin)
+    // value as mojibake even though the file itself is valid UTF-8 — the
+    // exact bug already fixed for the admin variant of this same report by
+    // switching it to the shared ExportButton (xlsx + jsPDF with an embedded
+    // Arabic font). This page wasn't migrated to that yet, so the minimal
+    // fix here is the BOM prefix, which fully resolves the CSV/Excel case.
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }))
     a.download = `students_report_${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     toast.success(t('exported'))

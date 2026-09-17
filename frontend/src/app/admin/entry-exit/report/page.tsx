@@ -206,7 +206,10 @@ export default function RecordsPage() {
     const csv = [header, ...rows]
       .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    // UTF-8 BOM — the charset in the MIME type alone isn't enough for Excel's
+    // file-based (double-click) open path to detect UTF-8 correctly; without
+    // the actual BOM byte it still garbles Arabic/non-Latin values.
+    const blob = new Blob(['﻿' + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

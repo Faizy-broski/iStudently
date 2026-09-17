@@ -2133,11 +2133,11 @@ export type TrainingRegistrationStatus = 'confirmed' | 'waiting_list' | 'cancell
 
 export type TrainingSkillLevel = 'beginner' | 'intermediate' | 'advanced'
 export type TrainingDeliveryMode = 'in_person' | 'online' | 'hybrid'
-export type TrainingCertificateTemplate = 'standard_attendance' | 'completion_excellence' | 'custom_professional'
 
 export interface CertificateSettings {
   enable_auto_issuance: boolean
-  certificate_template: TrainingCertificateTemplate
+  /** FK into certificate_templates (recipient_type='training'). Null until an admin picks one. */
+  certificate_template_id: string | null
   min_attendance_rate: number
   min_passing_grade: number
   require_payment_cleared: boolean
@@ -2202,8 +2202,26 @@ export interface CourseRegistration {
   registration_status: TrainingRegistrationStatus
   qr_auth_token: string
   attendance_status: boolean
+  final_score: number | null
   created_at: string
   display_name?: string
+}
+
+export interface IssuedCertificate {
+  id: string
+  session_id: string
+  registration_id: string
+  template_id: string
+  recipient_name: string
+  pdf_storage_key: string
+  verification_code: string
+  issued_by: string | null
+  issued_at: string
+  delivery_dashboard: boolean
+  delivery_email: boolean
+  delivery_email_sent_at: string | null
+  delivery_email_error: string | null
+  download_url?: string | null
 }
 
 export interface CreateTrainingSessionDTO {

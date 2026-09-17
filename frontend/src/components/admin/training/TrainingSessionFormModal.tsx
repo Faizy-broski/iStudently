@@ -57,11 +57,13 @@ import {
   CertificateSettings,
   TrainingSkillLevel,
   TrainingDeliveryMode,
-  TrainingCertificateTemplate,
 } from '@/lib/api/training'
+import { getTemplates, CertificateTemplate } from '@/lib/api/certificate-template'
 import { uploadImage, uploadMessageAttachment } from '@/lib/api/media-upload'
 import { useStaff } from '@/hooks/useStaff'
 import { useCampus } from '@/context/CampusContext'
+import Link from 'next/link'
+import { ExternalLink } from 'lucide-react'
 
 const COURSE_CATEGORIES = [
   'Robotics & AI',
@@ -106,7 +108,7 @@ const schema = z
 
     // 5. Certificate Settings
     enable_auto_issuance: z.boolean(),
-    certificate_template: z.enum(['standard_attendance', 'completion_excellence', 'custom_professional']),
+    certificate_template_id: z.string().nullable(),
     require_attendance_rate: z.boolean(),
     min_attendance_rate: z.coerce.number().min(0).max(100),
     require_passing_grade: z.boolean(),
@@ -168,6 +170,18 @@ export function TrainingSessionFormModal({
   const [scheduleTimeMode, setScheduleTimeMode] = useState<'uniform' | 'per_day'>('uniform')
   const [perDayTimes, setPerDayTimes] = useState<Record<string, string>>({})
 
+  const [certTemplates, setCertTemplates] = useState<CertificateTemplate[]>([])
+  const [loadingCertTemplates, setLoadingCertTemplates] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setLoadingCertTemplates(true)
+    getTemplates('training')
+      .then((res) => setCertTemplates(res.templates || []))
+      .catch(() => setCertTemplates([]))
+      .finally(() => setLoadingCertTemplates(false))
+  }, [open])
+
   const certSettings = sessionToEdit?.certificate_settings
 
   const {
@@ -202,7 +216,7 @@ export function TrainingSessionFormModal({
       cover_image_url: '',
       syllabus_pdf_url: '',
       enable_auto_issuance: true,
-      certificate_template: 'standard_attendance',
+      certificate_template_id: null,
       require_attendance_rate: true,
       min_attendance_rate: 80,
       require_passing_grade: true,
@@ -253,7 +267,7 @@ export function TrainingSessionFormModal({
         cover_image_url: s.cover_image_url || '',
         syllabus_pdf_url: s.syllabus_pdf_url || '',
         enable_auto_issuance: certSettings?.enable_auto_issuance ?? true,
-        certificate_template: certSettings?.certificate_template || 'standard_attendance',
+        certificate_template_id: certSettings?.certificate_template_id ?? null,
         require_attendance_rate: (certSettings?.min_attendance_rate ?? 0) > 0,
         min_attendance_rate: certSettings?.min_attendance_rate ?? 80,
         require_passing_grade: (certSettings?.min_passing_grade ?? 0) > 0,
@@ -350,7 +364,7 @@ export function TrainingSessionFormModal({
 
     const certificate_settings: CertificateSettings = {
       enable_auto_issuance: data.enable_auto_issuance,
-      certificate_template: data.certificate_template,
+      certificate_template_id: data.certificate_template_id,
       min_attendance_rate: data.require_attendance_rate ? data.min_attendance_rate : 0,
       min_passing_grade: data.require_passing_grade ? data.min_passing_grade : 0,
       require_payment_cleared: data.require_payment_cleared,
@@ -1139,25 +1153,48 @@ export function TrainingSessionFormModal({
 
               {enableAutoIssuance && (
                 <div className="space-y-6">
-                  {/* Template Selection */}
+                  {/* Template Selection — real templates from the Certificate Template Builder
+                      (recipient_type='training'), not the old 3 fake preset names. */}
                   <div className="space-y-1.5">
                     <Label className="font-semibold text-sm">{t('certTemplateDesign')}</Label>
                     <Controller
-                      name="certificate_template"
+                      name="certificate_template_id"
                       control={control}
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value ?? undefined}
+                          onValueChange={field.onChange}
+                          disabled={loadingCertTemplates}
+                        >
                           <SelectTrigger className="bg-background">
-                            <SelectValue placeholder={t('selectCertTemplate')} />
+                            <SelectValue
+                              placeholder={
+                                loadingCertTemplates
+                                  ? t('loadingCertTemplates')
+                                  : certTemplates.length === 0
+                                    ? t('noCertTemplates')
+                                    : t('selectCertTemplate')
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="standard_attendance">{t('templateStandardAttendance')}</SelectItem>
-                            <SelectItem value="completion_excellence">{t('templateCompletionExcellence')}</SelectItem>
-                            <SelectItem value="custom_professional">{t('templateCustomProfessional')}</SelectItem>
+                            {certTemplates.map((tpl) => (
+                              <SelectItem key={tpl.id} value={tpl.id}>
+                                {tpl.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
                     />
+                    <Link
+                      href="/admin/certificate-templates"
+                      target="_blank"
+                      className="inline-flex items-center gap-1 text-xs text-[#022172] dark:text-[#57A3CC] hover:underline"
+                    >
+                      {t('manageCertTemplates')}
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
                   </div>
 
                   {/* Criteria Multi-select Checkboxes */}

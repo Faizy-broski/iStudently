@@ -2,20 +2,22 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { FileDown, Search, ArrowLeft, ChevronUp, ChevronDown, ArrowUpDown, Loader2 } from "lucide-react"
+import { Search, ArrowLeft, ChevronUp, ChevronDown, ArrowUpDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { getFieldDefinitions, CustomFieldDefinition, EntityType } from "@/lib/api/custom-fields"
+import { getFieldDefinitions, getFieldLabel as getCustomFieldLabel, getFieldOptions, CustomFieldDefinition, EntityType } from "@/lib/api/custom-fields"
 import { getAuthToken } from "@/lib/api/schools"
 import { API_URL } from "@/config/api"
 import Link from "next/link"
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge"
 import { getConfidentialFamilyStatusLabel } from "@/lib/constants/confidential-family-status"
+import { ExportButton } from "@/components/shared/ExportButton"
+import { serialNumberColumn, type ExportColumn } from "@/lib/utils/tableExport"
 
 type ReportRole = 'student' | 'teacher' | 'staff' | 'librarian' | 'parent'
 
@@ -30,6 +32,7 @@ const ROLE_ENTITY_MAP: Record<ReportRole, EntityType | null> = {
 export default function AdvancedReportResultsPage() {
   const t = useTranslations('admin.reports.advanced_report')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -104,8 +107,21 @@ export default function AdvancedReportResultsPage() {
   }, [selectedFields, role, campusId, gradeLevelId, sectionId, department, userId, hasSiblings])
 
   const customFieldLabelMap = useMemo(() =>
-    Object.fromEntries(customFields.map(f => [`custom_${f.field_key}`, f.label])),
-    [customFields]
+    Object.fromEntries(customFields.map(f => [`custom_${f.field_key}`, getCustomFieldLabel(f, locale)])),
+    [customFields, locale]
+  )
+
+  // Options are stored/keyed by their original English value, so translating a
+  // select/multi-select custom field's displayed value needs its options_ar lookup —
+  // the label alone being translated still left e.g. a nationality dropdown's actual
+  // value showing in English.
+  const customFieldOptionsMap = useMemo(() =>
+    Object.fromEntries(
+      customFields
+        .filter(f => f.type === 'select' || f.type === 'multi-select')
+        .map(f => [`custom_${f.field_key}`, getFieldOptions(f, locale)])
+    ),
+    [customFields, locale]
   )
 
   const getFieldLabel = (fieldId: string) => {
@@ -119,16 +135,25 @@ export default function AdvancedReportResultsPage() {
     return row[fieldId] ?? ''
   }
 
-  const activeLabel = t('is_active') // translated "Active"
-  const inactiveLabel = t('is_active') // same key for now, badge handles color
+  const translateCustomValue = (fieldId: string, value: any): string => {
+    const options = customFieldOptionsMap[fieldId]
+    if (!options) return String(value)
+    if (Array.isArray(value)) return value.map(v => options.find(o => o.value === v)?.label ?? v).join(', ')
+    return options.find(o => o.value === value)?.label ?? String(value)
+  }
 
   const getDisplayValue = (row: any, fieldId: string) => {
     if (fieldId.startsWith('custom_')) {
       const val = row.custom_fields?.[fieldId.replace('custom_', '')]
-      return val != null ? String(val) : '—'
+      return val != null ? translateCustomValue(fieldId, val) : '—'
     }
     const val = row[fieldId]
-    if (fieldId === 'is_active') return val ? 'Active' : 'Inactive'
+    // 'is_active' has no key of its own under admin.reports.advanced_report —
+    // reuse the shared common.active/common.inactive pair this same file
+    // already uses elsewhere (see the tCommon('active')/tCommon('inactive')
+    // call below), instead of the two now-removed dead calls to a
+    // non-existent t('is_active') key that never actually got used anywhere.
+    if (fieldId === 'is_active') return val ? tCommon('active') : tCommon('inactive')
     if (fieldId === 'confidential_family_status') return getConfidentialFamilyStatusLabel(val) || '—'
     if ((fieldId === 'created_at' || fieldId === 'date_of_birth' || fieldId === 'date_of_joining') && val)
       return new Date(val).toLocaleDateString()
@@ -156,21 +181,18 @@ export default function AdvancedReportResultsPage() {
     else { setSortField(fieldId); setSortDir('asc') }
   }
 
-  const exportCSV = () => {
-    const headers = selectedFields.map(getFieldLabel)
-    const csvRows = filtered.map(row =>
-      selectedFields.map(f => `"${getDisplayValue(row, f).replace(/"/g, '""')}"`)
-    )
-    const csv = [headers.join(','), ...csvRows.map(r => r.join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${role}_report_${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success(t('results.export_csv'))
-  }
+  // Excel/PDF export via the shared <ExportButton> (xlsx + jsPDF with an
+  // embedded Arabic font) — replaces a raw CSV Blob download that had no
+  // UTF-8 BOM, so Excel opened it using the system codepage and rendered
+  // every Arabic value as mojibake; this page also never offered PDF at all.
+  const exportColumns: ExportColumn<any>[] = [
+    serialNumberColumn(),
+    ...selectedFields.map(fieldId => ({
+      key: fieldId,
+      label: getFieldLabel(fieldId),
+      accessor: (row: any) => getDisplayValue(row, fieldId),
+    })),
+  ]
 
   if (loading) {
     return (
@@ -207,10 +229,13 @@ export default function AdvancedReportResultsPage() {
             </div>
           </div>
         </div>
-        <Button variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>
-          <FileDown className="h-4 w-4 me-2" />
-          {t('results.export_csv')}
-        </Button>
+        <ExportButton
+          reportKey={`advanced_report_${role}`}
+          columns={exportColumns}
+          rows={filtered}
+          filename={`${role}_report_${new Date().toISOString().split('T')[0]}`}
+          title={t('results.title', { role: roleLabel })}
+        />
       </div>
 
       <Card>
@@ -238,6 +263,7 @@ export default function AdvancedReportResultsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50">
+                    <TableHead className="whitespace-nowrap w-12">S.N</TableHead>
                     {selectedFields.map(fieldId => (
                       <TableHead
                         key={fieldId}
@@ -260,6 +286,7 @@ export default function AdvancedReportResultsPage() {
                 <TableBody>
                   {filtered.map((row, i) => (
                     <TableRow key={row.id ?? i} className="hover:bg-gray-50 transition-colors">
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{i + 1}</TableCell>
                       {selectedFields.map(fieldId => {
                         const display = getDisplayValue(row, fieldId)
                         return (
@@ -271,11 +298,11 @@ export default function AdvancedReportResultsPage() {
                                 <span className="text-muted-foreground">—</span>
                               )
                             ) : fieldId === 'is_active' ? (
-                              <Badge className={display === 'Active'
+                              <Badge className={row[fieldId]
                                 ? 'bg-green-500 text-white border-0'
                                 : 'bg-gray-400 text-white border-0'
                               }>
-                                {display === 'Active' ? tCommon('active') : tCommon('inactive')}
+                                {display}
                               </Badge>
                             ) : display}
                           </TableCell>

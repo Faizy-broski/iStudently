@@ -7,6 +7,7 @@ interface SendEmailOptions {
   text?: string;
   transporter?: nodemailer.Transporter;
   fromAddress?: string;
+  attachments?: nodemailer.SendMailOptions['attachments'];
 }
 
 export const sendEmail = async ({
@@ -16,6 +17,7 @@ export const sendEmail = async ({
   text,
   transporter: externalTransporter,
   fromAddress,
+  attachments,
 }: SendEmailOptions) => {
   const t = externalTransporter ?? nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -27,5 +29,5 @@ export const sendEmail = async ({
     },
   });
   const from = fromAddress ?? process.env.SMTP_FROM ?? process.env.SMTP_USER ?? '';
-  return await t.sendMail({ from, to, subject, text, html });
+  return await t.sendMail({ from, to, subject, text, html, attachments });
 };

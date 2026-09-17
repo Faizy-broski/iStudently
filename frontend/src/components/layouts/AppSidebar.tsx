@@ -40,6 +40,34 @@ interface AppSidebarProps {
   className?: string
 }
 
+// Sidebar text is styled everywhere with hardcoded Tailwind `text-white`/
+// `text-white/NN` utility classes (dozens of usages across nav items, the
+// header, dropdowns, badges). The Sidebar Theme editor lets an admin pick a
+// custom `text_color`, and its own live preview honors it — but nothing in
+// the real sidebar ever read `text_color` to override those classes, so the
+// setting silently did nothing outside the preview. Rather than rewrite
+// every one of those class usages to a dynamic value, this scopes a CSS
+// override to whichever container renders it (desktop `<aside>` / mobile
+// `<SheetContent>`, both tagged `data-sidebar-textcolor`), remapping each
+// `text-white` opacity variant to the same opacity of the configured color
+// via color-mix so relative emphasis (headings vs. secondary labels) is
+// preserved instead of flattening everything to one solid color.
+const SIDEBAR_TEXT_WHITE_OPACITIES = [90, 80, 70, 65, 60, 40, 30] as const
+const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
+
+function SidebarTextColorStyle({ color }: { color?: string | null }) {
+  if (!color || !HEX_COLOR_RE.test(color)) return null
+  const rules = [
+    `[data-sidebar-textcolor] { color: ${color}; }`,
+    `[data-sidebar-textcolor] .text-white { color: ${color} !important; }`,
+    ...SIDEBAR_TEXT_WHITE_OPACITIES.map(
+      (pct) =>
+        `[data-sidebar-textcolor] .text-white\\/${pct} { color: color-mix(in srgb, ${color} ${pct}%, transparent) !important; }`
+    ),
+  ]
+  return <style>{rules.join('\n')}</style>
+}
+
 interface SidebarContextType {
   isCollapsed: boolean
   setIsCollapsed: (collapsed: boolean) => void
@@ -1220,7 +1248,9 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
         className
       )}
       style={theme?.bg_color ? { background: theme.bg_color } : undefined}
+      data-sidebar-textcolor=""
     >
+      <SidebarTextColorStyle color={theme?.text_color} />
       {/* Custom background image overlay — only shown when the user uploads one */}
       {theme?.bg_image_url && (
         <div
@@ -1333,7 +1363,9 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
           !theme?.bg_color ? 'sidebar-gradient' : ''
         )}
         style={theme?.bg_color ? { background: theme.bg_color } : undefined}
+        data-sidebar-textcolor=""
       >
+        <SidebarTextColorStyle color={theme?.text_color} />
         <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
 
         {/* Custom background image overlay — only shown when the user uploads one */}

@@ -218,7 +218,10 @@ export default function TimetablePage() {
     // Sort by sort_order (global periods)
     const sortedPeriods = [...periods].sort((a, b) => a.sort_order - b.sort_order)
 
-    let csvContent = 'data:text/csv;charset=utf-8,'
+    // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+    // codepage instead of UTF-8, garbling any Arabic/non-Latin value (subject
+    // and teacher names here).
+    let csvContent = 'data:text/csv;charset=utf-8,﻿'
 
     // Header: Section info
     csvContent += `${t('csv_title', { grade: selectedGradeName })}\n`

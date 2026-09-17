@@ -13,6 +13,32 @@ const CERTIFICATE_EXTRA_TOKENS: Record<string, string> = {
   '{{signature_2_title}}': 'Signature 2 Title',
 };
 
+// Training-session participants aren't in any of the ID card catalog's tables (a registration
+// may point at a student, or at an ext_* walk-in with no profile row at all), so this recipient
+// type gets its own standalone token set instead of layering onto ID_CARD_SUBSTITUTION_TOKENS.
+const TRAINING_TOKENS: Record<string, string> = {
+  '{{participant_name}}': 'Participant Name',
+  '{{participant_email}}': 'Participant Email',
+  '{{participant_phone}}': 'Participant Phone',
+  '{{session_title}}': 'Session Title',
+  '{{session_category}}': 'Session Category',
+  '{{start_date}}': 'Start Date',
+  '{{end_date}}': 'End Date',
+  '{{total_duration_hours}}': 'Total Duration (Hours)',
+  '{{instructor_name}}': 'Instructor Name',
+  '{{delivery_mode}}': 'Delivery Mode',
+  '{{location_venue}}': 'Venue / Location',
+  '{{completion_date}}': 'Completion Date',
+  '{{final_score}}': 'Final Score',
+  '{{verification_code}}': 'Verification Code',
+  '{{campus_name}}': 'Campus Name',
+  '{{campus_address}}': 'Campus Address',
+  '{{school_name}}': 'School Name',
+  '{{school_logo}}': 'School Logo',
+  '{{current_date}}': 'Current Date',
+  '{{issue_date}}': 'Issue Date',
+};
+
 // Every recipient type the certificate builder supports. Sourced from the same profile/staff
 // field catalog as ID cards (ID_CARD_SUBSTITUTION_TOKENS), layered with certificate-only extras.
 // Note: 'super_admin', 'inspector' and 'financial_admin' are deliberately excluded — none of
@@ -28,6 +54,7 @@ export const CERTIFICATE_SUBSTITUTION_TOKENS = {
   fina_supervisor: { ...ID_CARD_SUBSTITUTION_TOKENS.fina_supervisor, ...CERTIFICATE_EXTRA_TOKENS },
   admin: { ...ID_CARD_SUBSTITUTION_TOKENS.admin, ...CERTIFICATE_EXTRA_TOKENS },
   parent: { ...ID_CARD_SUBSTITUTION_TOKENS.parent, ...CERTIFICATE_EXTRA_TOKENS },
+  training: { ...TRAINING_TOKENS, ...CERTIFICATE_EXTRA_TOKENS },
 };
 
 export const CERTIFICATE_RECIPIENT_TYPES = Object.keys(CERTIFICATE_SUBSTITUTION_TOKENS);

@@ -104,8 +104,11 @@ export default function StudentReportResultsPage() {
     const headers = selectedFields.map(getFieldLabel)
     const row = selectedFields.map((f) => getFieldValue(studentData, f))
     const csv = [headers.join(','), row.map((c) => `"${c}"`).join(',')].join('\n')
+    // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+    // codepage instead of UTF-8, garbling any Arabic/non-Latin value into
+    // mojibake even though the file itself is valid UTF-8.
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }))
     a.download = `my_report_${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     toast.success('Exported')

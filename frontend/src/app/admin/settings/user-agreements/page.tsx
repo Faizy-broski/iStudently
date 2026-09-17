@@ -110,7 +110,9 @@ export default function UserAgreementsSettingsPage() {
       r.updated_at ? new Date(r.updated_at).toLocaleDateString() : '-',
     ])
     const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
+    // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+    // codepage instead of UTF-8, garbling any Arabic/non-Latin value.
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

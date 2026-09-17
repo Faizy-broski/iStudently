@@ -286,8 +286,10 @@ export default function StudentBalancesPage() {
         })
         
         const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-        
-        const blob = new Blob([csvContent], { type: 'text/csv' })
+
+        // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+        // codepage instead of UTF-8, garbling any Arabic/non-Latin value.
+        const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url

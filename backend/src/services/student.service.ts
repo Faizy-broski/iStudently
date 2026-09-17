@@ -912,6 +912,50 @@ export class StudentService {
   }
 
   /**
+   * Keeps the current academic year's open student_enrollment row(s) in sync
+   * whenever a student's grade_level_id/section_id changes on the students
+   * table (single-student edit or group-assign). Dashboards and reports that
+   * are scoped by academic year (e.g. school-dashboard's class-breakdown)
+   * read grade/section off student_enrollment for the current year rather
+   * than students.grade_level_id directly — see getClassBreakdown's own
+   * comment — so without this, a grade/section change appeared to "not
+   * save" on any such screen even though the students table itself updated
+   * correctly. Only ever touches the current year's still-open (end_date
+   * IS NULL) row; past years stay frozen history, matching
+   * close/reopenCurrentYearEnrollment's convention. Fire-and-forget,
+   * best-effort — must never fail the caller's actual student update.
+   */
+  private async syncCurrentYearEnrollmentGradeSection(
+    studentIds: string[],
+    campusId: string,
+    updates: { grade_level_id?: string; section_id?: string }
+  ): Promise<void> {
+    if (studentIds.length === 0) return
+    if (updates.grade_level_id === undefined && updates.section_id === undefined) return
+    try {
+      const currentYear = await getCurrentAcademicYear(campusId)
+      if (!currentYear.success || !currentYear.data) return
+
+      const enrollmentUpdates: Record<string, any> = {}
+      if (updates.grade_level_id !== undefined) enrollmentUpdates.grade_level_id = updates.grade_level_id
+      if (updates.section_id !== undefined) enrollmentUpdates.section_id = updates.section_id
+
+      const { error } = await supabase
+        .from('student_enrollment')
+        .update(enrollmentUpdates)
+        .eq('academic_year_id', currentYear.data.id)
+        .in('student_id', studentIds)
+        .is('end_date', null)
+
+      if (error) {
+        console.error('Failed to sync current-year enrollment grade/section:', error)
+      }
+    } catch (error) {
+      console.error('Failed to sync current-year enrollment grade/section:', error)
+    }
+  }
+
+  /**
    * Update a student with tenant isolation
    */
   async updateStudent(
@@ -1059,6 +1103,13 @@ export class StudentService {
 
     if (queryError) {
       throw new Error(`Failed to update student: ${queryError.message}`)
+    }
+
+    if (updateData.grade_level_id !== undefined || updateData.section_id !== undefined) {
+      this.syncCurrentYearEnrollmentGradeSection([studentId], schoolId, {
+        grade_level_id: updateData.grade_level_id,
+        section_id: updateData.section_id,
+      })
     }
 
     return redactProfileEmail(data)
@@ -1701,6 +1752,14 @@ export class StudentService {
           errors.push({ student_id: row.id, error: err.message || String(err) })
         }
       }
+    }
+
+    if (params.grade_level_id !== undefined || params.section_id !== undefined) {
+      const updatedIds = validRows.filter((r: any) => !errors.some((e) => e.student_id === r.id)).map((r: any) => r.id)
+      this.syncCurrentYearEnrollmentGradeSection(updatedIds, schoolId, {
+        grade_level_id: params.grade_level_id,
+        section_id: params.section_id,
+      })
     }
 
     return { updated, errors }

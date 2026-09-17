@@ -36,6 +36,41 @@ export const getLogoAppearance = async (schoolId: string): Promise<LogoAppearanc
   }
 }
 
+/**
+ * Same as getLogoAppearance, but for a campus-specific context: a campus can
+ * brand its own logo appearance independently of its parent school (just
+ * like campus logo_url already can — see public-signup.controller.ts), so
+ * this prefers the campus's own school_settings row when one exists, and
+ * only falls back to the *parent* school's configured appearance (not the
+ * module's hardcoded default) when the campus has never set its own.
+ * Falling straight to getLogoAppearance(campusId) would silently mask an
+ * unconfigured campus behind DEFAULT_LOGO_APPEARANCE instead of the shape
+ * an admin actually picked at the school level — e.g. showing a square
+ * corner-less logo on a campus-specific signup link even though the
+ * school (and every other campus) is configured as a circle.
+ */
+export const getLogoAppearanceForCampus = async (
+  campusId: string,
+  parentSchoolId: string
+): Promise<LogoAppearance> => {
+  const { data } = await supabase
+    .from('school_settings')
+    .select('logo_shape, logo_border_width, logo_border_color')
+    .eq('school_id', campusId)
+    .is('campus_id', null)
+    .maybeSingle()
+
+  if (data) {
+    return {
+      logo_shape: (data.logo_shape as LogoShape) || DEFAULT_LOGO_APPEARANCE.logo_shape,
+      logo_border_width: data.logo_border_width ?? DEFAULT_LOGO_APPEARANCE.logo_border_width,
+      logo_border_color: data.logo_border_color || DEFAULT_LOGO_APPEARANCE.logo_border_color,
+    }
+  }
+
+  return getLogoAppearance(parentSchoolId)
+}
+
 export const updateLogoAppearance = async (
   schoolId: string,
   input: Partial<LogoAppearance>

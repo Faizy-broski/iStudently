@@ -7,7 +7,7 @@ import {
   isUsernameAlreadyUsed,
 } from '../services/pending-signups.service'
 import { encryptPassword } from '../services/public-signup.service'
-import { getLogoAppearance } from '../services/logo-appearance.service'
+import { getLogoAppearance, getLogoAppearanceForCampus } from '../services/logo-appearance.service'
 import { supabase } from '../config/supabase'
 import type { ApiResponse } from '../types'
 
@@ -55,9 +55,17 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
       : null
 
     // Same shape/border settings used everywhere else the school logo is
-    // rendered (see logo-appearance.service.ts / SchoolLogo.tsx), so the
-    // signup page's logo matches the school's configured appearance.
-    const logoAppearance = await getLogoAppearance(result.link.school_id)
+    // rendered (see logo-appearance.service.ts / SchoolLogo.tsx). A
+    // campus-specific link can be branded independently of its parent
+    // school (same as campusLogoUrl above) — this was previously always
+    // looking up the *parent* school's row even for a campus link, which
+    // silently fell back to the hardcoded default (circle, no border)
+    // whenever the parent itself had never set its own appearance,
+    // showing e.g. a square logo on this page while the sidebar (which
+    // resolves the campus correctly) showed the campus's real circle shape.
+    const logoAppearance = result.link.campus_id
+      ? await getLogoAppearanceForCampus(result.link.campus_id, result.link.school_id)
+      : await getLogoAppearance(result.link.school_id)
 
     res.json({
       success: true,

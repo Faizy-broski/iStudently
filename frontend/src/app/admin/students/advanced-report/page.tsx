@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Filter, Loader2, Users, GraduationCap, UserCheck, BookOpen, UserCircle, Search, X, SlidersHorizontal } from "lucide-react"
 import { toast } from "sonner"
-import { getFieldDefinitions, CustomFieldDefinition, EntityType } from "@/lib/api/custom-fields"
+import { getFieldDefinitions, getFieldLabel, CustomFieldDefinition, EntityType } from "@/lib/api/custom-fields"
 import { getGradeLevels, getSections, GradeLevel, Section } from "@/lib/api/academics"
 import { useCampus } from "@/context/CampusContext"
 import { getAuthToken } from "@/lib/api/schools"
@@ -176,6 +176,7 @@ function PersonPicker({
 
 export default function AdvancedReportPage() {
   const t = useTranslations('admin.reports.advanced_report')
+  const locale = useLocale()
   const router = useRouter()
   const { selectedCampus } = useCampus() ?? {}
 
@@ -521,7 +522,7 @@ export default function AdvancedReportPage() {
                             checked={selectedFields.includes(fieldId)}
                             onCheckedChange={() => toggleField(fieldId)}
                           />
-                          <Label htmlFor={fieldId} className="text-sm font-normal cursor-pointer">{field.label}</Label>
+                          <Label htmlFor={fieldId} className="text-sm font-normal cursor-pointer">{getFieldLabel(field, locale)}</Label>
                         </div>
                       )
                     })}

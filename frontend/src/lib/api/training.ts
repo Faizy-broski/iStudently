@@ -12,11 +12,11 @@ export type TrainingRegistrationStatus = 'confirmed' | 'waiting_list' | 'cancell
 
 export type TrainingSkillLevel = 'beginner' | 'intermediate' | 'advanced'
 export type TrainingDeliveryMode = 'in_person' | 'online' | 'hybrid'
-export type TrainingCertificateTemplate = 'standard_attendance' | 'completion_excellence' | 'custom_professional'
 
 export interface CertificateSettings {
   enable_auto_issuance: boolean
-  certificate_template: TrainingCertificateTemplate
+  /** FK into certificate_templates (recipient_type='training'). Null until an admin picks one. */
+  certificate_template_id: string | null
   min_attendance_rate: number
   min_passing_grade: number
   require_payment_cleared: boolean
@@ -27,6 +27,23 @@ export interface CertificateSettings {
     dashboard: boolean
     email: boolean
   }
+}
+
+export interface IssuedCertificate {
+  id: string
+  session_id: string
+  registration_id: string
+  template_id: string
+  recipient_name: string
+  pdf_storage_key: string
+  verification_code: string
+  issued_by: string | null
+  issued_at: string
+  delivery_dashboard: boolean
+  delivery_email: boolean
+  delivery_email_sent_at: string | null
+  delivery_email_error: string | null
+  download_url?: string | null
 }
 
 export interface TrainingSession {
@@ -107,6 +124,7 @@ export interface CourseRegistration {
   registration_status: TrainingRegistrationStatus
   qr_auth_token: string
   attendance_status: boolean
+  final_score: number | null
   created_at: string
   display_name?: string
 }
@@ -237,6 +255,30 @@ export const trainingApi = {
       body: JSON.stringify({ session_id: sessionId, campus_id: campusId }),
     }),
 
+  setFinalScore: (registrationId: string, sessionId: string, finalScore: number | null, campusId?: string) =>
+    apiRequest<CourseRegistration>(`/training/registrations/${registrationId}/score`, {
+      method: 'PUT',
+      body: JSON.stringify({ session_id: sessionId, final_score: finalScore, campus_id: campusId }),
+    }),
+
+  issueCertificate: (registrationId: string, sessionId: string, templateId: string, campusId?: string) =>
+    apiRequest<IssuedCertificate>(`/training/registrations/${registrationId}/certificate/issue`, {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId, template_id: templateId, campus_id: campusId }),
+    }),
+
+  bulkIssueCertificates: (sessionId: string, campusId?: string) =>
+    apiRequest<{ issued: number; skipped: number; errors: Array<{ registrationId: string; error: string }> }>(
+      `/training/sessions/${sessionId}/certificates/issue-bulk`,
+      { method: 'POST', body: JSON.stringify({ campus_id: campusId }) }
+    ),
+
+  listCertificates: (registrationId: string, sessionId: string, campusId?: string) => {
+    const qs = new URLSearchParams({ session_id: sessionId })
+    if (campusId) qs.set('campus_id', campusId)
+    return apiRequest<IssuedCertificate[]>(`/training/registrations/${registrationId}/certificates?${qs}`)
+  },
+
   /** Downloads CSV via Blob to avoid exposing auth token in URL */
   exportCSV: async (sessionId: string, campusId?: string): Promise<void> => {
     const token = await getAuthToken()
@@ -246,7 +288,10 @@ export const trainingApi = {
     })
     if (!res.ok) throw new Error('Export failed')
     const text = await res.text()
-    const blob = new Blob([text], { type: 'text/csv' })
+    // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+    // codepage instead of UTF-8, garbling any Arabic/non-Latin value. The
+    // backend export endpoint doesn't add one itself, so it's added here.
+    const blob = new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -289,5 +334,10 @@ export const publicTrainingApi = {
     publicPost<{ registration_status: TrainingRegistrationStatus; qr_auth_token: string }>(
       `/training/public/${token}/register`,
       dto
+    ),
+
+  verifyCertificate: (code: string) =>
+    publicFetch<{ valid: boolean; recipient_name?: string; session_title?: string; issued_at?: string }>(
+      `/training/public/verify/${encodeURIComponent(code)}`
     ),
 }

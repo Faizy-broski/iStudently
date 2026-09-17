@@ -41,7 +41,9 @@ export function exportGrievancesToExcel(rows: Grievance[], filename = "grievance
 
 export function exportGrievancesToCsv(rows: Grievance[], filename = "grievance_report.csv") {
   const csv = Papa.unparse([COLUMNS, ...toRows(rows)])
-  const blob = new Blob([csv], { type: "text/csv" })
+  // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+  // codepage instead of UTF-8, garbling any Arabic/non-Latin value.
+  const blob = new Blob(['﻿' + csv], { type: "text/csv;charset=utf-8" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url

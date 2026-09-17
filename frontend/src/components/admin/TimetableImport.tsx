@@ -80,7 +80,9 @@ function downloadErrorReport(errors: BulkTimetableError[]) {
   const header = "row,error"
   const lines = errors.map(e => `${e.row},${JSON.stringify(e.error)}`)
   const csv = [header, ...lines].join("\n")
-  const blob = new Blob([csv], { type: "text/csv" })
+  // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+  // codepage instead of UTF-8, garbling any Arabic/non-Latin error text.
+  const blob = new Blob(['﻿' + csv], { type: "text/csv;charset=utf-8" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url

@@ -143,7 +143,9 @@ export default function SchoolDataImportWizard() {
   const downloadCredentialsCsv = useCallback((creds: GeneratedCredential[]) => {
     const header = "entity,name,username,password\n"
     const rows = creds.map((c) => `${c.entity},"${c.name}",${c.username},${c.password || ""}`).join("\n")
-    const blob = new Blob([header + rows], { type: "text/csv" })
+    // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+    // codepage instead of UTF-8, garbling any Arabic/non-Latin name.
+    const blob = new Blob(['﻿' + header + rows], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url

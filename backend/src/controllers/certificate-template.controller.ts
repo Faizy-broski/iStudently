@@ -268,6 +268,23 @@ export class CertificateTemplateController {
           children_names: 'Jane Doe, Jack Doe',
           children_count: '2',
         });
+      } else if (recipient_type === 'training') {
+        Object.assign(sampleData, {
+          participant_name: 'John Doe',
+          participant_email: 'john.doe@example.com',
+          participant_phone: '+1234567890',
+          session_title: 'Introduction to Robotics & AI',
+          session_category: 'Robotics & AI',
+          start_date: new Date().toLocaleDateString(),
+          end_date: new Date(Date.now() + 14 * 86400000).toLocaleDateString(),
+          total_duration_hours: '20',
+          instructor_name: 'Dr. Ali Ahmad',
+          delivery_mode: 'In Person',
+          location_venue: 'Lab 2 - Main Campus',
+          completion_date: new Date().toLocaleDateString(),
+          final_score: '92',
+          verification_code: 'SAMPLE-0000-0000',
+        });
       }
 
       const processedTemplate = templateService.processTemplate(template_config, sampleData);

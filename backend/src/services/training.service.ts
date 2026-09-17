@@ -6,6 +6,7 @@ import {
   UpdateTrainingSessionDTO,
   RegisterForTrainingDTO,
 } from '../types'
+import { trainingCertificateService } from './training-certificate.service'
 
 export class TrainingService {
   // Sessions created at the parent-school level should accept students from
@@ -388,6 +389,41 @@ export class TrainingService {
       .single()
 
     if (error) throw error
+    // Fire-and-forget: re-evaluate auto-issuance now that attendance changed. Never
+    // let a certificate-generation failure surface as an attendance-toggle failure.
+    void trainingCertificateService.maybeAutoIssue(registrationId, sessionId, schoolId)
+    return data
+  }
+
+  async setFinalScore(
+    registrationId: string,
+    sessionId: string,
+    schoolId: string,
+    finalScore: number | null
+  ): Promise<CourseRegistration> {
+    if (finalScore !== null && (finalScore < 0 || finalScore > 100)) {
+      throw new Error('final_score must be between 0 and 100')
+    }
+
+    const { data: session } = await supabase
+      .from('training_sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('school_id', schoolId)
+      .single()
+
+    if (!session) throw new Error('Session not found')
+
+    const { data, error } = await supabase
+      .from('course_registrations')
+      .update({ final_score: finalScore })
+      .eq('id', registrationId)
+      .eq('session_id', sessionId)
+      .select()
+      .single()
+
+    if (error) throw error
+    void trainingCertificateService.maybeAutoIssue(registrationId, sessionId, schoolId)
     return data
   }
 
@@ -418,6 +454,7 @@ export class TrainingService {
       .single()
 
     if (error) throw error
+    void trainingCertificateService.maybeAutoIssue(registrationId, sessionId, schoolId)
     return data
   }
 

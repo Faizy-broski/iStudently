@@ -8,6 +8,7 @@ import {
   Landmark,
   ShieldCheck,
   UsersRound,
+  GraduationCap,
   type LucideIcon,
 } from 'lucide-react'
 import type { CertificateRecipientType } from '@/lib/api/certificate-template'
@@ -31,6 +32,7 @@ export const CERTIFICATE_RECIPIENT_TYPES: CertificateRecipientTypeOption[] = [
   { value: 'fina_supervisor', label: 'Financial Supervisors', icon: Landmark },
   { value: 'admin', label: 'Admins', icon: ShieldCheck },
   { value: 'parent', label: 'Parents', icon: UsersRound },
+  { value: 'training', label: 'Training Participants', icon: GraduationCap },
 ]
 
 export function getCertificateRecipientTypeOption(value: string): CertificateRecipientTypeOption | undefined {

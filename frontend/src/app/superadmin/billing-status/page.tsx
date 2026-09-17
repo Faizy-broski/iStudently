@@ -390,7 +390,9 @@ export default function BillingStatusPage() {
       ].join("\n");
 
       // Create download link
-      const blob = new Blob([csvContent], { type: "text/csv" });
+      // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+      // codepage instead of UTF-8, garbling any Arabic/non-Latin value.
+      const blob = new Blob(['﻿' + csvContent], { type: "text/csv;charset=utf-8" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

@@ -48,7 +48,7 @@ import RelativesTab from "@/components/admin/RelativesTab";
 import { ReassignGradeSectionDialog } from "@/components/admin/ReassignGradeSectionDialog";
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { useTranslations, useLocale } from "next-intl";
-import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
+import { getFieldDefinitions, getFieldLabel, getFieldOptions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge";
 import { ConfidentialFamilyStatusDialog } from "@/components/shared/ConfidentialFamilyStatusDialog";
 
@@ -263,29 +263,38 @@ export default function StudentDetailsPage() {
     return (
       <>
         <Separator className="my-6" />
-        <h4 className="font-semibold mb-4 text-[#022172]">Additional Fields</h4>
+        <h4 className="font-semibold mb-4 text-[#022172]">{locale === 'ar' ? 'حقول إضافية' : 'Additional Fields'}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {fields.map((field) => {
             const rawValue = currentStudent.custom_fields?.[categoryId]?.[field.field_key];
+            // Options are stored/keyed by their original English value, so translating a
+            // select/multiselect's displayed label needs the field's options_ar lookup —
+            // just showing field.label in Arabic left the values themselves untranslated.
+            const translatedOptions = (field.type === 'select' || field.type === 'multi-select')
+              ? getFieldOptions(field, locale)
+              : null;
+            const translateValue = (v: string) =>
+              translatedOptions?.find((o) => o.value === v)?.label ?? v;
+
             let displayValue: React.ReactNode = rawValue;
             if (rawValue === undefined || rawValue === null || rawValue === '') {
               displayValue = null;
             } else if (field.type === 'checkbox') {
-              displayValue = rawValue ? 'Yes' : 'No';
+              displayValue = rawValue ? (locale === 'ar' ? 'نعم' : 'Yes') : (locale === 'ar' ? 'لا' : 'No');
             } else if (field.type === 'date') {
               displayValue = formatDate(rawValue);
             } else if (Array.isArray(rawValue)) {
               displayValue = (
                 <div className="flex flex-wrap gap-1">
                   {rawValue.map((v: string, i: number) => (
-                    <Badge key={i} variant="outline">{v}</Badge>
+                    <Badge key={i} variant="outline">{translateValue(v)}</Badge>
                   ))}
                 </div>
               );
             } else {
-              displayValue = String(rawValue);
+              displayValue = String(translateValue(String(rawValue)));
             }
-            return <InfoRow key={field.field_key} label={field.label} value={displayValue} />;
+            return <InfoRow key={field.field_key} label={getFieldLabel(field, locale)} value={displayValue} />;
           })}
         </div>
       </>

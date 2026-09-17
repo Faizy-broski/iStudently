@@ -567,7 +567,10 @@ export function downloadTimetableImportTemplate() {
   const headers = ['grade_name', 'section_name', 'subject_name', 'subject_code', 'teacher_email', 'day_of_week', 'period_number', 'room_number']
   const example = ['Grade 10', 'A', 'Mathematics', 'MATH10', 'teacher@school.com', 'Monday', '1', 'Room 101']
   const csv = [headers.join(','), example.join(',')].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
+  // UTF-8 BOM for consistency with the app's other CSV exports/templates —
+  // this one's own content is ASCII-only today but keeps behavior uniform
+  // if a translated header/example is ever added here.
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

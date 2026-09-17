@@ -29,7 +29,7 @@ import { getStudents, getStudentsPrintInfo, PrintInfoResponse, Student } from "@
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { StudentInfoPrintReport } from "@/components/admin";
 import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from "@/lib/api/school-settings";
-import { openPdfDownload } from "@/lib/utils/printLayout";
+import { openPdfDownload, PDF_FONT_STACK } from "@/lib/utils/printLayout";
 import { useTranslations } from "next-intl";
 
 // Standard categories that are always available
@@ -187,7 +187,12 @@ export default function PrintStudentInfoPage() {
 
   // Tailwind-equivalent inline CSS for StudentInfoPrintReport rendered in a new tab
   const PRINT_REPORT_STYLES = `
-    .print-report { background: #fff; font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; }
+    /* Was 'Segoe UI', Arial, sans-serif — no Arabic-capable font at all, so
+       this overrode the page's Arabic-safe body font stack (higher CSS
+       source-order specificity, same selector depth) for every field inside
+       the report, rendering Arabic names/addresses as tofu/mojibake while
+       the header/footer (outside .print-report) still rendered correctly. */
+    .print-report { background: #fff; font-family: ${PDF_FONT_STACK}; color: #1a1a1a; }
     .page-break { page-break-before: always; }
     .p-6 { padding: 24px; }
     .p-4 { padding: 16px; }

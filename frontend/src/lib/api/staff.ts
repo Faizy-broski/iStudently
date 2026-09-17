@@ -255,7 +255,9 @@ export async function downloadStaffImportTemplate(campusId?: string) {
 
     const csvEscape = (v: string) => (v.includes(',') || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v)
     const csv = [headers.map(csvEscape).join(','), ...examples.map(r => r.map(csvEscape).join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
+    // UTF-8 BOM — without it, Excel opens this CSV using the system ANSI
+    // codepage instead of UTF-8, garbling any Arabic/non-Latin custom field label.
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
