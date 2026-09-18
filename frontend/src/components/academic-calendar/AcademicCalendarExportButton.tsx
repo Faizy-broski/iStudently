@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label'
 import { Printer, Download, Loader2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
+import { useAcademic } from '@/context/AcademicContext'
 import { getEvents } from '@/lib/api/events'
 import { getGradeLevels, type GradeLevel } from '@/lib/api/academics'
 import { AcademicCalendarPrint, type CalendarGrade } from './AcademicCalendarPrint'
@@ -18,6 +20,8 @@ interface Props {
 
 export function AcademicCalendarExportButton({ markingPeriods }: Props) {
   const { profile } = useAuth()
+  const campusCtx = useCampus()
+  const { currentAcademicYear } = useAcademic()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [printing, setPrinting] = useState(false)
@@ -138,10 +142,19 @@ export function AcademicCalendarExportButton({ markingPeriods }: Props) {
     )
   }
 
+  // Prefer the currently-selected campus's own branding (name/logo/address) —
+  // admin accounts aren't pinned to a single campus, and `profile.school`
+  // only ever carries the root school's name+logo (fetchSchoolBranding in
+  // AuthContext.tsx doesn't even select an address column), so a campus
+  // admin previously always saw the literal "School" fallback with no logo
+  // here regardless of which campus they were actually viewing. Falls back
+  // to profile.school for roles/views with no selected campus.
   const school = (profile as any)?.school
-  const schoolName: string    = school?.name || 'School'
-  const schoolLogoUrl: string = school?.logo_url || ''
-  const schoolAddress: string = school?.address || ''
+  const selectedCampus = campusCtx?.selectedCampus
+  const schoolName: string    = selectedCampus?.name || school?.name || 'School'
+  const schoolLogoUrl: string = selectedCampus?.logo_url || school?.logo_url || ''
+  const schoolAddress: string = selectedCampus?.address || school?.address || ''
+  const academicYearLabel: string | undefined = currentAcademicYear?.name
 
   const calGrades: CalendarGrade[] = gradeLevels.map(g => ({ id: g.id, name: g.name }))
 
@@ -198,6 +211,7 @@ export function AcademicCalendarExportButton({ markingPeriods }: Props) {
                 schoolName={schoolName}
                 schoolAddress={schoolAddress}
                 schoolLogoUrl={schoolLogoUrl}
+                academicYearLabel={academicYearLabel}
                 weekStartDay={0}
                 weekEndDay={4}
               />

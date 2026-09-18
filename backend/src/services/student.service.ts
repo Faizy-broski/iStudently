@@ -940,15 +940,63 @@ export class StudentService {
       if (updates.grade_level_id !== undefined) enrollmentUpdates.grade_level_id = updates.grade_level_id
       if (updates.section_id !== undefined) enrollmentUpdates.section_id = updates.section_id
 
-      const { error } = await supabase
+      // Students with no still-open current-year row (never enrolled this year, or their
+      // row was previously closed) wouldn't be touched by the UPDATE below at all, so their
+      // stale/missing enrollment record would keep showing the old grade/section on any
+      // enrollment-scoped screen forever — mirrors reopenCurrentYearEnrollment's
+      // create-if-missing fallback rather than assuming every student already has an open row.
+      const { data: existingRows } = await supabase
         .from('student_enrollment')
-        .update(enrollmentUpdates)
+        .select('student_id')
         .eq('academic_year_id', currentYear.data.id)
         .in('student_id', studentIds)
         .is('end_date', null)
+      const existingIds = new Set((existingRows || []).map((r: any) => r.student_id as string))
 
-      if (error) {
-        console.error('Failed to sync current-year enrollment grade/section:', error)
+      if (existingIds.size > 0) {
+        const { error } = await supabase
+          .from('student_enrollment')
+          .update(enrollmentUpdates)
+          .eq('academic_year_id', currentYear.data.id)
+          .in('student_id', Array.from(existingIds))
+          .is('end_date', null)
+
+        if (error) {
+          console.error('Failed to sync current-year enrollment grade/section:', error)
+        }
+      }
+
+      const missingIds = studentIds.filter((id) => !existingIds.has(id))
+      if (missingIds.length > 0) {
+        const { data: studentRows } = await supabase
+          .from('students')
+          .select('id, grade_level_id, section_id, admission_date')
+          .in('id', missingIds)
+
+        const { data: admissionCode } = await supabase
+          .from('enrollment_codes')
+          .select('id')
+          .eq('code', 'ADMISSION')
+          .single()
+
+        const inserts = (studentRows || []).map((s: any) => ({
+          student_id: s.id,
+          academic_year_id: currentYear.data!.id,
+          school_id: currentYear.data!.school_id,
+          campus_id: campusId,
+          grade_level_id: updates.grade_level_id !== undefined ? updates.grade_level_id : s.grade_level_id,
+          section_id: updates.section_id !== undefined ? updates.section_id : s.section_id,
+          enrollment_code_id: admissionCode?.id || null,
+          start_date: s.admission_date || new Date().toISOString().split('T')[0],
+          rollover_status: 'pending',
+        }))
+
+        if (inserts.length > 0) {
+          const { error: insertError } = await supabase.from('student_enrollment').insert(inserts)
+          if (insertError) {
+            console.error('Failed to create current-year enrollment on grade/section sync:', insertError)
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to sync current-year enrollment grade/section:', error)

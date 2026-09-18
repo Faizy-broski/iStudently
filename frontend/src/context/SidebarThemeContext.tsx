@@ -131,16 +131,23 @@ export function SidebarThemeProvider({
         schoolId ? getSchoolSidebarConfig(schoolId) : Promise.resolve(null),
       ])
 
+      // "Has a custom theme" must include text_color — previously only
+      // bg_color/bg_image_url counted, so a campus/school that set ONLY a
+      // custom text color (no background) was treated as unconfigured here
+      // and silently dropped, falling through to the next scope (or the
+      // personal-fallback branch below) and losing the text color entirely
+      // even though it was saved correctly. Mirrors the same fix in the
+      // backend's getMyConfig() (sidebar-config.service.ts).
       const campusData =
         campusResult.status === 'fulfilled' && campusResult.value?.success && campusResult.value.data &&
-        (campusResult.value.data.bg_color || campusResult.value.data.bg_image_url)
+        (campusResult.value.data.bg_color || campusResult.value.data.bg_image_url || campusResult.value.data.text_color)
           ? campusResult.value.data
           : null
       if (campusData) { setConfig(campusData); return }
 
       const schoolData =
         schoolResult.status === 'fulfilled' && schoolResult.value?.success && schoolResult.value.data &&
-        (schoolResult.value.data.bg_color || schoolResult.value.data.bg_image_url)
+        (schoolResult.value.data.bg_color || schoolResult.value.data.bg_image_url || schoolResult.value.data.text_color)
           ? schoolResult.value.data
           : null
       if (schoolData) { setConfig(schoolData); return }

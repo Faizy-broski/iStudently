@@ -199,17 +199,22 @@ export async function getMyConfig(
     return getSuperadminConfig()
   }
 
-  // Check campus-level config first (campus overrides school if custom theme set)
+  // Check campus-level config first (campus overrides school if custom theme set).
+  // "Has a custom theme" must include text_color — previously only bg_color/
+  // bg_image_url counted, so a campus/school that set ONLY a custom text
+  // color (no background) was treated as unconfigured and silently dropped
+  // here, falling through to the next scope (or null) and losing the text
+  // color entirely even though it was saved correctly.
   if (campusId) {
     const campusConfig = await getCampusConfig(campusId)
-    if (campusConfig && (campusConfig.bg_color || campusConfig.bg_image_url)) {
+    if (campusConfig && (campusConfig.bg_color || campusConfig.bg_image_url || campusConfig.text_color)) {
       return campusConfig
     }
   }
 
   if (schoolId) {
     const schoolConfig = await getSchoolConfig(schoolId)
-    if (schoolConfig && (schoolConfig.bg_color || schoolConfig.bg_image_url)) {
+    if (schoolConfig && (schoolConfig.bg_color || schoolConfig.bg_image_url || schoolConfig.text_color)) {
       return schoolConfig
     }
   }
