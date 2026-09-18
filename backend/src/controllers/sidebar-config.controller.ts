@@ -28,12 +28,14 @@ export const updateSuperadminConfig = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { bg_color, bg_image_url, bg_image_opacity } = req.body
+    const { bg_color, bg_image_url, bg_image_opacity, text_color, bg_image_position } = req.body
 
     const dto: sidebarConfigService.UpdateSidebarConfigDTO = {}
     if (bg_color !== undefined) dto.bg_color = bg_color || null
     if (bg_image_url !== undefined) dto.bg_image_url = bg_image_url || null
     if (bg_image_opacity !== undefined) dto.bg_image_opacity = Number(bg_image_opacity)
+    if (text_color !== undefined) dto.text_color = text_color || null
+    if (bg_image_position !== undefined) dto.bg_image_position = bg_image_position || null
 
     const config = await sidebarConfigService.upsertSuperadminConfig(dto)
     res.json({
@@ -96,12 +98,14 @@ export const updateSchoolConfig = async (
       return
     }
 
-    const { bg_color, bg_image_url, bg_image_opacity } = req.body
+    const { bg_color, bg_image_url, bg_image_opacity, text_color, bg_image_position } = req.body
 
     const dto: sidebarConfigService.UpdateSidebarConfigDTO = {}
     if (bg_color !== undefined) dto.bg_color = bg_color || null
     if (bg_image_url !== undefined) dto.bg_image_url = bg_image_url || null
     if (bg_image_opacity !== undefined) dto.bg_image_opacity = Number(bg_image_opacity)
+    if (text_color !== undefined) dto.text_color = text_color || null
+    if (bg_image_position !== undefined) dto.bg_image_position = bg_image_position || null
 
     const config = await sidebarConfigService.upsertSchoolConfig(schoolId, dto)
     res.json({
@@ -177,12 +181,14 @@ export const updateCampusConfig = async (
       }
     }
 
-    const { bg_color, bg_image_url, bg_image_opacity } = req.body
+    const { bg_color, bg_image_url, bg_image_opacity, text_color, bg_image_position } = req.body
 
     const dto: sidebarConfigService.UpdateSidebarConfigDTO = {}
     if (bg_color !== undefined) dto.bg_color = bg_color || null
     if (bg_image_url !== undefined) dto.bg_image_url = bg_image_url || null
     if (bg_image_opacity !== undefined) dto.bg_image_opacity = Number(bg_image_opacity)
+    if (text_color !== undefined) dto.text_color = text_color || null
+    if (bg_image_position !== undefined) dto.bg_image_position = bg_image_position || null
 
     // For super_admin we need to look up the campus's parent school_id
     const resolvedSchoolId = schoolId ?? (await resolveCampusSchoolId(campusId))
