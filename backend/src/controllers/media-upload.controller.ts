@@ -111,6 +111,8 @@ const ALLOWED_ATTACHMENT_TYPES: Record<string, string> = {
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
   'text/plain': 'txt',
   'text/csv': 'csv',
+  'text/html': 'html',
+  'application/xhtml+xml': 'html',
   'application/zip': 'zip',
   'application/x-zip-compressed': 'zip',
   'image/jpeg': 'jpg',
@@ -119,6 +121,11 @@ const ALLOWED_ATTACHMENT_TYPES: Record<string, string> = {
   'image/gif': 'gif',
   'image/webp': 'webp',
 }
+
+// Attachments served from the public bucket must never render as a live page
+// (uploaded HTML could host scripts/phishing under our storage domain), so these
+// types are stored as a generic binary and the browser downloads them instead.
+const DOWNLOAD_ONLY_EXTENSIONS = new Set(['html'])
 
 const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024 // 15 MB
 
@@ -169,7 +176,7 @@ export const uploadMessageAttachment = async (
     const { error: uploadError } = await supabase.storage
       .from(ATTACHMENT_BUCKET)
       .upload(fileName, file.buffer, {
-        contentType: file.mimetype,
+        contentType: DOWNLOAD_ONLY_EXTENSIONS.has(ext) ? 'application/octet-stream' : file.mimetype,
         upsert: false,
       })
 

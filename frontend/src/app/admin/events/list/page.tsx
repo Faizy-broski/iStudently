@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, Plus, Search, Edit, Trash2, BookOpen, FileText,
+  ArrowLeft, Plus, Search, Upload, Edit, Trash2, BookOpen, FileText,
   Users, Zap, Bell, Calendar as CalendarBadge, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EventFormDialog } from "@/components/admin/EventFormDialog";
 import { EventDetailsDialog } from "@/components/admin/EventDetailsDialog";
+import { ImportEventsDialog } from "@/components/admin/ImportEventsDialog";
 import { deleteEvent, getEvents, type SchoolEvent, type EventCategory } from "@/lib/api/events";
 import { useCampus } from "@/context/CampusContext";
 import { toast } from "sonner";
@@ -67,6 +68,7 @@ export default function AllEventsPage() {
 
   // Event dialog states
   const [showEventForm, setShowEventForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<SchoolEvent | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -160,14 +162,22 @@ export default function AllEventsPage() {
             </p>
           </div>
         </div>
-        <Button
-          className="bg-linear-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
-          onClick={() => { setSelectedEvent(null); setShowEventForm(true); }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Add Event
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setShowImport(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import Events
+          </Button>
+          <Button
+            className="bg-linear-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
+            onClick={() => { setSelectedEvent(null); setShowEventForm(true); }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Event
+          </Button>
+        </div>
       </div>
+
+      <ImportEventsDialog open={showImport} onOpenChange={setShowImport} onImported={() => mutate()} />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">

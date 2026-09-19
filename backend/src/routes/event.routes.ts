@@ -73,6 +73,14 @@ router.post('/', requireRole('admin'), (req, res) =>
 )
 
 /**
+ * POST /api/events/bulk
+ * Import many events for one marking period. Only admin.
+ */
+router.post('/bulk', requireRole('admin'), (req, res) =>
+  eventController.bulkCreateEvents(req, res)
+)
+
+/**
  * PUT /api/events/:id
  * Update an event
  * Only admin can update events

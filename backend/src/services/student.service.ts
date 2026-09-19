@@ -25,7 +25,7 @@ function redactProfileEmail<T extends { profile?: { email?: string | null } | nu
  * result can be batch-attached to a whole page of students in one query
  * instead of one RPC call per row).
  */
-async function getSiblingCountMap(schoolId: string): Promise<Map<string, number>> {
+export async function getSiblingCountMap(schoolId: string): Promise<Map<string, number>> {
   const { data, error } = await supabase
     .from('parent_student_links')
     .select('student_id, parent_id, students!inner(school_id)')

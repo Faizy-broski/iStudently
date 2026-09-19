@@ -263,6 +263,41 @@ export class EventController {
   }
 
   /**
+   * POST /api/events/bulk
+   * Import many events at once for one marking period
+   * Body: { marking_period_id, campus_id?, events: [{ row, title, category, start_date, end_date, description?, target_grades?, color_code? }] }
+   */
+  async bulkCreateEvents(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) {
+        res.status(403).json({ success: false, error: 'No school associated with your account' })
+        return
+      }
+      const { marking_period_id, campus_id, events } = req.body || {}
+      if (!marking_period_id || !Array.isArray(events) || events.length === 0) {
+        res.status(400).json({ success: false, error: 'marking_period_id and a non-empty events array are required' })
+        return
+      }
+      if (events.length > 1000) {
+        res.status(400).json({ success: false, error: 'Import at most 1000 events at a time' })
+        return
+      }
+      const result = await this.eventService.bulkCreateEvents({
+        schoolId,
+        campusId: campus_id || null,
+        markingPeriodId: marking_period_id,
+        createdBy: req.user?.id,
+        rows: events,
+      })
+      res.status(result.created > 0 ? 201 : 200).json({ success: true, data: result })
+    } catch (error: any) {
+      console.error('Error bulk-creating events:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to import events' })
+    }
+  }
+
+  /**
    * PUT /api/events/:id
    * Update an event
    */

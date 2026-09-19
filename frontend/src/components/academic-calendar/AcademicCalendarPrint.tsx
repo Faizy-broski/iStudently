@@ -27,6 +27,10 @@ export interface AcademicCalendarPrintProps {
   /** Day the school week ends (0=Sun,...,6=Sat) */
   weekEndDay?: number
   academicYearLabel?: string
+  /** Replaces the default "Academic Calendar" heading text */
+  calendarTitle?: string
+  /** Optional note printed under "Dates to remember" */
+  footerNote?: string
 }
 
 // ============================================================================
@@ -90,7 +94,41 @@ function buildMonthDays(
   return days
 }
 
-const DOT_ONLY: EventCategory[] = ['meeting', 'activity', 'reminder']
+// Default colour per event category, used when an event has no valid
+// color_code of its own. Each category gets its own colour so the printed
+// calendar distinguishes them at a glance (exam/holiday/meeting/...).
+const CATEGORY_COLORS: Record<EventCategory, string> = {
+  academic: '#16a34a',
+  holiday: '#f97316',
+  exam: '#dc2626',
+  meeting: '#2563eb',
+  activity: '#9333ea',
+  reminder: '#0891b2',
+}
+const CATEGORY_LABELS: Record<EventCategory, string> = {
+  academic: 'Academic event',
+  holiday: 'Holiday / Ramadan / Eid',
+  exam: 'Exams — no classes',
+  meeting: 'Meeting',
+  activity: 'Activity',
+  reminder: 'Reminder',
+}
+// Higher = wins when several events fall on the same day.
+const CATEGORY_PRIORITY: Record<EventCategory, number> = {
+  exam: 6, holiday: 5, academic: 4, meeting: 3, activity: 2, reminder: 1,
+}
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+
+function eventColor(ev: SchoolEvent): string {
+  return HEX_RE.test(ev.color_code || '') ? ev.color_code : CATEGORY_COLORS[ev.category]
+}
+
+/** Blend a hex colour with white (amount 0..1 = how much of the colour is kept). */
+function tint(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16)
+  const mix = (c: number) => Math.round(255 - (255 - c) * amount)
+  return `rgb(${mix((n >> 16) & 255)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`
+}
 
 function formatDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00')
@@ -112,6 +150,8 @@ export function AcademicCalendarPrint({
   weekStartDay = 0,
   weekEndDay = 4,
   academicYearLabel,
+  calendarTitle,
+  footerNote,
 }: AcademicCalendarPrintProps) {
 
   // Derive calendar span from marking period dates
@@ -138,10 +178,18 @@ export function AcademicCalendarPrint({
     return list
   }, [startYear, startMonth, endYear, endMonth])
 
+  // Events aimed at specific grades only appear when one of those grades is
+  // selected (or when viewing All Grades); school-wide events always appear.
+  const visibleEvents = useMemo(() => events.filter(ev =>
+    !ev.target_grades?.length ||
+    selectedGradeIds.length === 0 ||
+    ev.target_grades.some(g => selectedGradeIds.includes(g))
+  ), [events, selectedGradeIds])
+
   // date → events map
   const eventsByDate = useMemo(() => {
     const map = new Map<string, SchoolEvent[]>()
-    for (const ev of events) {
+    for (const ev of visibleEvents) {
       const dates = datesInRange(ev.start_at.slice(0, 10), ev.end_at.slice(0, 10))
       dates.forEach(d => {
         if (!map.has(d)) map.set(d, [])
@@ -149,7 +197,7 @@ export function AcademicCalendarPrint({
       })
     }
     return map
-  }, [events])
+  }, [visibleEvents])
 
   // Marking period date sets
   const { mpSchoolWide, mpGradeSpecific } = useMemo(() => {
@@ -160,14 +208,14 @@ export function AcademicCalendarPrint({
       datesInRange(mp.start_date, mp.end_date).forEach(d => mpSchoolWide.add(d))
     }
     if (selectedGradeIds.length > 0) {
-      for (const ev of events) {
+      for (const ev of visibleEvents) {
         if (ev.category === 'academic' && ev.target_grades?.some(g => selectedGradeIds.includes(g))) {
           datesInRange(ev.start_at.slice(0, 10), ev.end_at.slice(0, 10)).forEach(d => mpGradeSpecific.add(d))
         }
       }
     }
     return { mpSchoolWide, mpGradeSpecific }
-  }, [markingPeriods, events, selectedGradeIds])
+  }, [markingPeriods, visibleEvents, selectedGradeIds])
 
   // Dates to remember
   const datesToRemember = useMemo(() => {
@@ -176,7 +224,7 @@ export function AcademicCalendarPrint({
       if (mp.start_date) items.push({ label: `${mp.title} — begins`, date: mp.start_date, bold: true })
       if (mp.end_date)   items.push({ label: `${mp.title} — ends`, date: mp.end_date })
     }
-    for (const ev of events) {
+    for (const ev of visibleEvents) {
       const start = ev.start_at.slice(0, 10)
       const end   = ev.end_at.slice(0, 10)
       const dateLabel = start === end ? start : `${formatDate(start)} – ${formatDate(end)}`
@@ -188,7 +236,14 @@ export function AcademicCalendarPrint({
       return da.localeCompare(db)
     })
     return items
-  }, [markingPeriods, events])
+  }, [markingPeriods, visibleEvents])
+
+  // Legend entries: one per event category actually present, in its own colour
+  const legendCategories = useMemo(() => {
+    const seen = new Map<EventCategory, string>()
+    for (const ev of visibleEvents) if (!seen.has(ev.category)) seen.set(ev.category, eventColor(ev))
+    return Array.from(seen.entries()).sort((a, b) => CATEGORY_PRIORITY[b[0]] - CATEGORY_PRIORITY[a[0]])
+  }, [visibleEvents])
 
   const gradeLabel = useMemo(() => {
     if (!selectedGradeIds.length) return 'All Grades'
@@ -213,7 +268,7 @@ export function AcademicCalendarPrint({
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {schoolLogoUrl && <img src={schoolLogoUrl} alt="" style={{ width: '64px', height: '64px', objectFit: 'contain', borderRadius: '6px' }} />}
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#8B0000', lineHeight: 1.15 }}>Academic Calendar &nbsp; {yearLabel}</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#8B0000', lineHeight: 1.15 }}>{calendarTitle?.trim() || 'Academic Calendar'} &nbsp; {yearLabel}</div>
             <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#a16207', marginTop: '2px', letterSpacing: '0.07em' }}>{gradeLabel}</div>
             <div style={{ fontSize: '10px', color: '#555', marginTop: '3px' }}>{[schoolName, schoolAddress].filter(Boolean).join(' · ')}</div>
           </div>
@@ -240,23 +295,25 @@ export function AcademicCalendarPrint({
                   const { date, day } = cell
                   const evs = eventsByDate.get(date) || []
                   const weekend   = isWeekend(date, weekStartDay, weekEndDay)
-                  const isHoliday = evs.some(e => e.category === 'holiday')
-                  const isExam    = evs.some(e => e.category === 'exam')
-                  const hasDot    = evs.some(e => DOT_ONLY.includes(e.category))
                   const inGrade   = mpGradeSpecific.has(date)
                   const inSchool  = mpSchoolWide.has(date)
+                  // Winning event for the day (exam > holiday > academic > ...)
+                  const topEvent = evs.slice().sort((a, b) => CATEGORY_PRIORITY[b.category] - CATEGORY_PRIORITY[a.category])[0]
 
+                  // Marking-period green first, then the weekend grey on top of it
+                  // (Fri/Sat off days must stay grey even inside a marking period),
+                  // then any event's own colour on top of both.
                   let bg = 'transparent', fg = '#222', fw: 'normal'|'bold' = 'normal'
-                  if (weekend)   { bg = '#e5e7eb'; fg = '#9ca3af' }
                   if (inSchool)  { bg = '#bbf7d0'; fg = '#14532d' }
                   if (inGrade)   { bg = '#86efac'; fg = '#14532d' }
-                  if (isHoliday) { bg = '#fed7aa'; fg = '#c2410c'; fw = 'bold' }
-                  if (isExam)    { bg = '#fecaca'; fg = '#991b1b'; fw = 'bold' }
+                  if (weekend)   { bg = '#e5e7eb'; fg = '#9ca3af' }
+                  if (topEvent && !(weekend && topEvent.category === 'academic')) {
+                    bg = tint(eventColor(topEvent), 0.35); fg = '#111827'; fw = 'bold'
+                  }
 
                   return (
                     <div key={date} style={{ position: 'relative', background: bg, color: fg, fontWeight: fw, fontSize: '9px', textAlign: 'center', borderRadius: '2px', lineHeight: '14px', minHeight: '14px' }}>
                       {day}
-                      {hasDot && <span style={{ position: 'absolute', bottom: '1px', left: '50%', transform: 'translateX(-50%)', width: '3px', height: '3px', borderRadius: '50%', background: '#374151', display: 'block' }} />}
                     </div>
                   )
                 })}
@@ -271,12 +328,9 @@ export function AcademicCalendarPrint({
         <LegItem color="#86efac" label="Grade-specific period" />
         <LegItem color="#bbf7d0" label="School-wide period" />
         <LegItem color="#e5e7eb" label="Weekend" />
-        <LegItem color="#fed7aa" label="Holiday / Ramadan / Eid" />
-        <LegItem color="#fecaca" label="Exams — no classes" />
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#374151', display: 'inline-block' }} />
-          School event
-        </span>
+        {legendCategories.map(([cat, color]) => (
+          <LegItem key={cat} color={tint(color, 0.35)} label={CATEGORY_LABELS[cat]} />
+        ))}
       </div>
 
       {/* DATES TO REMEMBER */}
@@ -297,6 +351,10 @@ export function AcademicCalendarPrint({
           ))}
         </div>
       </div>
+
+      {footerNote?.trim() && (
+        <div style={{ marginTop: '8px', fontSize: '9.5px', color: '#374151', whiteSpace: 'pre-wrap' }}>{footerNote.trim()}</div>
+      )}
     </div>
   )
 }

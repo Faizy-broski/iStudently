@@ -9,6 +9,7 @@ import {
   ApiResponse
 } from '../types'
 import { getMainSchoolId } from '../utils/campus.util'
+import { scheduleDecisionService } from './schedule-decision/schedule-decision.service'
 
 // ============================================================================
 // STEP 2: TIMETABLE CONSTRUCTION (Section ↔ Period ↔ Subject with Schedule)
@@ -308,6 +309,27 @@ export const createTimetableEntry = async (
       } as any
     }
 
+    // Room double-booking: previously nothing blocked two sections being put
+    // in the same room at the same day+period. Only room clashes block here —
+    // teacher clashes are already handled above.
+    if (dto.room_number?.trim() && campusId) {
+      const decision = await scheduleDecisionService.validateAgainstDatabase({
+        campusId,
+        academicYearId: dto.academic_year_id,
+        teacherId: dto.teacher_id,
+        roomNumber: dto.room_number,
+        dayOfWeek: dto.day_of_week,
+        periodId: dto.period_id,
+      })
+      if (decision.conflictType === 'room_double_booked' || decision.conflictType === 'both') {
+        return {
+          success: false,
+          error: `Room conflict: ${decision.conflictReason}`,
+          conflict: decision
+        } as any
+      }
+    }
+
     const { data, error } = await supabase
       .from('timetable_entries')
       .insert({
@@ -352,11 +374,12 @@ export const updateTimetableEntry = async (
   dto: UpdateTimetableEntryDTO
 ): Promise<ApiResponse<TimetableEntry>> => {
   try {
-    // If updating teacher, day, or period, check for conflicts
-    if (dto.teacher_id || dto.day_of_week !== undefined || dto.period_id) {
+    // If updating teacher, day, period or room, check for conflicts
+    const roomChanging = dto.room_number !== undefined || dto.room_id !== undefined
+    if (dto.teacher_id || dto.day_of_week !== undefined || dto.period_id || roomChanging) {
       const { data: existing } = await supabase
         .from('timetable_entries')
-        .select('teacher_id, day_of_week, period_id, academic_year_id')
+        .select('teacher_id, day_of_week, period_id, academic_year_id, campus_id, room_number, room_id')
         .eq('id', entryId)
         .single()
 
@@ -365,18 +388,43 @@ export const updateTimetableEntry = async (
         const dayOfWeek = dto.day_of_week !== undefined ? dto.day_of_week : existing.day_of_week
         const periodId = dto.period_id || existing.period_id
 
-        const conflictCheck = await checkTeacherConflict(
-          teacherId,
-          dayOfWeek as DayOfWeek,
-          periodId,
-          existing.academic_year_id,
-          entryId
-        )
+        if (dto.teacher_id || dto.day_of_week !== undefined || dto.period_id) {
+          const conflictCheck = await checkTeacherConflict(
+            teacherId,
+            dayOfWeek as DayOfWeek,
+            periodId,
+            existing.academic_year_id,
+            entryId
+          )
 
-        if (conflictCheck.data?.has_conflict) {
-          return {
-            success: false,
-            error: `Teacher conflict: ${conflictCheck.data.conflict_details}`
+          if (conflictCheck.data?.has_conflict) {
+            return {
+              success: false,
+              error: `Teacher conflict: ${conflictCheck.data.conflict_details}`
+            }
+          }
+        }
+
+        // Room double-booking check against the resulting room/day/period.
+        const roomNumber = dto.room_number !== undefined ? dto.room_number : existing.room_number
+        const roomId = dto.room_id !== undefined ? dto.room_id : existing.room_id
+        if ((roomNumber?.trim() || roomId) && existing.campus_id) {
+          const decision = await scheduleDecisionService.validateAgainstDatabase({
+            campusId: existing.campus_id,
+            academicYearId: existing.academic_year_id,
+            teacherId,
+            roomNumber,
+            roomId,
+            dayOfWeek: Number(dayOfWeek),
+            periodId,
+            excludeEntryId: entryId
+          })
+          if (decision.conflictType === 'room_double_booked' || decision.conflictType === 'both') {
+            return {
+              success: false,
+              error: `Room conflict: ${decision.conflictReason}`,
+              conflict: decision
+            } as any
           }
         }
       }

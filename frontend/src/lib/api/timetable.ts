@@ -145,6 +145,56 @@ export async function checkTeacherConflict(
   return result.data
 }
 
+export interface ScheduleChangeDecision {
+  hasConflict: boolean
+  conflictType: 'none' | 'room_double_booked' | 'teacher_double_booked' | 'both'
+  conflictReason: string
+  suggestedAlternativeRoom: string | null
+  /** rooms.id of the suggestion, when it matches a rooms row */
+  suggestedAlternativeRoomId: string | null
+  canAutoApprove: boolean
+}
+
+/**
+ * Asks the backend to evaluate a proposed teacher/room/slot change against the
+ * current timetable (nothing is saved). Pass excludeEntryId when editing an
+ * existing entry so it doesn't conflict with itself.
+ */
+export async function validateScheduleChange(params: {
+  academicYearId: string
+  teacherId: string
+  roomNumber?: string
+  roomId?: string
+  dayOfWeek: DayOfWeek
+  periodId: string
+  campusId?: string
+  subject?: string
+  excludeEntryId?: string
+}): Promise<ScheduleChangeDecision> {
+  const token = await getAuthToken()
+  const response = await fetch(`${API_URL}/timetable/validate-change`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      campus_id: params.campusId,
+      academic_year_id: params.academicYearId,
+      teacher_id: params.teacherId,
+      room_number: params.roomNumber,
+      room_id: params.roomId,
+      day_of_week: params.dayOfWeek,
+      period_id: params.periodId,
+      subject: params.subject,
+      exclude_entry_id: params.excludeEntryId
+    })
+  })
+
+  const result: ApiResponse<ScheduleChangeDecision> = await response.json()
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to validate schedule change')
+  }
+  return result.data
+}
+
 export async function createTimetableEntry(data: CreateTimetableEntryDTO): Promise<TimetableEntry> {
   const token = await getAuthToken()
   const response = await fetch(`${API_URL}/timetable`, {
@@ -577,4 +627,27 @@ export function downloadTimetableImportTemplate() {
   a.download = 'timetable_import_template.csv'
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Creates one default section named after the grade (and assigns its section-less
+ * students to it) when a grade has no sections, so a timetable can be built for the
+ * grade directly. Idempotent.
+ */
+export async function ensureGradeSection(gradeLevelId: string, campusId?: string): Promise<{
+  section: { id: string; name: string; grade_level_id: string; campus_id: string }
+  created: boolean
+  studentsAssigned: number
+}> {
+  const token = await getAuthToken()
+  const response = await fetch(`${API_URL}/timetable/ensure-grade-section`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ grade_level_id: gradeLevelId, campus_id: campusId }),
+  })
+  const result = await response.json()
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to set up timetable for this grade')
+  }
+  return result.data
 }

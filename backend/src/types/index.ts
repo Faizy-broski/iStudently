@@ -606,6 +606,7 @@ export interface SchoolEvent {
   send_reminder: boolean;
   reminder_sent: boolean;
   hijri_offset: number;
+  marking_period_id?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -625,6 +626,7 @@ export interface CreateEventDTO {
   color_code?: string;
   send_reminder?: boolean;
   hijri_offset?: number;
+  marking_period_id?: string | null;
   created_by?: string;
 }
 

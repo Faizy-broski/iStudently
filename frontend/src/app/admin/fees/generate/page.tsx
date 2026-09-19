@@ -105,6 +105,11 @@ export default function GenerateFeesPage() {
         return param ? param.split(',').filter(Boolean) : []
     })
     const [sectionIds, setSectionIds] = useState<string[]>([])
+    // Extra student filters for bulk generation. Status defaults to active so
+    // withdrawn/inactive students aren't billed by accident.
+    const [studentStatus, setStudentStatus] = useState<'active' | 'inactive' | 'all'>('active')
+    const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all')
+    const [familyFilter, setFamilyFilter] = useState<'all' | 'with' | 'without'>('all')
     const [gradePopoverOpen, setGradePopoverOpen] = useState(false)
     const [sectionPopoverOpen, setSectionPopoverOpen] = useState(false)
 
@@ -354,6 +359,9 @@ export default function GenerateFeesPage() {
                     // single id or an array for each.
                     grade_level_id: gradeLevelIds.length > 0 ? gradeLevelIds : undefined,
                     section_id: sectionIds.length > 0 ? sectionIds : undefined,
+                    student_status: studentStatus === 'all' ? undefined : studentStatus,
+                    gender: genderFilter === 'all' ? undefined : genderFilter,
+                    has_siblings: familyFilter === 'all' ? undefined : familyFilter === 'with',
                     category_ids: isAllCategoriesSelected ? null : selectedCategories,
                     period_type: billingPeriod,
                     period_number: isMultiInstancePeriod && periodNumber ? parseInt(periodNumber, 10) : undefined
@@ -880,6 +888,42 @@ export default function GenerateFeesPage() {
                                     />
                                 </div>
                             )}
+
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                <div className="space-y-1.5">
+                                    <Label>{t('studentStatusFilter')}</Label>
+                                    <Select value={studentStatus} onValueChange={(v) => setStudentStatus(v as typeof studentStatus)}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="active">{t('statusActive')}</SelectItem>
+                                            <SelectItem value="inactive">{t('statusInactive')}</SelectItem>
+                                            <SelectItem value="all">{t('statusAll')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>{t('genderFilter')}</Label>
+                                    <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v as typeof genderFilter)}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">{t('genderAll')}</SelectItem>
+                                            <SelectItem value="male">{t('genderMale')}</SelectItem>
+                                            <SelectItem value="female">{t('genderFemale')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>{t('familyFilter')}</Label>
+                                    <Select value={familyFilter} onValueChange={(v) => setFamilyFilter(v as typeof familyFilter)}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">{t('familyAll')}</SelectItem>
+                                            <SelectItem value="with">{t('familyWithSiblings')}</SelectItem>
+                                            <SelectItem value="without">{t('familyWithoutSiblings')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
 
                             <FeeCategoriesSelector />
 

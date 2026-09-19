@@ -1,6 +1,10 @@
 import { Request, Response } from 'express'
 import * as timetableService from '../services/timetable.service'
 import * as attendanceService from '../services/attendance.service'
+import { z } from 'zod'
+import { scheduleDecisionService } from '../services/schedule-decision/schedule-decision.service'
+import { getEffectiveSchoolId } from '../utils/campus-validation'
+import { ensureDefaultSectionForGrade } from '../services/grade-default-section.service'
 import { ApiResponse, DayOfWeek } from '../types'
 import { stripConfidentialFamilyStatus } from '../utils/confidential-family-status'
 import {
@@ -150,6 +154,63 @@ export const checkTeacherConflict = async (req: Request, res: Response) => {
       success: false,
       error: error.message
     } as ApiResponse)
+  }
+}
+
+const validateChangeSchema = z.object({
+  campus_id: z.string().uuid().optional(),
+  academic_year_id: z.string().uuid(),
+  teacher_id: z.string().uuid(),
+  room_number: z.string().trim().max(100).optional().nullable(),
+  room_id: z.string().uuid().optional().nullable(),
+  day_of_week: z.number().int().min(0).max(6),
+  period_id: z.string().uuid(),
+  subject: z.string().trim().max(200).optional(),
+  exclude_entry_id: z.string().uuid().optional()
+}).refine((v) => !!(v.room_number?.trim() || v.room_id), { message: 'room_number or room_id is required' })
+
+/**
+ * POST /api/timetable/validate-change
+ * Evaluates a requested schedule/room change and returns the strict decision
+ * JSON (hasConflict, conflictType, conflictReason, suggestedAlternativeRoom,
+ * canAutoApprove) — nothing is written.
+ */
+export const validateScheduleChange = async (req: Request, res: Response) => {
+  try {
+    const adminSchoolId = (req as AuthRequest).profile?.school_id
+    if (!adminSchoolId) {
+      return res.status(400).json({ success: false, error: 'School ID is required' } as ApiResponse)
+    }
+
+    const parsed = validateChangeSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        error: parsed.error.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join('; ')
+      } as ApiResponse)
+    }
+    const body = parsed.data
+
+    // Admin accounts aren't pinned to one campus — honour the requested campus
+    // when the admin has access to it.
+    const campusId = await getEffectiveSchoolId(adminSchoolId, body.campus_id)
+
+    const decision = await scheduleDecisionService.validateAgainstDatabase({
+      campusId,
+      academicYearId: body.academic_year_id,
+      teacherId: body.teacher_id,
+      roomNumber: body.room_number,
+      roomId: body.room_id,
+      dayOfWeek: body.day_of_week,
+      periodId: body.period_id,
+      subject: body.subject,
+      excludeEntryId: body.exclude_entry_id
+    })
+
+    res.json({ success: true, data: decision })
+  } catch (error: any) {
+    console.error('Error validating schedule change:', error)
+    res.status(500).json({ success: false, error: error.message } as ApiResponse)
   }
 }
 
@@ -663,5 +724,43 @@ export const getTeacherAttendanceOverview = async (req: Request, res: Response) 
       success: false,
       error: error.message
     } as ApiResponse)
+  }
+}
+
+const ensureGradeSectionSchema = z.object({
+  grade_level_id: z.string().uuid(),
+  campus_id: z.string().uuid().optional()
+})
+
+/**
+ * POST /api/timetable/ensure-grade-section
+ * For a grade with no sections, creates one default section named after the grade
+ * (and assigns the grade's section-less students to it) so a timetable can be built
+ * for the grade directly. Idempotent — returns the existing section if there is one.
+ */
+export const ensureGradeSection = async (req: Request, res: Response) => {
+  try {
+    const adminSchoolId = (req as AuthRequest).profile?.school_id
+    if (!adminSchoolId) {
+      return res.status(400).json({ success: false, error: 'School ID is required' } as ApiResponse)
+    }
+    const parsed = ensureGradeSectionSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        error: parsed.error.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join('; ')
+      } as ApiResponse)
+    }
+    const campusId = await getEffectiveSchoolId(adminSchoolId, parsed.data.campus_id)
+    const result = await ensureDefaultSectionForGrade({
+      campusId,
+      gradeLevelId: parsed.data.grade_level_id,
+      createdBy: (req as AuthRequest).profile?.id
+    })
+    res.json({ success: true, data: result })
+  } catch (error: any) {
+    console.error('Error ensuring default grade section:', error)
+    const notFound = /not found/i.test(error.message || '')
+    res.status(notFound ? 404 : 500).json({ success: false, error: error.message } as ApiResponse)
   }
 }

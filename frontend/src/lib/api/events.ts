@@ -210,6 +210,29 @@ export async function createEvent(data: CreateEventDTO) {
   })
 }
 
+export interface BulkEventRow {
+  /** 1-based spreadsheet row number, echoed back in per-row errors */
+  row: number
+  title: string
+  category: string
+  start_date: string
+  end_date?: string
+  description?: string
+  target_grades?: string[]
+  color_code?: string
+}
+
+export async function bulkCreateEvents(data: {
+  marking_period_id: string
+  campus_id?: string | null
+  events: BulkEventRow[]
+}) {
+  return apiRequest<{ created: number; errors: { row: number; error: string }[] }>('/events/bulk', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
 export async function updateEvent(id: string, data: UpdateEventDTO) {
   return apiRequest<SchoolEvent>(`/events/${id}`, {
     method: 'PUT',

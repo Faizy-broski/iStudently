@@ -484,6 +484,14 @@ export class SchoolDashboardService {
           .eq('school_id', effectiveId)
           .eq('profile.is_active', true)
         const activeIds = (activeStudents || []).map((s: any) => s.id as string)
+        // For the CURRENT year, grade/section come from the student's live record (the same
+        // source Student Info shows) rather than the enrollment row's copy. That copy is only
+        // refreshed by a best-effort sync, so a missed sync left students counted under their
+        // old class here even though Student Info was correct. Enrollment still decides WHO is
+        // counted; the students table decides WHICH class.
+        const liveByStudentId = new Map<string, { grade: any; section: any }>(
+          (activeStudents || []).map((s: any) => [s.id as string, { grade: s.grade, section: s.section }])
+        )
 
         const hasAnyEnrollment = new Set<string>()
         if (activeIds.length > 0) {
@@ -495,7 +503,12 @@ export class SchoolDashboardService {
         }
         const legacyRows = (activeStudents || []).filter((s: any) => !hasAnyEnrollment.has(s.id))
 
-        rows = [...(enrolledResult.data || []), ...legacyRows]
+        const enrolledRows = (enrolledResult.data || []).map((r: any) => {
+          const live = liveByStudentId.get(r.student_id)
+          return live ? { ...r, grade: live.grade, section: live.section } : r
+        })
+
+        rows = [...enrolledRows, ...legacyRows]
       } else {
         const pastResult = await supabase
           .from('student_enrollment')

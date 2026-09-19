@@ -50,6 +50,7 @@ router.get('/payments/students', requireStaff, (req, res) => feesController.getS
 router.get('/payments/all-with-students', requireStaff, (req, res) => feesController.getAllPaymentsWithStudents(req, res))
 router.get('/payments/student/:studentId', requireStaff, (req, res) => feesController.getStudentPayments(req, res))
 router.post('/payments/record', requireStaff, (req, res) => feesController.recordDirectPayment(req, res))
+router.post('/payments/:paymentId/refund', requireAdmin, (req, res) => feesController.refundPayment(req, res))
 router.put('/payments/:paymentId', requireAdmin, (req, res) => feesController.updatePayment(req, res))
 router.delete('/payments/:paymentId', requireAdmin, (req, res) => feesController.deletePayment(req, res))
 

@@ -470,7 +470,17 @@ export class FeesController {
      */
     async generateMonthlyFees(req: AuthRequest, res: Response) {
         try {
-            const { month, year, academic_year, grade_level_id, section_id, category_ids, campus_id, school_id, period_type, period_number } = req.body
+            const { month, year, academic_year, grade_level_id, section_id, category_ids, campus_id, school_id, period_type, period_number, student_status, gender, has_siblings } = req.body
+
+            // Optional student filters — only accept known values so a bad
+            // client can't smuggle arbitrary strings into the query.
+            const studentFilters = {
+                status: student_status === 'active' || student_status === 'inactive' ? student_status as 'active' | 'inactive' : undefined,
+                gender: gender === 'male' || gender === 'female' ? gender as 'male' | 'female' : undefined,
+                hasSiblings: has_siblings === true || has_siblings === 'true' ? true
+                    : has_siblings === false || has_siblings === 'false' ? false
+                    : undefined
+            }
 
             // Get admin's school ID
             const adminSchoolId = req.profile?.school_id
@@ -515,7 +525,8 @@ export class FeesController {
                 category_ids,
                 effectiveSchoolId, // Campus-specific school ID
                 period_type || 'monthly',
-                period_number !== undefined && period_number !== null ? Number(period_number) : undefined
+                period_number !== undefined && period_number !== null ? Number(period_number) : undefined,
+                studentFilters
             )
 
             // Data problems (missing grade, no matching structure, zero amount,
@@ -1065,6 +1076,39 @@ export class FeesController {
         } catch (error: any) {
             console.error('Error deleting payment:', error)
             return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Refund (part of) a payment
+     * POST /api/fees/payments/:paymentId/refund
+     */
+    async refundPayment(req: AuthRequest, res: Response) {
+        try {
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id as string)
+            const { paymentId } = req.params
+
+            if (!schoolId) {
+                return res.status(status || 403).json({ success: false, error: error || 'Not authenticated' })
+            }
+            if (!paymentId) {
+                return res.status(400).json({ success: false, error: 'paymentId is required' })
+            }
+
+            const { amount, comment, payment_date } = req.body
+            const refund = await feesService.refundPayment(paymentId, schoolId, {
+                amount: amount !== undefined && amount !== null && amount !== '' ? parseFloat(amount) : undefined,
+                comment,
+                payment_date,
+                created_by: req.profile?.id,
+            })
+
+            return res.status(201).json({ success: true, data: refund })
+        } catch (error: any) {
+            console.error('Error refunding payment:', error)
+            const msg: string = error.message || 'Failed to refund payment'
+            const isClientError = /not found|cannot|already|must be|only positive/i.test(msg)
+            return res.status(isClientError ? 400 : 500).json({ success: false, error: msg })
         }
     }
 

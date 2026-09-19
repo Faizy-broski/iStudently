@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { IconLoader, IconPlus, IconTrash, IconCalendar, IconUpload, IconPencil, IconCheck, IconX, IconBell, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { IconLoader, IconPlus, IconTrash, IconCalendar, IconUpload, IconPencil, IconCheck, IconX, IconBell, IconChevronLeft, IconChevronRight, IconReceiptRefund } from '@tabler/icons-react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -25,6 +27,7 @@ interface Payment {
     id: string
     receipt_number?: string
     manual_receipt_number?: string
+    refund_of?: string | null
     amount: number
     payment_date: string
     comment?: string
@@ -489,6 +492,61 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         }
     }
 
+    // Refund: recorded as a negative payment row linked to the original
+    const [refundTarget, setRefundTarget] = useState<Payment | null>(null)
+    const [refundAmount, setRefundAmount] = useState('')
+    const [refundReason, setRefundReason] = useState('')
+    const [refunding, setRefunding] = useState(false)
+
+    const refundedByPaymentId = useMemo(() => {
+        const map = new Map<string, number>()
+        payments.forEach(p => {
+            if (p.refund_of) map.set(p.refund_of, (map.get(p.refund_of) || 0) + Math.abs(Number(p.amount)))
+        })
+        return map
+    }, [payments])
+
+    const refundableFor = (p: Payment) =>
+        Math.max(0, Math.round((Number(p.amount) - (refundedByPaymentId.get(p.id) || 0)) * 100) / 100)
+
+    const openRefund = (p: Payment) => {
+        setRefundTarget(p)
+        setRefundAmount(refundableFor(p).toString())
+        setRefundReason('')
+    }
+
+    const submitRefund = async () => {
+        if (!refundTarget) return
+        const max = refundableFor(refundTarget)
+        const amt = parseFloat(refundAmount)
+        if (!Number.isFinite(amt) || amt <= 0 || amt > max) {
+            toast.error(t('refundInvalidAmount'))
+            return
+        }
+        setRefunding(true)
+        try {
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            const res = await fetch(`${API_BASE}/fees/payments/${refundTarget.id}/refund`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({ school_id: schoolId, amount: amt, comment: refundReason || undefined })
+            })
+            const json = await res.json()
+            if (!json.success) throw new Error(json.error)
+            toast.success(t('refundSuccess'))
+            setRefundTarget(null)
+            mutatePayments()
+        } catch (error: unknown) {
+            toast.error((error as Error).message || t('refundFailed'))
+        } finally {
+            setRefunding(false)
+        }
+    }
+
     // Delete existing payment
     const handleDeletePayment = async (paymentId: string) => {
         if (!confirm(t('deleteConfirm'))) return
@@ -654,7 +712,15 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}
                                     >
                                         <TableCell></TableCell>
-                                        <TableCell className="text-center">{payment.receipt_number || '-'}</TableCell>
+                                        <TableCell className="text-center">
+                                            {payment.receipt_number || '-'}
+                                            {payment.refund_of && (
+                                                <span className="ms-1 inline-block rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{t('refundBadge')}</span>
+                                            )}
+                                            {!payment.refund_of && (refundedByPaymentId.get(payment.id) || 0) > 0 && (
+                                                <div className="text-[10px] text-red-600">{t('refundedNote', { amount: formatCurrency(refundedByPaymentId.get(payment.id) || 0) })}</div>
+                                            )}
+                                        </TableCell>
 
                                         {/* MRN (manual/paper receipt number) */}
                                         <TableCell className="text-center">
@@ -677,7 +743,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                     onChange={e => setEditingValues(v => ({ ...v, amount: e.target.value }))}
                                                     className="w-24 h-8"
                                                 />
-                                            ) : formatCurrency(payment.amount)}
+                                            ) : <span className={payment.refund_of ? 'text-red-600 font-medium' : undefined}>{formatCurrency(payment.amount)}</span>}
                                         </TableCell>
 
                                         {/* Payment Date */}
@@ -801,14 +867,28 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                                                        onClick={() => startEdit(payment)}
-                                                    >
-                                                        <IconPencil className="h-4 w-4" />
-                                                    </Button>
+                                                    {!payment.refund_of && refundableFor(payment) > 0 && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            title={t('refund')}
+                                                            className="h-8 gap-1 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                                            onClick={() => openRefund(payment)}
+                                                        >
+                                                            <IconReceiptRefund className="h-4 w-4" />
+                                                            <span className="text-xs">{t('refund')}</span>
+                                                        </Button>
+                                                    )}
+                                                    {!payment.refund_of && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                                            onClick={() => startEdit(payment)}
+                                                        >
+                                                            <IconPencil className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -1131,6 +1211,41 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 }}
             />
         </div>
+        <Dialog open={!!refundTarget} onOpenChange={(o) => { if (!o) setRefundTarget(null) }}>
+            <DialogContent className="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>{t('refundPayment')}</DialogTitle>
+                </DialogHeader>
+                {refundTarget && (
+                    <div className="space-y-3">
+                        <div className="space-y-1.5">
+                            <Label>{t('refundAmount')}</Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={refundAmount}
+                                onChange={e => setRefundAmount(e.target.value)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {t('refundMaxHint', { amount: formatCurrency(refundableFor(refundTarget)) })}
+                            </p>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>{t('refundReason')}</Label>
+                            <Input value={refundReason} onChange={e => setRefundReason(e.target.value)} />
+                        </div>
+                    </div>
+                )}
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setRefundTarget(null)} disabled={refunding}>{t('cancel')}</Button>
+                    <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={submitRefund} disabled={refunding}>
+                        {refunding ? <IconLoader className="h-4 w-4 animate-spin mr-2" /> : null}
+                        {t('refundConfirm')}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
         </>
     )
 }

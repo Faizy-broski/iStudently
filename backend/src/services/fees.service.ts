@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase'
 import { round2 } from '../utils/money'
+import { getSiblingCountMap } from './student.service'
 
 export interface FeeCategory {
     id: string
@@ -989,6 +990,77 @@ class FeesService {
     }
 
     /**
+     * Refund (part of) a payment. Recorded as a new negative-amount row linked
+     * via refund_of, so the original stays intact for audit and every balance
+     * calculation (trigger, recomputeFeeBalance, accounting) picks it up as-is.
+     */
+    async refundPayment(
+        paymentId: string,
+        schoolId: string,
+        opts: { amount?: number; comment?: string; created_by?: string; payment_date?: string }
+    ): Promise<any> {
+        const { data: original, error: fetchError } = await supabase
+            .from('fee_payments')
+            .select('*')
+            .eq('id', paymentId)
+            .single()
+
+        if (fetchError || !original) throw new Error('Payment not found')
+        if (original.refund_of) throw new Error('A refund cannot itself be refunded')
+        if (Number(original.amount) <= 0) throw new Error('Only positive payments can be refunded')
+
+        // Ownership: scope through the parent student_fee (fee_payments.school_id can drift).
+        const { data: fee } = await supabase
+            .from('student_fees')
+            .select('id')
+            .eq('id', original.student_fee_id)
+            .eq('school_id', schoolId)
+            .maybeSingle()
+        if (!fee) throw new Error('Payment not found')
+
+        const { data: priorRefunds } = await supabase
+            .from('fee_payments')
+            .select('amount')
+            .eq('refund_of', paymentId)
+        const alreadyRefunded = round2(
+            (priorRefunds || []).reduce((sum, r: any) => sum + Math.abs(Number(r.amount || 0)), 0)
+        )
+        const refundable = round2(Number(original.amount) - alreadyRefunded)
+        if (refundable <= 0) throw new Error('This payment has already been fully refunded')
+
+        const refundAmount = round2(opts.amount === undefined ? refundable : Number(opts.amount))
+        if (!Number.isFinite(refundAmount) || refundAmount <= 0) throw new Error('Refund amount must be greater than zero')
+        if (refundAmount > refundable) throw new Error(`Refund amount cannot exceed the refundable balance (${refundable.toFixed(2)})`)
+
+        const { data, error } = await supabase
+            .from('fee_payments')
+            .insert({
+                school_id: original.school_id,
+                student_fee_id: original.student_fee_id,
+                amount: -refundAmount,
+                payment_method: original.payment_method || 'cash',
+                payment_date: opts.payment_date || new Date().toISOString(),
+                comment: opts.comment || null,
+                is_lunch_payment: original.is_lunch_payment || false,
+                receipt_number: `RF-${crypto.randomUUID().split('-')[0]}`,
+                created_by: opts.created_by,
+                refund_of: paymentId,
+            })
+            .select(`
+                *,
+                created_by_profile:created_by(first_name, last_name)
+            `)
+            .single()
+
+        if (error) throw new Error(`Failed to record refund: ${error.message}`)
+
+        // The AFTER INSERT trigger already recomputes, but re-derive through the same
+        // single arithmetic path as edits/deletes so the result can't diverge.
+        await this.recomputeFeeBalance(original.student_fee_id, schoolId)
+        return data
+    }
+
+    /**
      * Update a payment
      */
     async updatePayment(
@@ -1322,7 +1394,15 @@ class FeesService {
         // have several structures of that period_type — one per term/quarter/
         // semester — so this picks exactly one). Not used for annual/one_time,
         // where a grade normally has a single active structure per year.
-        periodNumber?: number
+        periodNumber?: number,
+        // Optional extra student filters (omitted = no restriction, so the
+        // cron job and older frontend builds behave exactly as before).
+        studentFilters?: {
+            status?: 'active' | 'inactive'
+            gender?: 'male' | 'female'
+            /** true = only students with a sibling (shared active guardian); false = only those without */
+            hasSiblings?: boolean
+        }
     ): Promise<{
         studentsProcessed: number
         feesCreated: number
@@ -1366,6 +1446,23 @@ class FeesService {
                 studentsQuery = Array.isArray(sectionId)
                     ? studentsQuery.in('section_id', sectionId)
                     : studentsQuery.eq('section_id', sectionId);
+            }
+
+            // is_active and gender live on the student's profile row.
+            if (studentFilters?.status) {
+                studentsQuery = studentsQuery.eq('profiles.is_active', studentFilters.status === 'active');
+            }
+            if (studentFilters?.gender) {
+                studentsQuery = studentsQuery.eq('profiles.gender', studentFilters.gender);
+            }
+            if (studentFilters?.hasSiblings !== undefined) {
+                const siblingIds = Array.from((await getSiblingCountMap(effectiveSchoolId)).keys());
+                if (studentFilters.hasSiblings) {
+                    // .in() with an empty list matches nothing, which is correct here
+                    studentsQuery = studentsQuery.in('id', siblingIds);
+                } else if (siblingIds.length > 0) {
+                    studentsQuery = studentsQuery.not('id', 'in', `(${siblingIds.join(',')})`);
+                }
             }
 
             const { data: students, error: studentsError } = await studentsQuery;

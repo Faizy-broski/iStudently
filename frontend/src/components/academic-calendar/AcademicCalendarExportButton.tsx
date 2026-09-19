@@ -1,10 +1,14 @@
 ﻿'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Printer, Download, Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { EventFormDialog } from '@/components/admin/EventFormDialog'
+import Link from 'next/link'
+import { Printer, Download, Loader2, Pencil, RotateCcw } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useAcademic } from '@/context/AcademicContext'
@@ -29,6 +33,13 @@ export function AcademicCalendarExportButton({ markingPeriods }: Props) {
   const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([])
   const [selectedGradeIds, setSelectedGradeIds] = useState<string[]>([])
   const printRef = useRef<HTMLDivElement>(null)
+  const [editMode, setEditMode] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<SchoolEvent | null>(null)
+  const [customTitle, setCustomTitle] = useState('')
+  const [customYear, setCustomYear] = useState('')
+  const [customSchoolName, setCustomSchoolName] = useState('')
+  const [customAddress, setCustomAddress] = useState('')
+  const [footerNote, setFooterNote] = useState('')
 
   // Derive date range from marking periods
   const { startDate, endDate } = (() => {
@@ -38,8 +49,7 @@ export function AcademicCalendarExportButton({ markingPeriods }: Props) {
     return { startDate: dates[0], endDate: dates[dates.length - 1] }
   })()
 
-  const handleOpen = useCallback(async () => {
-    setOpen(true)
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [evRes, gradeRes] = await Promise.all([
@@ -54,6 +64,11 @@ export function AcademicCalendarExportButton({ markingPeriods }: Props) {
       setLoading(false)
     }
   }, [startDate, endDate])
+
+  const handleOpen = useCallback(async () => {
+    setOpen(true)
+    await loadData()
+  }, [loadData])
 
   /**
    * Print by injecting the calendar's rendered HTML into a hidden iframe.
@@ -156,6 +171,37 @@ export function AcademicCalendarExportButton({ markingPeriods }: Props) {
   const schoolAddress: string = selectedCampus?.address || school?.address || ''
   const academicYearLabel: string | undefined = currentAcademicYear?.name
 
+  // Customisations (title, year, school name/address, footer note) are saved
+  // per campus in this browser, so an admin's wording survives reopening the
+  // preview. localStorage can be unavailable/blocked, so every access is guarded.
+  const storageKey = `acal-custom:${selectedCampus?.id ?? 'school'}`
+  useEffect(() => {
+    if (!open) return
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}')
+      setCustomTitle(saved.title || '')
+      setCustomYear(saved.year || '')
+      setCustomSchoolName(saved.schoolName || '')
+      setCustomAddress(saved.address || '')
+      setFooterNote(saved.footerNote || '')
+    } catch { /* corrupt or blocked storage — keep defaults */ }
+  }, [open, storageKey])
+
+  const saveCustom = (patch: Record<string, string>) => {
+    try {
+      const cur = JSON.parse(localStorage.getItem(storageKey) || '{}')
+      localStorage.setItem(storageKey, JSON.stringify({ ...cur, ...patch }))
+    } catch { /* ignore */ }
+  }
+  const resetCustom = () => {
+    setCustomTitle(''); setCustomYear(''); setCustomSchoolName(''); setCustomAddress(''); setFooterNote('')
+    try { localStorage.removeItem(storageKey) } catch { /* ignore */ }
+  }
+
+  const editableEvents = events
+    .filter(ev => !ev.target_grades?.length || selectedGradeIds.length === 0 || ev.target_grades.some(g => selectedGradeIds.includes(g)))
+    .sort((x, y) => x.start_at.localeCompare(y.start_at))
+
   const calGrades: CalendarGrade[] = gradeLevels.map(g => ({ id: g.id, name: g.name }))
 
   return (
@@ -208,17 +254,90 @@ export function AcademicCalendarExportButton({ markingPeriods }: Props) {
                 events={events}
                 selectedGradeIds={selectedGradeIds}
                 gradeLevels={calGrades}
-                schoolName={schoolName}
-                schoolAddress={schoolAddress}
+                schoolName={customSchoolName.trim() || schoolName}
+                schoolAddress={customAddress.trim() || schoolAddress}
                 schoolLogoUrl={schoolLogoUrl}
-                academicYearLabel={academicYearLabel}
+                academicYearLabel={customYear.trim() || academicYearLabel}
+                calendarTitle={customTitle}
+                footerNote={footerNote}
                 weekStartDay={0}
                 weekEndDay={4}
               />
             </div>
           )}
 
+          {editMode && (
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Customize calendar</h3>
+                <Button variant="ghost" size="sm" onClick={resetCustom} className="gap-1 h-7 text-xs">
+                  <RotateCcw className="h-3.5 w-3.5" /> Reset
+                </Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Title</Label>
+                  <Input value={customTitle} placeholder="Academic Calendar" maxLength={80}
+                    onChange={e => { setCustomTitle(e.target.value); saveCustom({ title: e.target.value }) }} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Academic year label</Label>
+                  <Input value={customYear} placeholder={academicYearLabel || '2026-2027'} maxLength={40}
+                    onChange={e => { setCustomYear(e.target.value); saveCustom({ year: e.target.value }) }} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">School name</Label>
+                  <Input value={customSchoolName} placeholder={schoolName} maxLength={120}
+                    onChange={e => { setCustomSchoolName(e.target.value); saveCustom({ schoolName: e.target.value }) }} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Address / subtitle</Label>
+                  <Input value={customAddress} placeholder={schoolAddress} maxLength={160}
+                    onChange={e => { setCustomAddress(e.target.value); saveCustom({ address: e.target.value }) }} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Note printed under &quot;Dates to remember&quot;</Label>
+                <Textarea value={footerNote} rows={2} maxLength={500}
+                  onChange={e => { setFooterNote(e.target.value); saveCustom({ footerNote: e.target.value }) }} />
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Events on this calendar ({editableEvents.length})</h3>
+                {editableEvents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No events in this date range.</p>
+                ) : (
+                  <div className="max-h-52 overflow-y-auto rounded-md border divide-y">
+                    {editableEvents.map(ev => (
+                      <div key={ev.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: ev.color_code || '#3b82f6' }} />
+                        <span className="flex-1 truncate">{ev.title}</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {ev.start_at.slice(0, 10)}{ev.end_at.slice(0, 10) !== ev.start_at.slice(0, 10) ? ` → ${ev.end_at.slice(0, 10)}` : ''}
+                        </span>
+                        <Button variant="ghost" size="sm" className="h-7 gap-1" onClick={() => setEditingEvent(ev)}>
+                          <Pencil className="h-3.5 w-3.5" /> Edit
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            This calendar is built from the marking period dates and the School Events &amp; Calendar.
+            Weekends (outside the school week) stay grey, and each event category is shown in its own colour.
+          </p>
+
           <DialogFooter className="gap-2">
+            <Button variant="outline" asChild className="gap-2">
+              <Link href="/admin/events/list"><Pencil className="h-4 w-4" /> Manage all events</Link>
+            </Button>
+            <Button variant={editMode ? 'default' : 'outline'} onClick={() => setEditMode(m => !m)} className="gap-2">
+              <Pencil className="h-4 w-4" /> {editMode ? 'Done editing' : 'Edit calendar'}
+            </Button>
             <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
             <Button onClick={handlePrint} className="gap-2" disabled={loading || printing}>
               {printing
@@ -229,6 +348,13 @@ export function AcademicCalendarExportButton({ markingPeriods }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <EventFormDialog
+        open={editingEvent !== null}
+        onOpenChange={(o) => { if (!o) setEditingEvent(null) }}
+        event={editingEvent}
+        onSuccess={() => { setEditingEvent(null); loadData() }}
+      />
     </>
   )
 }

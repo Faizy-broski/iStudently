@@ -40,7 +40,8 @@ export default function TimetablePage() {
 
   // Campus-specific data using hooks
   const { gradeLevels, loading: gradeLevelsLoading } = useGradeLevels()
-  const { sections, loading: sectionsLoading } = useSections()
+  const { sections, loading: sectionsLoading, refresh: refreshSections } = useSections()
+  const [settingUpGrade, setSettingUpGrade] = useState(false)
   
   // Other data state - using GlobalPeriod from the /periods endpoint
   const [periods, setPeriods] = useState<teachersApi.GlobalPeriod[]>([])
@@ -569,6 +570,29 @@ export default function TimetablePage() {
             <h3 className="text-lg font-medium text-muted-foreground">{t('no_sections_title')}</h3>
             <p className="text-sm text-muted-foreground mt-1">
               {t('no_sections_desc', { grade: selectedGradeName })}
+            </p>
+            <Button
+              className="mt-5 bg-[#022172] text-white"
+              disabled={settingUpGrade}
+              onClick={async () => {
+                if (!selectedGrade) return
+                setSettingUpGrade(true)
+                try {
+                  const res = await timetableApi.ensureGradeSection(selectedGrade, selectedCampus?.id)
+                  await refreshSections()
+                  toast.success(t('grade_timetable_ready', { grade: selectedGradeName ?? '', count: res.studentsAssigned }))
+                } catch (error: any) {
+                  toast.error(error.message || t('err_setup_grade'))
+                } finally {
+                  setSettingUpGrade(false)
+                }
+              }}
+            >
+              {settingUpGrade ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Calendar className="h-4 w-4 mr-2" />}
+              {t('btn_setup_grade_timetable', { grade: selectedGradeName ?? '' })}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-3 max-w-md mx-auto">
+              {t('setup_grade_hint')}
             </p>
           </CardContent>
         </Card>
