@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './AuthContext'
 import { getMyPermissions, ProfilePermission } from '@/lib/api/user-profiles'
 
@@ -52,7 +52,7 @@ export function clearPermissionsCache() {
 
 export function PermissionsProvider({ children }: { children: React.ReactNode }) {
   const { profile, loading: authLoading } = useAuth()
-  const [permissions, setPermissions] = useState<ProfilePermission[] | null>(null)
+  const [rawPermissions, setPermissions] = useState<ProfilePermission[] | null>(null)
   const [loading, setLoading] = useState(true)
   const fetchedForRef = useRef<string | null>(null)
 
@@ -87,6 +87,15 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     fetchedForRef.current = profile.id
     void fetchPermissions(profile.id)
   }, [authLoading, profile, fetchPermissions])
+
+  // null from the server means "no profile assigned = full access" — right for admins, but a
+  // staff account is only ever meant to see what a profile grants. Now that staff can enter the
+  // admin shell, one with no profile assigned must get nothing (only the always-allowed
+  // dashboard/profile pages) instead of the whole admin menu.
+  const permissions = useMemo<ProfilePermission[] | null>(
+    () => (rawPermissions === null && profile?.role === 'staff' ? [] : rawPermissions),
+    [rawPermissions, profile?.role]
+  )
 
   const refresh = useCallback(async () => {
     if (!profile) return

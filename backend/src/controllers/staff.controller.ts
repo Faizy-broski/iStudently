@@ -6,6 +6,15 @@ import { CreateStaffDTO } from '../types'
 import { getEffectiveSchoolId, validateCampusAccess } from '../utils/campus-validation'
 import { generatePlaceholderEmail } from '../utils/email.util'
 
+// A staff account can be given "edit" on the Staff module, but must never be able to use it to
+// create, promote, edit or delete an administrator account (that would be a privilege
+// escalation). Real admins and super admins are unaffected.
+const callerIsStaffRole = (req: Request) => (req as any).profile?.role === 'staff'
+const isAdminLevel = (role?: string | null, title?: string | null) =>
+    role === 'admin' || role === 'super_admin' || StaffService.determineRoleFromTitle(title || undefined) === 'admin'
+const forbidAdminAccountChange = (res: Response) =>
+    res.status(403).json({ success: false, error: 'Forbidden: staff roles cannot create or change administrator accounts' })
+
 // Create a Supabase Admin client for Auth operations
 // process.env.SUPABASE_URL and process.env.SUPABASE_SERVICE_ROLE_KEY should be available
 const supabaseAdmin = createClient(
@@ -79,6 +88,8 @@ export const createStaff = async (req: Request, res: Response) => {
         const adminSchoolId = (req as any).profile?.school_id || (req as any).profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
         const creatorId = (req as any).profile?.id
         const data: CreateStaffDTO = req.body
+
+        if (callerIsStaffRole(req) && isAdminLevel(null, data.title)) return forbidAdminAccountChange(res)
 
         let effectiveSchoolId = req.body.campus_id || req.body.school_id || headerSchoolId || adminSchoolId
 
@@ -163,6 +174,10 @@ export const updateStaff = async (req: Request, res: Response) => {
             }
         }
         
+        if (callerIsStaffRole(req) && (isAdminLevel((existing.data as any)?.role, (existing.data as any)?.title) || isAdminLevel(null, req.body?.title))) {
+            return forbidAdminAccountChange(res)
+        }
+
         const result = await StaffService.updateStaff(id, existing.data!.school_id, req.body)
         if (!result.success) return res.status(400).json(result)
         return res.json(result)
@@ -194,6 +209,10 @@ export const deleteStaff = async (req: Request, res: Response) => {
             }
         }
         
+        if (callerIsStaffRole(req) && isAdminLevel((staff.data as any)?.role, (staff.data as any)?.title)) {
+            return forbidAdminAccountChange(res)
+        }
+
         if (staff.data.profile_id) {
             const { error } = await supabaseAdmin.auth.admin.deleteUser(staff.data.profile_id)
             if (error) throw error

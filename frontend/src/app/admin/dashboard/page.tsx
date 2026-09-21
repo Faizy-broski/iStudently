@@ -6,6 +6,8 @@ import { Users, BookOpen, Calendar, GraduationCap, Bookmark, RefreshCw, ThumbsUp
 import { useSchoolDashboard } from "@/hooks/useSchoolDashboard";
 import { Spinner } from "@/components/ui/spinner";
 import { useTranslations } from "next-intl";
+import { useAuth } from "@/context/AuthContext";
+import { usePermissions } from "@/context/PermissionsContext";
 import {
   Area,
   AreaChart,
@@ -22,6 +24,8 @@ import {
 export default function AdminDashboard() {
   const t = useTranslations('admin');
   const tCommon = useTranslations('common');
+  const { profile } = useAuth();
+  const { canUse } = usePermissions();
   // Use SWR hook for efficient data fetching with automatic revalidation
   const {
     stats,
@@ -83,6 +87,20 @@ export default function AdminDashboard() {
       }
     ];
   }, [stats, t]);
+
+  // A staff account sees the real dashboard when its role grants the Dashboard module;
+  // otherwise a short welcome instead of analytics it isn't allowed to load.
+  if (profile?.role === 'staff' && !canUse('/admin/dashboard')) {
+    const name = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+    return (
+      <div className="max-w-2xl">
+        <h1 className="text-3xl font-bold text-blue-900 dark:text-white">
+          {t('staff_welcome_title', { name })}
+        </h1>
+        <p className="text-gray-600 mt-2 dark:text-gray-300">{t('staff_welcome_body')}</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

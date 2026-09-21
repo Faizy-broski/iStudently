@@ -23,7 +23,7 @@ function redactProfileEmail<T extends { profile?: { email?: string | null } | nu
 // ============================================================================
 
 // Helper function to determine role based on title/designation
-const determineRoleFromTitle = (title?: string): UserRole => {
+export const determineRoleFromTitle = (title?: string): UserRole => {
     if (!title) return 'staff'
 
     const lowerTitle = title.toLowerCase().trim()

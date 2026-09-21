@@ -183,7 +183,7 @@ export const updatePermissions = async (req: AuthRequest, res: Response): Promis
     await service.upsertPermissions(id, schoolId, permissions)
     return res.json({ success: true })
   } catch (error: any) {
-    const status = error.message?.includes('not found') ? 404 : 500
+    const status = error.message?.includes('not found') ? 404 : error.message?.includes('not enabled for this school') ? 400 : 500
     return res.status(status).json({ success: false, error: error.message })
   }
 }

@@ -1,5 +1,7 @@
 import { supabase } from '../config/supabase'
 import { UserRole } from '../types'
+import { getMainSchoolId } from '../utils/campus.util'
+import { clearModulePermissionCache, resolvePermissionSourceId } from './module-access.service'
 
 export interface UserProfile {
   id: string
@@ -22,6 +24,56 @@ export interface ProfilePermission {
 }
 
 export class UserProfilesService {
+  /**
+   * The super-admin module allow-list for the school (school_settings.allowed_modules on
+   * the school-wide row of the ROOT school). null = unrestricted.
+   */
+  async getSchoolAllowedModules(schoolId: string): Promise<Set<string> | null> {
+    const mainSchoolId = await getMainSchoolId(schoolId)
+    const { data, error } = await supabase
+      .from('school_settings')
+      .select('allowed_modules')
+      .eq('school_id', mainSchoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+
+    if (error && error.code !== 'PGRST116') throw error
+    const list = data?.allowed_modules
+    return Array.isArray(list) ? new Set<string>(list) : null
+  }
+
+  /**
+   * Removes stored permission rows (for every profile of the school) whose module_key is no
+   * longer in the allow-list. Called after a super admin narrows a school's modules.
+   */
+  async pruneDisallowedPermissions(schoolId: string, allowed: string[]): Promise<number> {
+    const { data: campuses } = await supabase.from('schools').select('id').eq('parent_school_id', schoolId)
+    const schoolIds = [schoolId, ...(campuses || []).map((c: any) => c.id as string)]
+
+    const { data: profiles, error } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .in('school_id', schoolIds)
+    if (error) throw error
+    const profileIds = (profiles || []).map((p: any) => p.id as string)
+    if (profileIds.length === 0) return 0
+
+    const { data: rows, error: rowsError } = await supabase
+      .from('user_profile_permissions')
+      .select('id, module_key')
+      .in('profile_id', profileIds)
+    if (rowsError) throw rowsError
+
+    const allowedSet = new Set(allowed)
+    const staleIds = (rows || []).filter((r: any) => !allowedSet.has(r.module_key)).map((r: any) => r.id)
+    if (staleIds.length === 0) return 0
+
+    const { error: delError } = await supabase.from('user_profile_permissions').delete().in('id', staleIds)
+    if (delError) throw delError
+    clearModulePermissionCache()
+    return staleIds.length
+  }
+
   async listProfiles(schoolId: string): Promise<UserProfile[]> {
     const { data, error } = await supabase
       .from('user_profiles')
@@ -85,7 +137,9 @@ export class UserProfilesService {
       .from('user_profiles')
       .insert({
         school_id: schoolId,
-        name: role.name,
+        // (school_id, name) is unique, so the per-user copy can't reuse the role's exact
+        // name. The UI matches a user's role by role_id, never by this name.
+        name: `${String(role.name).slice(0, 70)} · ${staffId.slice(0, 8)}-${Date.now().toString(36)}`,
         base_role: role.base_role,
         profile_type: 'user_profile',
         role_id: roleId,
@@ -103,8 +157,11 @@ export class UserProfilesService {
       .select('module_key, can_use, can_edit')
       .eq('profile_id', roleId)
 
-    if (rolePerms && rolePerms.length > 0) {
-      const rows = rolePerms.map((p) => ({
+    const allowedForClone = await this.getSchoolAllowedModules(schoolId)
+    const clonePerms = (rolePerms || []).filter((p) => !allowedForClone || allowedForClone.has(p.module_key))
+
+    if (clonePerms.length > 0) {
+      const rows = clonePerms.map((p) => ({
         profile_id: newProfile.id,
         module_key: p.module_key,
         can_use: p.can_use,
@@ -232,8 +289,11 @@ export class UserProfilesService {
       .select('module_key, can_use, can_edit')
       .eq('profile_id', roleId)
 
-    if (rolePerms && rolePerms.length > 0) {
-      const rows = rolePerms.map((p) => ({
+    const allowedForCopy = await this.getSchoolAllowedModules(schoolId)
+    const copyPerms = (rolePerms || []).filter((p) => !allowedForCopy || allowedForCopy.has(p.module_key))
+
+    if (copyPerms.length > 0) {
+      const rows = copyPerms.map((p) => ({
         profile_id: newProfile.id,
         module_key: p.module_key,
         can_use: p.can_use,
@@ -281,6 +341,7 @@ export class UserProfilesService {
       .eq('school_id', schoolId)
 
     if (error) throw error
+    clearModulePermissionCache()
   }
 
   async getPermissions(profileId: string, schoolId: string): Promise<ProfilePermission[]> {
@@ -309,12 +370,23 @@ export class UserProfilesService {
   ): Promise<void> {
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('id')
+      .select('id, profile_type')
       .eq('id', profileId)
       .eq('school_id', schoolId)
       .single()
 
     if (profileError || !profile) throw new Error('Profile not found')
+
+    // A profile can only grant modules the super admin enabled for this school.
+    const allowedModules = await this.getSchoolAllowedModules(schoolId)
+    if (allowedModules) {
+      const offending = permissions
+        .filter((p) => (p.can_use || p.can_edit) && !allowedModules.has(p.module_key))
+        .map((p) => p.module_key)
+      if (offending.length > 0) {
+        throw new Error(`Modules not enabled for this school: ${offending.join(', ')}`)
+      }
+    }
 
     // Delete all existing permissions then re-insert active ones
     await supabase.from('user_profile_permissions').delete().eq('profile_id', profileId)
@@ -332,16 +404,60 @@ export class UserProfilesService {
       const { error } = await supabase.from('user_profile_permissions').insert(rows)
       if (error) throw error
     }
+    // Editing a role must reach everyone already assigned to it (their copies were made earlier).
+    if (profile.profile_type === 'role') {
+      await this.syncCopiesOfRole(
+        profileId,
+        rows.map((r) => ({ module_key: r.module_key, can_use: r.can_use, can_edit: r.can_edit }))
+      )
+    }
+    // The API's module-access check caches permissions; make the edit effective immediately.
+    clearModulePermissionCache()
   }
 
   async getMyPermissions(userProfileId: string): Promise<ProfilePermission[]> {
+    // Follow the role a per-user copy was made from (see resolvePermissionSourceId) so the
+    // menu, the server checks and the copy can never disagree after the role is edited.
+    const sourceId = await resolvePermissionSourceId(userProfileId)
     const { data, error } = await supabase
       .from('user_profile_permissions')
       .select('module_key, can_use, can_edit')
-      .eq('profile_id', userProfileId)
+      .eq('profile_id', sourceId)
 
     if (error) throw error
-    return data || []
+    const perms = (data || []) as ProfilePermission[]
+
+    // Heal the stored copy too: other readers (grievances, messaging) read it directly.
+    if (sourceId !== userProfileId) await this.replacePermissions(userProfileId, perms)
+    return perms
+  }
+
+  private async replacePermissions(profileId: string, perms: ProfilePermission[]): Promise<void> {
+    const { data: current } = await supabase
+      .from('user_profile_permissions')
+      .select('module_key, can_use, can_edit')
+      .eq('profile_id', profileId)
+    const sig = (list: ProfilePermission[]) =>
+      list.map((p) => `${p.module_key}|${p.can_use}|${p.can_edit}`).sort().join(',')
+    if (sig((current || []) as ProfilePermission[]) === sig(perms)) return
+
+    await supabase.from('user_profile_permissions').delete().eq('profile_id', profileId)
+    if (perms.length > 0) {
+      await supabase.from('user_profile_permissions').insert(
+        perms.map((p) => ({ profile_id: profileId, module_key: p.module_key, can_use: p.can_use, can_edit: p.can_edit }))
+      )
+    }
+  }
+
+  /** After a role's permissions change, bring every per-user copy of it up to date. */
+  private async syncCopiesOfRole(roleId: string, perms: ProfilePermission[]): Promise<void> {
+    const { data: copies } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('role_id', roleId)
+      .eq('profile_type', 'user_profile')
+      .not('staff_id', 'is', null)
+    for (const copy of copies || []) await this.replacePermissions(copy.id as string, perms)
   }
 
   async assignProfile(

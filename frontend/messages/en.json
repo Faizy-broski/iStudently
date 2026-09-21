@@ -984,6 +984,11 @@
     },
     "title": "School Admin Dashboard",
     "subtitle": "Manage your school operations and track performance",
+    "staff_welcome_title": "Welcome, {name}",
+    "staff_welcome_body": "Use the menu on the left to open the modules you have been given access to.",
+    "view_only_title": "View only",
+    "view_only_body": "You can look at this module but not make changes. Ask an administrator for edit access if you need it.",
+    "view_only_error": "View only: you do not have edit access to this module.",
     "refresh": "Refresh",
     "refresh_tooltip": "Refresh dashboard",
     "stats": {
@@ -6088,6 +6093,7 @@
       "permissions_panel": "Permissions",
       "add_profile": "Add a User Profile",
       "profile_name": "Role Name",
+      "applies_to": "Applies to (user type)",
       "profile_name_placeholder": "e.g. Class Teacher",
       "base_role": "Base Role",
       "can_use": "Can Use",
@@ -7551,6 +7557,20 @@
       }
     },
     "loading": "Loading staff...",
+    "access": {
+      "title": "Login & Access",
+      "role": "Access role",
+      "none": "No access role (dashboard only)",
+      "hint": "The role controls which modules this user can see. Create roles in Settings → User Profiles (type: Staff).",
+      "noRoles": "No Staff-type roles yet — create one in Settings → User Profiles",
+      "username": "Username",
+      "email": "Email",
+      "password": "Password",
+      "credentialsHint": "Save these login details now — the password is not shown again.",
+      "credentialsToast": "Login — username: {username} / password: {password}",
+      "assignFailed": "Staff created, but the access role could not be assigned: {error}. Assign it from the staff Edit dialog.",
+      "passwordRequired": "Set a password so this user can log in"
+    },
     "designations": {
       "title": "Staff Designations (Roles)",
       "subtitle": "Configure staff roles and custom fields",

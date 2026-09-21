@@ -14,7 +14,7 @@ import { getSetupStatus } from '@/lib/api/setup-status'
 import { getDashboards } from '@/lib/api/dashboards'
 import { getEmbeddedResourcesForUser, getEmbeddedResources } from '@/lib/api/embedded-resources'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
-import { PLUGIN_REGISTRY } from '@/config/plugins'
+import { applyPluginInjections } from '@/config/pluginInjection'
 import { LayoutDashboard, Globe, Star } from 'lucide-react'
 import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
 import { useCampus } from '@/context/CampusContext'
@@ -23,6 +23,8 @@ import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 import { SidebarThemeProvider } from '@/context/SidebarThemeContext'
 import { AgreementGate } from '@/components/agreement/AgreementGate'
 import { PermissionsProvider, usePermissions } from '@/context/PermissionsContext'
+import { isPathBlockedByAllowList } from '@/config/moduleCatalog'
+import { ViewOnlyGate } from '@/components/layouts/ViewOnlyGate'
 import { MessagingNotificationProvider } from '@/context/MessagingNotificationContext'
 import { GrievanceNotificationProvider } from '@/context/GrievanceNotificationContext'
 import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt'
@@ -149,7 +151,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
   // Route guard: block direct URL navigation to restricted pages
   React.useEffect(() => {
-    if (permissionsLoading || permissions === null) return
+    if (permissionsLoading) return
     if (!pathname) return
     // Dashboard root and user-profile management are always accessible
     const alwaysAllowed = [
@@ -161,6 +163,18 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       '/parent/dashboard',
     ]
     if (alwaysAllowed.some((p) => pathname.startsWith(p))) return
+
+    // School module allow-list (super admin): the sidebar already hides disallowed items;
+    // this stops them being opened by typing the URL. Only pages the catalog knows about
+    // are blocked, so detail pages and injected items are never locked out by accident.
+    const schoolAllowed = settings?.allowed_modules
+    if (profile?.role !== 'super_admin' && schoolAllowed && isPathBlockedByAllowList(pathname, new Set(schoolAllowed))) {
+      const home = profile?.role === 'student' || profile?.role === 'teacher' || profile?.role === 'parent' ? `/${profile.role}/dashboard` : '/admin/dashboard'
+      router.replace(`${home}?access=denied`)
+      return
+    }
+
+    if (permissions === null) return
     // Allow if any module key exactly matches or is a prefix of the current path
     const hasAccess = permissions.some(
       (p) => p.can_use && (pathname === p.module_key || pathname.startsWith(p.module_key + '/'))
@@ -168,7 +182,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
     if (!hasAccess) {
       router.replace('/admin/dashboard?access=denied')
     }
-  }, [pathname, permissions, permissionsLoading, router])
+  }, [pathname, permissions, permissionsLoading, router, settings?.allowed_modules, profile?.role])
 
   const menuItems = React.useMemo(() => {
     let items = baseMenuItems
@@ -194,30 +208,12 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       })
     }
 
-    // 2. Inject sidebar items for each active plugin.
-    // Injections with no `roles` field default to admin-only (legacy behaviour).
-    // Injections with a `roles` array are applied to each listed role.
+    // 2. Inject sidebar items for each active plugin (shared with the User Profiles picker
+    // and the super-admin module catalog — see config/pluginInjection.ts).
     // NOTE: plugin injection runs before dynamic embedded items so the plain
     // "Embedded Resources" management link lands above the Premium Resources label.
     if (effectiveRole) {
-      for (const plugin of PLUGIN_REGISTRY) {
-        if (!isPluginActive(plugin.id)) continue
-        for (const injection of plugin.sidebarInjections) {
-          const targetRoles = injection.roles && injection.roles.length > 0
-            ? injection.roles
-            : ['admin']
-          if (!targetRoles.includes(effectiveRole as string)) continue
-          items = items.map((item) => {
-            if (item.title.toLowerCase() === injection.parentTitle.toLowerCase() && item.subItems) {
-              const existingHrefs = new Set(item.subItems.map((s) => s.href))
-              const newItems = injection.items.filter((ni) => !existingHrefs.has(ni.href))
-              if (newItems.length === 0) return item
-              return { ...item, subItems: [...item.subItems, ...newItems] }
-            }
-            return item
-          })
-        }
-      }
+      items = applyPluginInjections(items, effectiveRole as string, isPluginActive)
     }
 
     // 3. Inject dynamic embedded resources under Premium Resources (after plugins so the
@@ -328,6 +324,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
           'flex-1 p-4 md:p-6 lg:p-8',
           className
         )}>
+          <ViewOnlyGate />
           {children}
         </main>
       </div>

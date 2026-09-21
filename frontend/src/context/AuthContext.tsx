@@ -457,6 +457,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Campus-fixed accounts (staff/teacher/librarian): resolve campus/staff ids from the backend
+    // when the direct `staff` table read above returned nothing (blocked by RLS or missing row).
+    const fillCampusFromApi = async (p: any, token: string | undefined) => {
+      if (!token || (p.campus_id && p.school)) return
+      try {
+        const res = await fetch(`${API_URL}/auth/me/context`, { headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) return
+        const json = await res.json()
+        if (json?.success && json.data) {
+          if (json.data.campus_id && !p.campus_id) p.campus_id = json.data.campus_id
+          if (json.data.staff_id && !p.staff_id) p.staff_id = json.data.staff_id
+          // Sidebar name/logo: used only if the direct `schools` read below fails
+          if (json.data.school && !p.school) p.school = json.data.school
+        }
+      } catch {
+        // best effort — the account's own school_id remains the fallback
+      }
+    }
+
     const fetchSchoolBranding = async (schoolId: string) => {
       try {
         const { data: schoolData } = await supabase
@@ -687,6 +706,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   retryProfile.staff_id = staffData.id
                   retryProfile.campus_id = staffData.school_id || null
                 }
+                await fillCampusFromApi(retryProfile, session?.access_token)
               }
 
               if (retryProfile.school_id) {
@@ -720,6 +740,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // In staff table, school_id references the campus (which is stored in schools table)
                 profile.campus_id = staffData.school_id || null
               }
+              await fillCampusFromApi(profile, session?.access_token)
             }
 
             // For students, fetch their student_id, school_id, and campus_id from section

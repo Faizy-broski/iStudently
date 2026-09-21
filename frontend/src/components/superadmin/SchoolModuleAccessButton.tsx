@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Dialog,
   DialogContent,
@@ -20,64 +19,24 @@ import {
   getSchoolAllowedModules,
   updateSchoolAllowedModules,
 } from '@/lib/api/school-settings'
-import { getSidebarConfig, type SidebarMenuItem } from '@/config/sidebar'
-import { UserRole } from '@/types'
+import { getModuleCatalog, getAllCatalogHrefs, type CatalogGroup, type CatalogItem } from '@/config/moduleCatalog'
+import { useSidebarLabel } from '@/hooks/useSidebarLabel'
 
 interface SchoolModuleAccessButtonProps {
   schoolId: string
   schoolName: string
 }
 
-interface ModuleGroup {
-  title: string
-  items: { href: string; title: string }[]
-}
-
-// Union every assignable role's sidebar so the allow-list covers whatever an
-// admin could pick from when building a User Profile for any staff/student/parent.
-const ROLES_FOR_UNION: UserRole[] = ['admin', 'teacher', 'staff', 'librarian', 'student', 'parent', 'media_officer', 'fina_supervisor']
-
-function getAllModuleGroups(): ModuleGroup[] {
-  const groups: ModuleGroup[] = []
-  const seenHrefs = new Set<string>()
-
-  const addItem = (groupTitle: string, item: SidebarMenuItem) => {
-    if (seenHrefs.has(item.href)) return
-    seenHrefs.add(item.href)
-    let group = groups.find((g) => g.title === groupTitle)
-    if (!group) {
-      group = { title: groupTitle, items: [] }
-      groups.push(group)
-    }
-    group.items.push({ href: item.href, title: item.title })
-  }
-
-  for (const role of ROLES_FOR_UNION) {
-    for (const item of getSidebarConfig(role)) {
-      if (item.isLabel || item.href === '#') continue
-      if (item.subItems && item.subItems.length > 0) {
-        for (const sub of item.subItems) {
-          if (sub.isLabel || sub.href === '#') continue
-          addItem(item.title, sub)
-        }
-      } else {
-        addItem('__root__', item)
-      }
-    }
-  }
-
-  return groups
-}
-
 export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleAccessButtonProps) {
+  const label = useSidebarLabel()
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [restricted, setRestricted] = React.useState(false)
   const [allowed, setAllowed] = React.useState<Set<string>>(new Set())
 
-  const moduleGroups = React.useMemo(() => getAllModuleGroups(), [])
-  const allHrefs = React.useMemo(() => moduleGroups.flatMap((g) => g.items.map((i) => i.href)), [moduleGroups])
+  const moduleGroups = React.useMemo(() => getModuleCatalog(), [])
+  const allHrefs = React.useMemo(() => getAllCatalogHrefs(), [])
 
   const loadConfig = React.useCallback(async () => {
     setLoading(true)
@@ -105,24 +64,19 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
     loadConfig()
   }
 
-  const toggleItem = (href: string) => {
+  const setItem = (item: CatalogItem, checked: boolean) => {
     setAllowed((prev) => {
       const next = new Set(prev)
-      if (next.has(href)) next.delete(href)
-      else next.add(href)
+      for (const href of item.hrefs) {
+        if (checked) next.add(href)
+        else next.delete(href)
+      }
       return next
     })
   }
 
-  const toggleGroup = (group: ModuleGroup, checked: boolean) => {
-    setAllowed((prev) => {
-      const next = new Set(prev)
-      for (const item of group.items) {
-        if (checked) next.add(item.href)
-        else next.delete(item.href)
-      }
-      return next
-    })
+  const toggleGroup = (group: CatalogGroup, checked: boolean) => {
+    for (const item of group.items) setItem(item, checked)
   }
 
   const handleSave = async () => {
@@ -141,6 +95,11 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
     } finally {
       setSaving(false)
     }
+  }
+
+  const itemState = (item: CatalogItem): boolean | 'indeterminate' => {
+    const count = item.hrefs.filter((h) => allowed.has(h)).length
+    return count === item.hrefs.length ? true : count > 0 ? 'indeterminate' : false
   }
 
   return (
@@ -165,7 +124,9 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
             </DialogTitle>
             <DialogDescription>
               Choose which modules and menu items this school can use. Admins can only build User
-              Profiles from the modules you allow here.
+              Profiles from the modules you allow here, and unticking a module also removes it from
+              the school&apos;s existing profiles. Menu items added to the app later stay hidden until
+              you save this list again.
             </DialogDescription>
           </DialogHeader>
 
@@ -184,11 +145,15 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
                 <Switch id="restrict-modules" checked={restricted} onCheckedChange={setRestricted} />
               </div>
 
-              <ScrollArea className={`flex-1 min-h-0 mt-3 ${restricted ? '' : 'opacity-50 pointer-events-none'}`}>
+              {/* Native scroll container: Radix ScrollArea's viewport is h-full inside a
+                  flex child with no definite height, so it grew to fit its content and
+                  was clipped by overflow-hidden — the list could not be scrolled. */}
+              <div className={`flex-1 min-h-0 mt-3 overflow-y-auto overscroll-contain pe-1 ${restricted ? '' : 'opacity-50 pointer-events-none'}`}>
                 <div className="space-y-4 pe-3">
                   {moduleGroups.map((group) => {
-                    const allChecked = group.items.every((i) => allowed.has(i.href))
-                    const someChecked = group.items.some((i) => allowed.has(i.href))
+                    const hrefs = group.items.flatMap((i) => i.hrefs)
+                    const allChecked = hrefs.every((h) => allowed.has(h))
+                    const someChecked = hrefs.some((h) => allowed.has(h))
                     return (
                       <div key={group.title} className="rounded-lg border p-3">
                         <div className="flex items-center gap-2 pb-2 mb-2 border-b">
@@ -196,18 +161,16 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
                             checked={allChecked ? true : someChecked ? 'indeterminate' : false}
                             onCheckedChange={(v) => toggleGroup(group, v === true)}
                           />
-                          <span className="text-sm font-semibold capitalize">
-                            {group.title === '__root__' ? 'General' : group.title}
-                          </span>
+                          <span className="text-sm font-semibold">{label(group.title)}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                           {group.items.map((item) => (
-                            <label key={item.href} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <label key={item.title} className="flex items-center gap-2 text-sm cursor-pointer">
                               <Checkbox
-                                checked={allowed.has(item.href)}
-                                onCheckedChange={() => toggleItem(item.href)}
+                                checked={itemState(item)}
+                                onCheckedChange={(v) => setItem(item, v === true)}
                               />
-                              <span className="capitalize truncate">{item.title}</span>
+                              <span className="truncate">{label(item.title)}</span>
                             </label>
                           ))}
                         </div>
@@ -215,7 +178,7 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
                     )
                   })}
                 </div>
-              </ScrollArea>
+              </div>
             </>
           )}
 

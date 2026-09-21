@@ -210,10 +210,13 @@ export default function StaffPage() {
 
             // Handle role assignment change ('default' = no custom role)
             if (selectedRoleId !== originalRoleId) {
-                if (selectedRoleId && selectedRoleId !== 'default') {
-                    await cloneRoleForStaff(selectedRoleId, staffData.id)
-                } else {
-                    await removeStaffProfile(staffData.id)
+                const roleResult = selectedRoleId && selectedRoleId !== 'default'
+                    ? await cloneRoleForStaff(selectedRoleId, staffData.id)
+                    : await removeStaffProfile(staffData.id)
+                // Previously the result was ignored, so a failed role assignment still
+                // showed "updated" and the user silently kept the old access.
+                if (!roleResult.success) {
+                    throw new Error(roleResult.error || 'Failed to assign role')
                 }
             }
 
@@ -222,7 +225,7 @@ export default function StaffPage() {
             setEditingStaff(null)
             mutate()
         } catch (error) {
-            toast.error(t('errors.updateStaff'))
+            toast.error(error instanceof Error && error.message ? error.message : t('errors.updateStaff'))
             console.error(error)
         } finally {
             setSaving(false)

@@ -2,6 +2,8 @@ import { Request, Response } from 'express'
 import { DiaryReminderService } from '../services/diary-reminder.service'
 import { supabase } from '../config/supabase'
 import { createTransporter, SmtpConfig } from '../config/mail'
+import { getMainSchoolId } from '../utils/campus.util'
+import { UserProfilesService } from '../services/user-profiles.service'
 
 interface AuthRequest extends Request {
   user?: {
@@ -40,8 +42,15 @@ export class SchoolSettingsController {
 
       const settings = await this.reminderService.getSettings(schoolId, campusId || null)
 
+      // allowed_modules only ever lives on the ROOT school's school-wide row. A campus row
+      // (or a campus-bound user) would otherwise read it as null = unrestricted, letting
+      // that campus bypass the super admin's module restriction.
+      const rootSchoolId = await getMainSchoolId(schoolId)
+      const allowedModules = await this.reminderService.getAllowedModules(rootSchoolId)
+
       const formattedSettings = settings ? {
         ...settings,
+        allowed_modules: allowedModules,
         enable_payment_reminder: settings.enable_payment_reminder ?? true,
         auto_dismiss_seconds: settings.auto_dismiss_seconds ?? 5,
         preferred_date_format: settings.preferred_date_format || 'MMMM d yyyy',
@@ -61,7 +70,7 @@ export class SchoolSettingsController {
         student_list_append_config: null,
         assignment_max_points: null,
         hijri_offset: 0,
-        allowed_modules: null,
+        allowed_modules: allowedModules,
         enable_payment_reminder: true,
         auto_dismiss_seconds: 5,
       }
@@ -118,7 +127,14 @@ export class SchoolSettingsController {
       }
 
       const result = await this.reminderService.setAllowedModules(school_id, allowed_modules)
-      res.json({ success: true, data: { school_id, allowed_modules: result } })
+
+      // Narrowing the allow-list must also strip the now-disallowed modules from every
+      // existing profile of the school, so they can't keep granting them.
+      let pruned = 0
+      if (Array.isArray(result)) {
+        pruned = await new UserProfilesService().pruneDisallowedPermissions(school_id, result)
+      }
+      res.json({ success: true, data: { school_id, allowed_modules: result, pruned_permissions: pruned } })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }

@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express'
 import { AuthRequest } from './auth.middleware'
 import { UserRole } from '../types'
+import { decideStaffModuleAccess, loadProfilePermissions } from '../services/module-access.service'
 
 /**
  * Middleware factory to check if user has required role
@@ -22,6 +23,27 @@ export const requireRole = (...allowedRoles: UserRole[]) => {
       return next()
     }
 
+    // Staff accounts run inside the admin app, limited to the modules their User Profile
+    // (role) grants. Routes written as "admin only" therefore also admit a staff user whose
+    // profile grants the module that owns this API area (reads need "can use", writes need
+    // "can edit"); anything not mapped, or not granted, stays forbidden. A staff account with
+    // no profile assigned gets nothing.
+    if (userRole === 'staff' && allowedRoles.includes('admin')) {
+      const profileId = req.profile.user_profile_id
+      if (!profileId) return denyForbidden(res, allowedRoles, userRole, 'no access role assigned to this staff account')
+
+      return loadProfilePermissions(profileId)
+        .then((perms) => {
+          const decision = decideStaffModuleAccess(perms, req.originalUrl, req.method)
+          if (decision.allowed) return next()
+          return denyForbidden(res, allowedRoles, userRole, decision.reason ?? 'not granted')
+        })
+        .catch((err) => {
+          console.error('Module access check failed:', err)
+          return res.status(500).json({ success: false, error: 'Could not verify module access' })
+        })
+    }
+
     if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,
@@ -35,6 +57,15 @@ export const requireRole = (...allowedRoles: UserRole[]) => {
 
     return next()
   }
+}
+
+function denyForbidden(res: Response, required: UserRole[], current: UserRole, reason: string) {
+  return res.status(403).json({
+    success: false,
+    // The reason is shown to the user (toasts print `error`) so a refused action explains itself
+    error: `Forbidden: Insufficient permissions (${reason})`,
+    details: { required, current, reason }
+  })
 }
 
 // Predefined role middlewares

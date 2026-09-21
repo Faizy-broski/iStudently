@@ -172,6 +172,56 @@ export const getLastLogin = async (req: Request, res: Response) => {
   }
 }
 
+/**
+ * GET /api/auth/me/context
+ * The caller's own campus/staff context as resolved by the auth middleware (the same values
+ * every API call is scoped with). The frontend used to work these out with direct table reads
+ * that row-level security can block, leaving campus-fixed accounts (staff/teacher/librarian)
+ * with "No Campus"; this is the authoritative source.
+ */
+export const getMyContext = async (req: Request, res: Response) => {
+  const profile = (req as AuthRequest).profile
+  if (!profile) return res.status(401).json({ success: false, error: 'Unauthorized' })
+
+  // The school/campus the account belongs to, with the same logo inheritance the frontend
+  // uses (a campus without its own logo shows its parent school's).
+  let school: Record<string, any> | null = null
+  const ownSchoolId = profile.campus_id || profile.school_id
+  if (ownSchoolId) {
+    const { data: row } = await supabase
+      .from('schools')
+      .select('id, name, short_name, parent_school_id, logo_url')
+      .eq('id', ownSchoolId)
+      .maybeSingle()
+    if (row) {
+      school = { ...row }
+      const settingsSchoolId = row.parent_school_id ?? row.id
+      if (!school.logo_url && row.parent_school_id) {
+        const { data: parent } = await supabase.from('schools').select('logo_url').eq('id', row.parent_school_id).maybeSingle()
+        if (parent?.logo_url) school.logo_url = parent.logo_url
+      }
+      const { data: appearance } = await supabase
+        .from('school_settings')
+        .select('logo_shape, logo_border_width, logo_border_color')
+        .eq('school_id', settingsSchoolId)
+        .is('campus_id', null)
+        .maybeSingle()
+      if (appearance) Object.assign(school, appearance)
+    }
+  }
+
+  return res.json({
+    success: true,
+    data: {
+      campus_id: profile.campus_id ?? null,
+      school_id: profile.school_id ?? null,
+      staff_id: (profile as any).staff_id ?? null,
+      user_profile_id: profile.user_profile_id ?? null,
+      school,
+    },
+  })
+}
+
 export const forcePasswordChangeStatus = async (req: Request, res: Response) => {
   try {
     const adminSchoolId = (req as AuthRequest).profile?.school_id

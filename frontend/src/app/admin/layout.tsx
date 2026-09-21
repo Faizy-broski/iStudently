@@ -16,7 +16,7 @@ export default function AdminLayout({
 }) {
   return (
     <AuthLoadingGuard>
-      <RoleGuard allowedRoles={['admin', 'super_admin', 'financial_admin']}>
+      <RoleGuard allowedRoles={['admin', 'super_admin', 'financial_admin', 'staff']}>
         <CampusProvider>
           <ProfileViewProvider>
             <SchoolSettingsProvider>

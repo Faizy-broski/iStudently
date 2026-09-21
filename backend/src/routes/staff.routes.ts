@@ -5,6 +5,13 @@ import { requireRole } from '../middlewares/role.middleware'
 
 const router = express.Router()
 
+// Bulk import and group-assign can set account roles for many people at once, so they stay
+// reserved for real admins even when a staff role has "edit" on the Staff module.
+const notStaffRole = (req: any, res: any, next: any) =>
+  req.profile?.role === 'staff'
+    ? res.status(403).json({ success: false, error: 'Forbidden: this action is reserved for administrators' })
+    : next()
+
 // Apply auth middleware to all routes
 router.use(requireAuth)
 
@@ -13,7 +20,7 @@ router.get('/me', requireRole('librarian', 'staff'), StaffController.getMyProfil
 
 // Bulk import routes (admin only — must be before /:id to avoid route conflicts)
 router.get('/import-template', requireRole('admin'), StaffController.getStaffImportTemplate)
-router.post('/bulk-import', requireRole('admin'), StaffController.bulkImportStaff)
+router.post('/bulk-import', notStaffRole, requireRole('admin'), StaffController.bulkImportStaff)
 
 // Admin only routes for managing staff
 router.get('/', requireRole('admin'), StaffController.getAllStaff)
@@ -23,6 +30,6 @@ router.put('/:id', requireRole('admin'), StaffController.updateStaff)
 router.delete('/:id', requireRole('admin'), StaffController.deleteStaff)
 
 
-router.post('/group-assign', requireRole('admin'), StaffController.groupAssignStaff)
+router.post('/group-assign', notStaffRole, requireRole('admin'), StaffController.groupAssignStaff)
 
 export default router

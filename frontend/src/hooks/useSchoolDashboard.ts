@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useAcademic } from '@/context/AcademicContext'
+import { usePermissions } from '@/context/PermissionsContext'
 
 interface SchoolDashboardData {
   stats: SchoolDashboardStats | null
@@ -57,7 +58,8 @@ const fetchSchoolDashboardData = async (campus_id?: string, academic_year_id?: s
 }
 
 export const useSchoolDashboard = () => {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, profile } = useAuth()
+  const { canUse } = usePermissions()
   const campusContext = useCampus()
   const { selectedAcademicYear } = useAcademic()
 
@@ -66,7 +68,9 @@ export const useSchoolDashboard = () => {
 
   // SWR key - only fetch when authenticated, INCLUDES campus and academic
   // year so switching either triggers a refetch scoped to the new selection
-  const swrKey = user && !authLoading
+  // A staff account only loads the analytics when its role grants the Dashboard module
+  // (otherwise every call would be refused).
+  const swrKey = user && !authLoading && (profile?.role !== 'staff' || canUse('/admin/dashboard'))
     ? ['school-dashboard', user.id, campusId, selectedAcademicYear]
     : null
 

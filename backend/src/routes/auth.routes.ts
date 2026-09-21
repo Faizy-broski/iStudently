@@ -11,6 +11,9 @@ router.use(authenticate)
 // POST /auth/change-password  — any authenticated user can change their own password
 router.post('/change-password', authController.changePassword)
 
+// GET /auth/me/context  — the caller's own campus/staff context (any authenticated user)
+router.get('/me/context', authController.getMyContext)
+
 // PUT /auth/profile  — any authenticated user can update their own profile
 router.put('/profile', authController.updateProfile)
 

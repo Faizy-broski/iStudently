@@ -106,11 +106,16 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         // For non-admin/librarian roles, fetch their single assigned campus
         // super_admin is treated like admin so campus list loads during impersonation
         if (!profile || (profile.role !== 'admin' && profile.role !== 'librarian' && profile.role !== 'super_admin')) {
-            const hasCorrectCampus = selectedCampus?.id === profile.campus_id
-            if (profile.campus_id && !hasCorrectCampus) {
+            // campus_id is filled in client-side from the staff/student row; when that lookup
+            // comes back empty (e.g. blocked by row-level security) the account's own
+            // school_id is the campus (staff and teachers are created under their campus id),
+            // so fall back to it instead of showing "No Campus".
+            const ownCampusId = profile.campus_id || profile.school_id
+            const hasCorrectCampus = selectedCampus?.id === ownCampusId
+            if (ownCampusId && !hasCorrectCampus) {
                 try {
                     setLoading(true)
-                    const campus = await getCampusById(profile.campus_id)
+                    const campus = await getCampusById(ownCampusId)
                     if (campus) {
                         setCampuses([campus])
                         setSelectedCampus(campus)

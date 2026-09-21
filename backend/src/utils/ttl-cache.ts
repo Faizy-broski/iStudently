@@ -27,4 +27,8 @@ export class TtlCache<V> {
   invalidate(key: string): void {
     this.store.delete(key)
   }
+
+  clear(): void {
+    this.store.clear()
+  }
 }

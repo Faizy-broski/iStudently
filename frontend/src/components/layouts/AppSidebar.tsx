@@ -259,7 +259,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   // Guarded to a genuinely distinct campus (not the admin's own root school) — CampusContext
   // caches this data for up to 10 minutes, so when it's the same entity as profile.school we
   // prefer the freshly-fetched profile data instead of a possibly-stale cached copy.
-  const isDistinctCampus = !!selectedCampus && selectedCampus.id !== profile?.school_id
+  const isDistinctCampus = !!selectedCampus && (selectedCampus.id !== profile?.school_id || !profile?.school)
   if (isDistinctCampus) {
     if (selectedCampus.logo_url) {
       resolvedLogoUrl = selectedCampus.logo_url

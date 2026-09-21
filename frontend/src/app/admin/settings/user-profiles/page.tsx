@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import {
   ShieldCheck, Plus, Trash2, Loader2, Users, User, Check, ChevronRight,
-  Save, AlertTriangle, Layers,
+  Save, AlertTriangle, Layers, Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,12 +28,15 @@ import {
   type UserProfile, type ProfilePermission,
 } from '@/lib/api/user-profiles'
 import { getSidebarConfig, type SidebarMenuItem } from '@/config/sidebar'
+import { applyPluginInjections } from '@/config/pluginInjection'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
+import { useSidebarLabel } from '@/hooks/useSidebarLabel'
 import { UserRole } from '@/types'
 
 type PermMap = Record<string, { can_use: boolean; can_edit: boolean }>
 
-const ASSIGNABLE_ROLES: UserRole[] = ['teacher', 'staff', 'librarian', 'student', 'parent']
+// Roles that can actually hold a User Profile (only staff-table users get one assigned).
+const ROLE_TYPES_FOR_NEW_ROLE: UserRole[] = ['staff', 'teacher', 'librarian']
 const ROLE_LABELS: Record<string, string> = {
   teacher: 'Teacher',
   staff: 'Staff',
@@ -48,8 +51,14 @@ interface ModuleGroup {
   items: SidebarMenuItem[]
 }
 
-function getModuleGroups(role: UserRole, allowedModules?: string[] | null): ModuleGroup[] {
-  const config = getSidebarConfig(role)
+function getModuleGroups(
+  role: UserRole,
+  allowedModules: string[] | null | undefined,
+  isPluginActive: (pluginId: string) => boolean
+): ModuleGroup[] {
+  // Same menu the user will actually get: the role's sidebar plus the pages of every plugin
+  // active for this school. Staff use the admin shell, so they get the admin plugin pages.
+  const config = applyPluginInjections(getSidebarConfig(role), role === 'staff' ? 'admin' : role, isPluginActive)
   const allowedSet = allowedModules ? new Set(allowedModules) : null
   const groups: ModuleGroup[] = []
 
@@ -152,7 +161,8 @@ function ListItem({
 
 export default function UserProfilesPage() {
   const t = useTranslations('school.user_profiles')
-  const { settings } = useSchoolSettings()
+  const { settings, isPluginActive } = useSchoolSettings()
+  const label = useSidebarLabel()
   const allowedModules = settings?.allowed_modules ?? null
 
   // Role templates (profile_type='role')
@@ -174,6 +184,7 @@ export default function UserProfilesPage() {
   // New Role form
   const [showAddRoleForm, setShowAddRoleForm] = useState(false)
   const [newRoleName, setNewRoleName] = useState('')
+  const [newRoleBase, setNewRoleBase] = useState<UserRole>('staff')
   const [creatingRole, setCreatingRole] = useState(false)
 
   // New Profile form
@@ -191,7 +202,54 @@ export default function UserProfilesPage() {
   const profiles = roles
   const selectedProfile = selectedItem
 
-  const moduleGroups = useMemo(() => getModuleGroups(panelRole, allowedModules), [panelRole, allowedModules])
+  const allModuleGroups = useMemo(
+    () => getModuleGroups(panelRole, allowedModules, isPluginActive),
+    [panelRole, allowedModules, isPluginActive]
+  )
+
+  // ~300 modules for a staff-type role, so the picker is searchable
+  const [moduleSearch, setModuleSearch] = useState('')
+  const moduleGroups = useMemo(() => {
+    const q = moduleSearch.trim().toLowerCase()
+    if (!q) return allModuleGroups
+    return allModuleGroups
+      .map((g) => {
+        const groupMatches = label(g.title).toLowerCase().includes(q)
+        return { ...g, items: groupMatches ? g.items : g.items.filter((i) => label(i.title).toLowerCase().includes(q)) }
+      })
+      .filter((g) => g.items.length > 0)
+  }, [allModuleGroups, moduleSearch, label])
+
+  const setAllVisible = useCallback((grant: boolean) => {
+    setPermMap((prev) => {
+      const next = { ...prev }
+      for (const g of moduleGroups) {
+        for (const item of g.items) next[permKey(item.href)] = { can_use: grant, can_edit: grant }
+      }
+      return next
+    })
+  }, [moduleGroups])
+
+  // Changing "applies to" swaps which sidebar (and so which modules) the picker lists
+  const [changingBase, setChangingBase] = useState(false)
+  const handleChangeBase = useCallback(async (base: UserRole) => {
+    if (!selectedId) return
+    setChangingBase(true)
+    try {
+      const result = await updateUserProfile(selectedId, { base_role: base })
+      if (result.success && result.data) {
+        const updated = result.data
+        setRoles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+        setStandaloneProfiles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+        setPanelRole(base)
+        setModuleSearch('')
+      } else {
+        toast.error(result.error || 'Failed to change user type')
+      }
+    } finally {
+      setChangingBase(false)
+    }
+  }, [selectedId])
 
   // Group roles by base_role for display
   const rolesBySystem = useMemo(() => {
@@ -237,21 +295,13 @@ export default function UserProfilesPage() {
       setPanelRole(roleForPanel)
 
       const data = await getProfilePermissions(id)
-      if (data.length === 0) {
-        // No permissions yet — start fully checked so admin only unchecks what to restrict
-        if (item) {
-          const allModuleItems = getModuleGroups(roleForPanel, allowedModules).flatMap((g) => g.items)
-          const fullMap: PermMap = {}
-          for (const mi of allModuleItems) {
-            fullMap[mi.href] = { can_use: true, can_edit: true }
-          }
-          setPermMap(fullMap)
-        } else {
-          setPermMap({})
-        }
-      } else {
-        setPermMap(buildPermMap(data))
-      }
+      // Show exactly what is stored (least privilege): a profile with no rows grants
+      // nothing, so the admin ticks only the modules it should have. Previously an empty
+      // profile was displayed as "everything checked", which both hid that it granted
+      // nothing and reappeared that way after saving a deliberately empty profile.
+      // Keys the school no longer has enabled are dropped from the picker.
+      const allowedSet = allowedModules ? new Set(allowedModules) : null
+      setPermMap(buildPermMap(allowedSet ? data.filter((p) => allowedSet.has(p.module_key)) : data))
     } finally {
       setLoadingPerms(false)
     }
@@ -311,7 +361,7 @@ export default function UserProfilesPage() {
     if (!newRoleName.trim()) return
     setCreatingRole(true)
     try {
-      const result = await createUserProfile({ name: newRoleName.trim(), base_role: 'teacher' })
+      const result = await createUserProfile({ name: newRoleName.trim(), base_role: newRoleBase })
       if (result.success && result.data) {
         setRoles((prev) => [...prev, result.data!])
         setShowAddRoleForm(false)
@@ -323,7 +373,7 @@ export default function UserProfilesPage() {
     } finally {
       setCreatingRole(false)
     }
-  }, [newRoleName, handleSelectProfile])
+  }, [newRoleName, newRoleBase, handleSelectProfile])
 
   const handleCreateProfile = useCallback(async () => {
     if (!newProfileName.trim() || !newProfileRoleId) return
@@ -420,6 +470,17 @@ export default function UserProfilesPage() {
                       className="h-8 text-sm"
                       autoFocus
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t('applies_to')}</Label>
+                    <Select value={newRoleBase} onValueChange={(v) => setNewRoleBase(v as UserRole)}>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ROLE_TYPES_FOR_NEW_ROLE.map((r) => (
+                          <SelectItem key={r} value={r}>{ROLE_LABELS[r] ?? r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" className="flex-1 h-8 text-xs" onClick={handleCreateRole} disabled={!newRoleName.trim() || creatingRole}>
@@ -564,6 +625,43 @@ export default function UserProfilesPage() {
               )}
             </div>
 
+            {selectedItem && (
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t">
+                <span className="text-xs text-muted-foreground shrink-0">{t('applies_to')}:</span>
+                <Select value={panelRole} onValueChange={(v) => handleChangeBase(v as UserRole)} disabled={changingBase}>
+                  <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ROLE_TYPES_FOR_NEW_ROLE.map((r) => (
+                      <SelectItem key={r} value={r}>{ROLE_LABELS[r] ?? r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-[11px] text-muted-foreground">
+                  {allModuleGroups.reduce((n, g) => n + g.items.length, 0)} modules available
+                </span>
+              </div>
+            )}
+
+            {selectedItem && (
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <div className="relative flex-1 min-w-48">
+                  <Search className="absolute start-2.5 top-2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={moduleSearch}
+                    onChange={(e) => setModuleSearch(e.target.value)}
+                    placeholder="Search modules..."
+                    className="h-8 ps-8 text-sm"
+                  />
+                </div>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAllVisible(true)}>
+                  Grant all shown
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAllVisible(false)}>
+                  Clear all shown
+                </Button>
+              </div>
+            )}
+
             {/* "Based on" label — only shown for standalone profiles (not roles) */}
             {selectedItem && !selectedIsRole && (
               <div className="flex items-center gap-2 mt-3 pt-3 border-t">
@@ -605,7 +703,7 @@ export default function UserProfilesPage() {
                           {/* Group header row */}
                           <div className="grid grid-cols-[1fr_72px_72px] items-center px-6 py-2 bg-muted/20 border-b">
                             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                              {group.title === '__root__' ? 'General' : group.title.replace(/_/g, ' ')}
+                              {label(group.title)}
                             </span>
                             <div className="flex flex-col items-center gap-0.5">
                               <Checkbox
@@ -638,7 +736,7 @@ export default function UserProfilesPage() {
                                   <div className="flex items-center gap-2 min-w-0">
                                     <item.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                     <span className="text-sm capitalize truncate">
-                                      {item.title.replace(/_/g, ' ')}
+                                      {label(item.title)}
                                     </span>
                                   </div>
                                   <div className="flex justify-center">
