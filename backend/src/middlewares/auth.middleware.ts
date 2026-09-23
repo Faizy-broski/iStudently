@@ -89,12 +89,13 @@ async function buildAuthContext(
   if (typeof profile.role === 'string' && profile.role.toLowerCase() === 'student') {
     const { data: studentRecord, error: studentError } = await supabase
       .from('students')
-      .select('id, school_id, section_id')
+      .select('id, school_id, section_id, user_profile_id')
       .or(`profile_id.eq.${profile.id},id.eq.${profile.id}`)
       .single()
 
     if (!studentError && studentRecord) {
       profile.student_id = studentRecord.id
+      profile.user_profile_id = studentRecord.user_profile_id ?? null
       if (studentRecord.section_id) profile.section_id = studentRecord.section_id
 
       if (studentRecord.school_id) {
@@ -149,6 +150,21 @@ async function buildAuthContext(
         profile.school_id = campusRecord.parent_school_id
       }
       // If parent_school_id is null, school_id is already the parent school — keep it.
+    }
+  }
+
+  // For parents: fetch their User Profile assignment (see migration 312). Parents have no
+  // separate campus concept here — they already use profile.school_id directly.
+  if (profile.role === 'parent') {
+    const { data: parentRecord } = await supabase
+      .from('parents')
+      .select('id, user_profile_id')
+      .eq('profile_id', profile.id)
+      .single()
+
+    if (parentRecord) {
+      profile.parent_id = parentRecord.id
+      profile.user_profile_id = parentRecord.user_profile_id ?? null
     }
   }
 

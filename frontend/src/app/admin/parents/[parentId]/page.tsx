@@ -38,6 +38,7 @@ import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
 import { ar, enUS } from "date-fns/locale";
 import { useTranslations, useLocale } from "next-intl";
+import { AccessRoleCard } from "@/components/shared/AccessRoleCard";
 
 
 
@@ -500,6 +501,17 @@ export default function ParentDetailsPage() {
               )}
             </CardContent>
           </Card>
+
+          <div className="mt-6">
+            <AccessRoleCard
+              entityType="parent"
+              entityId={currentParent.id}
+              baseRole="parent"
+              title={t("accessRoleTitle")}
+              description={t("accessRoleDesc")}
+              defaultLabel={t("accessRoleDefault")}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

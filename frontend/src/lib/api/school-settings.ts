@@ -304,6 +304,8 @@ export interface SchoolSettings {
   setup_assistant_config?: Record<string, boolean> | null
   // Super-admin allow-list of module_keys (hrefs) this school may use. null = unrestricted.
   allowed_modules?: string[] | null
+  // Super-admin deny-list of module_keys (hrefs) this school cannot use. null = unrestricted.
+  denied_modules?: string[] | null
   created_at: string
   updated_at: string
 }
@@ -521,5 +523,25 @@ export async function updateSchoolAllowedModules(schoolId: string, allowedModule
   return apiRequest<AllowedModulesResult>('/school-settings/allowed-modules', {
     method: 'PUT',
     body: JSON.stringify({ school_id: schoolId, allowed_modules: allowedModules }),
+  })
+}
+
+// ─── Denied Modules (super-admin-only per-school deny-list) ──────────────────
+
+export interface DeniedModulesResult {
+  school_id: string
+  denied_modules: string[] | null
+}
+
+export async function getSchoolDeniedModules(schoolId: string) {
+  return apiRequest<DeniedModulesResult>(
+    `/school-settings/denied-modules?school_id=${encodeURIComponent(schoolId)}`
+  )
+}
+
+export async function updateSchoolDeniedModules(schoolId: string, deniedModules: string[] | null) {
+  return apiRequest<DeniedModulesResult>('/school-settings/denied-modules', {
+    method: 'PUT',
+    body: JSON.stringify({ school_id: schoolId, denied_modules: deniedModules }),
   })
 }

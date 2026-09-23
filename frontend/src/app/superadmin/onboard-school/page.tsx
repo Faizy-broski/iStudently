@@ -7,6 +7,8 @@ import OnboardSchoolForm, { OnboardSuccessResult } from "@/components/forms/Onbo
 import AdminCredentialsCard from "@/components/super-admin/AdminCredentialsCard";
 import { CopySchoolSettingsDialog, type CopySettingsSchoolOption } from "@/components/shared/CopySchoolSettingsDialog";
 import { getAllSchoolsData } from "@/lib/api/schools";
+import { seedDefaultRoles } from "@/lib/api/user-profiles";
+import { getRoleHrefs } from "@/config/moduleCatalog";
 import { toast } from "sonner";
 
 export default function OnboardSchoolPage() {
@@ -21,6 +23,17 @@ export default function OnboardSchoolPage() {
     toast.success(`School "${result.schoolName}" has been successfully onboarded!`);
     setCredentialsResult(result);
     setNewSchool({ id: result.schoolId, name: result.schoolName });
+
+    // Seed default roles for the new school (fire-and-forget — non-fatal)
+    seedDefaultRoles(
+      {
+        teacher: getRoleHrefs('teacher'),
+        staff: getRoleHrefs('staff'),
+        librarian: getRoleHrefs('librarian'),
+      },
+      'reset'
+    ).catch(() => { /* admin can use "Refresh Defaults" on the User Profiles page if this fails */ })
+
     const res = await getAllSchoolsData();
     if (res.success && res.data) setOtherSchools(res.data);
   };

@@ -172,3 +172,64 @@ export async function removeStaffProfile(
   })
   return { success: res.success, error: res.error }
 }
+
+// Same clone/assign flow as staff, generalized to student and parent logins
+export async function cloneRoleForEntity(
+  roleId: string,
+  entityType: 'student' | 'parent',
+  entityId: string
+): Promise<{ success: boolean; data?: UserProfile; error?: string }> {
+  const res = await apiRequest<{ success: boolean; data: UserProfile }>(
+    `/user-profiles/${roleId}/clone-for/${entityType}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ entity_id: entityId }),
+    }
+  )
+  return { success: res.success, data: res.data?.data, error: res.error }
+}
+
+export async function getEntityAssignedRoleId(
+  entityType: 'student' | 'parent',
+  entityId: string
+): Promise<string | null> {
+  const res = await apiRequest<{ success: boolean; data: { role_id: string | null } }>(
+    `/user-profiles/${entityType}/${entityId}/assigned-role`
+  )
+  return res.data?.data?.role_id ?? null
+}
+
+export async function removeEntityProfile(
+  entityType: 'student' | 'parent',
+  entityId: string
+): Promise<{ success: boolean; error?: string }> {
+  const res = await apiRequest(`/user-profiles/${entityType}/${entityId}/profile`, {
+    method: 'DELETE',
+  })
+  return { success: res.success, error: res.error }
+}
+
+export interface SeedDefaultRolesPayload {
+  teacher: string[]
+  staff: string[]
+  librarian: string[]
+  student?: string[]
+  parent?: string[]
+}
+
+export interface SeedDefaultRolesResult {
+  seeded: number
+  added: number
+  removed: number
+  errors: Array<{ name: string; error: string }>
+}
+
+export async function seedDefaultRoles(
+  roles: SeedDefaultRolesPayload,
+  mode: 'reconcile' | 'reset' = 'reconcile'
+) {
+  return apiRequest<SeedDefaultRolesResult>('/user-profiles/seed-defaults', {
+    method: 'POST',
+    body: JSON.stringify({ roles, mode }),
+  })
+}

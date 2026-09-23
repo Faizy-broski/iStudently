@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import {
@@ -20,15 +20,16 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import {
   getUserRoles, getStandaloneProfiles, createUserProfile, createProfileFromRole,
   deleteUserProfile, getProfilePermissions, updateProfilePermissions, updateUserProfile,
+  seedDefaultRoles,
   type UserProfile, type ProfilePermission,
 } from '@/lib/api/user-profiles'
 import { getSidebarConfig, type SidebarMenuItem } from '@/config/sidebar'
 import { applyPluginInjections } from '@/config/pluginInjection'
+import { getRoleHrefs } from '@/config/moduleCatalog'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { useSidebarLabel } from '@/hooks/useSidebarLabel'
 import { UserRole } from '@/types'
@@ -36,7 +37,10 @@ import { UserRole } from '@/types'
 type PermMap = Record<string, { can_use: boolean; can_edit: boolean }>
 
 // Roles that can actually hold a User Profile (only staff-table users get one assigned).
-const ROLE_TYPES_FOR_NEW_ROLE: UserRole[] = ['staff', 'teacher', 'librarian']
+// Roles that can actually hold a User Profile. Staff/teacher/librarian assign via the Staff
+// Edit dialog; student/parent assign via their own detail pages (see migration 312 —
+// students.user_profile_id / parents.user_profile_id).
+const ROLE_TYPES_FOR_NEW_ROLE: UserRole[] = ['staff', 'teacher', 'librarian', 'student', 'parent']
 const ROLE_LABELS: Record<string, string> = {
   teacher: 'Teacher',
   staff: 'Staff',
@@ -53,13 +57,14 @@ interface ModuleGroup {
 
 function getModuleGroups(
   role: UserRole,
-  allowedModules: string[] | null | undefined,
+  deniedModules: string[] | null | undefined,
   isPluginActive: (pluginId: string) => boolean
 ): ModuleGroup[] {
   // Same menu the user will actually get: the role's sidebar plus the pages of every plugin
   // active for this school. Staff use the admin shell, so they get the admin plugin pages.
-  const config = applyPluginInjections(getSidebarConfig(role), role === 'staff' ? 'admin' : role, isPluginActive)
-  const allowedSet = allowedModules ? new Set(allowedModules) : null
+  // All plugins are treated as active here so the full catalog is shown.
+  const config = applyPluginInjections(getSidebarConfig(role), role === 'staff' ? 'admin' : role, () => true)
+  const deniedSet = deniedModules ? new Set(deniedModules) : new Set<string>()
   const groups: ModuleGroup[] = []
 
   for (const item of config) {
@@ -67,14 +72,14 @@ function getModuleGroups(
 
     if (item.subItems && item.subItems.length > 0) {
       const leafItems = item.subItems.filter(
-        (s) => !s.isLabel && s.href !== '#' && (!allowedSet || allowedSet.has(s.href))
+        (s) => !s.isLabel && s.href !== '#' && !deniedSet.has(s.href)
       )
       if (leafItems.length > 0) {
         groups.push({ title: item.title, href: item.href, items: leafItems })
       }
     } else {
       // Top-level leaf item — put it in a virtual group
-      if (allowedSet && !allowedSet.has(item.href)) continue
+      if (deniedSet.has(item.href)) continue
       const existing = groups.find((g) => g.title === '__root__')
       if (existing) {
         existing.items.push(item)
@@ -163,7 +168,7 @@ export default function UserProfilesPage() {
   const t = useTranslations('school.user_profiles')
   const { settings, isPluginActive } = useSchoolSettings()
   const label = useSidebarLabel()
-  const allowedModules = settings?.allowed_modules ?? null
+  const deniedModules = settings?.denied_modules ?? null
 
   // Role templates (profile_type='role')
   const [roles, setRoles] = useState<UserProfile[]>([])
@@ -177,6 +182,9 @@ export default function UserProfilesPage() {
   const [loadingPerms, setLoadingPerms] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null)
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const GROUPS_PER_PAGE = 4
 
   // "Applies to" system role shown in the permissions panel
   const [panelRole, setPanelRole] = useState<UserRole>('teacher')
@@ -203,12 +211,17 @@ export default function UserProfilesPage() {
   const selectedProfile = selectedItem
 
   const allModuleGroups = useMemo(
-    () => getModuleGroups(panelRole, allowedModules, isPluginActive),
-    [panelRole, allowedModules, isPluginActive]
+    () => getModuleGroups(panelRole, deniedModules, isPluginActive),
+    [panelRole, deniedModules, isPluginActive]
   )
 
   // ~300 modules for a staff-type role, so the picker is searchable
   const [moduleSearch, setModuleSearch] = useState('')
+  
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [moduleSearch, selectedId, panelRole])
+
   const moduleGroups = useMemo(() => {
     const q = moduleSearch.trim().toLowerCase()
     if (!q) return allModuleGroups
@@ -286,6 +299,42 @@ export default function UserProfilesPage() {
     fetchStandalone()
   }, [fetchRoles, fetchStandalone])
 
+  // Auto-provision default role templates (Default Teacher/Staff/Librarian/Student/Parent)
+  // the first time this page loads for a school that's missing any of them — additive-only
+  // ('reconcile'), so it never touches a role someone has already customized. There's no
+  // button for this any more; it just quietly keeps the defaults available.
+  const seededRef = useRef(false)
+  useEffect(() => {
+    if (loadingRoles || seededRef.current) return
+    const existingNames = new Set(roles.map((r) => r.name))
+    const defaults: Record<'teacher' | 'staff' | 'librarian' | 'student' | 'parent', string> = {
+      teacher: 'Default Teacher', staff: 'Default Staff', librarian: 'Default Librarian',
+      student: 'Default Student', parent: 'Default Parent',
+    }
+    const missing = Object.entries(defaults).filter(([, name]) => !existingNames.has(name))
+    if (missing.length === 0) return
+    seededRef.current = true
+    seedDefaultRoles({
+      teacher: getRoleHrefs('teacher'),
+      staff: getRoleHrefs('staff'),
+      librarian: getRoleHrefs('librarian'),
+      student: getRoleHrefs('student'),
+      parent: getRoleHrefs('parent'),
+    }, 'reconcile')
+      .then((result) => {
+        if (result.success) {
+          fetchRoles()
+          const roleErrors = result.data?.errors ?? []
+          if (roleErrors.length > 0) {
+            toast.error(`Couldn't create: ${roleErrors.map((e) => e.name).join(', ')} — ${roleErrors[0].error}`)
+          }
+        } else {
+          toast.error(result.error || 'Failed to create default roles')
+        }
+      })
+      .catch((e: any) => toast.error(e?.message || 'Failed to create default roles'))
+  }, [loadingRoles, roles, fetchRoles])
+
   const handleSelectProfile = useCallback(async (id: string) => {
     setSelectedId(id)
     setLoadingPerms(true)
@@ -299,13 +348,13 @@ export default function UserProfilesPage() {
       // nothing, so the admin ticks only the modules it should have. Previously an empty
       // profile was displayed as "everything checked", which both hid that it granted
       // nothing and reappeared that way after saving a deliberately empty profile.
-      // Keys the school no longer has enabled are dropped from the picker.
-      const allowedSet = allowedModules ? new Set(allowedModules) : null
-      setPermMap(buildPermMap(allowedSet ? data.filter((p) => allowedSet.has(p.module_key)) : data))
+      // Keys the school has denied are dropped from the picker.
+      const deniedSet = new Set(deniedModules ?? [])
+      setPermMap(buildPermMap(deniedSet.size > 0 ? data.filter((p) => !deniedSet.has(p.module_key)) : data))
     } finally {
       setLoadingPerms(false)
     }
-  }, [roles, standaloneProfiles, allowedModules])
+  }, [roles, standaloneProfiles, deniedModules])
 
   const togglePerm = useCallback((href: string, field: 'can_use' | 'can_edit') => {
     const key = permKey(href)
@@ -433,9 +482,9 @@ export default function UserProfilesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
         {/* Left panel */}
-        <Card className="h-fit">
+        <Card className="sticky top-[88px] z-10 max-h-[calc(100vh-112px)] overflow-y-auto">
           <CardContent className="pt-4 px-3 pb-3 space-y-4">
 
             {/* ── ROLES section ── */}
@@ -447,15 +496,17 @@ export default function UserProfilesPage() {
                     {t('roles_panel')}
                   </span>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-6 gap-1 text-xs px-2"
-                  onClick={() => { setShowAddRoleForm((v) => !v); setShowAddProfileForm(false) }}
-                >
-                  <Plus className="h-3 w-3" />
-                  {t('new_role')}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 gap-1 text-xs px-2"
+                    onClick={() => { setShowAddRoleForm((v) => !v); setShowAddProfileForm(false) }}
+                  >
+                    <Plus className="h-3 w-3" />
+                    {t('new_role')}
+                  </Button>
+                </div>
               </div>
 
               {showAddRoleForm && (
@@ -686,80 +737,121 @@ export default function UserProfilesPage() {
             ) : (
               <>
                 {/* Sticky column headers */}
-                <div className="grid grid-cols-[1fr_72px_72px] items-center border-b px-6 py-2 bg-muted/40 sticky top-0 z-10">
+                <div className="grid grid-cols-[1fr_72px_72px] items-center border-b px-6 py-2 bg-muted/40 sticky top-[64px] z-10 shadow-sm">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Module</span>
                   <span className="text-xs font-semibold text-center uppercase tracking-wide text-muted-foreground">{t('can_use')}</span>
                   <span className="text-xs font-semibold text-center uppercase tracking-wide text-muted-foreground">{t('can_edit')}</span>
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-320px)]">
+                {/* Removed nested scroll container to allow the whole page to scroll synchronously. 
+                    This prevents users from missing items hidden inside an inner scrollbar. */}
+                <div>
                   <div className="space-y-0">
-                    {moduleGroups.map((group, gi) => {
-                      const useAll = groupAllChecked(group, 'can_use')
-                      const editAll = groupAllChecked(group, 'can_edit')
+                    {(() => {
+                      const totalPages = Math.max(1, Math.ceil(moduleGroups.length / GROUPS_PER_PAGE))
+                      const startIndex = (currentPage - 1) * GROUPS_PER_PAGE
+                      const paginatedGroups = moduleGroups.slice(startIndex, startIndex + GROUPS_PER_PAGE)
 
                       return (
-                        <div key={`${group.href}-${gi}`}>
-                          {/* Group header row */}
-                          <div className="grid grid-cols-[1fr_72px_72px] items-center px-6 py-2 bg-muted/20 border-b">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                              {label(group.title)}
-                            </span>
-                            <div className="flex flex-col items-center gap-0.5">
-                              <Checkbox
-                                checked={useAll}
-                                onCheckedChange={(checked) => toggleGroupAll(group, 'can_use', !!checked)}
-                                className="h-4 w-4"
-                              />
-                              <span className="text-[10px] text-muted-foreground">{t('check_all')}</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-0.5">
-                              <Checkbox
-                                checked={editAll}
-                                onCheckedChange={(checked) => toggleGroupAll(group, 'can_edit', !!checked)}
-                                className="h-4 w-4"
-                              />
-                              <span className="text-[10px] text-muted-foreground">{t('check_all')}</span>
-                            </div>
-                          </div>
+                        <>
+                          {paginatedGroups.map((group, gi) => {
+                            const useAll = groupAllChecked(group, 'can_use')
+                            const editAll = groupAllChecked(group, 'can_edit')
 
-                          {/* Item rows */}
-                          <div className="divide-y">
-                            {group.items.map((item) => {
-                              const key = permKey(item.href)
-                              const perm = permMap[key] ?? { can_use: false, can_edit: false }
-                              return (
-                                <div
-                                  key={item.href}
-                                  className="grid grid-cols-[1fr_72px_72px] items-center px-6 py-2.5 hover:bg-muted/20 transition-colors border-b last:border-b-0"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <item.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                    <span className="text-sm capitalize truncate">
-                                      {label(item.title)}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-center">
+                            return (
+                              <div key={`${group.href}-${gi}`}>
+                                {/* Group header row */}
+                                <div className="grid grid-cols-[1fr_72px_72px] items-center px-6 py-2 bg-muted/20 border-b">
+                                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {label(group.title)}
+                                  </span>
+                                  <div className="flex flex-col items-center gap-0.5">
                                     <Checkbox
-                                      checked={perm.can_use}
-                                      onCheckedChange={() => togglePerm(item.href, 'can_use')}
+                                      checked={useAll}
+                                      onCheckedChange={(checked) => toggleGroupAll(group, 'can_use', !!checked)}
+                                      className="h-4 w-4"
                                     />
+                                    <span className="text-[10px] text-muted-foreground">{t('check_all')}</span>
                                   </div>
-                                  <div className="flex justify-center">
+                                  <div className="flex flex-col items-center gap-0.5">
                                     <Checkbox
-                                      checked={perm.can_edit}
-                                      onCheckedChange={() => togglePerm(item.href, 'can_edit')}
+                                      checked={editAll}
+                                      onCheckedChange={(checked) => toggleGroupAll(group, 'can_edit', !!checked)}
+                                      className="h-4 w-4"
                                     />
+                                    <span className="text-[10px] text-muted-foreground">{t('check_all')}</span>
                                   </div>
                                 </div>
-                              )
-                            })}
-                          </div>
-                        </div>
+
+                                {/* Item rows */}
+                                <div className="divide-y">
+                                  {group.items.map((item) => {
+                                    const key = permKey(item.href)
+                                    const perm = permMap[key] ?? { can_use: false, can_edit: false }
+                                    return (
+                                      <div
+                                        key={item.href}
+                                        className="grid grid-cols-[1fr_72px_72px] items-center px-6 py-2.5 hover:bg-muted/20 transition-colors border-b last:border-b-0"
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <item.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                          <span className="text-sm capitalize truncate">
+                                            {label(item.title)}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-center">
+                                          <Checkbox
+                                            checked={perm.can_use}
+                                            onCheckedChange={() => togglePerm(item.href, 'can_use')}
+                                          />
+                                        </div>
+                                        <div className="flex justify-center">
+                                          <Checkbox
+                                            checked={perm.can_edit}
+                                            onCheckedChange={() => togglePerm(item.href, 'can_edit')}
+                                          />
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })}
+                          
+                          {moduleGroups.length > GROUPS_PER_PAGE && (
+                            <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/10">
+                              <span className="text-xs text-muted-foreground">
+                                Showing {startIndex + 1}-{Math.min(startIndex + GROUPS_PER_PAGE, moduleGroups.length)} of {moduleGroups.length} module groups
+                              </span>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 text-xs"
+                                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                  disabled={currentPage === 1}
+                                >
+                                  Previous
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 text-xs"
+                                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={currentPage === totalPages}
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )
-                    })}
+                    })()}
+
                   </div>
-                </ScrollArea>
+                </div>
               </>
             )}
           </CardContent>

@@ -23,7 +23,7 @@ import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 import { SidebarThemeProvider } from '@/context/SidebarThemeContext'
 import { AgreementGate } from '@/components/agreement/AgreementGate'
 import { PermissionsProvider, usePermissions } from '@/context/PermissionsContext'
-import { isPathBlockedByAllowList } from '@/config/moduleCatalog'
+import { isPathHidden } from '@/config/moduleCatalog'
 import { ViewOnlyGate } from '@/components/layouts/ViewOnlyGate'
 import { MessagingNotificationProvider } from '@/context/MessagingNotificationContext'
 import { GrievanceNotificationProvider } from '@/context/GrievanceNotificationContext'
@@ -164,11 +164,10 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
     ]
     if (alwaysAllowed.some((p) => pathname.startsWith(p))) return
 
-    // School module allow-list (super admin): the sidebar already hides disallowed items;
-    // this stops them being opened by typing the URL. Only pages the catalog knows about
-    // are blocked, so detail pages and injected items are never locked out by accident.
-    const schoolAllowed = settings?.allowed_modules
-    if (profile?.role !== 'super_admin' && schoolAllowed && isPathBlockedByAllowList(pathname, new Set(schoolAllowed))) {
+    // School module deny-list guard (super admin sets it via Module Access):
+    const schoolDenied = settings?.denied_modules
+    if (profile?.role !== 'super_admin' && schoolDenied && schoolDenied.length > 0 &&
+        isPathHidden(pathname, new Set(schoolDenied))) {
       const home = profile?.role === 'student' || profile?.role === 'teacher' || profile?.role === 'parent' ? `/${profile.role}/dashboard` : '/admin/dashboard'
       router.replace(`${home}?access=denied`)
       return
@@ -182,7 +181,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
     if (!hasAccess) {
       router.replace('/admin/dashboard?access=denied')
     }
-  }, [pathname, permissions, permissionsLoading, router, settings?.allowed_modules, profile?.role])
+  }, [pathname, permissions, permissionsLoading, router, settings?.denied_modules, profile?.role])
 
   const menuItems = React.useMemo(() => {
     let items = baseMenuItems
@@ -263,16 +262,16 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       }
     }
 
-    // 4.5. Filter out modules the super admin has not allowed for this school
-    // (allow-list of module_keys/hrefs; null/unset = unrestricted)
-    const allowedModules = settings?.allowed_modules
-    if (allowedModules) {
-      const allowedSet = new Set(allowedModules)
+    // 4.5. Filter out modules the super admin has denied for this school
+    // (deny-list of module_keys/hrefs; null/unset = unrestricted, visible by default)
+    const deniedModules = settings?.denied_modules
+    if (deniedModules && deniedModules.length > 0) {
+      const deniedSet = new Set(deniedModules)
       items = items
         .map((item) => {
           if (!item.subItems || item.subItems.length === 0) return item
           const filteredSubs = item.subItems.filter(
-            (sub) => sub.isLabel || sub.href === '#' || allowedSet.has(sub.href)
+            (sub) => sub.isLabel || sub.href === '#' || !deniedSet.has(sub.href)
           )
           return { ...item, subItems: filteredSubs }
         })
@@ -281,7 +280,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
             const nonLabels = item.subItems.filter((s) => !s.isLabel && s.href !== '#')
             return nonLabels.length > 0
           }
-          return allowedSet.has(item.href)
+          return !deniedSet.has(item.href)
         })
     }
 

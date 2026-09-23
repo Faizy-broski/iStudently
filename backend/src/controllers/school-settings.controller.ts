@@ -47,10 +47,12 @@ export class SchoolSettingsController {
       // that campus bypass the super admin's module restriction.
       const rootSchoolId = await getMainSchoolId(schoolId)
       const allowedModules = await this.reminderService.getAllowedModules(rootSchoolId)
+      const deniedModules = await this.reminderService.getDeniedModules(rootSchoolId)
 
       const formattedSettings = settings ? {
         ...settings,
         allowed_modules: allowedModules,
+        denied_modules: deniedModules,
         enable_payment_reminder: settings.enable_payment_reminder ?? true,
         auto_dismiss_seconds: settings.auto_dismiss_seconds ?? 5,
         preferred_date_format: settings.preferred_date_format || 'MMMM d yyyy',
@@ -71,6 +73,7 @@ export class SchoolSettingsController {
         assignment_max_points: null,
         hijri_offset: 0,
         allowed_modules: allowedModules,
+        denied_modules: deniedModules,
         enable_payment_reminder: true,
         auto_dismiss_seconds: 5,
       }
@@ -135,6 +138,63 @@ export class SchoolSettingsController {
         pruned = await new UserProfilesService().pruneDisallowedPermissions(school_id, result)
       }
       res.json({ success: true, data: { school_id, allowed_modules: result, pruned_permissions: pruned } })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * GET /api/school-settings/denied-modules?school_id=xxx
+   * Super-admin-only: read the module deny-list for any school.
+   */
+  async getDeniedModules(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.query.school_id as string | undefined
+      if (!schoolId) {
+        res.status(400).json({ success: false, error: 'school_id is required' })
+        return
+      }
+
+      const deniedModules = await this.reminderService.getDeniedModules(schoolId)
+      res.json({ success: true, data: { school_id: schoolId, denied_modules: deniedModules } })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * PUT /api/school-settings/denied-modules
+   * Super-admin-only: set the module deny-list for any school.
+   * Body: { school_id, denied_modules: string[] | null }
+   * Null or empty array = nothing hidden (unrestricted).
+   */
+  async updateDeniedModules(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { school_id, denied_modules } = req.body
+
+      if (!school_id) {
+        res.status(400).json({ success: false, error: 'school_id is required' })
+        return
+      }
+
+      if (denied_modules !== null && !Array.isArray(denied_modules)) {
+        res.status(400).json({ success: false, error: 'denied_modules must be an array of strings or null' })
+        return
+      }
+      if (Array.isArray(denied_modules) && denied_modules.some((m: unknown) => typeof m !== 'string')) {
+        res.status(400).json({ success: false, error: 'denied_modules must contain only strings' })
+        return
+      }
+
+      const result = await this.reminderService.setDeniedModules(school_id, denied_modules)
+
+      // Expanding the deny-list strips now-denied modules from every stored profile
+      // so they can't keep granting access to pages the super admin just hidden.
+      let pruned = 0
+      if (Array.isArray(result) && result.length > 0) {
+        pruned = await new UserProfilesService().pruneDisallowedPermissions(school_id, result)
+      }
+      res.json({ success: true, data: { school_id, denied_modules: result, pruned_permissions: pruned } })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }

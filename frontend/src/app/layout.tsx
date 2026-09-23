@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Cairo } from "next/font/google";
+import { PwaServiceWorkerRegistrar } from "@/components/PwaServiceWorkerRegistrar";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { AcademicProvider } from "@/context/AcademicContext";
@@ -26,6 +27,24 @@ export const metadata: Metadata = {
   title: "Studently - School Management System",
   description: "Comprehensive school management SaaS platform",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Studently",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#022172",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default async function RootLayout({
@@ -84,6 +103,7 @@ export default async function RootLayout({
       <body className="font-sans antialiased">
         <NextTopLoader color="var(--primary)" showSpinner={false} height={3} shadow={false} />
         <BodyPointerEventsGuard />
+        <PwaServiceWorkerRegistrar />
         <NextIntlClientProvider messages={messages} locale={locale}>
           <ThemeProvider>
             <AuthProvider>

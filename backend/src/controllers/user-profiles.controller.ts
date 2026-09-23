@@ -70,7 +70,7 @@ export const cloneForStaff = async (req: AuthRequest, res: Response): Promise<Re
     const { staff_id } = req.body
     if (!staff_id) return res.status(400).json({ success: false, error: 'staff_id is required' })
 
-    const profile = await service.cloneRoleForStaff(roleId, schoolId, staff_id)
+    const profile = await service.cloneRoleForEntity(roleId, schoolId, 'staff', staff_id)
     return res.status(201).json({ success: true, data: profile })
   } catch (error: any) {
     const status = error.message?.includes('not found') ? 404 : 500
@@ -84,7 +84,62 @@ export const removeStaffProfile = async (req: AuthRequest, res: Response): Promi
     if (!schoolId) return res.status(400).json({ success: false, error: 'Unauthorized' })
 
     const { staffId } = req.params
-    await service.removeStaffProfile(staffId, schoolId)
+    await service.removeEntityProfile('staff', staffId, schoolId)
+    return res.json({ success: true })
+  } catch (error: any) {
+    const status = error.message?.includes('not found') ? 404 : 500
+    return res.status(status).json({ success: false, error: error.message })
+  }
+}
+
+const ENTITY_PARAM: Record<string, 'staff' | 'student' | 'parent'> = { student: 'student', parent: 'parent' }
+
+export const cloneForEntity = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) return res.status(400).json({ success: false, error: 'Unauthorized' })
+
+    const { roleId, entityType } = req.params
+    const type = ENTITY_PARAM[entityType]
+    if (!type) return res.status(400).json({ success: false, error: 'Invalid entity type' })
+
+    const { entity_id } = req.body
+    if (!entity_id) return res.status(400).json({ success: false, error: 'entity_id is required' })
+
+    const profile = await service.cloneRoleForEntity(roleId, schoolId, type, entity_id)
+    return res.status(201).json({ success: true, data: profile })
+  } catch (error: any) {
+    const status = error.message?.includes('not found') ? 404 : 500
+    return res.status(status).json({ success: false, error: error.message })
+  }
+}
+
+export const getEntityAssignedRole = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) return res.status(400).json({ success: false, error: 'Unauthorized' })
+
+    const { entityType, entityId } = req.params
+    const type = entityType === 'staff' ? 'staff' : ENTITY_PARAM[entityType]
+    if (!type) return res.status(400).json({ success: false, error: 'Invalid entity type' })
+
+    const roleId = await service.getEntityAssignedRoleId(type, entityId)
+    return res.json({ success: true, data: { role_id: roleId } })
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const removeEntityProfile = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) return res.status(400).json({ success: false, error: 'Unauthorized' })
+
+    const { entityType, entityId } = req.params
+    const type = ENTITY_PARAM[entityType]
+    if (!type) return res.status(400).json({ success: false, error: 'Invalid entity type' })
+
+    await service.removeEntityProfile(type, entityId, schoolId)
     return res.json({ success: true })
   } catch (error: any) {
     const status = error.message?.includes('not found') ? 404 : 500
@@ -216,5 +271,28 @@ export const assignProfile = async (req: AuthRequest, res: Response): Promise<Re
   } catch (error: any) {
     const status = error.message?.includes('not found') ? 404 : 500
     return res.status(status).json({ success: false, error: error.message })
+  }
+}
+
+export const seedDefaults = async (req: any, res: Response) => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) {
+      res.status(403).json({ success: false, error: 'No school associated with your account' })
+      return
+    }
+    const { roles, mode = 'reconcile' } = req.body
+    if (!roles || typeof roles !== 'object' || Array.isArray(roles)) {
+      res.status(400).json({ success: false, error: 'roles must be an object with teacher, staff, librarian arrays' })
+      return
+    }
+    if (mode !== 'reconcile' && mode !== 'reset') {
+      res.status(400).json({ success: false, error: "mode must be 'reconcile' or 'reset'" })
+      return
+    }
+    const result = await new UserProfilesService().seedDefaultRoles(schoolId, roles, mode)
+    res.json({ success: true, data: result })
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
   }
 }

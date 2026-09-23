@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfilePhoto } from "@/components/shared/ProfilePhoto";
+import { AccessRoleCard } from "@/components/shared/AccessRoleCard";
 import {
   ChevronLeft,
   ChevronRight,
@@ -805,6 +806,17 @@ export default function StudentDetailsPage() {
               {renderCustomFieldsForCategory('system')}
             </CardContent>
           </Card>
+
+          <div className="mt-6">
+            <AccessRoleCard
+              entityType="student"
+              entityId={currentStudent.id}
+              baseRole="student"
+              title={t("access_role_title")}
+              description={t("access_role_desc")}
+              defaultLabel={t("access_role_default")}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 

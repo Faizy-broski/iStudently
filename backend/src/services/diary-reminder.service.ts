@@ -234,6 +234,60 @@ export class DiaryReminderService {
   }
 
   /**
+   * Get the super-admin-controlled module deny-list for a school.
+   * Returns null when not yet set (unrestricted — nothing hidden).
+   */
+  async getDeniedModules(schoolId: string): Promise<string[] | null> {
+    const { data, error } = await supabase
+      .from('school_settings')
+      .select('denied_modules')
+      .eq('school_id', schoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+
+    if (error && error.code !== 'PGRST116') {
+      throw new Error(`Failed to fetch denied modules: ${error.message}`)
+    }
+
+    return data?.denied_modules ?? null
+  }
+
+  /**
+   * Set the super-admin-controlled module deny-list for a school.
+   * Pass null to clear the deny-list (nothing hidden).
+   */
+  async setDeniedModules(schoolId: string, deniedModules: string[] | null): Promise<string[] | null> {
+    const now = new Date().toISOString()
+
+    const { data: existing } = await supabase
+      .from('school_settings')
+      .select('id')
+      .eq('school_id', schoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+
+    let query
+    if (existing?.id) {
+      query = supabase
+        .from('school_settings')
+        .update({ denied_modules: deniedModules, updated_at: now })
+        .eq('id', existing.id)
+    } else {
+      query = supabase
+        .from('school_settings')
+        .insert({ school_id: schoolId, campus_id: null, denied_modules: deniedModules, created_at: now, updated_at: now })
+    }
+
+    const { data, error } = await query.select('denied_modules').single()
+
+    if (error) {
+      throw new Error(`Failed to update denied modules: ${error.message}`)
+    }
+
+    return data?.denied_modules ?? null
+  }
+
+  /**
    * Find teachers who did not add diary entries for yesterday's classes
    * and send them email reminders
    */

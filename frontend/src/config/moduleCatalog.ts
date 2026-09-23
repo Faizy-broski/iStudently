@@ -27,7 +27,7 @@ export interface CatalogGroup {
 // Union every assignable role's sidebar so the allow-list covers whatever an admin could
 // pick when building a User Profile for any staff/student/parent.
 export const CATALOG_ROLES: UserRole[] = [
-  'admin', 'teacher', 'staff', 'librarian', 'student', 'parent', 'media_officer', 'fina_supervisor',
+  'admin', 'teacher', 'staff', 'librarian', 'student', 'parent', 'media_officer', 'fina_supervisor', 'inspector',
 ]
 
 let cached: CatalogGroup[] | null = null
@@ -63,6 +63,8 @@ export function getModuleCatalog(): CatalogGroup[] {
           if (sub.isLabel || sub.href === '#') continue
           addItem(item.title, sub)
         }
+        // NOTE: only one level of subItems is walked here. If sidebar.ts ever gains 3-level
+        // nesting (sub-sub-items), this loop will silently miss them — add a recursive walk then.
       } else {
         addItem('__root__', item)
       }
@@ -78,8 +80,8 @@ export function getAllCatalogHrefs(): string[] {
 }
 
 /**
- * True when `pathname` is a page the catalog knows about (or lives under one) AND the
- * school's allow-list does not include it. Unknown paths (detail pages, injected items)
+ * True when `pathname` matches a known catalog href AND the school's
+ * allow-list does not include it. Unknown paths (detail pages, injected items)
  * are never reported as blocked, so the route guard can't lock people out of pages the
  * catalog doesn't describe.
  */
@@ -93,4 +95,42 @@ export function isPathBlockedByAllowList(pathname: string, allowed: ReadonlySet<
     }
   }
   return best ? !best.allowed : false
+}
+
+/**
+ * True when `pathname` matches a known catalog href AND that href is in the school's
+ * deny-list (`school_settings.denied_modules`). Unknown paths (detail pages, dynamic
+ * routes) are never reported as hidden so the route guard can't lock people out.
+ */
+export function isPathHidden(pathname: string, denied: ReadonlySet<string>): boolean {
+  if (denied.size === 0) return false
+  // Most specific known href wins, so a denied parent doesn't hide an allowed child.
+  let best: { href: string; denied: boolean } | null = null
+  for (const href of getAllCatalogHrefs()) {
+    if (pathname === href || pathname.startsWith(href + '/')) {
+      if (!best || href.length > best.href.length) best = { href, denied: denied.has(href) }
+    }
+  }
+  return best ? best.denied : false
+}
+
+/**
+ * Returns every sidebar href for the given role (with all plugins treated as active).
+ * Used to compute the permission set for Default Teacher / Default Staff / Default Librarian.
+ */
+export function getRoleHrefs(role: UserRole): string[] {
+  const injRole = (role as string) === 'staff' ? 'admin' : (role as string)
+  const items = applyPluginInjections(getSidebarConfig(role), injRole, () => true)
+  const hrefs: string[] = []
+  for (const item of items) {
+    if (item.isLabel || item.href === '#') continue
+    if (item.subItems && item.subItems.length > 0) {
+      for (const sub of item.subItems) {
+        if (!sub.isLabel && sub.href !== '#') hrefs.push(sub.href)
+      }
+    } else {
+      hrefs.push(item.href)
+    }
+  }
+  return hrefs
 }

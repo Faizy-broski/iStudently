@@ -90,10 +90,11 @@ export function clearModulePermissionCache(): void {
 export async function resolvePermissionSourceId(profileId: string): Promise<string> {
   const { data } = await supabase
     .from('user_profiles')
-    .select('profile_type, role_id, staff_id')
+    .select('profile_type, role_id, staff_id, student_id, parent_id')
     .eq('id', profileId)
     .maybeSingle()
-  if (data?.profile_type === 'user_profile' && data.role_id && data.staff_id) return data.role_id
+  const isEntityClone = data?.profile_type === 'user_profile' && !!data.role_id && (data.staff_id || data.student_id || data.parent_id)
+  if (isEntityClone) return data!.role_id as string
   return profileId
 }
 
