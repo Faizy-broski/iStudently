@@ -24,6 +24,7 @@ import { CustomFieldsRenderer } from "@/components/admin/CustomFieldsRenderer";
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import { useTranslations } from 'next-intl';
+import { PermissionsSelect, applyPermissionProfile } from '@/components/shared/PermissionsSelect';
 
 // Zod validation schema
 const parentSchema = z.object({
@@ -95,7 +96,11 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
   const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null;
   const activeSchoolId = campusContext?.selectedCampus?.id || impersonatedSchoolId || user?.school_id || '';
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('');
+  const [permissionProfileId, setPermissionProfileId] = useState('');
   const [uniqueUserNum] = useState(() => Math.floor(1000 + Math.random() * 9000));
+  const [activeTab, setActiveTab] = useState<string>("relationship");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const isLastTab = activeTab === "preferences";
 
@@ -299,6 +304,8 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
 
       if (response.success) {
         toast.success(t('toasts.parentAdded'));
+        const permError = await applyPermissionProfile('parent', permissionProfileId, response.data?.id);
+        if (permError) toast.warning(`Parent created, but permissions were not applied: ${permError}. You can set them on the parent's page.`, { duration: 12000 });
         // Invalidate all parents cache to refresh the list
         await mutate((key) => Array.isArray(key) && key[0] === 'parents', undefined, { revalidate: true });
         onSuccess();
@@ -704,6 +711,9 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
               <h3 className="text-lg font-semibold">{t('systemAccess')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getMergedFields(['system']).map(renderField)}
+              </div>
+              <div className="max-w-sm">
+                <PermissionsSelect baseRole="parent" value={permissionProfileId} onChange={setPermissionProfileId} disabled={isSubmitting} />
               </div>
             </CardContent>
           </Card>

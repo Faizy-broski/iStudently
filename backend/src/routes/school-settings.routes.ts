@@ -170,9 +170,13 @@ router.put('/allowed-modules', requireSuperAdmin, (req, res) =>
 
 // ── DENIED-MODULES (deny-list replaces allow-list) — requireSuperAdmin ──
 // GET  /api/school-settings/denied-modules?school_id=xxx
-router.get('/denied-modules', requireSuperAdmin, controller.getDeniedModules)
+router.get('/denied-modules', requireSuperAdmin, (req, res) =>
+  controller.getDeniedModules(req, res)
+)
 // PUT  /api/school-settings/denied-modules
 // Body: { school_id, denied_modules: string[] | null }
-router.put('/denied-modules', requireSuperAdmin, controller.updateDeniedModules)
+router.put('/denied-modules', requireSuperAdmin, (req, res) =>
+  controller.updateDeniedModules(req, res)
+)
 
 export default router

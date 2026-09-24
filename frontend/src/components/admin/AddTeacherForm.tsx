@@ -19,6 +19,8 @@ import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib
 import * as teachersApi from "@/lib/api/teachers"
 import { useCampus } from "@/context/CampusContext"
 import { useTranslations, useLocale } from "next-intl"
+import { PermissionsSelect, applyPermissionProfile } from "@/components/shared/PermissionsSelect"
+import { AccessRoleCard } from "@/components/shared/AccessRoleCard"
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 // Standard Field Definitions with Sort Orders for Teachers
 const STANDARD_FIELDS = [
@@ -62,6 +64,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null;
   const activeSchoolId = selectedCampus?.id || impersonatedSchoolId || profile?.school_id || '';
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('');
+  const [permissionProfileId, setPermissionProfileId] = useState('');
   const { currencySymbol } = useSchoolSettings();
 
   // fieldId matches only the handful of STANDARD_FIELDS with a dedicated
@@ -689,8 +692,10 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         console.log('✅ Update result:', result);
         toast.success(t('form.teacherUpdatedSuccessfully'));
       } else {
-        await teachersApi.createTeacher(dataToSend);
+        const created = await teachersApi.createTeacher(dataToSend);
         toast.success(t('form.teacherAddedSuccessfully'));
+        const permError = await applyPermissionProfile('teacher', permissionProfileId, created?.id);
+        if (permError) toast.warning(`Teacher created, but permissions were not applied: ${permError}. You can set them from the Staff page.`, { duration: 12000 });
       }
 
       onSuccess();
@@ -835,6 +840,21 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getMergedFields(['system']).map(renderField)}
               </div>
+              {!editingTeacher && (
+                <div className="max-w-sm">
+                  <PermissionsSelect baseRole="teacher" value={permissionProfileId} onChange={setPermissionProfileId} disabled={isSubmitting} />
+                </div>
+              )}
+              {editingTeacher && (
+                <AccessRoleCard
+                  entityType="staff"
+                  entityId={editingTeacher.id}
+                  baseRole="teacher"
+                  title="Permissions"
+                  description="Default gives full access. Pick a permission profile to limit what this teacher can see and do. Changes apply immediately."
+                  defaultLabel="Default (full access)"
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -10,17 +10,19 @@ import {
   getUserRoles,
   getEntityAssignedRoleId,
   cloneRoleForEntity,
+  cloneRoleForStaff,
   removeEntityProfile,
+  removeStaffProfile,
   type UserProfile,
 } from '@/lib/api/user-profiles'
 
 const DEFAULT = 'default'
 
 interface AccessRoleCardProps {
-  entityType: 'student' | 'parent'
+  entityType: 'staff' | 'student' | 'parent'
   entityId: string
-  /** 'student' | 'parent' — matches user_profiles.base_role for the roles this picker offers. */
-  baseRole: 'student' | 'parent'
+  /** Matches user_profiles.base_role for the roles this picker offers. */
+  baseRole: 'staff' | 'teacher' | 'librarian' | 'student' | 'parent'
   title: string
   description: string
   defaultLabel: string
@@ -59,9 +61,9 @@ export function AccessRoleCard({ entityType, entityId, baseRole, title, descript
     setSelectedRoleId(value)
     setSaving(true)
     try {
-      const result = value !== DEFAULT
-        ? await cloneRoleForEntity(value, entityType, entityId)
-        : await removeEntityProfile(entityType, entityId)
+      const result = entityType === 'staff'
+        ? (value !== DEFAULT ? await cloneRoleForStaff(value, entityId) : await removeStaffProfile(entityId))
+        : (value !== DEFAULT ? await cloneRoleForEntity(value, entityType, entityId) : await removeEntityProfile(entityType, entityId))
       if (!result.success) throw new Error(result.error || 'Failed to update access role')
       setOriginalRoleId(value)
       toast.success('Access role updated')

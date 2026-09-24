@@ -34,7 +34,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { createStaff, CreateStaffDTO } from '@/lib/api/staff'
-import { getUserRoles, cloneRoleForStaff, type UserProfile } from '@/lib/api/user-profiles'
+import { cloneRoleForStaff } from '@/lib/api/user-profiles'
+import { PermissionsSelect } from '@/components/shared/PermissionsSelect'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { StaffPhotoUpload } from '@/components/ui/staff-photo-upload'
 import { useAuth } from '@/context/AuthContext'
@@ -104,13 +105,8 @@ export default function AddStaffPage() {
     const isLibrarian = formData.title?.toLowerCase() === 'librarian'
 
     // Access role (User Profiles → Roles of type Staff) for non-librarian staff logins
-    const [staffRoles, setStaffRoles] = useState<UserProfile[]>([])
     const [accessRoleId, setAccessRoleId] = useState('')
-    useEffect(() => {
-        getUserRoles()
-            .then((roles) => setStaffRoles(roles.filter((r) => r.base_role === 'staff')))
-            .catch(() => setStaffRoles([]))
-    }, [])
+    useEffect(() => { setAccessRoleId('') }, [isLibrarian])
     // A role only means something if the person can log in, so give them a password to hand over
     useEffect(() => {
         if (!isLibrarian && accessRoleId && !formData.password) {
@@ -236,13 +232,13 @@ export default function AddStaffPage() {
 
             toast.success(t('toasts.added'))
 
-            if (!isLibrarian && accessRoleId) {
+            if (accessRoleId) {
                 const newStaffId = created?.data?.id ?? created?.id
                 const assign = newStaffId
                     ? await cloneRoleForStaff(accessRoleId, newStaffId)
                     : { success: false, error: 'new staff id missing' }
                 if (assign.success) {
-                    toast.info(t('access.credentialsToast', { username: formData.username || formData.email || '', password: formData.password || '' }), { duration: 15000 })
+                    if (!isLibrarian) toast.info(t('access.credentialsToast', { username: formData.username || formData.email || '', password: formData.password || '' }), { duration: 15000 })
                 } else {
                     toast.warning(t('access.assignFailed', { error: assign.error || '' }), { duration: 15000 })
                 }
@@ -681,6 +677,10 @@ export default function AddStaffPage() {
                                 </div>
                             </div>
 
+                            <div className="md:max-w-md">
+                                <PermissionsSelect baseRole="librarian" value={accessRoleId} onChange={setAccessRoleId} disabled={loading} />
+                            </div>
+
                             {/* Custom system fields */}
                             {!loadingFields && systemCustomFields.length > 0 && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
@@ -702,19 +702,7 @@ export default function AddStaffPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2 md:max-w-md">
-                                <Label>{t('access.role')}</Label>
-                                <Select value={accessRoleId || 'none'} onValueChange={(v) => setAccessRoleId(v === 'none' ? '' : v)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">{t('access.none')}</SelectItem>
-                                        {staffRoles.map((r) => (
-                                            <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground">
-                                    {staffRoles.length === 0 ? t('access.noRoles') : t('access.hint')}
-                                </p>
+                                <PermissionsSelect baseRole="staff" value={accessRoleId} onChange={setAccessRoleId} disabled={loading} />
                             </div>
 
                             {accessRoleId && (

@@ -32,6 +32,7 @@ import * as servicesApi from "@/lib/api/services";
 import { getFieldDefinitions, getFieldLabel, getFieldOptions, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import { useTranslations, useLocale } from "next-intl";
+import { PermissionsSelect, applyPermissionProfile } from "@/components/shared/PermissionsSelect";
 import {
   StudentFormData,
   Gender,
@@ -259,6 +260,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
   // Fee Generation State
+  const [permissionProfileId, setPermissionProfileId] = useState('');
   const [generateFirstChallan, setGenerateFirstChallan] = useState(false);
   const [generatedFeeId, setGeneratedFeeId] = useState<string | null>(null);
   const [showChallanModal, setShowChallanModal] = useState(false);
@@ -695,6 +697,8 @@ customFields.forEach((field) => {
       });
 
       if (response.success && response.data) {
+        const permError = await applyPermissionProfile('student', permissionProfileId, response.data.id);
+        if (permError) toast.warning(`Student created, but permissions were not applied: ${permError}. You can set them on the student's page.`, { duration: 12000 });
         // Surface auto-generated username/password (issued when no email/username
         // was supplied) so the admin can hand them to the student.
         if (response.data.generated_username) {
@@ -2017,6 +2021,9 @@ customFields.forEach((field) => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getMergedFields(['system']).map(renderField)}
+              </div>
+              <div className="max-w-sm">
+                <PermissionsSelect baseRole="student" value={permissionProfileId} onChange={setPermissionProfileId} disabled={isSubmitting} />
               </div>
             </CardContent>
           </Card>

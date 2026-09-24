@@ -41,7 +41,10 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
     setLoading(true)
     try {
       const deniedResult = await getSchoolDeniedModules(schoolId)
-      if (!deniedResult.success) return
+      if (!deniedResult.success) {
+        toast.error(`Couldn't load module settings: ${deniedResult.error || 'unknown error'}`)
+        return
+      }
 
       const deniedList = deniedResult.data?.denied_modules  // null = not yet migrated
 
@@ -86,10 +89,10 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
         toast.success('Module visibility saved')
         setOpen(false)
       } else {
-        toast.error('Failed to save')
+        toast.error(`Failed to save: ${result.error || 'unknown error'}`)
       }
     } catch {
-      toast.error('Failed to save')
+      toast.error('Failed to save: network error')
     } finally {
       setSaving(false)
     }
@@ -129,8 +132,13 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
 
   return (
     <>
-      <Button variant="ghost" size="icon" title="Module Access" onClick={() => setOpen(true)}>
-        <LayoutGrid className="h-4 w-4" />
+      <Button
+        size="sm"
+        className="w-full gradient-blue text-white hover:shadow-md transition-all border-0 h-8"
+        onClick={() => setOpen(true)}
+      >
+        <LayoutGrid className="h-3.5 w-3.5 me-1.5" />
+        Module Access
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

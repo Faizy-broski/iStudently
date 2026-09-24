@@ -190,7 +190,7 @@ export async function cloneRoleForEntity(
 }
 
 export async function getEntityAssignedRoleId(
-  entityType: 'student' | 'parent',
+  entityType: 'staff' | 'student' | 'parent',
   entityId: string
 ): Promise<string | null> {
   const res = await apiRequest<{ success: boolean; data: { role_id: string | null } }>(
@@ -213,6 +213,7 @@ export interface SeedDefaultRolesPayload {
   teacher: string[]
   staff: string[]
   librarian: string[]
+  admin?: string[]
   student?: string[]
   parent?: string[]
 }

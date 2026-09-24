@@ -22,7 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
-  getUserRoles, getStandaloneProfiles, createUserProfile, createProfileFromRole,
+  getUserRoles, createUserProfile,
   deleteUserProfile, getProfilePermissions, updateProfilePermissions, updateUserProfile,
   seedDefaultRoles,
   type UserProfile, type ProfilePermission,
@@ -40,11 +40,12 @@ type PermMap = Record<string, { can_use: boolean; can_edit: boolean }>
 // Roles that can actually hold a User Profile. Staff/teacher/librarian assign via the Staff
 // Edit dialog; student/parent assign via their own detail pages (see migration 312 —
 // students.user_profile_id / parents.user_profile_id).
-const ROLE_TYPES_FOR_NEW_ROLE: UserRole[] = ['staff', 'teacher', 'librarian', 'student', 'parent']
+const ROLE_TYPES_FOR_NEW_ROLE: UserRole[] = ['admin', 'staff', 'teacher', 'librarian', 'student', 'parent']
 const ROLE_LABELS: Record<string, string> = {
   teacher: 'Teacher',
   staff: 'Staff',
   librarian: 'Librarian',
+  admin: 'Admin',
   student: 'Student',
   parent: 'Parent',
 }
@@ -172,13 +173,10 @@ export default function UserProfilesPage() {
 
   // Role templates (profile_type='role')
   const [roles, setRoles] = useState<UserProfile[]>([])
-  // Standalone per-user profiles (profile_type='user_profile', no staff assigned)
-  const [standaloneProfiles, setStandaloneProfiles] = useState<UserProfile[]>([])
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [permMap, setPermMap] = useState<PermMap>({})
   const [loadingRoles, setLoadingRoles] = useState(true)
-  const [loadingStandalone, setLoadingStandalone] = useState(true)
   const [loadingPerms, setLoadingPerms] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null)
@@ -195,16 +193,7 @@ export default function UserProfilesPage() {
   const [newRoleBase, setNewRoleBase] = useState<UserRole>('staff')
   const [creatingRole, setCreatingRole] = useState(false)
 
-  // New Profile form
-  const [showAddProfileForm, setShowAddProfileForm] = useState(false)
-  const [newProfileName, setNewProfileName] = useState('')
-  const [newProfileRoleId, setNewProfileRoleId] = useState<string>('')
-  const [creatingProfile, setCreatingProfile] = useState(false)
-
-  // Unified lookup across both lists
-  const allItems = useMemo(() => [...roles, ...standaloneProfiles], [roles, standaloneProfiles])
-  const selectedItem = allItems.find((p) => p.id === selectedId) ?? null
-  const selectedIsRole = selectedItem?.profile_type === 'role'
+  const selectedItem = roles.find((p) => p.id === selectedId) ?? null
 
   // For backward compat in the save/delete handlers
   const profiles = roles
@@ -253,7 +242,6 @@ export default function UserProfilesPage() {
       if (result.success && result.data) {
         const updated = result.data
         setRoles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
-        setStandaloneProfiles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
         setPanelRole(base)
         setModuleSearch('')
       } else {
@@ -284,20 +272,9 @@ export default function UserProfilesPage() {
     }
   }, [])
 
-  const fetchStandalone = useCallback(async () => {
-    setLoadingStandalone(true)
-    try {
-      const data = await getStandaloneProfiles()
-      setStandaloneProfiles(data)
-    } finally {
-      setLoadingStandalone(false)
-    }
-  }, [])
-
   useEffect(() => {
     fetchRoles()
-    fetchStandalone()
-  }, [fetchRoles, fetchStandalone])
+  }, [fetchRoles])
 
   // Auto-provision default role templates (Default Teacher/Staff/Librarian/Student/Parent)
   // the first time this page loads for a school that's missing any of them — additive-only
@@ -307,9 +284,9 @@ export default function UserProfilesPage() {
   useEffect(() => {
     if (loadingRoles || seededRef.current) return
     const existingNames = new Set(roles.map((r) => r.name))
-    const defaults: Record<'teacher' | 'staff' | 'librarian' | 'student' | 'parent', string> = {
+    const defaults: Record<'teacher' | 'staff' | 'librarian' | 'admin' | 'student' | 'parent', string> = {
       teacher: 'Default Teacher', staff: 'Default Staff', librarian: 'Default Librarian',
-      student: 'Default Student', parent: 'Default Parent',
+      admin: 'Default Admin', student: 'Default Student', parent: 'Default Parent',
     }
     const missing = Object.entries(defaults).filter(([, name]) => !existingNames.has(name))
     if (missing.length === 0) return
@@ -318,6 +295,7 @@ export default function UserProfilesPage() {
       teacher: getRoleHrefs('teacher'),
       staff: getRoleHrefs('staff'),
       librarian: getRoleHrefs('librarian'),
+      admin: getRoleHrefs('admin'),
       student: getRoleHrefs('student'),
       parent: getRoleHrefs('parent'),
     }, 'reconcile')
@@ -339,7 +317,7 @@ export default function UserProfilesPage() {
     setSelectedId(id)
     setLoadingPerms(true)
     try {
-      const item = [...roles, ...standaloneProfiles].find((p) => p.id === id)
+      const item = roles.find((p) => p.id === id)
       const roleForPanel = (item?.base_role ?? 'teacher') as UserRole
       setPanelRole(roleForPanel)
 
@@ -354,7 +332,7 @@ export default function UserProfilesPage() {
     } finally {
       setLoadingPerms(false)
     }
-  }, [roles, standaloneProfiles, deniedModules])
+  }, [roles, deniedModules])
 
   const togglePerm = useCallback((href: string, field: 'can_use' | 'can_edit') => {
     const key = permKey(href)
@@ -424,24 +402,7 @@ export default function UserProfilesPage() {
     }
   }, [newRoleName, newRoleBase, handleSelectProfile])
 
-  const handleCreateProfile = useCallback(async () => {
-    if (!newProfileName.trim() || !newProfileRoleId) return
-    setCreatingProfile(true)
-    try {
-      const result = await createProfileFromRole(newProfileName.trim(), newProfileRoleId)
-      if (result.success && result.data) {
-        setStandaloneProfiles((prev) => [...prev, result.data!])
-        setShowAddProfileForm(false)
-        setNewProfileName('')
-        setNewProfileRoleId('')
-        handleSelectProfile(result.data.id)
-      } else {
-        toast.error(result.error || 'Failed to create profile')
-      }
-    } finally {
-      setCreatingProfile(false)
-    }
-  }, [newProfileName, newProfileRoleId, handleSelectProfile])
+
 
 
   const handleDelete = useCallback(async (profile: UserProfile) => {
@@ -451,11 +412,7 @@ export default function UserProfilesPage() {
     }
     const result = await deleteUserProfile(profile.id)
     if (result.success) {
-      if (profile.profile_type === 'role') {
-        setRoles((prev) => prev.filter((p) => p.id !== profile.id))
-      } else {
-        setStandaloneProfiles((prev) => prev.filter((p) => p.id !== profile.id))
-      }
+      setRoles((prev) => prev.filter((p) => p.id !== profile.id))
       if (selectedId === profile.id) {
         setSelectedId(null)
         setPermMap({})
@@ -477,7 +434,7 @@ export default function UserProfilesPage() {
         <div>
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
-            Create reusable permission roles and assign them to staff members
+            Create a permission profile, choose what it can access, then pick it in the Permissions field when adding or editing a user
           </p>
         </div>
       </div>
@@ -501,7 +458,7 @@ export default function UserProfilesPage() {
                     size="sm"
                     variant="outline"
                     className="h-6 gap-1 text-xs px-2"
-                    onClick={() => { setShowAddRoleForm((v) => !v); setShowAddProfileForm(false) }}
+                    onClick={() => setShowAddRoleForm((v) => !v)}
                   >
                     <Plus className="h-3 w-3" />
                     {t('new_role')}
@@ -550,7 +507,7 @@ export default function UserProfilesPage() {
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               ) : roles.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-3 px-2">No roles yet</p>
+                <p className="text-xs text-muted-foreground text-center py-3 px-2">No profiles yet</p>
               ) : (
                 <div className="space-y-0.5">
                   {roles.map((p) => (
@@ -568,86 +525,6 @@ export default function UserProfilesPage() {
               )}
             </div>
 
-            <div className="border-t" />
-
-            {/* ── PROFILES section ── */}
-            <div>
-              <div className="flex items-center justify-between mb-2 px-1">
-                <div className="flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Profiles
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-6 gap-1 text-xs px-2"
-                  onClick={() => { setShowAddProfileForm((v) => !v); setShowAddRoleForm(false) }}
-                >
-                  <Plus className="h-3 w-3" />
-                  New Profile
-                </Button>
-              </div>
-
-              {showAddProfileForm && (
-                <div className="p-3 border rounded-lg space-y-2 bg-muted/30 mb-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Profile Name</Label>
-                    <Input
-                      placeholder="e.g. John's Profile"
-                      value={newProfileName}
-                      onChange={(e) => setNewProfileName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleCreateProfile()}
-                      className="h-8 text-sm"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Based on Role</Label>
-                    <Select value={newProfileRoleId} onValueChange={setNewProfileRoleId}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Select a role…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.map((r) => (
-                          <SelectItem key={r.id} value={r.id} className="text-xs">
-                            {r.name}
-                            <span className="ml-1 text-muted-foreground">({ROLE_LABELS[r.base_role] ?? r.base_role})</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" className="flex-1 h-8 text-xs" onClick={handleCreateProfile} disabled={!newProfileName.trim() || !newProfileRoleId || creatingProfile}>
-                      {creatingProfile ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                      <span className="ml-1">Create</span>
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setShowAddProfileForm(false); setNewProfileName(''); setNewProfileRoleId('') }}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {loadingStandalone ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                </div>
-              ) : standaloneProfiles.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-3 px-2">No profiles yet</p>
-              ) : (
-                <div className="space-y-0.5">
-                  {standaloneProfiles.map((p) => {
-                    const basedOnRole = roles.find((r) => r.id === p.role_id)
-                    return (
-                      <ListItem key={p.id} item={p} selectedId={selectedId} onSelect={handleSelectProfile} onDelete={setDeleteTarget} icon={<User className="h-3.5 w-3.5 shrink-0 opacity-60" />} badge={basedOnRole?.name} />
-                    )
-                  })}
-                </div>
-              )}
-            </div>
 
           </CardContent>
         </Card>
@@ -713,15 +590,6 @@ export default function UserProfilesPage() {
               </div>
             )}
 
-            {/* "Based on" label — only shown for standalone profiles (not roles) */}
-            {selectedItem && !selectedIsRole && (
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t">
-                <span className="text-xs text-muted-foreground shrink-0">Based on:</span>
-                <Badge variant="secondary" className="text-xs font-medium">
-                  {roles.find((r) => r.id === selectedItem.role_id)?.name ?? 'Unknown Role'}
-                </Badge>
-              </div>
-            )}
           </CardHeader>
 
           <CardContent className="p-0">

@@ -563,13 +563,14 @@ export class UserProfilesService {
    */
   async seedDefaultRoles(
     schoolId: string,
-    roles: { teacher: string[]; staff: string[]; librarian: string[]; student?: string[]; parent?: string[] },
+    roles: { teacher: string[]; staff: string[]; librarian: string[]; admin?: string[]; student?: string[]; parent?: string[] },
     mode: 'reconcile' | 'reset' = 'reconcile'
   ): Promise<{ seeded: number; added: number; removed: number; errors: Array<{ name: string; error: string }> }> {
     const entries: Array<{ name: string; base_role: string; hrefs: string[] }> = [
       { name: 'Default Teacher',  base_role: 'teacher',  hrefs: roles.teacher },
       { name: 'Default Staff',    base_role: 'staff',    hrefs: roles.staff },
       { name: 'Default Librarian', base_role: 'librarian', hrefs: roles.librarian },
+      ...(roles.admin ? [{ name: 'Default Admin', base_role: 'admin', hrefs: roles.admin }] : []),
       ...(roles.student ? [{ name: 'Default Student', base_role: 'student', hrefs: roles.student }] : []),
       ...(roles.parent ? [{ name: 'Default Parent', base_role: 'parent', hrefs: roles.parent }] : []),
     ]
