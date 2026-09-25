@@ -1727,7 +1727,7 @@ export default function IdCardDesignerPage() {
           <h1 className="text-sm font-semibold whitespace-nowrap">{t('page_title')}</h1>
           <Badge variant="secondary" className="text-[10px] hidden sm:flex shrink-0">
             {cardPx(dims.width, dims.unit).toFixed(0)}×{cardPx(dims.height, dims.unit).toFixed(0)} px
-            &nbsp;·&nbsp;{dims.width.toFixed(2)}{dims.unit} × {dims.height.toFixed(2)}{dims.unit}
+            &nbsp;·&nbsp;{+dims.width.toFixed(3)}{dims.unit} × {+dims.height.toFixed(3)}{dims.unit}
           </Badge>
         </div>
 
