@@ -87,6 +87,57 @@ export class MiqatService {
     return data;
   }
 
+  /**
+   * The persons among `personIds` that belong to `schoolId`'s school tree (the school itself,
+   * its root, and every campus under that root). Campus users' profiles.school_id is the
+   * campus id, so a plain equality check against the admin's school would wrongly reject them.
+   */
+  async filterPersonsInSchoolTree(personIds: string[], schoolId: string): Promise<Set<string>> {
+    const { data: school, error: schoolError } = await supabase
+      .from('schools')
+      .select('id, parent_school_id')
+      .eq('id', schoolId)
+      .maybeSingle();
+    if (schoolError) throw schoolError;
+    const rootId = school?.parent_school_id ?? schoolId;
+
+    const { data: campuses, error: campusError } = await supabase
+      .from('schools')
+      .select('id')
+      .eq('parent_school_id', rootId);
+    if (campusError) throw campusError;
+    const treeIds = [rootId, ...(campuses || []).map((c) => c.id)];
+
+    const allowed = new Set<string>();
+    for (let i = 0; i < personIds.length; i += 100) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', personIds.slice(i, i + 100))
+        .in('school_id', treeIds);
+      if (error) throw error;
+      for (const row of data || []) allowed.add(row.id);
+    }
+    return allowed;
+  }
+
+  /** Each person's highest-revision card (any status), keyed by person id. */
+  async getLatestCards(personIds: string[]) {
+    const latest = new Map<string, { id: string; revision: number; status: string; issued_at: string }>();
+    for (let i = 0; i < personIds.length; i += 100) {
+      const { data, error } = await supabase
+        .from('miqat_cards')
+        .select('id, person_id, revision, status, issued_at')
+        .in('person_id', personIds.slice(i, i + 100))
+        .order('revision', { ascending: false });
+      if (error) throw error;
+      for (const row of data || []) {
+        if (!latest.has(row.person_id)) latest.set(row.person_id, row);
+      }
+    }
+    return latest;
+  }
+
   async revokeCard(personId: string, reason: string) {
     const { error } = await supabase
       .from('miqat_cards')

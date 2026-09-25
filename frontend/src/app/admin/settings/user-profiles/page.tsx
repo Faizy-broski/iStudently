@@ -313,15 +313,21 @@ export default function UserProfilesPage() {
       .catch((e: any) => toast.error(e?.message || 'Failed to create default roles'))
   }, [loadingRoles, roles, fetchRoles])
 
-  const handleSelectProfile = useCallback(async (id: string) => {
+  const selectSeqRef = useRef(0)
+  // `knownItem` is passed right after creating a profile: `roles` state has not updated yet
+  // in this closure, and looking the new profile up there used to fall back to the Teacher
+  // module list, so the first save stored keys the profile's real user type never matches.
+  const handleSelectProfile = useCallback(async (id: string, knownItem?: UserProfile) => {
+    const seq = ++selectSeqRef.current
     setSelectedId(id)
     setLoadingPerms(true)
     try {
-      const item = roles.find((p) => p.id === id)
+      const item = knownItem ?? roles.find((p) => p.id === id)
       const roleForPanel = (item?.base_role ?? 'teacher') as UserRole
       setPanelRole(roleForPanel)
 
       const data = await getProfilePermissions(id)
+      if (seq !== selectSeqRef.current) return // a newer selection superseded this one
       // Show exactly what is stored (least privilege): a profile with no rows grants
       // nothing, so the admin ticks only the modules it should have. Previously an empty
       // profile was displayed as "everything checked", which both hid that it granted
@@ -330,7 +336,7 @@ export default function UserProfilesPage() {
       const deniedSet = new Set(deniedModules ?? [])
       setPermMap(buildPermMap(deniedSet.size > 0 ? data.filter((p) => !deniedSet.has(p.module_key)) : data))
     } finally {
-      setLoadingPerms(false)
+      if (seq === selectSeqRef.current) setLoadingPerms(false)
     }
   }, [roles, deniedModules])
 
@@ -393,7 +399,7 @@ export default function UserProfilesPage() {
         setRoles((prev) => [...prev, result.data!])
         setShowAddRoleForm(false)
         setNewRoleName('')
-        handleSelectProfile(result.data.id)
+        handleSelectProfile(result.data.id, result.data)
       } else {
         toast.error(result.error || 'Failed to create role')
       }
@@ -542,7 +548,7 @@ export default function UserProfilesPage() {
                 )}
               </div>
               {selectedProfile && (
-                <Button size="sm" onClick={handleSave} disabled={saving}>
+                <Button size="sm" onClick={handleSave} disabled={saving || loadingPerms}>
                   {saving ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : (

@@ -27,6 +27,9 @@ import { getAllStaff } from '@/lib/api/staff'
 import { getParents } from '@/lib/api/parents'
 import { useCampus } from '@/context/CampusContext'
 import { bulkGetOrCreateCredentials, type UserCredentials } from '@/lib/api/credentials'
+import { getCardQrBatch } from '@/lib/api/miqat'
+import { getAuthToken } from '@/lib/api/schools'
+import { Switch } from '@/components/ui/switch'
 import {
   getTemplates as getIdCardTemplates,
   createTemplate as createIdCardTemplate,
@@ -269,6 +272,7 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{current_date}}': { label: 'Today Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{miqat_qr}}': { label: 'Miqat QR (Attendance)', category: 'QR Code', isQR: true },
     '{{username}}': { label: 'Username', category: 'Credentials' },
     '{{password}}': { label: 'Password', category: 'Credentials' },
     '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
@@ -299,6 +303,7 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{miqat_qr}}': { label: 'Miqat QR (Attendance)', category: 'QR Code', isQR: true },
     '{{username}}': { label: 'Username', category: 'Credentials' },
     '{{password}}': { label: 'Password', category: 'Credentials' },
     '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
@@ -327,6 +332,7 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{miqat_qr}}': { label: 'Miqat QR (Attendance)', category: 'QR Code', isQR: true },
     '{{username}}': { label: 'Username', category: 'Credentials' },
     '{{password}}': { label: 'Password', category: 'Credentials' },
     '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
@@ -351,6 +357,7 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{miqat_qr}}': { label: 'Miqat QR (Attendance)', category: 'QR Code', isQR: true },
     '{{username}}': { label: 'Username', category: 'Credentials' },
     '{{password}}': { label: 'Password', category: 'Credentials' },
     '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
@@ -376,6 +383,7 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{miqat_qr}}': { label: 'Miqat QR (Attendance)', category: 'QR Code', isQR: true },
     '{{username}}': { label: 'Username', category: 'Credentials' },
     '{{password}}': { label: 'Password', category: 'Credentials' },
     '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
@@ -410,6 +418,9 @@ interface DesignField {
   borderRadius: number
   bgColor: string
   opacity: number
+  // Free text only: wrap inside the box (and keep manual line breaks). Absent = single line,
+  // so cards designed before this existed render exactly as they did.
+  wrap?: boolean
 }
 
 interface CardDimensions {
@@ -417,6 +428,19 @@ interface CardDimensions {
   height: number
   unit: Unit
 }
+
+// Everything that differs between the two faces of a card. Size, border width and corner
+// radius are the physical card's, so they are shared.
+interface SideDesign {
+  fields: DesignField[]
+  bgColor: string
+  bgGradient: string
+  bgImage: string
+  borderColor: string
+  cardThemeId: string
+}
+
+const MIQAT_QR_TOKEN = '{{miqat_qr}}'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -496,6 +520,23 @@ function defaultFields(): DesignField[] {
       x: rx, y: 250, width: iw, height: 30,
       fontSize: 11, fontWeight: 'normal', fontStyle: 'normal',
       color: '#1f2937', align: 'center', borderRadius: 6, bgColor: '#d1fae5', opacity: 1 },
+  ]
+}
+
+// Starter content for the back of a card: school name plus an editable notice. They are
+// ordinary fields, so everything can be edited, moved, deleted or added to like the front.
+function defaultBackFields(): DesignField[] {
+  return [
+    { id: uniqueId(), token: '{{school_name}}', label: 'School Name', type: 'text',
+      x: 10, y: 28, width: 184, height: 20,
+      fontSize: 12, fontWeight: 'bold', fontStyle: 'normal',
+      color: '#1e3a8a', align: 'center', borderRadius: 0, bgColor: 'transparent', opacity: 1 },
+    { id: uniqueId(), token: '{{custom_text}}',
+      label: 'This card is the property of the school and must be carried at all times.\nIf found, please return it to the school office.',
+      type: 'text',
+      x: 14, y: 64, width: 176, height: 96,
+      fontSize: 9, fontWeight: 'normal', fontStyle: 'normal',
+      color: '#374151', align: 'center', borderRadius: 0, bgColor: 'transparent', opacity: 1, wrap: true },
   ]
 }
 
@@ -661,9 +702,10 @@ function CanvasField({
             textAlign: field.align,
             width: '100%',
             lineHeight: 1.2,
-            whiteSpace: 'nowrap',
+            whiteSpace: field.wrap ? 'pre-wrap' : 'nowrap',
+            wordBreak: field.wrap ? 'break-word' : undefined,
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            textOverflow: field.wrap ? 'clip' : 'ellipsis',
           }}
         >
           {field.label}
@@ -690,6 +732,12 @@ export default function IdCardDesignerPage() {
   const [borderWidth, setBorderWidth] = useState(2)
   const [borderRadius, setBorderRadius] = useState(8)
 
+  // ── Back side (optional — front only by default) ──
+  const [includeBack, setIncludeBack] = useState(false)
+  const [activeSide, setActiveSide] = useState<'front' | 'back'>('front')
+  // The design state above always holds the side being edited; this holds the other side.
+  const [parkedSide, setParkedSide] = useState<SideDesign | null>(null)
+
   // ── Dimensions state ──
   const [unit, setUnit] = useState<Unit>('in')
   const [dims, setDims] = useState<CardDimensions>({ width: 2.125, height: 3.375, unit: 'in' })
@@ -705,6 +753,11 @@ export default function IdCardDesignerPage() {
   // ── Login credentials (username/password fields), fetched on demand — session only ──
   const [credentialsMap, setCredentialsMap] = useState<Record<string, { username: string; password: string }>>({})
   const [loadingCredentials, setLoadingCredentials] = useState(false)
+
+  // ── Miqat attendance QR payloads by record id — session only, fetched at print/export ──
+  const [miqatQrMap, setMiqatQrMap] = useState<Record<string, string>>({})
+  const [loadingMiqatQr, setLoadingMiqatQr] = useState(false)
+  const miqatInFlightRef = useRef(false)
 
   // Core fetch, shared by the explicit "Load Credentials" button and by
   // ensureCredentialsForOutput's auto-load guard below. Returns the record
@@ -749,6 +802,70 @@ export default function IdCardDesignerPage() {
     return recordIds.filter(id => !loadedRecordIds.has(id))
   }
 
+  // Fields on every face that will actually be printed.
+  const allOutputFields = (): DesignField[] => {
+    const sides = getSides()
+    return includeBack ? [...sides.front.fields, ...sides.back.fields] : sides.front.fields
+  }
+
+  // Fetches the Miqat QR payload for the selected users right before print/export, and returns
+  // false (with a toast) if any could not be produced — a card printed without a valid Miqat QR
+  // would look finished but never scan, so it must not be printed silently. The server issues a
+  // Miqat card only for people who have none and otherwise re-signs their existing card, so
+  // reprinting never invalidates cards already handed out.
+  const ensureMiqatQrForOutput = async (): Promise<boolean> => {
+    if (!allOutputFields().some(f => f.token === MIQAT_QR_TOKEN)) return true
+    // Two overlapping requests could each issue a card to the same person; the second, higher
+    // revision would then revoke the QR the first one just printed.
+    if (miqatInFlightRef.current) return false
+    // Always re-fetched (no cache): if a card was reported lost since the last print, the
+    // server re-signs the new current revision rather than us printing a stale one.
+    const missing = Array.from(selectedUsers)
+    if (missing.length === 0) return true
+
+    // Miqat person ids are profile ids. Unlike credentials, never fall back to the record id.
+    const mappings = printUsers
+      .filter((u: any) => missing.includes(u.id))
+      .map((u: any) => ({ recordId: u.id as string, profileId: (u.profile_id || u.user_id || u.profile?.id) as string | undefined }))
+      .filter((m): m is { recordId: string; profileId: string } => !!m.profileId)
+
+    miqatInFlightRef.current = true
+    setLoadingMiqatQr(true)
+    try {
+      let qr: Record<string, string> = {}
+      if (mappings.length > 0) {
+        const token = await getAuthToken()
+        if (!token) { toast.error(t('err_miqat_qr')); return false }
+        const res = await getCardQrBatch(mappings.map(m => m.profileId), token, campusId)
+        if (!res.success || !res.data) { toast.error(res.error || t('err_miqat_qr')); return false }
+        qr = res.data.qr
+      }
+      // flushSync: html2canvas / window.print() read the DOM right after this returns.
+      flushSync(() => {
+        setMiqatQrMap(prev => {
+          const next = { ...prev }
+          for (const m of mappings) if (qr[m.profileId]) next[m.recordId] = qr[m.profileId]
+          return next
+        })
+      })
+      const unresolved = missing.filter(id => {
+        const m = mappings.find(x => x.recordId === id)
+        return !m || !qr[m.profileId]
+      })
+      if (unresolved.length > 0) {
+        toast.error(t('err_miqat_qr_partial', { count: unresolved.length }))
+        return false
+      }
+      return true
+    } catch {
+      toast.error(t('err_miqat_qr'))
+      return false
+    } finally {
+      miqatInFlightRef.current = false
+      setLoadingMiqatQr(false)
+    }
+  }
+
   const handleLoadCredentials = async () => {
     if (selectedUsers.size === 0) {
       toast.warning(t('warn_select_users_print'))
@@ -777,7 +894,7 @@ export default function IdCardDesignerPage() {
   // but some couldn't be loaded, so the caller can abort instead of
   // producing a card with a blank password field.
   const ensureCredentialsForOutput = async (): Promise<boolean> => {
-    const needsPassword = fields.some(f => f.token === '{{password}}')
+    const needsPassword = allOutputFields().some(f => f.token === '{{password}}')
     if (!needsPassword) return true
 
     const missing = Array.from(selectedUsers).filter(id => !credentialsMap[id]?.password)
@@ -814,6 +931,8 @@ export default function IdCardDesignerPage() {
     borderWidth: number
     borderRadius: number
     dims: CardDimensions
+    includeBack?: boolean
+    back?: SideDesign
   }
   const [templateName, setTemplateName] = useState('')
   const [savedTemplates, setSavedTemplates] = useState<SavedDesignerTemplate[]>([])
@@ -858,6 +977,17 @@ export default function IdCardDesignerPage() {
             borderWidth: cfg.borderWidth,
             borderRadius: cfg.borderRadius,
             dims: cfg.dims as CardDimensions,
+            includeBack: !!cfg.includeBack && !!cfg.back,
+            back: cfg.back
+              ? {
+                  fields: cfg.back.fields as unknown as DesignField[],
+                  bgColor: cfg.back.bgColor,
+                  bgGradient: cfg.back.bgGradient,
+                  bgImage: cfg.back.bgImage ?? '',
+                  borderColor: cfg.back.borderColor,
+                  cardThemeId: cfg.back.cardThemeId,
+                }
+              : undefined,
           }
         })
       setSavedTemplates(list)
@@ -914,6 +1044,7 @@ export default function IdCardDesignerPage() {
       case '{{children_names}}':    return p('children_names')
       case '{{children_grades}}':   return p('children_grades')
       case '{{qr_code}}':           return u.student_number ?? u.employee_number ?? u.id ?? ''
+      case '{{miqat_qr}}':          return miqatQrMap[u.id] ?? ''
       case '{{username}}':          return credentialsMap[u.id]?.username ?? u.username ?? u.profile?.username ?? ''
       case '{{password}}':          return credentialsMap[u.id]?.password ?? ''
       case '{{login_url}}':         return LOGIN_URL
@@ -959,6 +1090,10 @@ export default function IdCardDesignerPage() {
     setSelectedUsers(new Set())
     // Keep existing layout, just clear fields that don't make sense
     setFields(defaultFields())
+    // Back-side fields use this user type's tokens too, so start over on the front only.
+    setIncludeBack(false)
+    setActiveSide('front')
+    setParkedSide(null)
   }
 
   const activeTheme = CARD_THEMES.find(t => t.id === cardThemeId) ?? CARD_THEMES[0]
@@ -969,6 +1104,44 @@ export default function IdCardDesignerPage() {
     setBorderColor(theme.border)
     setBgGradient('')
   }
+
+  // ── Front / back ──
+  const snapshotSide = (): SideDesign => ({ fields, bgColor, bgGradient, bgImage, borderColor, cardThemeId })
+  const applySide = (d: SideDesign) => {
+    setFields(d.fields)
+    setBgColor(d.bgColor)
+    setBgGradient(d.bgGradient)
+    setBgImage(d.bgImage)
+    setBorderColor(d.borderColor)
+    setCardThemeId(d.cardThemeId)
+    setSelectedId(null)
+  }
+  const blankBack = (): SideDesign => ({
+    fields: defaultBackFields(), bgColor: '#ffffff', bgGradient: '', bgImage: '', borderColor, cardThemeId: 'none',
+  })
+  // Both faces, whichever one the canvas is currently editing.
+  const getSides = (): { front: SideDesign; back: SideDesign } => {
+    const live = snapshotSide()
+    if (activeSide === 'front') return { front: live, back: parkedSide ?? blankBack() }
+    return { front: parkedSide ?? live, back: live }
+  }
+  const switchSide = (target: 'front' | 'back') => {
+    if (target === activeSide) return
+    const live = snapshotSide()
+    applySide(parkedSide ?? (target === 'back' ? blankBack() : live))
+    setParkedSide(live)
+    setActiveSide(target)
+  }
+  const handleToggleBack = (on: boolean) => {
+    if (on) {
+      setIncludeBack(true)
+      switchSide('back')
+    } else {
+      if (activeSide === 'back') switchSide('front')
+      setIncludeBack(false)
+    }
+  }
+  const printSides = getSides()
 
   // ── Dimension preset ──
   const applyPreset = (preset: typeof CARD_PRESETS[0]) => {
@@ -987,8 +1160,11 @@ export default function IdCardDesignerPage() {
     const plainCategories = ['Basic', 'School', 'Decoration']
     const isLabeled = !isImage && !isQR && !isCustomText && !plainCategories.includes(meta?.category ?? '')
 
-    const fw = isImage ? 60 : isQR ? 56 : 92
-    const fh = isImage ? 70 : isQR ? 56 : isLabeled ? 30 : 22
+    // A Miqat card is a longer signed code than a plain QR, so it needs a bigger box to stay
+    // scannable when printed at card size.
+    const qrSize = token === MIQAT_QR_TOKEN ? 92 : 56
+    const fw = isImage ? 60 : isQR ? qrSize : 92
+    const fh = isImage ? 70 : isQR ? qrSize : isLabeled ? 30 : 22
 
     let bestX = Math.round((cardWidthPx - fw) / 2)
     let bestY = fields.reduce((m, f) => Math.max(m, f.y + f.height), 0)
@@ -1051,6 +1227,7 @@ export default function IdCardDesignerPage() {
       borderRadius: isImage ? 4 : isQR ? 4 : isLabeled ? 6 : 0,
       bgColor: isLabeled ? '#d1fae5' : 'transparent',
       opacity: 1,
+      ...(isCustomText ? { wrap: true } : {}),
     }
     setFields(prev => [...prev, newField])
     setSelectedId(newField.id)
@@ -1094,18 +1271,21 @@ export default function IdCardDesignerPage() {
     if (!name) { toast.error(t('err_template_name')); return }
     if (!campusId) { toast.error(t('err_select_campus')); return }
 
+    const sides = getSides()
     const templateConfig: DesignerTemplateConfig = {
       __designer: true,
       userType,
-      fields: fields as unknown[],
-      bgColor,
-      bgGradient,
-      bgImage,
-      borderColor,
-      cardThemeId,
+      fields: sides.front.fields as unknown[],
+      bgColor: sides.front.bgColor,
+      bgGradient: sides.front.bgGradient,
+      bgImage: sides.front.bgImage,
+      borderColor: sides.front.borderColor,
+      cardThemeId: sides.front.cardThemeId,
       borderWidth,
       borderRadius,
       dims,
+      // Front only unless the back is switched on — templates without these keys are front-only.
+      ...(includeBack ? { includeBack: true, back: { ...sides.back, fields: sides.back.fields as unknown[] } } : {}),
     }
 
     setSavingTemplate(true)
@@ -1139,6 +1319,10 @@ export default function IdCardDesignerPage() {
     setBorderRadius(tpl.borderRadius)
     setDims(tpl.dims)
     setSelectedId(null)
+    // The canvas always opens on the front; the back (if any) waits in the parked slot.
+    setActiveSide('front')
+    setIncludeBack(!!tpl.includeBack)
+    setParkedSide(tpl.includeBack && tpl.back ? tpl.back : null)
     toast.success(t('toast_template_loaded', { name: tpl.name }))
   }
 
@@ -1242,6 +1426,7 @@ export default function IdCardDesignerPage() {
     }
 
     if (!(await ensureCredentialsForOutput())) return
+    if (!(await ensureMiqatQrForOutput())) return
 
     const cardEls = printAreaRef.current?.querySelectorAll<HTMLElement>('[data-print-card]')
     if (!cardEls || cardEls.length === 0) {
@@ -1262,7 +1447,9 @@ export default function IdCardDesignerPage() {
       const GAP_IN = 0.15
       const cols = Math.max(1, Math.floor((PAGE_W_IN - 2 * MARGIN_IN + GAP_IN) / (wIn + GAP_IN)))
       const rows = Math.max(1, Math.floor((PAGE_H_IN - 2 * MARGIN_IN + GAP_IN) / (hIn + GAP_IN)))
-      const perPage = cols * rows
+      // Front and back are consecutive cells; an even column count keeps each pair on one row.
+      const gridCols = includeBack && cols >= 2 ? cols - (cols % 2) : cols
+      const perPage = gridCols * rows
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -1364,8 +1551,8 @@ export default function IdCardDesignerPage() {
           if (i > 0 && i % perPage === 0) pdf.addPage([PAGE_W_IN, PAGE_H_IN])
 
           const posInPage = i % perPage
-          const col = posInPage % cols
-          const row = Math.floor(posInPage / cols)
+          const col = posInPage % gridCols
+          const row = Math.floor(posInPage / gridCols)
           const x = MARGIN_IN + col * (wIn + GAP_IN)
           const y = MARGIN_IN + row * (hIn + GAP_IN)
 
@@ -1399,10 +1586,135 @@ export default function IdCardDesignerPage() {
       return
     }
     if (!(await ensureCredentialsForOutput())) return
+    if (!(await ensureMiqatQrForOutput())) return
     window.print()
   }
 
   const groups = groupTokens(TOKENS[userType])
+
+  // One printed face of one person's card (the front, or the back when it is switched on).
+  const renderPrintFace = (u: any, d: SideDesign, key: string) => {
+    // scale 1 makes the physical print size exactly the configured dimensions (1in = 96px).
+    const printScale = 1
+    const theme = CARD_THEMES.find(th => th.id === d.cardThemeId) ?? CARD_THEMES[0]
+    return (
+      <div
+        key={key}
+        data-print-card
+        style={{
+          position: 'relative',
+          width: cardWidthPx * printScale,
+          height: cardHeightPx * printScale,
+          background: d.bgGradient
+            ? d.bgGradient
+            : d.bgImage
+              ? `url(${d.bgImage}) center / cover no-repeat`
+              : d.bgColor,
+          border: `${borderWidth}px solid ${d.borderColor}`,
+          borderRadius: borderRadius,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}
+      >
+        <ThemeDecoLayer theme={theme} width={cardWidthPx * printScale} height={cardHeightPx * printScale} />
+        {d.fields.map(field => {
+          const isImage = field.type === 'image'
+          const isLabeled = field.type === 'labeled'
+          const isQRField = field.type === 'qrcode'
+          const boxStyle: React.CSSProperties = {
+            position: 'absolute',
+            left: field.x * printScale,
+            top: field.y * printScale,
+            width: field.width * printScale,
+            height: field.height * printScale,
+            backgroundColor: field.bgColor === 'transparent' ? undefined : field.bgColor,
+            borderRadius: field.borderRadius,
+            opacity: field.opacity,
+            overflow: 'visible',
+            boxSizing: 'border-box',
+            zIndex: 1,
+          }
+
+          // ── QR code type ──
+          if (isQRField) {
+            const isMiqat = field.token === MIQAT_QR_TOKEN
+            // A Miqat code is never faked: with no payload yet (it is fetched at print/export)
+            // show a marked placeholder instead of a QR that looks real but would not scan.
+            const qrValue = isMiqat ? resolveToken(field.token, u) : (resolveToken(field.token, u) || u.id || 'N/A')
+            if (!qrValue) {
+              return (
+                <div key={field.id} style={{ ...boxStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, background: '#ffffff', border: '1px dashed #9ca3af', padding: 4, overflow: 'hidden' }}>
+                  <QrCode style={{ width: '40%', height: '40%', color: '#9ca3af' }} />
+                  <span style={{ fontSize: 7, color: '#6b7280', textAlign: 'center', lineHeight: 1.1 }}>Miqat QR</span>
+                </div>
+              )
+            }
+            const qrSize = Math.min(field.width * printScale, field.height * printScale) - 8
+            return (
+              <div key={field.id} style={{ ...boxStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', padding: 4, overflow: 'hidden' }}>
+                <QRCode value={qrValue} size={qrSize} bgColor="#ffffff" fgColor="#000000" />
+              </div>
+            )
+          }
+
+          // ── labeled type: header + value two-line box ──
+          if (isLabeled) {
+            return (
+              <div key={field.id} style={{ ...boxStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, padding: '3px 6px', boxSizing: 'border-box' }}>
+                <div style={{ fontSize: field.fontSize * printScale * 0.62, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1, whiteSpace: 'nowrap' }}>
+                  {field.label}
+                </div>
+                <div style={{ fontSize: field.fontSize * printScale * 0.85, fontWeight: field.fontWeight, fontFamily: field.fontFamily || undefined, color: field.color, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'visible', maxWidth: '100%' }}>
+                  {resolveToken(field.token, u)}
+                </div>
+              </div>
+            )
+          }
+
+          return (
+            <div key={field.id} style={{
+              ...boxStyle,
+              fontSize: field.fontSize * printScale,
+              fontWeight: field.fontWeight,
+              fontStyle: field.fontStyle,
+              fontFamily: field.fontFamily || undefined,
+              color: field.color,
+              textAlign: field.align,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: field.align === 'center' ? 'center' : field.align === 'right' ? 'flex-end' : 'flex-start',
+              lineHeight: 1.2,
+            }}>
+              {isImage ? (
+                (() => {
+                  const imgSrc = resolveImage(field.token, u)
+                  return imgSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={imgSrc} alt="" crossOrigin="anonymous"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: field.borderRadius }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e5e7eb', color: '#9ca3af', borderRadius: field.borderRadius }}>
+                      <UserCircle style={{ width: field.height * printScale * 0.6, height: field.height * printScale * 0.6 }} />
+                    </div>
+                  )
+                })()
+              ) : (
+                <span style={{
+                  width: '100%',
+                  whiteSpace: field.wrap ? 'pre-wrap' : 'nowrap',
+                  wordBreak: field.wrap ? 'break-word' : undefined,
+                  overflow: field.wrap ? 'hidden' : 'visible',
+                }}>
+                  {field.token === '{{custom_text}}' ? field.label : resolveToken(field.token, u)}
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -1463,7 +1775,7 @@ export default function IdCardDesignerPage() {
             <KeyRound className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{loadingCredentials ? 'Loading...' : 'Load Credentials'}</span>
           </Button>
-          <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={exportPDF} disabled={isExporting}>
+          <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={exportPDF} disabled={isExporting || loadingMiqatQr}>
             {isExporting ? (
               <svg className="animate-spin h-3.5 w-3.5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1474,7 +1786,7 @@ export default function IdCardDesignerPage() {
             )}
             <span className="hidden sm:inline">{isExporting ? t('loading') : t('btn_export_pdf')}</span>
           </Button>
-          <Button size="sm" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={handlePrint}>
+          <Button size="sm" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={handlePrint} disabled={loadingMiqatQr}>
             <Printer className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{t('tab_print')}</span>
           </Button>
@@ -1521,6 +1833,26 @@ export default function IdCardDesignerPage() {
 
           {/* ── Center: Canvas ── */}
           <div ref={canvasContainerRef} className={`${mobilePanel === 'canvas' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col items-center justify-center bg-muted/50 overflow-auto p-4 lg:p-8 print:p-0`}>
+            <div className="mb-4 w-full max-w-md rounded-xl border bg-background p-3 shadow-sm print:hidden">
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="toggle-back-side" className="flex items-center gap-2 cursor-pointer min-w-0">
+                  <CreditCard className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="text-sm font-semibold">{t('toggle_back')}</span>
+                </label>
+                <Switch id="toggle-back-side" checked={includeBack} onCheckedChange={handleToggleBack} className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-slate-400" />
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {includeBack ? t('back_hint_on') : t('back_hint_off')}
+              </p>
+              {includeBack && (
+                <div className="mt-3 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+                  <Button size="sm" variant={activeSide === 'front' ? 'default' : 'ghost'} className="h-8 text-xs"
+                    onClick={() => switchSide('front')}>{t('side_front')}</Button>
+                  <Button size="sm" variant={activeSide === 'back' ? 'default' : 'ghost'} className="h-8 text-xs"
+                    onClick={() => switchSide('back')}>{t('side_back')}</Button>
+                </div>
+              )}
+            </div>
             <div
               onClick={() => setSelectedId(null)}
               style={{
@@ -1857,14 +2189,21 @@ export default function IdCardDesignerPage() {
 
                       {/* Free text content editor — only for custom_text fields */}
                       {selectedField.token === '{{custom_text}}' && (
-                        <div className="flex items-center gap-2">
-                          <Label className="text-[10px] w-16 shrink-0">{t('label_text')}</Label>
-                          <Input
-                            value={selectedField.label}
-                            onChange={e => updateField('label', e.target.value)}
-                            placeholder="Type your text…"
-                            className="h-7 text-xs flex-1"
-                          />
+                        <div className="space-y-1.5">
+                          <div className="flex items-start gap-2">
+                            <Label className="text-[10px] w-16 shrink-0 pt-1.5">{t('label_text')}</Label>
+                            <textarea
+                              value={selectedField.label}
+                              onChange={e => updateField('label', e.target.value)}
+                              placeholder="Type your text…"
+                              rows={4}
+                              className="flex-1 min-h-[64px] rounded-md border border-input bg-background px-2 py-1 text-xs"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-[10px] w-16 shrink-0">{t('wrap_text')}</Label>
+                            <Switch checked={!!selectedField.wrap} onCheckedChange={v => updateField('wrap', v)} />
+                          </div>
                         </div>
                       )}
 
@@ -2128,7 +2467,7 @@ export default function IdCardDesignerPage() {
             </ScrollArea>
             <div className="p-3 border-t">
               <Button className="w-full h-8 text-xs gap-1" onClick={handlePrint}
-                disabled={selectedUsers.size === 0}>
+                disabled={selectedUsers.size === 0 || loadingMiqatQr}>
                 <Printer className="h-3.5 w-3.5" />
                 {t('btn_print_cards', { count: selectedUsers.size })}
               </Button>
@@ -2145,109 +2484,11 @@ export default function IdCardDesignerPage() {
             ) : (
               <div className="flex flex-wrap gap-4 justify-center print:gap-4 min-w-max lg:min-w-0">
                 {filteredUsers.filter((u: any) => selectedUsers.has(u.id)).map((u: any) => {
-                  const name = `${u.first_name ?? u.profile?.first_name ?? ''} ${u.last_name ?? u.profile?.last_name ?? ''}`.trim()
-                  // Using scale=1 ensures the physical print size exactly matches the configured dimensions (1in = 96px).
-                  const printScale = 1
+                  if (!includeBack) return renderPrintFace(u, printSides.front, u.id)
                   return (
-                    <div
-                      key={u.id}
-                      data-print-card
-                      style={{
-                        position: 'relative',
-                        width: cardWidthPx * printScale,
-                        height: cardHeightPx * printScale,
-                        background: bgGradient
-                          ? bgGradient
-                          : bgImage
-                            ? `url(${bgImage}) center / cover no-repeat`
-                            : bgColor,
-                        border: `${borderWidth}px solid ${borderColor}`,
-                        borderRadius: borderRadius,
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <ThemeDecoLayer theme={activeTheme} width={cardWidthPx * printScale} height={cardHeightPx * printScale} />
-                      {fields.map(field => {
-                        const isImage = field.type === 'image'
-                        const isLabeled = field.type === 'labeled'
-                        const isQRField = field.type === 'qrcode'
-                        const printScale = 1
-                        const boxStyle: React.CSSProperties = {
-                          position: 'absolute',
-                          left: field.x * printScale,
-                          top: field.y * printScale,
-                          width: field.width * printScale,
-                          height: field.height * printScale,
-                          backgroundColor: field.bgColor === 'transparent' ? undefined : field.bgColor,
-                          borderRadius: field.borderRadius,
-                          opacity: field.opacity,
-                          overflow: 'visible',
-                          boxSizing: 'border-box',
-                          zIndex: 1,
-                        }
-
-                        // ── QR code type ──
-                        if (isQRField) {
-                          const qrValue = resolveToken(field.token, u) || u.id || 'N/A'
-                          const qrSize = Math.min(field.width * printScale, field.height * printScale) - 8
-                          return (
-                            <div key={field.id} style={{ ...boxStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', padding: 4, overflow: 'hidden' }}>
-                              <QRCode value={qrValue} size={qrSize} bgColor="#ffffff" fgColor="#000000" />
-                            </div>
-                          )
-                        }
-
-                        // ── labeled type: header + value two-line box ──
-                        if (isLabeled) {
-                          return (
-                            <div key={field.id} style={{ ...boxStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, padding: '3px 6px', boxSizing: 'border-box' }}>
-                              <div style={{ fontSize: field.fontSize * printScale * 0.62, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1, whiteSpace: 'nowrap' }}>
-                                {field.label}
-                              </div>
-                              <div style={{ fontSize: field.fontSize * printScale * 0.85, fontWeight: field.fontWeight, fontFamily: field.fontFamily || undefined, color: field.color, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'visible', maxWidth: '100%' }}>
-                                {resolveToken(field.token, u)}
-                              </div>
-                            </div>
-                          )
-                        }
-
-                        return (
-                          <div key={field.id} style={{
-                            ...boxStyle,
-                            fontSize: field.fontSize * printScale,
-                            fontWeight: field.fontWeight,
-                            fontStyle: field.fontStyle,
-                            fontFamily: field.fontFamily || undefined,
-                            color: field.color,
-                            textAlign: field.align,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: field.align === 'center' ? 'center' : field.align === 'right' ? 'flex-end' : 'flex-start',
-                            lineHeight: 1.2,
-                          }}>
-                            {isImage ? (
-                              (() => {
-                                const imgSrc = resolveImage(field.token, u)
-                                return imgSrc ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={imgSrc} alt="" crossOrigin="anonymous"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: field.borderRadius }} />
-                                ) : (
-                                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e5e7eb', color: '#9ca3af', borderRadius: field.borderRadius }}>
-                                    <UserCircle style={{ width: field.height * printScale * 0.6, height: field.height * printScale * 0.6 }} />
-                                  </div>
-                                )
-                              })()
-                            ) : (
-                              <span style={{ width: '100%', whiteSpace: 'nowrap', overflow: 'visible' }}>
-                                {field.token === '{{custom_text}}' ? field.label : resolveToken(field.token, u)}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
+                    <div key={u.id} data-print-pair style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
+                      {renderPrintFace(u, printSides.front, `${u.id}-front`)}
+                      {renderPrintFace(u, printSides.back, `${u.id}-back`)}
                     </div>
                   )
                 })}
@@ -2277,12 +2518,13 @@ export default function IdCardDesignerPage() {
           }
           #id-card-print-area > div {
             display: grid !important;
-            grid-template-columns: repeat(auto-fill, ${cardWidthPx}px) !important;
+            grid-template-columns: repeat(auto-fill, ${includeBack ? `calc(${cardWidthPx * 2}px + 16px)` : `${cardWidthPx}px`}) !important;
             justify-content: center !important;
             gap: 0.2in !important;
             width: 100% !important;
             min-width: 0 !important;
           }
+          #id-card-print-area [data-print-pair],
           #id-card-print-area [data-print-card] {
             break-inside: avoid !important;
             page-break-inside: avoid !important;

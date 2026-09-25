@@ -83,6 +83,16 @@ export interface DesignerTemplateConfig {
   borderWidth: number;
   borderRadius: number;
   dims: { width: number; height: number; unit: string };
+  // Optional back side. Absent/false = front only (the default), so older templates are unchanged.
+  includeBack?: boolean;
+  back?: {
+    fields: unknown[];
+    bgColor: string;
+    bgGradient: string;
+    bgImage?: string;
+    borderColor: string;
+    cardThemeId: string;
+  };
 }
 
 export interface IdCardTemplate {

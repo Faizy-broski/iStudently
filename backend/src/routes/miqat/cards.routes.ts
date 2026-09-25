@@ -10,5 +10,6 @@ router.use(authenticate);
 router.use(requireMiqatEnabled);
 router.post('/issue', requireAdmin, miqatCardsController.issue);
 router.post('/report-lost', requireAdmin, miqatCardsController.reportLost);
+router.post('/qr', requireAdmin, miqatCardsController.qrBatch);
 
 export default router;

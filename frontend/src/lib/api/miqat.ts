@@ -98,6 +98,18 @@ export async function issueCard(personId: string, token: string, campusId?: stri
   return res.json()
 }
 
+export interface MiqatQrBatch {
+  qr: Record<string, string>
+  failed: Record<string, string>
+  not_allowed: string[]
+}
+
+/** Miqat QR payloads for printing on ID cards. Never bumps an existing active card's revision. */
+export async function getCardQrBatch(personIds: string[], token: string, campusId?: string): Promise<ApiResponse<MiqatQrBatch>> {
+  const res = await authedFetch(withCampus('/miqat/cards/qr', campusId), token, { method: 'POST', body: JSON.stringify({ person_ids: personIds }) })
+  return res.json()
+}
+
 export async function reportCardLost(personId: string, token: string, campusId?: string): Promise<ApiResponse<{ card_id: string; revision: number; qr_payload: string }>> {
   const res = await authedFetch(withCampus('/miqat/cards/report-lost', campusId), token, { method: 'POST', body: JSON.stringify({ person_id: personId }) })
   return res.json()

@@ -10222,6 +10222,14 @@
     "btn_print": "Print / Save as PDF"
   },
   "idCard": {
+    "back_hint_off": "Off: only the front is printed. Turn on to design and print the back of the card too.",
+    "back_hint_on": "You are editing the side selected below. Both sides print together, front then back.",
+    "toggle_back": "Print back side",
+    "side_front": "Front",
+    "side_back": "Back",
+    "wrap_text": "Wrap text",
+    "err_miqat_qr": "Could not generate Miqat QR codes. Check that the Miqat module is enabled and configured.",
+    "err_miqat_qr_partial": "Miqat QR could not be generated for {count} user(s). Check they have a linked login profile and that Miqat is set up.",
     "page_title": "ID Card Designer",
     "tab_designer": "Designer",
     "tab_print": "Print",
