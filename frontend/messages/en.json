@@ -833,7 +833,8 @@
     "fina_audit": "Audit Log",
     "fina_reports": "Reports",
     "edu_resources": "Educational Resources",
-    "qaida_al_jahabidha": "قاعدة الجهابذة The Arabic Savant"
+    "qaida_al_jahabidha": "قاعدة الجهابذة The Arabic Savant",
+    "monthly_attendance_sheet": "Monthly Attendance Sheet"
   },
   "dashboard": {
     "welcome_back": "Welcome back, {name}!",
@@ -1901,6 +1902,7 @@
           "loading": "Loading {role} report..."
         },
         "fields": {
+          "miqat_qr": "QR Code (Miqat)",
           "student_number": "Student Number",
           "first_name": "First Name",
           "last_name": "Last Name",
@@ -14019,5 +14021,40 @@
       "createFailed": "Failed to create training session",
       "errorSaving": "Error saving training session"
     }
+  },
+  "attendanceMonthlySheet": {
+    "title": "Monthly Attendance Sheet",
+    "subtitle": "Export a printable monthly grid (school days, names, totals, sign-off) as Excel or PDF — blank to fill in, or filled from recorded attendance.",
+    "whoTitle": "Who is on the sheet",
+    "whoDesc": "Choose a section, a whole grade (one sheet per section) or staff.",
+    "scope": "Sheet for",
+    "scopeSection": "Students of one section",
+    "scopeGrade": "Whole grade (all sections)",
+    "scopeStaff": "Staff / teachers (by department)",
+    "grade": "Grade",
+    "selectGrade": "Select grade",
+    "section": "Section",
+    "selectSection": "Select section",
+    "selectGradeFirst": "Select grade first",
+    "gradeHint": "One sheet (Excel) / page group (PDF) per section. Students with no section, or grades without sections, get their own sheet.",
+    "department": "Department",
+    "departmentPlaceholder": "All departments",
+    "departmentHint": "Leave empty for one sheet per department. Must match the department name on the staff profile.",
+    "optionsTitle": "Options",
+    "month": "Month",
+    "year": "Year",
+    "content": "Content",
+    "modeBlank": "Blank (to fill in)",
+    "modeFilled": "Filled from recorded attendance",
+    "sheetLanguage": "Sheet language",
+    "supervisor": "Supervisor / teacher name",
+    "room": "Room",
+    "autoFilled": "Filled automatically if left empty",
+    "staffFilledNote": "Staff attendance is derived from gate scans (Miqat), approved absences and approved permissions. If your school does not scan staff, only approved absences will appear — use a blank sheet instead.",
+    "downloadExcel": "Download Excel",
+    "downloadPdf": "Download PDF",
+    "exportFailed": "Export failed",
+    "noSectionsHint": "This grade has no sections. Use \"Whole grade\" — it lists the grade's students directly.",
+    "useWholeGrade": "Switch to Whole grade"
   }
 }

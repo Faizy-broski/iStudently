@@ -756,3 +756,89 @@ export async function getParentDailySummary(
   return apiRequest<AttendanceSummaryRow[]>(`/attendance/parent/summary?${params}`)
 }
 
+
+// ============================================================================
+// MONTHLY ATTENDANCE SHEET (Excel / PDF)
+// ============================================================================
+
+export type MonthlySheetStatus = 'P' | 'A' | 'EA' | 'L' | 'HD' | ''
+
+export interface MonthlySheetTotals {
+  totalPresent: number
+  totalAbsentUnexcused: number
+  totalAbsentExcused: number
+  totalTardy: number
+  totalHalfDay: number
+  attendanceRate: number
+}
+
+export interface MonthlySheetModel {
+  header: {
+    logoUrl: string | null
+    schoolName: string
+    address: string
+    title: string
+    academicYear: string
+    monthLabel: string
+    groupLabel: string
+    room: string
+    supervisor: string
+  }
+  columns: { date: string; day: number; dow: number; dayName: string; isNonWorking: boolean; nonWorkingReason: 'weekend' | 'holiday' | null }[]
+  workingDays: number
+  rows: { id: string; number: string; name: string; cells: MonthlySheetStatus[]; totals: MonthlySheetTotals }[]
+  legend: { code: string; en: string; ar: string }[]
+  locale: 'en' | 'ar'
+  mode: 'blank' | 'filled'
+}
+
+export interface MonthlySheetParams {
+  scope: 'section' | 'grade' | 'staff'
+  sectionId?: string
+  gradeId?: string
+  department?: string
+  month: number
+  year: number
+  mode: 'blank' | 'filled'
+  locale: 'en' | 'ar'
+  campusId?: string
+  supervisor?: string
+  room?: string
+}
+
+function monthlySheetQuery(p: MonthlySheetParams): string {
+  const q = new URLSearchParams({
+    scope: p.scope,
+    month: String(p.month),
+    year: String(p.year),
+    mode: p.mode,
+    locale: p.locale
+  })
+  if (p.sectionId) q.append('section_id', p.sectionId)
+  if (p.gradeId) q.append('grade_id', p.gradeId)
+  if (p.department) q.append('department', p.department)
+  if (p.campusId) q.append('campus_id', p.campusId)
+  if (p.supervisor) q.append('supervisor', p.supervisor)
+  if (p.room) q.append('room', p.room)
+  return q.toString()
+}
+
+/** JSON model for the monthly sheet — one entry per section (students) or department (staff). */
+export async function getMonthlySheetData(p: MonthlySheetParams): Promise<MonthlySheetModel[]> {
+  const res = await apiRequest<MonthlySheetModel[]>(`/attendance/reports/monthly-sheet/data?${monthlySheetQuery(p)}`)
+  if (!res.success || !res.data) throw new Error(res.error || 'Failed to load the monthly sheet')
+  return res.data
+}
+
+/** Downloads the monthly sheet as an .xlsx file. */
+export async function downloadMonthlySheetExcel(p: MonthlySheetParams): Promise<Blob> {
+  const token = await getAuthToken()
+  const resp = await fetch(`${API_URL}/attendance/reports/monthly-sheet/excel?${monthlySheetQuery(p)}`, {
+    headers: { 'Authorization': `Bearer ${token}`, ...getImpersonationHeaders() }
+  })
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: 'Export failed' }))
+    throw new Error(err.error || 'Export failed')
+  }
+  return resp.blob()
+}

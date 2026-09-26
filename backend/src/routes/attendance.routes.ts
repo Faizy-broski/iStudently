@@ -88,6 +88,8 @@ router.get('/reports/summary/export', requireAdmin, attendanceController.exportA
 // ============================================================================
 
 router.get('/reports/sheets', requireAdmin, attendanceController.printAttendanceSheets)
+router.get('/reports/monthly-sheet/data', requireAdmin, attendanceController.getMonthlySheetData)
+router.get('/reports/monthly-sheet/excel', requireAdmin, attendanceController.downloadMonthlySheetExcel)
 router.get('/reports/course-periods', requireAdmin, attendanceController.getCoursePeriods)
 router.post('/reports/sheets/course-periods', requireAdmin, attendanceController.downloadCoursePeriodSheets)
 

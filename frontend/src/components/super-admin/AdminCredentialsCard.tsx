@@ -8,7 +8,7 @@ import html2canvas from "html2canvas-pro";
 import QRCode from "react-qr-code";
 import { flushSync } from "react-dom";
 
-const LOGIN_URL = "https://www.istudent.ly";
+import { getLoginUrl } from "@/lib/login-url";
 
 export interface AdminCredentialsCardData {
   schoolName: string;
@@ -28,6 +28,7 @@ interface AdminCredentialsCardProps {
 // and Tailwind v4's oklch-based utility classes elsewhere on the page make
 // stock html2canvas throw "unsupported color function" during capture.
 export default function AdminCredentialsCard({ data, onClose }: AdminCredentialsCardProps) {
+  const LOGIN_URL = getLoginUrl();
   const cardRef = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(true);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);

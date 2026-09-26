@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/context/AuthContext'
 import { useExportTemplates } from '@/hooks/useExportTemplates'
-import { exportRowsToExcel, exportRowsToPdf, type ExportColumn } from '@/lib/utils/tableExport'
+import { exportRowsToExcelAsync, exportRowsToPdf, type ExportColumn } from '@/lib/utils/tableExport'
 import { ExportTemplateManager } from './ExportTemplateManager'
 
 export interface ExportButtonProps<T> {
@@ -75,7 +75,7 @@ export function ExportButton<T>({ reportKey, columns, rows, fetchAllRows, filena
     setExportingExcel(true)
     try {
       const allRows = fetchAllRows ? await fetchAllRows() : rows
-      exportRowsToExcel(effectiveColumns, allRows, filename, { locale })
+      await exportRowsToExcelAsync(effectiveColumns, allRows, filename, { locale })
     } catch (err) {
       toast.error(isAr ? 'فشل تصدير Excel' : 'Failed to export Excel')
       console.error(err)

@@ -15,6 +15,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+import { qrToPngDataUrl } from './qrImage'
 
 // jsPDF's built-in fonts (helvetica/times/courier) only cover WinAnsi —
 // any Arabic text drawn with them comes out as mojibake (bytes reinterpreted
@@ -24,7 +25,7 @@ import * as XLSX from 'xlsx'
 // both Arabic and Latin, so it's loaded once and used for every PDF export
 // rather than trying to detect "is this Arabic" per field.
 const ARABIC_FONT_URL = '/fonts/NotoSansArabic-Regular.ttf'
-const ARABIC_FONT_NAME = 'NotoSansArabic'
+export const ARABIC_FONT_NAME = 'NotoSansArabic'
 let arabicFontBase64Promise: Promise<string> | null = null
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -59,7 +60,7 @@ async function loadArabicFontBase64(): Promise<string> {
  * to jsPDF's default font (Arabic will be unreadable, but the export still
  * succeeds) if the font file can't be fetched for some reason.
  */
-async function useUnicodeFont(pdf: jsPDF): Promise<void> {
+export async function useUnicodeFont(pdf: jsPDF): Promise<void> {
   try {
     const base64 = await loadArabicFontBase64()
     pdf.addFileToVFS(`${ARABIC_FONT_NAME}.ttf`, base64)
@@ -85,6 +86,12 @@ export interface ExportColumn<T = Record<string, unknown>> {
    * S.N/# column; most accessors can ignore it.
    */
   accessor?: (row: T, index: number) => string | number | null | undefined
+  /**
+   * Makes this a QR-code column: returns the text to encode for a row (null/empty = no code).
+   * Drawn as an image in the PDF; the Excel export leaves the column out, since the spreadsheet
+   * library used here can't embed images. The accessor is not used for such a column.
+   */
+  qr?: (row: T, index: number) => string | null | undefined
 }
 
 /**
@@ -157,6 +164,22 @@ export async function exportRowsToPdf<T>(
   const head = [columns.map((c) => resolveLabel(c, locale))]
   const body = toRows(columns, rows)
 
+  // QR columns: build every PNG up front (autoTable draws synchronously), then paint them into
+  // their cells after each one is laid out.
+  const qrColumnIndexes = columns.map((c, i) => (c.qr ? i : -1)).filter((i) => i >= 0)
+  const qrImages = new Map<string, string>() // "row:col" -> PNG data URL
+  if (qrColumnIndexes.length > 0) {
+    const jobs: Array<() => Promise<void>> = []
+    rows.forEach((row, r) => {
+      for (const c of qrColumnIndexes) {
+        const payload = columns[c].qr!(row, r)
+        if (payload) jobs.push(async () => { qrImages.set(`${r}:${c}`, await qrToPngDataUrl(payload)) })
+      }
+    })
+    for (let i = 0; i < jobs.length; i += 20) await Promise.all(jobs.slice(i, i + 20).map((j) => j()))
+  }
+  const QR_MM = 20
+
   autoTable(pdf, {
     head,
     body,
@@ -171,6 +194,20 @@ export async function exportRowsToPdf<T>(
     // would reintroduce mojibake for any Arabic column label.
     styles: { fontSize: 8, halign: locale === 'ar' ? 'right' : 'left', font: ARABIC_FONT_NAME },
     headStyles: { fillColor: [2, 33, 114], font: ARABIC_FONT_NAME, fontStyle: 'normal' }, // #022172 — the app's brand navy
+    didParseCell: (data) => {
+      // Tall enough for the code, and a fixed width so the column doesn't stretch the table.
+      if (data.section === 'body' && qrColumnIndexes.includes(data.column.index)) {
+        data.cell.styles.minCellHeight = QR_MM + 4
+        data.cell.styles.cellWidth = QR_MM + 4
+        data.cell.styles.valign = 'middle'
+      }
+    },
+    didDrawCell: (data) => {
+      if (data.section !== 'body' || !qrColumnIndexes.includes(data.column.index)) return
+      const image = qrImages.get(`${data.row.index}:${data.column.index}`)
+      if (!image) return
+      pdf.addImage(image, 'PNG', data.cell.x + 2, data.cell.y + 2, QR_MM, QR_MM)
+    },
   })
 
   pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`)
@@ -183,9 +220,71 @@ export function exportRowsToExcel<T>(
   options: { locale?: 'en' | 'ar'; sheetName?: string } = {}
 ): void {
   const { locale = 'en', sheetName = 'Export' } = options
+  columns = columns.filter((c) => !c.qr)
   const header = columns.map((c) => resolveLabel(c, locale))
   const worksheet = XLSX.utils.aoa_to_sheet([header, ...toRows(columns, rows)])
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
   XLSX.writeFile(workbook, filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`)
+}
+
+/**
+ * Excel export that also embeds QR-code columns as real images. SheetJS (used by
+ * exportRowsToExcel) can't hold images, so when a column has `qr` this builds the workbook
+ * with exceljs instead — loaded on demand so reports without QR columns pay nothing and are
+ * exported exactly as before.
+ */
+export async function exportRowsToExcelAsync<T>(
+  columns: ExportColumn<T>[],
+  rows: T[],
+  filename: string,
+  options: { locale?: 'en' | 'ar'; sheetName?: string } = {}
+): Promise<void> {
+  if (!columns.some((c) => c.qr)) {
+    exportRowsToExcel(columns, rows, filename, options)
+    return
+  }
+  const { locale = 'en', sheetName = 'Export' } = options
+  const ExcelJS = (await import('exceljs')).default
+
+  const qrImages = new Map<string, string>() // "row:col" -> PNG data URL
+  const jobs: Array<() => Promise<void>> = []
+  rows.forEach((row, r) => {
+    columns.forEach((col, c) => {
+      const payload = col.qr?.(row, r)
+      if (payload) jobs.push(async () => { qrImages.set(`${r}:${c}`, await qrToPngDataUrl(payload)) })
+    })
+  })
+  for (let i = 0; i < jobs.length; i += 20) await Promise.all(jobs.slice(i, i + 20).map((j) => j()))
+
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet(sheetName, { views: [{ rightToLeft: locale === 'ar' }] })
+  sheet.addRow(columns.map((c) => resolveLabel(c, locale)))
+  sheet.getRow(1).font = { bold: true }
+  rows.forEach((row, r) => {
+    sheet.addRow(columns.map((col, c) => (col.qr ? '' : resolveValue(col, row, r))))
+    if (columns.some((col, c) => qrImages.has(`${r}:${c}`))) sheet.getRow(r + 2).height = 78 // points
+  })
+  columns.forEach((col, c) => {
+    sheet.getColumn(c + 1).width = col.qr ? 16 : Math.min(40, Math.max(12, resolveLabel(col, locale).length + 4))
+  })
+
+  qrImages.forEach((dataUrl, key) => {
+    const [r, c] = key.split(':').map(Number)
+    const imageId = workbook.addImage({ base64: dataUrl, extension: 'png' })
+    // 0-based anchors: row 0 is the header, so data row r sits at r + 1.
+    sheet.addImage(imageId, { tl: { col: c + 0.1, row: r + 1 + 0.1 }, ext: { width: 96, height: 96 } })
+  })
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const url = URL.createObjectURL(
+    new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  )
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }

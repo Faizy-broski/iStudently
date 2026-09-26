@@ -17,6 +17,8 @@ import Link from "next/link"
 import { ConfidentialFamilyStatusBadge } from "@/components/shared/ConfidentialFamilyStatusBadge"
 import { getConfidentialFamilyStatusLabel } from "@/lib/constants/confidential-family-status"
 import { ExportButton } from "@/components/shared/ExportButton"
+import QRCode from "react-qr-code"
+import { getCardQrBatch } from "@/lib/api/miqat"
 import { serialNumberColumn, type ExportColumn } from "@/lib/utils/tableExport"
 
 type ReportRole = 'student' | 'teacher' | 'staff' | 'librarian' | 'parent'
@@ -54,6 +56,9 @@ export default function AdvancedReportResultsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  // Miqat QR payloads by profile id, only fetched when the QR column was picked.
+  const [miqatQr, setMiqatQr] = useState<Record<string, string>>({})
+  const [loadingQr, setLoadingQr] = useState(false)
 
   useEffect(() => {
     const fieldsParam = searchParams.get('fields')
@@ -105,6 +110,38 @@ export default function AdvancedReportResultsPage() {
     }
     fetchData()
   }, [selectedFields, role, campusId, gradeLevelId, sectionId, department, userId, hasSiblings])
+
+  const wantsQr = selectedFields.includes('miqat_qr')
+  useEffect(() => {
+    if (!wantsQr || rows.length === 0) return
+    const ids = Array.from(new Set(rows.map((r: any) => r.profile_id).filter(Boolean))) as string[]
+    if (ids.length === 0) return
+    let cancelled = false
+    const load = async () => {
+      setLoadingQr(true)
+      try {
+        const token = await getAuthToken()
+        if (!token) return
+        const merged: Record<string, string> = {}
+        // The endpoint takes at most 1000 people per request.
+        for (let i = 0; i < ids.length; i += 1000) {
+          const res = await getCardQrBatch(ids.slice(i, i + 1000), token, campusId)
+          if (!res.success || !res.data) {
+            toast.error(res.error || 'Could not generate Miqat QR codes')
+            return
+          }
+          Object.assign(merged, res.data.qr)
+        }
+        if (!cancelled) setMiqatQr(merged)
+      } catch {
+        toast.error('Could not generate Miqat QR codes')
+      } finally {
+        if (!cancelled) setLoadingQr(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [wantsQr, rows, campusId])
 
   const customFieldLabelMap = useMemo(() =>
     Object.fromEntries(customFields.map(f => [`custom_${f.field_key}`, getCustomFieldLabel(f, locale)])),
@@ -191,6 +228,10 @@ export default function AdvancedReportResultsPage() {
       key: fieldId,
       label: getFieldLabel(fieldId),
       accessor: (row: any) => getDisplayValue(row, fieldId),
+      // The QR column is an image in the PDF (Excel leaves it out).
+      ...(fieldId === 'miqat_qr'
+        ? { qr: (row: any) => (row.profile_id ? miqatQr[row.profile_id] : undefined) }
+        : {}),
     })),
   ]
 
@@ -289,6 +330,22 @@ export default function AdvancedReportResultsPage() {
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{i + 1}</TableCell>
                       {selectedFields.map(fieldId => {
                         const display = getDisplayValue(row, fieldId)
+                        if (fieldId === 'miqat_qr') {
+                          const payload = row.profile_id ? miqatQr[row.profile_id] : undefined
+                          return (
+                            <TableCell key={fieldId} className="text-sm">
+                              {payload ? (
+                                <div className="inline-block bg-white p-1 rounded border">
+                                  <QRCode value={payload} size={72} />
+                                </div>
+                              ) : loadingQr ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )
+                        }
                         return (
                           <TableCell key={fieldId} className="whitespace-nowrap text-sm">
                             {fieldId === 'confidential_family_status' ? (

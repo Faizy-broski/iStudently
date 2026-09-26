@@ -360,6 +360,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "teacher_completion", href: "/admin/attendance/teacher-completion", icon: CheckSquare },
       { title: "average_daily_attendance", href: "/admin/attendance/average-daily", icon: BarChart3 },
       { title: "attendance_chart", href: "/admin/attendance/chart", icon: BarChart3 },
+      { title: "monthly_attendance_sheet", href: "/admin/attendance/monthly-sheet", icon: FileText },
       { title: "utilities", href: "#", icon: Settings, isLabel: true },
       { title: "recalculate_daily_attendance", href: "/admin/attendance/recalculate", icon: RefreshCw },
       { title: "delete_duplicate_attendance", href: "/admin/attendance/delete-duplicates", icon: AlertCircle },

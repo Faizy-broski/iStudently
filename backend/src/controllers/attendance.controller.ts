@@ -5,6 +5,10 @@ import * as adminService from '../services/attendance-admin.service'
 import * as exportService from '../services/attendance-export.service'
 import { generateDailyAttendance } from '../services/attendance.service'
 import { ApiResponse } from '../types'
+import { z } from 'zod'
+import { validateCampusAccess } from '../utils/campus-validation'
+import { buildMonthlySheets } from '../services/attendance-monthly-sheet/monthly-sheet.data'
+import { renderMonthlySheetsExcel } from '../services/attendance-monthly-sheet/monthly-sheet.excel'
 
 interface AuthRequest extends Request {
   profile?: {
@@ -944,5 +948,98 @@ export const getParentDailySummary = async (req: AuthRequest, res: Response) => 
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ data: null, error: error.message })
+  }
+}
+
+// ============================================================================
+// MONTHLY ATTENDANCE SHEET (Excel / PDF data) — REPORTS
+// ============================================================================
+
+const monthlySheetQuerySchema = z.object({
+  scope: z.enum(['section', 'grade', 'staff']),
+  section_id: z.string().uuid().optional(),
+  grade_id: z.string().uuid().optional(),
+  department: z.string().trim().max(120).optional(),
+  month: z.coerce.number().int().min(1).max(12),
+  year: z.coerce.number().int().min(2000).max(2100),
+  mode: z.enum(['blank', 'filled']).default('filled'),
+  locale: z.enum(['en', 'ar']).default('en'),
+  campus_id: z.string().uuid().optional(),
+  supervisor: z.string().trim().max(120).optional(),
+  room: z.string().trim().max(60).optional()
+}).refine((v) => v.scope !== 'section' || !!v.section_id, { message: 'section_id is required for scope=section' })
+  .refine((v) => v.scope !== 'grade' || !!v.grade_id, { message: 'grade_id is required for scope=grade' })
+
+/** Loads the sheet models for a request, or writes the error response and returns null. */
+const loadMonthlySheets = async (req: AuthRequest, res: Response) => {
+  const parsed = monthlySheetQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: parsed.error.issues.map((i) => `${i.path.join('.') || 'query'}: ${i.message}`).join('; ')
+    })
+    return null
+  }
+  const q = parsed.data
+
+  // Admin accounts aren't pinned to one campus: honour the requested campus
+  // only when the caller actually has access to it.
+  const ownSchoolId = req.profile?.school_id
+  if (!ownSchoolId) {
+    res.status(403).json({ success: false, error: 'No school associated with your account' })
+    return null
+  }
+  let schoolId = ownSchoolId
+  if (q.campus_id && q.campus_id !== ownSchoolId) {
+    const allowed = req.profile?.role === 'super_admin' || await validateCampusAccess(ownSchoolId, q.campus_id)
+    if (!allowed) {
+      res.status(403).json({ success: false, error: 'Forbidden: campus does not belong to your school' })
+      return null
+    }
+    schoolId = q.campus_id
+  }
+
+  return {
+    query: q,
+    models: await buildMonthlySheets({
+      scope: q.scope,
+      schoolId,
+      campusId: q.campus_id,
+      sectionId: q.section_id,
+      gradeId: q.grade_id,
+      department: q.department,
+      year: q.year,
+      month: q.month,
+      mode: q.mode,
+      locale: q.locale,
+      supervisor: q.supervisor,
+      room: q.room
+    })
+  }
+}
+
+/** GET /attendance/reports/monthly-sheet/data — JSON model (drives the PDF renderer) */
+export const getMonthlySheetData = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await loadMonthlySheets(req, res)
+    if (!result) return
+    res.json({ success: true, data: result.models })
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+/** GET /attendance/reports/monthly-sheet/excel — .xlsx download */
+export const downloadMonthlySheetExcel = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await loadMonthlySheets(req, res)
+    if (!result) return
+    const buffer = await renderMonthlySheetsExcel(result.models)
+    const { year, month, mode } = result.query
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename="attendance-sheet-${year}-${String(month).padStart(2, '0')}-${mode}.xlsx"`)
+    res.send(buffer)
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
   }
 }

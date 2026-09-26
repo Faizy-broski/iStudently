@@ -154,7 +154,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
       let q = supabase
         .from('students')
         .select(`
-          id, student_number, custom_fields, created_at, confidential_family_status,
+          id, profile_id, student_number, custom_fields, created_at, confidential_family_status,
           profile:profiles(
             first_name, last_name, father_name, grandfather_name,
             email, phone, is_active
@@ -209,6 +209,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
         const p = Array.isArray(s.profile) ? s.profile[0] : s.profile
         return {
           id: s.id,
+          profile_id: s.profile_id,
           student_number: s.student_number,
           first_name: p?.first_name ?? '',
           last_name: p?.last_name ?? '',
@@ -240,7 +241,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
       let q = supabase
         .from('staff')
         .select(`
-          id, employee_number, title, department, qualifications,
+          id, profile_id, employee_number, title, department, qualifications,
           date_of_joining, employment_type, is_active, created_at, custom_fields,
           profile:profiles!staff_profile_id_fkey(
             first_name, last_name, email, phone, role
@@ -264,6 +265,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
           const p = Array.isArray(s.profile) ? s.profile[0] : s.profile
           return {
             id: s.id,
+            profile_id: s.profile_id,
             employee_number: s.employee_number,
             first_name: p?.first_name ?? '',
             last_name: p?.last_name ?? '',
@@ -308,7 +310,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
         let query = supabase
           .from('parents')
           .select(`
-            id, created_at,
+            id, profile_id, created_at,
             profile:profiles(first_name, last_name, email, phone, is_active),
             parent_student_links(student_id, students(student_number, confidential_family_status))
           `)
@@ -342,6 +344,7 @@ router.get('/:role', async (req: AuthRequest, res: Response) => {
 
           return {
             id: row.id,
+            profile_id: row.profile_id,
             first_name: p?.first_name ?? '',
             last_name: p?.last_name ?? '',
             email: p?.email ?? '',

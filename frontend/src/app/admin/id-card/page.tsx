@@ -28,6 +28,7 @@ import { getParents } from '@/lib/api/parents'
 import { useCampus } from '@/context/CampusContext'
 import { bulkGetOrCreateCredentials, type UserCredentials } from '@/lib/api/credentials'
 import { getCardQrBatch } from '@/lib/api/miqat'
+import { getLoginUrl } from '@/lib/login-url'
 import { getAuthToken } from '@/lib/api/schools'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -44,7 +45,6 @@ import { useLoadDesignFonts } from '@/config/design-fonts'
 
 const PX_PER_INCH = 96
 const CANVAS_SCALE = 2.2 // display scale factor for the designer canvas
-const LOGIN_URL = 'https://www.istudent.ly'
 
 type Unit = 'in' | 'cm' | 'mm' | 'px'
 type UserType = 'student' | 'teacher' | 'staff' | 'librarian' | 'parent'
@@ -1047,7 +1047,7 @@ export default function IdCardDesignerPage() {
       case '{{miqat_qr}}':          return miqatQrMap[u.id] ?? ''
       case '{{username}}':          return credentialsMap[u.id]?.username ?? u.username ?? u.profile?.username ?? ''
       case '{{password}}':          return credentialsMap[u.id]?.password ?? ''
-      case '{{login_url}}':         return LOGIN_URL
+      case '{{login_url}}':         return getLoginUrl()
       default:                      return ''
     }
   }

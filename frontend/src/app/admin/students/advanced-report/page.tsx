@@ -31,27 +31,27 @@ const ROLE_CONFIGS: Record<ReportRole, RoleConfig> = {
   student: {
     icon: <GraduationCap className="h-4 w-4" />,
     entityType: 'student',
-    standardFieldKeys: ['student_number','first_name','last_name','father_name','grandfather_name','email','phone','grade_level_name','section_name','is_active','confidential_family_status','siblings','created_at'],
+    standardFieldKeys: ['student_number','first_name','last_name','father_name','grandfather_name','email','phone','grade_level_name','section_name','is_active','confidential_family_status','siblings','created_at','miqat_qr'],
   },
   teacher: {
     icon: <UserCheck className="h-4 w-4" />,
     entityType: 'teacher',
-    standardFieldKeys: ['employee_number','first_name','last_name','email','phone','title','department','qualifications','date_of_joining','employment_type','is_active','created_at'],
+    standardFieldKeys: ['employee_number','first_name','last_name','email','phone','title','department','qualifications','date_of_joining','employment_type','is_active','created_at','miqat_qr'],
   },
   staff: {
     icon: <Users className="h-4 w-4" />,
     entityType: 'staff',
-    standardFieldKeys: ['employee_number','first_name','last_name','email','phone','title','department','qualifications','date_of_joining','employment_type','is_active','created_at'],
+    standardFieldKeys: ['employee_number','first_name','last_name','email','phone','title','department','qualifications','date_of_joining','employment_type','is_active','created_at','miqat_qr'],
   },
   librarian: {
     icon: <BookOpen className="h-4 w-4" />,
     entityType: null,
-    standardFieldKeys: ['employee_number','first_name','last_name','email','phone','title','department','date_of_joining','employment_type','is_active','created_at'],
+    standardFieldKeys: ['employee_number','first_name','last_name','email','phone','title','department','date_of_joining','employment_type','is_active','created_at','miqat_qr'],
   },
   parent: {
     icon: <UserCircle className="h-4 w-4" />,
     entityType: 'parent',
-    standardFieldKeys: ['first_name','last_name','email','phone','linked_students','is_active','confidential_family_status','created_at'],
+    standardFieldKeys: ['first_name','last_name','email','phone','linked_students','is_active','confidential_family_status','created_at','miqat_qr'],
   },
 }
 
