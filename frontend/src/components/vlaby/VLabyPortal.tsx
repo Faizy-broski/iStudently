@@ -189,11 +189,14 @@ function FilterPanel({ filters, onChange, onReset }: FilterPanelProps) {
         </div>
       </div>
 
-      <SelectRow
-        label={t('country')} value={filters.country_id} items={countries}
-        loading={loadingC} placeholder={t('all_countries')}
-        onSelect={v => onChange({ country_id: v, level_id: '', level_class_id: '', semester_id: '', subject_id: '' })}
-      />
+      {/* Country filter hidden */}
+      <div className="hidden">
+        <SelectRow
+          label={t('country')} value={filters.country_id} items={countries}
+          loading={loadingC} placeholder={t('all_countries')}
+          onSelect={v => onChange({ country_id: v, level_id: '', level_class_id: '', semester_id: '', subject_id: '' })}
+        />
+      </div>
       <SelectRow
         label={t('level')} value={filters.level_id} items={levels}
         loading={loadingL} placeholder={filters.country_id ? t('all_levels') : t('select_country_first')}
@@ -253,14 +256,13 @@ function ExperimentsTable({
               <th className="px-4 py-3 text-left">{t('col_title')}</th>
               <th className="px-4 py-3 text-left">{t('col_subject')}</th>
               <th className="px-4 py-3 text-left">{t('col_points')}</th>
-              <th className="px-4 py-3 text-left">{t('col_country')}</th>
               <th className="px-4 py-3 text-left">{t('col_grade_term')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
             {experiments.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-gray-400">{t('no_results')}</td>
+                <td colSpan={4} className="px-4 py-10 text-center text-gray-400">{t('no_results')}</td>
               </tr>
             ) : (
               experiments.map(exp => (
@@ -283,7 +285,6 @@ function ExperimentsTable({
                   <td className="px-4 py-3">
                     {exp.points > 0 ? <Badge variant="secondary">{exp.points} {t('pts')}</Badge> : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{exp.country_name}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
                     {exp.level_name} · {exp.level_class_name} · {exp.semester_name}
                   </td>

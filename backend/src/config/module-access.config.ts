@@ -102,6 +102,7 @@ export const API_AREA_MODULES: Record<string, string[]> = {
   qaida: ['hifzi'],
   'hadith-forty': ['hifzi'],
   miqat: ['miqat'],
+  weather: ['weather-alerts'],
   inspectors: ['inspections'],
   'inspection-visits': ['inspections'],
   'inspector-teachers': ['inspections'],

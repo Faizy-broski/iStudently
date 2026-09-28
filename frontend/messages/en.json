@@ -788,6 +788,7 @@
     "teacher_messaging_permissions": "Teacher Messaging Permissions",
     "vault": "AdminVault",
     "miqat": "Miqat",
+    "weather_alerts": "Weather & Safety Alerts",
     "devices": "Devices",
     "cards": "Cards",
     "permissions": "Permissions",
@@ -9201,6 +9202,8 @@
       "hifzi_desc": "Quran memorization management: circles, recitation tracking with error taxonomy and auto-grading, spaced-repetition review, daily assignments, attendance, and progress reports/heatmap.",
       "miqat_name": "Miqat — Cryptographic Attendance",
       "miqat_desc": "QR-card gate attendance with cryptographic card signing, geofencing, offline-first scanning, and automatic guardian notifications. Requires a scanner device (tablet/phone) at each gate.",
+      "weather_alerts_name": "Weather Integration & Safety Alerts",
+      "weather_alerts_desc": "Live weather widget on every dashboard, plus admin-reviewed severe weather safety alerts drafted automatically from weatherapi.com and sent to the whole school once approved.",
       "hadith_forty_name": "الأربعون النووية — Forty Hadith of an-Nawawi",
       "hadith_forty_desc": "Memorization and spaced review of an-Nawawi's 42 hadith — repetition tracking, a Leitner-box review ladder, a server-graded quiz per hadith, and a class progress view for teachers.",
       "qirtasi_name": "Qirtasi قرطاسي — My Worksheet",
@@ -13257,6 +13260,69 @@
     "plugin": {
       "enable": "Enable School Khalwa Module",
       "description": "Quran memorization management: circles, recitation tracking, spaced-repetition review, and progress reports."
+    }
+  },
+  "weather_alerts": {
+    "widget": {
+      "loading": "Loading weather...",
+      "error": "Could not load weather right now."
+    },
+    "settings": {
+      "title": "Weather Integration & Safety Alerts",
+      "description": "Shows current weather on every dashboard, and watches for severe weather so you can review and approve a safety alert before it goes out.",
+      "detectionTitle": "Alert Detection",
+      "severityThreshold": "Minimum severity to draft an alert",
+      "severityThresholdHint": "Weather below this severity is shown on the widget but never turns into a draft alert.",
+      "locationTitle": "Location",
+      "locationHint": "Weather is looked up using this school's registered city/state/address. If it's wrong, update it under School Profile.",
+      "locationOverride": "Manual location override (optional)",
+      "locationOverridePlaceholder": "e.g. Tripoli, Libya",
+      "locationOverrideHint": "Only needed if the school's city/address doesn't resolve to a weather location.",
+      "testConnection": "Test connection",
+      "testSuccess": "Connected — resolved to {location}",
+      "testError": "Could not connect to the weather service.",
+      "lastPollOk": "Last checked {time}",
+      "lastPollError": "Last check failed: {error}",
+      "save": "Save Settings",
+      "saveSuccess": "Weather alert settings saved",
+      "saveError": "Failed to save settings",
+      "severity": {
+        "minor": "Minor",
+        "moderate": "Moderate",
+        "severe": "Severe",
+        "extreme": "Extreme"
+      }
+    },
+    "dashboard": {
+      "title": "Weather Safety Alerts",
+      "description": "Alerts detected automatically from severe weather. Nothing is sent until you approve it.",
+      "loadError": "Failed to load alerts",
+      "empty": "No alerts here.",
+      "approve": "Approve & Send",
+      "reject": "Reject",
+      "confirmReject": "Confirm rejection",
+      "rejectReasonPlaceholder": "Why is this alert being rejected?",
+      "approveSuccess": "Alert approved and sent",
+      "approveError": "Failed to send alert",
+      "rejectSuccess": "Alert rejected",
+      "rejectError": "Failed to reject alert",
+      "sentVia": "Sent via: {channels}",
+      "channelPush": "push notification",
+      "channelPortal": "portal note",
+      "rejectedReason": "Rejected: {reason}",
+      "status": {
+        "draft": "Pending Review",
+        "approved": "Approved",
+        "sent": "Sent",
+        "rejected": "Rejected",
+        "expired": "Expired"
+      },
+      "severity": {
+        "minor": "Minor",
+        "moderate": "Moderate",
+        "severe": "Severe",
+        "extreme": "Extreme"
+      }
     }
   },
   "miqat": {

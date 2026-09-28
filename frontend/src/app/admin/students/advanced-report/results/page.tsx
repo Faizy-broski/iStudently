@@ -130,6 +130,11 @@ export default function AdvancedReportResultsPage() {
             toast.error(res.error || 'Could not generate Miqat QR codes')
             return
           }
+          // A stale signing key means no QR for this school — the report itself is
+          // still valid, so this is a one-line notice, not a blocking error.
+          if (res.data.signing_key_error) {
+            toast.warning(res.data.signing_key_error)
+          }
           Object.assign(merged, res.data.qr)
         }
         if (!cancelled) setMiqatQr(merged)

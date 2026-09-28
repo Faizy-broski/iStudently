@@ -6,6 +6,14 @@
  * the whole grid always fits ONE PAGE WIDE (long rosters continue on further
  * pages with the two-tier header repeated). Uses the shared Noto Sans Arabic
  * font loader from tableExport.ts so Arabic names render.
+ *
+ * Arabic sheets mirror the whole grid (day 1 next to the name column, running
+ * toward the totals at the far edge) rather than reusing the English left-to-right
+ * order — jsPDF has no page-level "RTL" flag the way a spreadsheet view does, so the
+ * column order itself is reversed. Day names are rendered as vertical (rotated) text
+ * in both locales: at the width a day column has to be to fit 28-31 of them on one
+ * page, a horizontal day name (especially Arabic ones, 4-7 letters) doesn't fit and
+ * autoTable's ellipsis truncates it to an unreadable fragment.
  */
 
 import jsPDF from 'jspdf'
@@ -90,6 +98,16 @@ export async function exportMonthlySheetPdf(models: MonthlySheetModel[], filenam
   pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`)
 }
 
+/** One physical grid column: a fixed slot (#, ID, Name, a total) or one calendar day. */
+type ColSlot =
+  | { kind: 'no' }
+  | { kind: 'id' }
+  | { kind: 'name' }
+  | { kind: 'day'; dayIndex: number }
+  | { kind: 'total'; totalIndex: number }
+
+const DAY_HEADER_H = 15 // mm — tall enough for a rotated day name at 5.5pt
+
 async function drawSheet(
   pdf: jsPDF,
   model: MonthlySheetModel,
@@ -136,37 +154,71 @@ async function drawSheet(
   const nameW = Math.min(46, Math.max(32, usableW * 0.16))
   const dayW = (usableW - noW - idW - nameW - totalsW) / columns.length
 
-  const head: CellDef[][] = [
-    [
-      { content: L.no, rowSpan: 2 },
-      { content: L.id, rowSpan: 2 },
-      { content: L.name, rowSpan: 2 },
-      ...columns.map((c) => ({ content: c.dayName, styles: c.isNonWorking ? { fillColor: NON_WORKING } : {} })),
-      ...L.totals.map((t) => ({ content: t, rowSpan: 2 })),
-    ],
-    columns.map((c) => ({ content: String(c.day).padStart(2, '0'), styles: c.isNonWorking ? { fillColor: NON_WORKING } : {} })),
+  // Left-to-right slot order, same as before. For Arabic the whole row is mirrored
+  // (reversed) so physically the grid reads, right to left: #, ID, Name, day 1 ...
+  // day N, totals — i.e. the same reading order as English, just starting from the
+  // opposite edge of the page, which is what makes an RTL sheet look "normal" rather
+  // than English column order with Arabic text dropped in.
+  const ltrSlots: ColSlot[] = [
+    { kind: 'no' }, { kind: 'id' }, { kind: 'name' },
+    ...columns.map((_, i): ColSlot => ({ kind: 'day', dayIndex: i })),
+    ...L.totals.map((_, i): ColSlot => ({ kind: 'total', totalIndex: i })),
   ]
+  const slots = isAr ? [...ltrSlots].reverse() : ltrSlots
 
-  const body: (string | number)[][] = rows.map((r, i) => [
-    i + 1,
-    r.number,
-    r.name,
-    ...r.cells,
-    ...(blank
-      ? ['', '', '', '', '', '']
-      : [r.totals.totalPresent, r.totals.totalAbsentUnexcused, r.totals.totalAbsentExcused, r.totals.totalTardy, r.totals.totalHalfDay, `${r.totals.attendanceRate}%`]),
-  ])
-  if (body.length === 0) body.push(new Array(3 + columns.length + 6).fill(''))
-
-  const dayFrom = 3
-  const dayTo = 3 + columns.length - 1
-  const columnStyles: Record<number, { cellWidth: number; halign?: 'left' | 'center' | 'right' }> = {
-    0: { cellWidth: noW, halign: 'center' },
-    1: { cellWidth: idW, halign: 'center' },
-    2: { cellWidth: nameW, halign: isAr ? 'right' : 'left' },
+  const widthOf = (slot: ColSlot): number => {
+    switch (slot.kind) {
+      case 'no': return noW
+      case 'id': return idW
+      case 'name': return nameW
+      case 'day': return dayW
+      case 'total': return slot.totalIndex === 5 ? rateW : totalW
+    }
   }
-  for (let c = dayFrom; c <= dayTo; c++) columnStyles[c] = { cellWidth: dayW, halign: 'center' }
-  for (let k = 0; k < 6; k++) columnStyles[dayTo + 1 + k] = { cellWidth: k === 5 ? rateW : totalW, halign: 'center' }
+  const isNonWorkingSlot = (slot: ColSlot) => slot.kind === 'day' && columns[slot.dayIndex].isNonWorking
+
+  const head: CellDef[][] = [
+    slots.map((slot) => {
+      if (slot.kind === 'no') return { content: L.no, rowSpan: 2 }
+      if (slot.kind === 'id') return { content: L.id, rowSpan: 2 }
+      if (slot.kind === 'name') return { content: L.name, rowSpan: 2 }
+      if (slot.kind === 'total') return { content: L.totals[slot.totalIndex], rowSpan: 2 }
+      // Day-name cell: content left empty and drawn manually (rotated) in didDrawCell —
+      // see DAY_HEADER_H comment above for why a plain, unrotated cell can't fit this.
+      return { content: '', styles: isNonWorkingSlot(slot) ? { fillColor: NON_WORKING } : {} }
+    }),
+    slots.map((slot) =>
+      slot.kind === 'day'
+        ? { content: String(columns[slot.dayIndex].day).padStart(2, '0'), styles: isNonWorkingSlot(slot) ? { fillColor: NON_WORKING } : {} }
+        : { content: '' } // filled by the rowSpan cell above; autoTable still wants a placeholder here
+    ),
+  ]
+  // Remove the placeholder cells that fall under a rowSpan — autoTable errors if a
+  // spanned position is also given its own cell definition.
+  head[1] = head[1].filter((_, i) => slots[i].kind === 'day')
+
+  const body: (string | number)[][] = rows.map((r, i) =>
+    slots.map((slot) => {
+      switch (slot.kind) {
+        case 'no': return i + 1
+        case 'id': return r.number
+        case 'name': return r.name
+        case 'day': return r.cells[slot.dayIndex]
+        case 'total':
+          if (blank) return ''
+          return [r.totals.totalPresent, r.totals.totalAbsentUnexcused, r.totals.totalAbsentExcused, r.totals.totalTardy, r.totals.totalHalfDay, `${r.totals.attendanceRate}%`][slot.totalIndex]
+      }
+    })
+  )
+  if (body.length === 0) body.push(slots.map(() => ''))
+
+  const columnStyles: Record<number, { cellWidth: number; halign?: 'left' | 'center' | 'right' }> = {}
+  slots.forEach((slot, i) => {
+    columnStyles[i] = {
+      cellWidth: widthOf(slot),
+      halign: slot.kind === 'name' ? (isAr ? 'right' : 'left') : 'center',
+    }
+  })
 
   autoTable(pdf, {
     head,
@@ -179,17 +231,42 @@ async function drawSheet(
     headStyles: { font: ARABIC_FONT_NAME, fontStyle: 'normal', fillColor: HEADER_BG, textColor: 20, halign: 'center', fontSize: 6.5 },
     columnStyles,
     didParseCell: (data) => {
+      if (data.section === 'head' && data.row.index === 0) {
+        const slot = slots[data.column.index]
+        if (slot?.kind === 'day') {
+          data.cell.styles.minCellHeight = DAY_HEADER_H
+          data.cell.text = [] // suppress default (horizontal) text draw; didDrawCell paints it rotated
+        }
+        return
+      }
       if (data.section !== 'body') return
-      const idx = data.column.index
-      if (idx >= dayFrom && idx <= dayTo) {
-        const col = columns[idx - dayFrom]
-        if (col.isNonWorking) {
+      const slot = slots[data.column.index]
+      if (slot?.kind === 'day') {
+        if (columns[slot.dayIndex].isNonWorking) {
           data.cell.styles.fillColor = NON_WORKING
         } else {
           const fill = CODE_COLORS[String(data.cell.raw)]
           if (fill) data.cell.styles.fillColor = fill
         }
       }
+    },
+    didDrawCell: (data) => {
+      if (data.section !== 'head' || data.row.index !== 0) return
+      const slot = slots[data.column.index]
+      if (slot?.kind !== 'day') return
+      const dayName = columns[slot.dayIndex].dayName
+      if (!dayName) return
+      pdf.setFont(ARABIC_FONT_NAME)
+      pdf.setFontSize(5.5)
+      pdf.setTextColor(20)
+      // Rotated 90° (counter-clockwise): the cell's height becomes the text's available
+      // length, its width just needs to clear the font's line height — exactly the
+      // opposite of what a normal (unrotated) cell offers, which is why this fits when a
+      // plain horizontal label in the same cell does not.
+      pdf.text(dayName, data.cell.x + data.cell.width / 2 + 1, data.cell.y + data.cell.height / 2, {
+        angle: 90,
+        align: 'center',
+      })
     },
   })
 
@@ -204,7 +281,10 @@ async function drawSheet(
   pdf.setTextColor(30)
   pdf.text(`${L.legend}:`, margin, y + 3)
   const itemW = (usableW - 14) / model.legend.length
-  model.legend.forEach((item, i) => {
+  // Reversed for Arabic so the first legend entry (Present/حاضر) sits at the page's right
+  // edge — the position a right-to-left reader reaches first — matching the mirrored grid.
+  const legendItems = isAr ? [...model.legend].reverse() : model.legend
+  legendItems.forEach((item, i) => {
     const x = margin + 14 + i * itemW
     pdf.setFillColor(...(CODE_COLORS[item.code] || [255, 255, 255]))
     pdf.setDrawColor(128)
@@ -227,6 +307,10 @@ async function drawSheet(
     pdf.setTextColor(120)
     pdf.text(hint, x + half / 2, signY + 18, { align: 'center' })
   }
-  sign(margin, L.preparedBy, L.preparedHint)
-  sign(margin + half + 6, L.approvedBy, L.approvedHint)
+  // Mirrored for Arabic: "prepared by" (the first thing signed, teacher/supervisor)
+  // moves to the page's right edge, "approved by" (principal) to the left.
+  const preparedX = isAr ? margin + half + 6 : margin
+  const approvedX = isAr ? margin : margin + half + 6
+  sign(preparedX, L.preparedBy, L.preparedHint)
+  sign(approvedX, L.approvedBy, L.approvedHint)
 }

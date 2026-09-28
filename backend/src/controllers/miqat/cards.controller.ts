@@ -52,9 +52,33 @@ class MiqatCardsController {
       const schoolId = req.profile?.school_id;
       const cfg = await miqatService.getSchoolConfig(schoolId);
       if (!cfg) return res.status(400).json({ success: false, error: 'Configure the school (geofence, signing key) before issuing cards' });
-      const rawKey = decryptKeyOrThrowFriendly(cfg.card_signing_key_ref, getMasterKey(), `school ${schoolId}'s card signing key`);
 
       const requested = Array.from(new Set(parsed.data.person_ids));
+
+      // qrBatch is called from features that have no stake in Miqat internals
+      // (Advanced Report exports, ID card batch printing) — a stale signing
+      // key (created under a MIQAT_MASTER_KEY that's since changed) must
+      // never surface as a raw crypto 500 that blocks that unrelated report/
+      // print run. Degrade to "no QR for this school" instead: every
+      // requested person comes back in `failed` with one clear, actionable
+      // reason, and the full technical detail still goes to the server log
+      // via decryptKeyOrThrowFriendly's own console.error.
+      let rawKey: Buffer;
+      try {
+        rawKey = decryptKeyOrThrowFriendly(cfg.card_signing_key_ref, getMasterKey(), `school ${schoolId}'s card signing key`);
+      } catch {
+        const reason = 'This school\'s Miqat card signing key needs to be rotated (Miqat > Settings > Rotate Signing Key).';
+        res.json({
+          success: true,
+          data: {
+            qr: {},
+            failed: Object.fromEntries(requested.map((id) => [id, reason])),
+            not_allowed: [],
+            signing_key_error: reason,
+          },
+        });
+        return;
+      }
       const allowed = await miqatService.filterPersonsInSchoolTree(requested, schoolId);
       const personIds = requested.filter((id) => allowed.has(id));
       const latest = await miqatService.getLatestCards(personIds);

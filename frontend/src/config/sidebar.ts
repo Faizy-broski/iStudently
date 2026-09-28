@@ -73,6 +73,7 @@ import {
   Video,
   ScanLine,
   Smartphone,
+  CloudLightning,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -612,6 +613,16 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "permissions", href: "/admin/miqat/permissions", icon: ClipboardCheck },
       { title: "reports", href: "/admin/miqat/reports", icon: BarChart3 },
       { title: "settings", href: "/admin/miqat/settings", icon: Settings },
+    ],
+  },
+  {
+    title: "weather_alerts",
+    href: "/admin/weather-alerts/dashboard",
+    icon: CloudLightning,
+    pluginRequired: "weather_alerts",
+    subItems: [
+      { title: "pending_alerts", href: "/admin/weather-alerts/dashboard", icon: LayoutDashboard },
+      { title: "settings", href: "/admin/weather-alerts/settings", icon: Settings },
     ],
   },
   {

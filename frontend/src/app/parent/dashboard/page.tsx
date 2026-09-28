@@ -6,6 +6,7 @@ import { usePaymentHistory } from '@/hooks/useParentDashboard'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FinancialWidget } from '@/components/shared/FinancialWidget'
+import { WeatherWidget } from '@/components/shared/WeatherWidget'
 import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 
 import {
@@ -168,6 +169,8 @@ export default function ParentDashboardPage() {
           feesPageHref="/parent/fees"
         />
       )}
+
+      <WeatherWidget />
 
       {/* No Student Message */}
       {!student && students.length === 0 && (

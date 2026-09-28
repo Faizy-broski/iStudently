@@ -502,22 +502,24 @@ function defaultFields(): DesignField[] {
       x: 27, y: 197, width: 150, height: 15,
       fontSize: 10, fontWeight: 'bold', fontStyle: 'normal',
       color: '#f97316', align: 'center', borderRadius: 0, bgColor: 'transparent', opacity: 1 },
-    // Info row 1
+    // Info row 1 — rows shortened and moved up so row 2 clears the theme's bottom
+    // decorative strip (13% of card height = ~42px on the default size) with real margin,
+    // instead of ending 2px above it as before.
     { id: uniqueId(), token: '{{father_name}}', label: 'PARENT', type: 'labeled',
-      x: lx, y: 216, width: iw, height: 30,
+      x: lx, y: 210, width: iw, height: 26,
       fontSize: 11, fontWeight: 'normal', fontStyle: 'normal',
       color: '#1f2937', align: 'center', borderRadius: 6, bgColor: '#d1fae5', opacity: 1 },
     { id: uniqueId(), token: '{{date_of_birth}}', label: 'DOB', type: 'labeled',
-      x: rx, y: 216, width: iw, height: 30,
+      x: rx, y: 210, width: iw, height: 26,
       fontSize: 11, fontWeight: 'normal', fontStyle: 'normal',
       color: '#1f2937', align: 'center', borderRadius: 6, bgColor: '#d1fae5', opacity: 1 },
     // Info row 2
     { id: uniqueId(), token: '{{issue_date}}', label: 'ISSUE DATE', type: 'labeled',
-      x: lx, y: 250, width: iw, height: 30,
+      x: lx, y: 240, width: iw, height: 26,
       fontSize: 11, fontWeight: 'normal', fontStyle: 'normal',
       color: '#1f2937', align: 'center', borderRadius: 6, bgColor: '#d1fae5', opacity: 1 },
     { id: uniqueId(), token: '{{valid_until}}', label: 'VALID TILL', type: 'labeled',
-      x: rx, y: 250, width: iw, height: 30,
+      x: rx, y: 240, width: iw, height: 26,
       fontSize: 11, fontWeight: 'normal', fontStyle: 'normal',
       color: '#1f2937', align: 'center', borderRadius: 6, bgColor: '#d1fae5', opacity: 1 },
   ]
@@ -838,6 +840,10 @@ export default function IdCardDesignerPage() {
         if (!token) { toast.error(t('err_miqat_qr')); return false }
         const res = await getCardQrBatch(mappings.map(m => m.profileId), token, campusId)
         if (!res.success || !res.data) { toast.error(res.error || t('err_miqat_qr')); return false }
+        // A stale signing key (created under a MIQAT_MASTER_KEY that's since
+        // changed) can't be fixed by retrying — surface the friendly,
+        // actionable reason from the server instead of a generic message.
+        if (res.data.signing_key_error) { toast.error(res.data.signing_key_error); return false }
         qr = res.data.qr
       }
       // flushSync: html2canvas / window.print() read the DOM right after this returns.

@@ -122,6 +122,28 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
     })
   }
 
+  /** Every href across every item in a group — used by the group's Select all / Unselect all button. */
+  const groupHrefs = (group: CatalogGroup): string[] => group.items.flatMap((item) => item.hrefs)
+
+  const isGroupFullyVisible = (group: CatalogGroup): boolean =>
+    groupHrefs(group).every((h) => !denied.has(h))
+
+  const toggleGroup = (group: CatalogGroup) => {
+    const hrefs = groupHrefs(group)
+    const allVisible = hrefs.every((h) => !denied.has(h))
+    setDenied((prev) => {
+      const next = new Set(prev)
+      // All visible -> hide the whole module; anything else (all hidden or
+      // mixed) -> show the whole module, same "click again to flip" feel as
+      // an individual item's checkbox.
+      for (const h of hrefs) {
+        if (allVisible) next.add(h)
+        else next.delete(h)
+      }
+      return next
+    })
+  }
+
   const handleRestrictedToggle = (checked: boolean) => {
     setRestricted(checked)
     if (!checked) {
@@ -176,9 +198,18 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
                   {moduleGroups.map((group) => (
                     <div key={group.title}>
                       {group.title !== '__root__' && (
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                          {label(group.title)}
-                        </p>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {label(group.title)}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(group)}
+                            className="text-xs font-medium text-primary hover:underline"
+                          >
+                            {isGroupFullyVisible(group) ? 'Unselect all' : 'Select all'}
+                          </button>
+                        </div>
                       )}
                       <div className="grid grid-cols-2 gap-1">
                         {group.items.map((item) => {

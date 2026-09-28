@@ -102,6 +102,8 @@ export interface MiqatQrBatch {
   qr: Record<string, string>
   failed: Record<string, string>
   not_allowed: string[]
+  /** Set when the whole batch was skipped because the school's Miqat signing key can't be decrypted (needs rotation) — a friendly, already-translated-server-side reason. */
+  signing_key_error?: string
 }
 
 /** Miqat QR payloads for printing on ID cards. Never bumps an existing active card's revision. */

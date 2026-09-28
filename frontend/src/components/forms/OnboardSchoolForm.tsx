@@ -247,46 +247,73 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
     }
   };
 
+  // Which step each field lives on — shared by nextStep's per-step check and
+  // onInvalid's "jump to the step with the error" fallback below.
+  const STEP_FIELDS = {
+    1: ['schoolName', 'schoolSlug', 'contactEmail', 'address'],
+    2: ['adminFirstName', 'adminLastName', 'adminEmail', 'adminUsername', 'adminPassword', 'adminPasswordConfirm'],
+    3: ['billingPlanId', 'billingCycle', 'billingAmount', 'billingCurrency', 'startDate'],
+  } as const;
+
+  const FIELD_LABELS: Record<string, string> = {
+    schoolName: 'School Name',
+    schoolSlug: 'School Slug',
+    contactEmail: 'Contact Email',
+    address: 'Address',
+    website: 'Website',
+    adminFirstName: 'First Name',
+    adminLastName: 'Last Name',
+    adminEmail: 'Admin Email',
+    adminUsername: 'Username',
+    adminPassword: 'Password',
+    adminPasswordConfirm: 'Confirm Password',
+    billingPlanId: 'Billing Plan',
+    billingCycle: 'Billing Cycle',
+    billingAmount: 'Amount',
+    billingCurrency: 'Currency',
+    startDate: 'Start Date',
+  };
+
   const nextStep = async () => {
     // Validate current step fields before proceeding
-    const fieldsToValidate = currentStep === 1 
-      ? ['schoolName', 'schoolSlug', 'contactEmail', 'address'] as const
-      : currentStep === 2
-      ? ['adminFirstName', 'adminLastName', 'adminEmail', 'adminUsername', 'adminPassword', 'adminPasswordConfirm'] as const
-      : ['billingPlanId', 'billingCycle', 'billingAmount', 'billingCurrency', 'startDate'] as const;
-    
+    const fieldsToValidate = STEP_FIELDS[currentStep as 1 | 2 | 3];
     const isValid = await trigger(fieldsToValidate);
-    
+
     if (!isValid) {
       // Show toast for each validation error
       fieldsToValidate.forEach((field) => {
         if (errors[field]) {
-          const fieldLabels: Record<string, string> = {
-            schoolName: 'School Name',
-            schoolSlug: 'School Slug',
-            contactEmail: 'Contact Email',
-            address: 'Address',
-            website: 'Website',
-            adminFirstName: 'First Name',
-            adminLastName: 'Last Name',
-            adminEmail: 'Admin Email',
-            adminUsername: 'Username',
-            adminPassword: 'Password',
-            adminPasswordConfirm: 'Confirm Password',
-            billingPlanId: 'Billing Plan',
-            billingCycle: 'Billing Cycle',
-            billingAmount: 'Amount',
-            billingCurrency: 'Currency',
-            startDate: 'Start Date',
-          };
-          
-          toast.error(`${fieldLabels[field]}: ${errors[field]?.message}`);
+          toast.error(`${FIELD_LABELS[field]}: ${errors[field]?.message}`);
         }
       });
       return;
     }
-    
+
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+  };
+
+  // react-hook-form's handleSubmit silently does nothing when validation
+  // fails and no onInvalid handler is given — clicking "Onboard School" on
+  // the last step looked like a dead button whenever a field from an
+  // earlier step (or the required Billing Plan, which has no per-step nav
+  // check on step 3 itself) failed validation, with zero feedback as to
+  // why. This jumps back to the earliest step containing an error and
+  // surfaces the same toasts nextStep() already shows for step navigation.
+  const onInvalid = (formErrors: typeof errors) => {
+    const erroredFields = Object.keys(formErrors) as (keyof OnboardSchoolFormData)[];
+    if (erroredFields.length === 0) return;
+
+    const stepOf = (field: string): number =>
+      (Object.entries(STEP_FIELDS).find(([, fields]) => (fields as readonly string[]).includes(field))?.[0] as unknown as number) ?? totalSteps;
+    const earliestStep = Math.min(...erroredFields.map(stepOf));
+    setCurrentStep(earliestStep);
+
+    erroredFields
+      .filter((field) => stepOf(field) === earliestStep)
+      .forEach((field) => {
+        const message = formErrors[field]?.message as string | undefined;
+        toast.error(FIELD_LABELS[field] ? `${FIELD_LABELS[field]}: ${message}` : message || 'Please check this field');
+      });
   };
 
   const prevStep = () => {
@@ -406,7 +433,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       className="space-y-8"
       onKeyDown={(e) => {
         if (e.key === 'Enter') {

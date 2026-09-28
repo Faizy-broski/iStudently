@@ -48,6 +48,7 @@ import {
   FileStack,
   Lock,
   ScanLine,
+  CloudLightning,
   BookOpen,
   type LucideIcon,
 } from 'lucide-react'
@@ -139,6 +140,18 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: ScanLine,
     category: 'Attendance',
     settingsHref: '/admin/miqat/settings',
+    sidebarInjections: [],
+  },
+
+  // ── Weather Integration & Safety Alerts ───────────────────────────────────
+  {
+    id: 'weather_alerts',
+    name: 'Weather Integration & Safety Alerts',
+    description:
+      'Live weather widget on every dashboard, plus admin-reviewed severe weather safety alerts drafted automatically from weatherapi.com and sent to the whole school once approved.',
+    icon: CloudLightning,
+    category: 'Safety',
+    settingsHref: '/admin/weather-alerts/settings',
     sidebarInjections: [],
   },
 

@@ -54,10 +54,20 @@ export const config = {
     // keys and other Miqat secrets at rest — see services/miqat/key-management.ts.
     masterKeyBase64: process.env.MIQAT_MASTER_KEY || '',
   },
+
+  weather: {
+    // Single platform-wide weatherapi.com key (the client holds one key, not
+    // per-school) — server-only, never sent to the frontend.
+    apiKey: process.env.WEATHER_API_KEY || '',
+  },
 };
 
 if (isProduction && (!config.miqat.authorityPrivateKey || !config.miqat.masterKeyBase64)) {
   console.warn('⚠️ WARNING: MIQAT_AUTHORITY_PRIVATE_KEY / MIQAT_MASTER_KEY are not set in production — Miqat device enrolment and key storage will fail closed.');
+}
+
+if (isProduction && !config.weather.apiKey) {
+  console.warn('⚠️ WARNING: WEATHER_API_KEY is not set in production — the Weather & Safety Alerts module will fail closed.');
 }
 
 // Simple validation to warn you if critical keys are missing

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistantPanel'
 import { useStudentDashboard, useStudentInfo, useStudentFees } from '@/hooks/useStudentDashboard'
 import { FinancialWidget } from '@/components/shared/FinancialWidget'
+import { WeatherWidget } from '@/components/shared/WeatherWidget'
 import { PerformanceMeter } from '@/components/student/PerformanceMeter'
 import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 import { SchoolLogo } from '@/components/shared/SchoolLogo'
@@ -508,6 +509,7 @@ export default function StudentDashboardPage() {
             isLoading={isFeesLoading}
             feesPageHref="/student/billing/fees"
           />
+          <WeatherWidget />
         </div>
       </div>
 

@@ -501,6 +501,14 @@ registerRoutes("/miqat/reports", miqatReportsRoutes);
 registerRoutes("/miqat/staff-code", miqatStaffCodeRoutes);
 import { startMiqatNightlyJobs } from "./jobs/miqat-nightly.job";
 
+// Weather Integration & Safety Alerts module routes
+import weatherConfigRoutes from "./routes/weather/config.routes";
+import weatherAlertsRoutes from "./routes/weather/alerts.routes";
+
+registerRoutes("/weather/config", weatherConfigRoutes);
+registerRoutes("/weather/alerts", weatherAlertsRoutes);
+import { startWeatherAlertsJob } from "./jobs/weather-alerts.job";
+
 // Forty Hadith of an-Nawawi module routes
 import hadithFortyProgressRoutes from "./routes/hadith-forty/progress.routes";
 import hadithFortyQuizRoutes from "./routes/hadith-forty/quiz.routes";
@@ -574,6 +582,7 @@ app.listen(PORT, () => {
   startHifziAbsenceAlertCron();
   startMiqatNightlyJobs();
   startHifziNightlyAssignmentCron();
+  startWeatherAlertsJob();
 
   // Reconcile any timetable generation jobs left 'running'/'queued' from
   // before a restart (crash-safety — see timetable-generation.service.ts).

@@ -139,8 +139,6 @@ export default function VLabyExperimentViewer({
         <Badge variant="secondary">{experiment.subject_name}</Badge>
         {experiment.points > 0 && <Badge variant="outline">{t('pointsAbbrev', { points: experiment.points })}</Badge>}
         <span>·</span>
-        <span>{experiment.country_name}</span>
-        <span>·</span>
         <span>{experiment.level_name} — {experiment.level_class_name} — {experiment.semester_name}</span>
         {hasIframe && (
           <button

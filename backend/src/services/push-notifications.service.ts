@@ -152,6 +152,11 @@ class PushNotificationsService {
     await this.sendToProfiles(profileIds, payload)
   }
 
+  /** Sends to every active subscription for a set of roles within a school — "notify everyone at a school." */
+  async sendToSchool(schoolId: string, roles: string[], payload: PushPayload): Promise<void> {
+    await Promise.all(roles.map((role) => this.sendToRole(schoolId, role, payload)))
+  }
+
   private async dispatch(
     subscriptions: { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string }[],
     payload: PushPayload

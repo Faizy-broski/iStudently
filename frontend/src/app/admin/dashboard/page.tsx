@@ -2,6 +2,7 @@
 
 import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { WeatherWidget } from "@/components/shared/WeatherWidget";
 import { Users, BookOpen, Calendar, GraduationCap, Bookmark, RefreshCw, ThumbsUp } from "lucide-react";
 import { useSchoolDashboard } from "@/hooks/useSchoolDashboard";
 import { Spinner } from "@/components/ui/spinner";
@@ -167,6 +168,10 @@ export default function AdminDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <WeatherWidget />
       </div>
 
       {/* Charts Section */}

@@ -33,6 +33,9 @@ import {
 import { Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSidebarTheme } from '@/context/SidebarThemeContext'
+import { getWidgetData, type WeatherWidgetData } from '@/lib/api/weather'
+import { getAuthToken } from '@/lib/api/schools'
+import { Cloud } from 'lucide-react'
 
 // --- Context & Provider (Same as before) ---
 interface AppSidebarProps {
@@ -154,11 +157,29 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const locale = useLocale()
   const isAr = locale === 'ar'
 
+  const { isPluginActive } = useSchoolSettings()
+  const campusId = campusContext?.selectedCampus?.id
+
   const [now, setNow] = React.useState(() => new Date())
   React.useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // Sidebar weather — only fetches when weather_alerts plugin is active
+  const [sidebarWeather, setSidebarWeather] = React.useState<WeatherWidgetData | null>(null)
+  const weatherActive = isPluginActive('weather_alerts')
+  React.useEffect(() => {
+    if (!weatherActive) { setSidebarWeather(null); return }
+    let cancelled = false
+    ;(async () => {
+      const token = await getAuthToken()
+      if (!token || cancelled) return
+      const res = await getWidgetData(token, campusId)
+      if (!cancelled && res.success && res.data) setSidebarWeather(res.data)
+    })()
+    return () => { cancelled = true }
+  }, [weatherActive, campusId])
 
   // "Week N" is anchored to the first day of actual instruction, not the
   // academic_years row's start_date (often an administrative/enrollment date
@@ -392,6 +413,23 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
           <span className="text-white/30">|</span>
           <span>{isAr ? `الأسبوع ${weekNum}` : `Week ${weekNum}`}</span>
         </div>
+        {sidebarWeather && (
+          <div className="flex items-center justify-center gap-1.5 text-xs text-white/75 border-t border-white/15 pt-1.5">
+            {sidebarWeather.weather.current.condition.icon ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`https:${sidebarWeather.weather.current.condition.icon}`}
+                alt=""
+                className="h-5 w-5 -my-1"
+              />
+            ) : (
+              <Cloud className="h-3.5 w-3.5" />
+            )}
+            <span className="font-semibold">{Math.round(sidebarWeather.weather.current.temp_c)}°C</span>
+            <span className="text-white/50">·</span>
+            <span className="truncate max-w-[110px]">{sidebarWeather.weather.current.condition.text}</span>
+          </div>
+        )}
       </div>
     </div>
   )
