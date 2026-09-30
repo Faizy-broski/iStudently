@@ -26,6 +26,7 @@ export default function MiqatDashboardPage() {
   const [rows, setRows] = useState<MiqatDaySummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [liveEvents, setLiveEvents] = useState<MiqatDayEvent[]>([])
+  const [liveError, setLiveError] = useState<string | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -44,9 +45,13 @@ export default function MiqatDashboardPage() {
       const token = await getAuthToken()
       if (!token) return
       const res = await getDay(todayIso(), token, undefined, campusId)
-      if (!cancelled && res.success && res.data) {
+      if (cancelled) return
+      if (res.success && res.data) {
         // Most recent scan first.
         setLiveEvents([...res.data].sort((a, b) => new Date(b.device_time).getTime() - new Date(a.device_time).getTime()))
+        setLiveError(null)
+      } else {
+        setLiveError(res.error || 'Failed to load live activity')
       }
     }
     void loadLive()
@@ -112,7 +117,9 @@ export default function MiqatDashboardPage() {
           <p className="text-xs text-muted-foreground">{t('liveActivityHint')}</p>
         </CardHeader>
         <CardContent className="p-0">
-          {liveEvents.length === 0 ? (
+          {liveError ? (
+            <p className="text-red-600 text-sm p-4">{liveError}</p>
+          ) : liveEvents.length === 0 ? (
             <p className="text-muted-foreground text-sm p-4">{t('liveNoData')}</p>
           ) : (
             <div className="divide-y max-h-96 overflow-y-auto">
