@@ -13385,7 +13385,11 @@
       "liveActivityHint": "عمليات المسح لحظة بلحظة. تُحسب حالة الحضور/التأخر/الغياب النهائية أعلاه ليلًا.",
       "liveNoData": "لا توجد عمليات مسح بعد اليوم",
       "liveCheckIn": "تسجيل حضور",
-      "liveCheckOut": "تسجيل انصراف"
+      "liveCheckOut": "تسجيل انصراف",
+      "liveSoFar": "حتى الآن اليوم (مباشر)",
+      "livePresent": "حاضر",
+      "liveLate": "متأخر",
+      "liveNotYetArrived": "لم يصل بعد"
     },
     "cards": {
       "title": "إصدار بطاقات ميقات",

@@ -163,12 +163,23 @@ export async function getSummary(dateFrom: string, dateTo: string, token: string
   return res.json()
 }
 
+export interface MiqatLiveSummary {
+  present: number
+  late: number
+}
+
+/** Computed live from today's raw scans, unlike getSummary()'s once-nightly miqat_days rollup — never reports "absent" since the day isn't over yet. */
+export async function getLiveSummary(date: string, token: string, campusId?: string): Promise<ApiResponse<MiqatLiveSummary>> {
+  const res = await authedFetch(withCampus(`/miqat/attendance/live-summary?date=${date}`, campusId), token)
+  return res.json()
+}
+
 export interface MiqatDayEvent {
   id: string
   person_id: string
   event_type: 'check_in' | 'check_out' | 'period_present' | 'period_absent'
   device_time: string
-  profiles: { id: string; first_name: string; last_name: string; class_id: string | null }
+  profiles: { id: string; first_name: string; last_name: string } | null
 }
 
 export async function getDay(date: string, token: string, classId?: string, campusId?: string): Promise<ApiResponse<MiqatDayEvent[]>> {

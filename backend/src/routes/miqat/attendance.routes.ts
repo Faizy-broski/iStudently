@@ -25,6 +25,7 @@ router.use(requireMiqatEnabled);
 router.post('/manual', requireAdmin, miqatAttendanceController.manual);
 router.get('/day/:date', requireTeacher, miqatAttendanceController.day);
 router.get('/summary', requireTeacher, miqatAttendanceController.summary);
+router.get('/live-summary', requireTeacher, miqatAttendanceController.liveSummary);
 // Guardian-facing — any authenticated user; childDays() itself verifies the
 // caller is actually linked to the requested student before returning
 // anything (see its comment), rather than relying only on a role gate.

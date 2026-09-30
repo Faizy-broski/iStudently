@@ -247,6 +247,61 @@ class MiqatAttendanceController {
     }
   }
 
+  /**
+   * Live, best-effort counterpart to summary()/miqat_days — computed from
+   * today's raw events on every request instead of the once-nightly rollup,
+   * so the dashboard can show something before 2 AM. Deliberately does NOT
+   * report "absent" or a roster-based "not yet arrived": the nightly job
+   * itself (miqat-nightly.job.ts's recomputeDayForSchool) only ever
+   * classifies people who show up in that day's events — it has no full
+   * school-roster loop to catch a true zero-scan no-show either — so
+   * mirroring that same scope here (present/late only, from who actually
+   * scanned) keeps this consistent with what the "official" report can
+   * already answer, rather than inventing a roster-coverage guarantee
+   * nothing else in Miqat provides.
+   */
+  async liveSummary(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id;
+      const date = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+
+      const schoolConfig = await miqatService.getSchoolConfig(schoolId);
+      if (!schoolConfig) return res.json({ success: true, data: { present: 0, late: 0 } });
+
+      const policy: LatenessPolicy = {
+        officialStartMinutes: schoolConfig.policy_json?.official_start_minutes ?? 7 * 60,
+        gracePeriodMinutes: schoolConfig.policy_json?.grace_period_minutes ?? 5,
+        lateCutoffMinutes: schoolConfig.policy_json?.late_cutoff_minutes ?? 8 * 60,
+      };
+
+      const events = await miqatService.listEventsForDay(schoolId, date);
+
+      const firstCheckInByPerson = new Map<string, string>();
+      for (const e of events as any[]) {
+        if (e.scope !== 'gate' || e.event_type !== 'check_in') continue;
+        const existing = firstCheckInByPerson.get(e.person_id);
+        if (!existing || e.device_time < existing) firstCheckInByPerson.set(e.person_id, e.device_time);
+      }
+
+      let present = 0;
+      let late = 0;
+      for (const deviceTime of firstCheckInByPerson.values()) {
+        const d = new Date(deviceTime);
+        const minutes = d.getUTCHours() * 60 + d.getUTCMinutes();
+        // classifyArrival can also return 'absent' for an extremely late
+        // check-in (past lateCutoffMinutes) — folded into `late` here since
+        // they did show up; the nightly job's finer-grained result is the
+        // authoritative one for actual absence reporting.
+        if (classifyArrival(minutes, policy) === 'present') present++;
+        else late++;
+      }
+
+      res.json({ success: true, data: { present, late } });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
   async summary(req: AuthRequest, res: Response) {
     try {
       const schoolId = req.profile?.school_id;

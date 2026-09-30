@@ -13386,7 +13386,11 @@
       "liveActivityHint": "Real-time scans as they happen. Final present/late/absent status above is computed overnight.",
       "liveNoData": "No scans yet today",
       "liveCheckIn": "Check-in",
-      "liveCheckOut": "Check-out"
+      "liveCheckOut": "Check-out",
+      "liveSoFar": "So Far Today (live)",
+      "livePresent": "Present",
+      "liveLate": "Late",
+      "liveNotYetArrived": "Not Yet Arrived"
     },
     "cards": {
       "title": "Miqat Card Issuance",

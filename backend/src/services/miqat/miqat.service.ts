@@ -374,20 +374,37 @@ export class MiqatService {
   async listEventsForDay(schoolId: string, date: string, classId?: string) {
     const start = `${date}T00:00:00.000Z`;
     const end = `${date}T23:59:59.999Z`;
-    let query = supabase
+    // miqat_events has two FKs into profiles (person_id, created_by_user_id
+    // for manual entries), which makes a `profiles!inner(...)` embed
+    // ambiguous to PostgREST ("more than one relationship was found") even
+    // when pinned to a guessed constraint name. Filtering by school_id
+    // directly on miqat_events (a plain column here, not a join) and
+    // fetching profiles as a second query sidesteps the embed entirely.
+    const { data: events, error } = await supabase
       .from('miqat_events')
-      // miqat_events has two FKs into profiles (person_id, created_by_user_id
-      // for manual entries) — profiles!inner alone is an ambiguous embed for
-      // PostgREST and errors out; pin it to the person_id relationship
-      // explicitly (Postgres's default constraint name for this column).
-      .select('*, profiles!miqat_events_person_id_fkey!inner(id, first_name, last_name, class_id, school_id)')
-      .eq('profiles.school_id', schoolId)
+      .select('*')
+      .eq('school_id', schoolId)
       .gte('device_time', start)
       .lte('device_time', end);
-    if (classId) query = query.eq('profiles.class_id', classId);
-    const { data, error } = await query;
     if (error) throw error;
-    return data;
+    if (!events || events.length === 0) return [];
+
+    const personIds = [...new Set(events.map((e) => e.person_id))];
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name')
+      .in('id', personIds);
+    if (profilesError) throw profilesError;
+    const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    // classId filtering was already non-functional before this fix — profiles
+    // has no class_id column (schema.sql: students only has section_id /
+    // grade_level_id, no direct class link) — so the previous embed-based
+    // `.eq('profiles.class_id', classId)` could never have matched anything.
+    // No caller currently passes classId; left as a known gap rather than
+    // guessing at an unverified section_id/grade_level_id mapping here.
+    void classId;
+    return events.map((e) => ({ ...e, profiles: profileById.get(e.person_id) ?? null }));
   }
 
   async upsertDay(day: Record<string, any>) {

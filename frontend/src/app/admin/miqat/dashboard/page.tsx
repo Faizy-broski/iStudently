@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, CheckCircle2, Clock, XCircle, AlertTriangle, LogIn, LogOut, Radio } from 'lucide-react'
 import { getAuthToken } from '@/lib/api/schools'
-import { getSummary, getDay, MiqatDaySummaryRow, MiqatDayEvent } from '@/lib/api/miqat'
+import { getSummary, getDay, getLiveSummary, MiqatDaySummaryRow, MiqatDayEvent, MiqatLiveSummary } from '@/lib/api/miqat'
 import { useCampus } from '@/context/CampusContext'
 
 // Live activity re-fetches on this interval — cheap enough for a small
@@ -27,6 +27,7 @@ export default function MiqatDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [liveEvents, setLiveEvents] = useState<MiqatDayEvent[]>([])
   const [liveError, setLiveError] = useState<string | null>(null)
+  const [liveSummary, setLiveSummary] = useState<MiqatLiveSummary | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -56,6 +57,19 @@ export default function MiqatDashboardPage() {
     }
     void loadLive()
     const interval = setInterval(loadLive, LIVE_POLL_MS)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [campusId])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadLiveSummary = async () => {
+      const token = await getAuthToken()
+      if (!token) return
+      const res = await getLiveSummary(todayIso(), token, campusId)
+      if (!cancelled && res.success && res.data) setLiveSummary(res.data)
+    }
+    void loadLiveSummary()
+    const interval = setInterval(loadLiveSummary, LIVE_POLL_MS)
     return () => { cancelled = true; clearInterval(interval) }
   }, [campusId])
 
@@ -107,6 +121,25 @@ export default function MiqatDashboardPage() {
       )}
 
       {total === 0 && <p className="text-muted-foreground text-sm">{t('noData')}</p>}
+
+      {liveSummary && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Radio className="h-4 w-4 text-emerald-600" />
+            <span className="text-sm font-medium">{t('liveSoFar')}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-600" /><CardTitle className="text-sm text-muted-foreground">{t('livePresent')}</CardTitle></CardHeader>
+              <CardContent><div className="text-3xl font-bold">{liveSummary.present}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center gap-2"><Clock className="h-4 w-4 text-amber-600" /><CardTitle className="text-sm text-muted-foreground">{t('liveLate')}</CardTitle></CardHeader>
+              <CardContent><div className="text-3xl font-bold">{liveSummary.late}</div></CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="pb-2">
