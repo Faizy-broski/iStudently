@@ -376,7 +376,11 @@ export class MiqatService {
     const end = `${date}T23:59:59.999Z`;
     let query = supabase
       .from('miqat_events')
-      .select('*, profiles!inner(id, first_name, last_name, class_id, school_id)')
+      // miqat_events has two FKs into profiles (person_id, created_by_user_id
+      // for manual entries) — profiles!inner alone is an ambiguous embed for
+      // PostgREST and errors out; pin it to the person_id relationship
+      // explicitly (Postgres's default constraint name for this column).
+      .select('*, profiles!miqat_events_person_id_fkey!inner(id, first_name, last_name, class_id, school_id)')
       .eq('profiles.school_id', schoolId)
       .gte('device_time', start)
       .lte('device_time', end);
