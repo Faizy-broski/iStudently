@@ -1,10 +1,20 @@
 import { Response } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 import { miqatService } from '../../services/miqat/miqat.service';
 import { decryptKeyOrThrowFriendly } from '../../services/miqat/key-management';
 import { getMasterKey } from '../../services/miqat/master-key';
 import { signCardPayload } from '../../services/miqat/card-crypto';
+
+// TEMP DEBUG (remove once the sign/verify key mismatch is resolved): a short,
+// non-reversible fingerprint of a raw key — lets us confirm from logs alone
+// whether the key used to SIGN a card here is byte-for-byte the same as the
+// key(s) a device received at bootstrap (devices.controller.ts), without
+// ever logging the actual secret key material.
+function keyFingerprint(raw: Buffer): string {
+  return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 12);
+}
 
 class MiqatCardsController {
   /** Admin issues (or reissues) a signed card for a person — the QR payload itself, ready to render. */
@@ -19,7 +29,33 @@ class MiqatCardsController {
       if (!cfg) return res.status(400).json({ success: false, error: 'Configure the school (geofence, signing key) before issuing cards' });
 
       const card = await miqatService.issueCard(parsed.data.person_id, req.profile.id);
-      const rawKey = decryptKeyOrThrowFriendly(cfg.card_signing_key_ref, getMasterKey(), `school ${schoolId}'s card signing key`);
+
+      // Same stale-key degradation as qrBatch below — a decrypt failure here
+      // used to fall through to the generic catch and come back as a bare,
+      // un-actionable 500 (the card itself was already created/re-signed, so
+      // the operator just saw a failure with no next step). Return the same
+      // signing_key_error shape instead, so any caller already handling that
+      // field (e.g. admin/id-card's single-issue path) gets a clear message.
+      let rawKey: Buffer;
+      try {
+        rawKey = decryptKeyOrThrowFriendly(cfg.card_signing_key_ref, getMasterKey(), `school ${schoolId}'s card signing key`);
+        console.error('[miqat/cards/issue] DEBUG', {
+          schoolId,
+          personId: parsed.data.person_id,
+          revision: card.revision,
+          keyFingerprint: keyFingerprint(rawKey),
+          cardSigningKeyRefTail: cfg.card_signing_key_ref?.slice(-12),
+        });
+      } catch {
+        const reason = "This school's Miqat card signing key needs to be rotated (Miqat > Settings > Rotate Signing Key).";
+        // success:true + data.signing_key_error, matching qrBatch's exact
+        // shape above (and what admin/id-card/page.tsx already checks for:
+        // `if (res.data.signing_key_error)`) — not success:false, since that
+        // shape is only ever checked for a truly failed request, and callers
+        // of this exact field expect `res.data` to exist.
+        res.json({ success: true, data: { card_id: card.id, revision: card.revision, qr_payload: null, signing_key_error: reason } });
+        return;
+      }
       const encoded = signCardPayload(
         {
           schoolId,

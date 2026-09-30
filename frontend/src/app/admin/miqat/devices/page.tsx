@@ -65,7 +65,7 @@ export default function MiqatDevicesPage() {
     if (teacherQuery.trim().length < 2) return
     setSearchingTeachers(true)
     try {
-      const { data } = await getAllTeachers({ search: teacherQuery.trim(), limit: 10 })
+      const { data } = await getAllTeachers({ search: teacherQuery.trim(), limit: 10, campus_id: campusId })
       setTeacherResults(data)
     } catch {
       toast.error(t('searchTeachersError'))

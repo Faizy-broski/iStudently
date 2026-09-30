@@ -173,20 +173,52 @@ class MiqatDevicesController {
       // bootstrap entirely if the current key still decrypts fine — skip
       // individually-undecryptable refs rather than failing the whole
       // request, but still surface each failure in the logs.
-      const cardSigningKeysB64 = [
+      const keyRefs: [string, string | null | undefined][] = [
         ['card_signing_key_ref', schoolConfig.card_signing_key_ref],
         ['previous_key_ref', schoolConfig.previous_key_ref],
-      ]
+      ];
+      const cardSigningKeysB64 = keyRefs
         .filter((entry): entry is [string, string] => !!entry[1])
         .map(([label, ref]) => {
           try {
-            return decryptKeyOrThrowFriendly(ref, masterKey, `school ${device.school_id}'s ${label}`).toString('base64');
+            const raw = decryptKeyOrThrowFriendly(ref, masterKey, `school ${device.school_id}'s ${label}`);
+            // TEMP DEBUG (remove once the sign/verify key mismatch is
+            // resolved): compare this fingerprint directly against
+            // [miqat/cards/issue] DEBUG's fingerprint in the logs — if they
+            // never match for the same school, the device is bootstrapping
+            // against a different card_signing_key_ref than whatever issue()
+            // is signing with.
+            console.error('[miqat/devices/bootstrap] DEBUG', {
+              schoolId: device.school_id,
+              label,
+              keyFingerprint: crypto.createHash('sha256').update(raw).digest('hex').slice(0, 12),
+              refTail: ref.slice(-12),
+            });
+            return raw.toString('base64');
           } catch (err: any) {
             console.error(err.message);
             return null;
           }
         })
         .filter((b64): b64 is string => b64 !== null);
+
+      // A school that HAS a card_signing_key_ref on file but ended up with zero
+      // usable keys means every ref failed to decrypt under the current
+      // MIQAT_MASTER_KEY (see decryptKeyOrThrowFriendly's comment — almost
+      // always a stale key from before a master-key rotation). Previously this
+      // was silently swallowed: the response still said success:true with an
+      // empty key list, so the device enrolled fine and the camera scanned
+      // fine, but verifyCardPayload() on the device had nothing to check
+      // signatures against — every scan failed forever with no error visible
+      // anywhere. Surface it explicitly so the device UI (and whoever set the
+      // device up) actually finds out, instead of a silent dead end.
+      const signingKeysError =
+        cardSigningKeysB64.length === 0 && !!schoolConfig.card_signing_key_ref
+          ? "This school's Miqat card signing key could not be decrypted (most likely MIQAT_MASTER_KEY changed since it was created). An admin must go to Miqat > Settings > Rotate Signing Key, then reissue cards."
+          : undefined;
+      if (signingKeysError) {
+        console.error(`[miqat/devices/bootstrap] school ${device.school_id}: ${signingKeysError}`);
+      }
 
       res.json({
         success: true,
@@ -205,6 +237,7 @@ class MiqatDevicesController {
           },
           roster,
           revocation_list: revocationList,
+          signing_keys_error: signingKeysError,
           // beacons/schedule joins land in milestone 9 (BLE) and the
           // schedule admin UI — schoolConfig.policy_json already carries
           // whatever lateness/grace policy has been configured so far.

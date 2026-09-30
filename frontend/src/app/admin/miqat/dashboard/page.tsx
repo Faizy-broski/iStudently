@@ -3,10 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, CheckCircle2, Clock, XCircle, AlertTriangle } from 'lucide-react'
+import { Loader2, CheckCircle2, Clock, XCircle, AlertTriangle, LogIn, LogOut, Radio } from 'lucide-react'
 import { getAuthToken } from '@/lib/api/schools'
-import { getSummary, MiqatDaySummaryRow } from '@/lib/api/miqat'
+import { getSummary, getDay, MiqatDaySummaryRow, MiqatDayEvent } from '@/lib/api/miqat'
 import { useCampus } from '@/context/CampusContext'
+
+// Live activity re-fetches on this interval — cheap enough for a small
+// per-day event list, and gives a "real-time enough" feel without a
+// websocket. Independent of the once-daily miqat_days rollup below.
+const LIVE_POLL_MS = 15_000
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -20,6 +25,7 @@ export default function MiqatDashboardPage() {
 
   const [rows, setRows] = useState<MiqatDaySummaryRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [liveEvents, setLiveEvents] = useState<MiqatDayEvent[]>([])
 
   useEffect(() => {
     (async () => {
@@ -30,6 +36,22 @@ export default function MiqatDashboardPage() {
       if (res.success && res.data) setRows(res.data)
       setLoading(false)
     })()
+  }, [campusId])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadLive = async () => {
+      const token = await getAuthToken()
+      if (!token) return
+      const res = await getDay(todayIso(), token, undefined, campusId)
+      if (!cancelled && res.success && res.data) {
+        // Most recent scan first.
+        setLiveEvents([...res.data].sort((a, b) => new Date(b.device_time).getTime() - new Date(a.device_time).getTime()))
+      }
+    }
+    void loadLive()
+    const interval = setInterval(loadLive, LIVE_POLL_MS)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [campusId])
 
   const total = rows.length
@@ -80,6 +102,40 @@ export default function MiqatDashboardPage() {
       )}
 
       {total === 0 && <p className="text-muted-foreground text-sm">{t('noData')}</p>}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Radio className="h-4 w-4 text-emerald-600" />
+            {t('liveActivity')}
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">{t('liveActivityHint')}</p>
+        </CardHeader>
+        <CardContent className="p-0">
+          {liveEvents.length === 0 ? (
+            <p className="text-muted-foreground text-sm p-4">{t('liveNoData')}</p>
+          ) : (
+            <div className="divide-y max-h-96 overflow-y-auto">
+              {liveEvents.map((e) => (
+                <div key={e.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    {e.event_type === 'check_in' ? (
+                      <LogIn className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <LogOut className="h-4 w-4 text-amber-600" />
+                    )}
+                    <span>{e.profiles?.first_name} {e.profiles?.last_name}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {e.event_type === 'check_in' ? t('liveCheckIn') : t('liveCheckOut')}
+                    </span>
+                  </div>
+                  <span className="text-muted-foreground text-xs">{new Date(e.device_time).toLocaleTimeString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

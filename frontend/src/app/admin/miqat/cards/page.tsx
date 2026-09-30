@@ -142,11 +142,19 @@ export default function MiqatCardsPage() {
     setIssuing(personId)
     const res = reissue ? await reportCardLost(personId, token, campusId) : await issueCard(personId, token, campusId)
     setIssuing(null)
-    if (res.success && res.data) {
-      setIssued({ personId, name: resolveName(student), qrPayload: res.data.qr_payload, revision: res.data.revision })
-    } else {
+    if (!res.success || !res.data) {
       toast.error(res.error || t('issueError'))
+      return
     }
+    // A stale signing key (created under a MIQAT_MASTER_KEY that's since
+    // changed) can't be fixed by retrying — the card row exists but qr_payload
+    // is null. Surface the friendly, actionable reason instead of rendering a
+    // broken/empty QR.
+    if (res.data.signing_key_error) {
+      toast.error(res.data.signing_key_error)
+      return
+    }
+    setIssued({ personId, name: resolveName(student), qrPayload: res.data.qr_payload as string, revision: res.data.revision })
   }
 
   return (

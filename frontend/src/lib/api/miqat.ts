@@ -93,7 +93,16 @@ export async function revokeDevice(deviceId: string, token: string, campusId?: s
   return res.json()
 }
 
-export async function issueCard(personId: string, token: string, campusId?: string): Promise<ApiResponse<{ card_id: string; revision: number; qr_payload: string }>> {
+export interface IssuedCard {
+  card_id: string
+  revision: number
+  /** Null when the school's signing key couldn't be decrypted — see signing_key_error. */
+  qr_payload: string | null
+  /** Set when the card row was created but couldn't be signed (stale MIQAT_MASTER_KEY — needs rotation). */
+  signing_key_error?: string
+}
+
+export async function issueCard(personId: string, token: string, campusId?: string): Promise<ApiResponse<IssuedCard>> {
   const res = await authedFetch(withCampus('/miqat/cards/issue', campusId), token, { method: 'POST', body: JSON.stringify({ person_id: personId }) })
   return res.json()
 }
@@ -112,7 +121,7 @@ export async function getCardQrBatch(personIds: string[], token: string, campusI
   return res.json()
 }
 
-export async function reportCardLost(personId: string, token: string, campusId?: string): Promise<ApiResponse<{ card_id: string; revision: number; qr_payload: string }>> {
+export async function reportCardLost(personId: string, token: string, campusId?: string): Promise<ApiResponse<IssuedCard>> {
   const res = await authedFetch(withCampus('/miqat/cards/report-lost', campusId), token, { method: 'POST', body: JSON.stringify({ person_id: personId }) })
   return res.json()
 }
@@ -154,7 +163,15 @@ export async function getSummary(dateFrom: string, dateTo: string, token: string
   return res.json()
 }
 
-export async function getDay(date: string, token: string, classId?: string, campusId?: string): Promise<ApiResponse<any[]>> {
+export interface MiqatDayEvent {
+  id: string
+  person_id: string
+  event_type: 'check_in' | 'check_out' | 'period_present' | 'period_absent'
+  device_time: string
+  profiles: { id: string; first_name: string; last_name: string; class_id: string | null }
+}
+
+export async function getDay(date: string, token: string, classId?: string, campusId?: string): Promise<ApiResponse<MiqatDayEvent[]>> {
   const qs = classId ? `?class_id=${classId}` : ''
   const res = await authedFetch(withCampus(`/miqat/attendance/day/${date}${qs}`, campusId), token)
   return res.json()

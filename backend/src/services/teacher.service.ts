@@ -59,8 +59,8 @@ export const getAllTeachers = async (
           section:sections(id, name, grade_level:grade_levels(id, name)),
           academic_year:academic_years(id, name)
         )
-      `, { count: 'exact' })
-    
+      `)
+
     // Filter by campus_id if provided, otherwise use admin's school_id
     if (campus_id) {
       query = query.eq('school_id', campus_id)
@@ -68,15 +68,42 @@ export const getAllTeachers = async (
       query = query.eq('school_id', schoolId)
     }
 
-    // Execute main query with pagination
-    const { data: staffData, error } = await query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+    // No .range() here on purpose — the name/email/employee-number/department
+    // `search` filter below only runs in JS (it needs the joined profile
+    // fields, which PostgREST can't easily filter on alongside this query's
+    // other embedded resources). Applying .range() before that filter used
+    // to cut the result set down to one raw page BEFORE searching it, so
+    // searching for any teacher outside the most-recently-created `limit`
+    // rows silently returned nothing no matter what was typed — pagination
+    // must happen after filtering, not before.
+    const { data: staffData, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
       console.error('❌ Error fetching staff:', error)
       throw error
     }
+
+    // TEMP DEBUG (remove once teacher search is confirmed working): proves
+    // exactly which school_id this query actually filtered by, how many raw
+    // staff rows came back for it before any role/search filtering, and (if
+    // a search term was given) whether any raw row's name/email loosely
+    // matches it at all — pinpoints "wrong school_id scope" vs "teacher
+    // really isn't in this school_id" vs "search term genuinely doesn't
+    // match anything" instead of guessing further.
+    console.error('[teacher.service.getAllTeachers] DEBUG', {
+      requestedSchoolId: schoolId,
+      requestedCampusId: campus_id,
+      effectiveSchoolIdFilter: campus_id || schoolId,
+      searchTerm: search,
+      rawRowCount: staffData?.length ?? 0,
+      rawRoles: staffData?.map((s: any) => s.profile?.role),
+      rawSchoolIds: Array.from(new Set((staffData ?? []).map((s: any) => s.school_id))),
+      rawNamesLoose: search
+        ? (staffData ?? [])
+            .map((s: any) => `${s.profile?.first_name ?? ''} ${s.profile?.last_name ?? ''}`.trim())
+            .filter((name: string) => name.toLowerCase().includes(search))
+        : undefined,
+    })
 
     // SECURITY: Filter to only include teachers from the requested school (campus or admin school)
     const targetSchoolId = campus_id || schoolId
@@ -112,6 +139,11 @@ export const getAllTeachers = async (
 
     const total = teachers.length
     const totalPages = Math.ceil(total / limit)
+
+    // Pagination applied AFTER role+search filtering (see comment above the
+    // query), not as a DB-level .range() before it — offset/limit here index
+    // into the already-filtered set, matching `total`/`totalPages` above.
+    teachers = teachers.slice(offset, offset + limit)
 
     // Never expose synthetic placeholder emails to the frontend
     teachers = teachers.map((teacher: any) => redactProfileEmail(teacher))

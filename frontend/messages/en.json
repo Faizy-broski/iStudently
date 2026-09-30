@@ -13381,7 +13381,12 @@
       "late": "Late",
       "absent": "Absent",
       "unclosedWarning": "{count} student(s) checked in but never checked out today",
-      "noData": "No attendance recorded yet today"
+      "noData": "No attendance recorded yet today",
+      "liveActivity": "Live Activity Today",
+      "liveActivityHint": "Real-time scans as they happen. Final present/late/absent status above is computed overnight.",
+      "liveNoData": "No scans yet today",
+      "liveCheckIn": "Check-in",
+      "liveCheckOut": "Check-out"
     },
     "cards": {
       "title": "Miqat Card Issuance",
