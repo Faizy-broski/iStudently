@@ -47,7 +47,6 @@ import { ar, enUS } from "date-fns/locale";
 import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
 import RelativesTab from "@/components/admin/RelativesTab";
 import { ReassignGradeSectionDialog } from "@/components/admin/ReassignGradeSectionDialog";
-import { UserQRCode } from "@/components/shared/UserQRCode";
 import { MiqatCardPanel } from "@/components/shared/MiqatCardPanel";
 import { useTranslations, useLocale } from "next-intl";
 import { getFieldDefinitions, getFieldLabel, getFieldOptions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
@@ -431,8 +430,7 @@ export default function StudentDetailsPage() {
             </div>
 
             {currentStudent.profile_id && (
-              <div className="shrink-0 flex flex-wrap gap-4">
-                <UserQRCode value={currentStudent.profile_id} size={100} label={fullName || currentStudent.student_number} />
+              <div className="shrink-0">
                 <MiqatCardPanel personId={currentStudent.profile_id} name={fullName || currentStudent.student_number} />
               </div>
             )}
