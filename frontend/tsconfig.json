@@ -31,7 +31,8 @@
       "@/types/*": ["./src/types/*"],
       "@/config/*": ["./src/config/*"],
       "@/context/*": ["./src/context/*"],
-      "@/app/*": ["./src/app/*"]
+      "@/app/*": ["./src/app/*"],
+      "@studently/*": ["../packages/*/src"]
     }
   },
   "include": [
