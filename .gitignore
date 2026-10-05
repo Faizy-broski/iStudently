@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.p12
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Archives
+docs.zip
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Expo
+.expo/
+mobile/ios/
+mobile/android/
