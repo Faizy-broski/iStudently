@@ -122,6 +122,21 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
     })
   }
 
+  const isAllFullyVisible = (): boolean => allHrefs.every((h) => !denied.has(h))
+
+  /** Same flip-on-click behaviour as a single group's button, but across every group at once. */
+  const toggleAll = () => {
+    const allVisible = isAllFullyVisible()
+    setDenied((prev) => {
+      const next = new Set(prev)
+      for (const h of allHrefs) {
+        if (allVisible) next.add(h)
+        else next.delete(h)
+      }
+      return next
+    })
+  }
+
   /** Every href across every item in a group — used by the group's Select all / Unselect all button. */
   const groupHrefs = (group: CatalogGroup): string[] => group.items.flatMap((item) => item.hrefs)
 
@@ -192,9 +207,18 @@ export function SchoolModuleAccessButton({ schoolId, schoolName }: SchoolModuleA
 
               {restricted && (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Checked = visible. Uncheck to hide a module.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Checked = visible. Uncheck to hide a module.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={toggleAll}
+                      className="text-xs font-medium text-primary hover:underline shrink-0"
+                    >
+                      {isAllFullyVisible() ? 'Unselect all' : 'Select all'}
+                    </button>
+                  </div>
                   {moduleGroups.map((group) => (
                     <div key={group.title}>
                       {group.title !== '__root__' && (
