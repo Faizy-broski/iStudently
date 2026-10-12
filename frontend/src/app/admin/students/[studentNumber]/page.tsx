@@ -768,7 +768,7 @@ export default function StudentDetailsPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <InfoRow label={t("student_id")} value={currentStudent.student_number} icon={Shield} />
-                <InfoRow label={t("username")} value={currentStudent.custom_fields?.system?.username} />
+                <InfoRow label={t("username")} value={currentStudent.profile?.username} />
                 <InfoRow
                   label={t("account_status")}
                   value={

@@ -207,7 +207,7 @@ router.post('/resolve-username', async (req: Request, res: Response) => {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('email')
+      .select('id, email')
       .ilike('username', username.trim())
       .eq('is_active', true)
       .single()
@@ -215,6 +215,29 @@ router.post('/resolve-username', async (req: Request, res: Response) => {
     if (error || !data?.email) {
       return res.status(404).json({ success: false, error: 'User not found' })
     }
+
+    // TEMP DEBUG (remove once the "invalid login credentials despite a
+    // freshly-set password" issue is confirmed resolved): resolve-username
+    // returns profiles.email, but Supabase Auth actually checks against
+    // auth.users.email — if the two have ever diverged for this profile
+    // (e.g. an email edited without the paired auth update, or a leftover
+    // effect of the earlier credential race condition), login fails with a
+    // generic "Invalid login credentials" no matter how correct the password
+    // is. Logging both sides side-by-side turns that guess into a fact.
+    supabase.auth.admin.getUserById(data.id).then(({ data: authData, error: authErr }) => {
+      if (authErr) {
+        console.error('[resolve-username] DEBUG auth lookup failed', { profileId: data.id, error: authErr.message })
+        return
+      }
+      const authEmail = authData.user?.email
+      console.error('[resolve-username] DEBUG', {
+        profileId: data.id,
+        usernameTyped: username.trim(),
+        profilesEmail: data.email,
+        authUsersEmail: authEmail,
+        match: authEmail === data.email,
+      })
+    })
 
     res.json({ success: true, email: data.email })
   } catch (err: any) {
