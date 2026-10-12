@@ -8,7 +8,7 @@ import { updateStudent } from '@/lib/api/students';
 import { updateParent } from '@/lib/api/parents';
 import { updateTeacher } from '@/lib/api/teachers';
 import { updateStaff } from '@/lib/api/staff';
-import { getUsername } from '@/lib/api/credentials';
+import { getUsername, bulkGetOrCreateCredentials } from '@/lib/api/credentials';
 import { useAuth } from "@/context/AuthContext";
 
 interface EditCredentialsModalProps {
@@ -39,21 +39,50 @@ export function EditCredentialsModal({
     const [loading, setLoading] = useState(false);
     const [loadingUsername, setLoadingUsername] = useState(false);
     const [username, setUsername] = useState('');
+    const [originalUsername, setOriginalUsername] = useState('');
     const [password, setPassword] = useState('');
+    // The password as it was prefilled (not sent anywhere) — lets submit tell
+    // "admin left the prefilled password untouched" apart from "admin typed a
+    // new one", so just opening and closing this modal never rotates a
+    // password that was never actually changed.
+    const [originalPassword, setOriginalPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Prefill the current username so the admin can see/edit it — this is the
-    // only login identifier for accounts that don't have a real email.
+    // Prefill the current username AND password so the admin can see them —
+    // reuses the same admin-gated credentials lookup the Advanced Report's
+    // Username/Password columns and the "view/print credentials" screens
+    // already use, rather than leaving this one modal as the odd one out
+    // that only ever showed the username.
     useEffect(() => {
         if (!isOpen || !profileId) {
             setUsername('');
+            setOriginalUsername('');
+            setPassword('');
+            setOriginalPassword('');
             return;
         }
         setLoadingUsername(true);
-        getUsername(profileId)
-            .then((res) => setUsername((res.success && res.data?.username) || ''))
-            .catch(() => {})
+        bulkGetOrCreateCredentials([profileId])
+            .then((res) => {
+                const cred = res.success ? res.data?.credentials?.[0] : undefined
+                setUsername(cred?.username || '');
+                setOriginalUsername(cred?.username || '');
+                setPassword(cred?.password || '');
+                setOriginalPassword(cred?.password || '');
+            })
+            .catch(() => {
+                // Fall back to username-only if the credentials lookup fails
+                // (e.g. this profile has no login_password_enc yet and
+                // generation itself failed) — still better than a fully blank form.
+                getUsername(profileId)
+                    .then((res) => {
+                        const u = (res.success && res.data?.username) || ''
+                        setUsername(u);
+                        setOriginalUsername(u);
+                    })
+                    .catch(() => {})
+            })
             .finally(() => setLoadingUsername(false));
     }, [isOpen, profileId]);
 
@@ -63,8 +92,12 @@ export function EditCredentialsModal({
         e.preventDefault();
 
         const trimmedUsername = username.trim();
-        const usernameChanged = trimmedUsername.length > 0;
-        const passwordChanged = password.length > 0;
+        // Both fields are now prefilled with the current values, so "changed"
+        // must compare against what was actually loaded — otherwise simply
+        // opening and submitting this modal untouched would resend the same
+        // username/password as a "change" every time.
+        const usernameChanged = trimmedUsername.length > 0 && trimmedUsername !== originalUsername;
+        const passwordChanged = password.length > 0 && password !== originalPassword;
 
         if (!usernameChanged && !passwordChanged) {
             setError('Enter a username and/or a new password to update');
@@ -152,7 +185,7 @@ export function EditCredentialsModal({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="new-password">New Password</Label>
+                        <Label htmlFor="new-password">Password</Label>
                         <div className="relative">
                             <Input
                                 id="new-password"
@@ -162,9 +195,9 @@ export function EditCredentialsModal({
                                     setPassword(e.target.value);
                                     if (error) setError(null);
                                 }}
-                                placeholder="Leave blank to keep current password"
+                                placeholder={loadingUsername ? "Loading current password…" : "Password"}
                                 className={error ? "border-red-500 focus-visible:ring-red-500" : ""}
-                                disabled={loading}
+                                disabled={loading || loadingUsername}
                             />
                             <button
                                 type="button"
@@ -179,7 +212,7 @@ export function EditCredentialsModal({
                             <p className="text-sm text-red-500 animate-in slide-in-from-top-1">{error}</p>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            If set, password must be at least 8 characters long. Changes apply immediately.
+                            This is the current password. Edit it to set a new one — changes apply immediately. Must be at least 8 characters.
                         </p>
                     </div>
 
@@ -194,7 +227,11 @@ export function EditCredentialsModal({
                         </Button>
                         <Button
                             type="submit"
-                            disabled={loading || (!password && !username.trim())}
+                            disabled={
+                                loading ||
+                                loadingUsername ||
+                                (username.trim() === originalUsername && password === originalPassword)
+                            }
                             className="bg-blue-600 hover:bg-blue-700"
                         >
                             {loading ? (

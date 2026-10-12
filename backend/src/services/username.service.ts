@@ -140,6 +140,30 @@ export async function regenerateCredentials(
   return { username, plainPassword }
 }
 
+// Guards the "generate if missing" path below against the exact race that
+// caused mismatched credentials in production: a slow/timed-out bulk request
+// (e.g. a 504 from the reverse proxy) left the server still processing in the
+// background while the admin retried, firing a SECOND concurrent
+// getOrCreateStoredCredentials for the same still-uncached profile. Each call
+// would call regenerateCredentials() independently — two different random
+// passwords, two different supabase.auth.admin.updateUserById calls — and
+// whichever write landed last in both Supabase Auth and login_password_enc
+// could easily leave the two out of sync, since there was no ordering
+// guarantee between them. Keying in-flight generation by profileId makes a
+// second concurrent call await the SAME generation instead of starting its
+// own, so only one real password is ever created per profile per burst.
+const inFlightGeneration = new Map<string, Promise<{ username: string; plainPassword: string }>>()
+
+function generateOnce(profileId: string, adminSchoolId: string): Promise<{ username: string; plainPassword: string }> {
+  const existing = inFlightGeneration.get(profileId)
+  if (existing) return existing
+  const promise = regenerateCredentials(profileId, adminSchoolId).finally(() => {
+    inFlightGeneration.delete(profileId)
+  })
+  inFlightGeneration.set(profileId, promise)
+  return promise
+}
+
 /**
  * Fetch a profile's current login credentials for redisplay (e.g. printing an
  * ID card). Never resets an existing password — only generates one the first
@@ -171,7 +195,7 @@ export async function getOrCreateStoredCredentials(
   if (!hasAccess) throw new Error('Access denied')
 
   if (!profile.login_password_enc) {
-    const { username, plainPassword } = await regenerateCredentials(profileId, adminSchoolId)
+    const { username, plainPassword } = await generateOnce(profileId, adminSchoolId)
     return { username, password: plainPassword }
   }
 
@@ -200,7 +224,7 @@ export async function getStoredCredentialsAsSuperAdmin(
   }
 
   if (!profile.login_password_enc) {
-    const { username, plainPassword } = await regenerateCredentials(profileId, profile.school_id)
+    const { username, plainPassword } = await generateOnce(profileId, profile.school_id)
     return { username, password: plainPassword }
   }
 
