@@ -1923,8 +1923,11 @@
           "employment_type": "Employment Type",
           "linked_students": "Linked Students",
           "confidential_family_status": "Confidential Family Status",
-          "siblings": "Siblings (Family)"
+          "siblings": "Siblings (Family)",
+          "username": "Username",
+          "password": "Password"
         },
+        "credentials_warning": "Username and Password show each person's actual login credentials in plain text. Handle the exported file securely — anyone who sees it can sign in as that person.",
         "family": "Family",
         "family_all": "All students",
         "family_with_siblings": "With siblings only",
