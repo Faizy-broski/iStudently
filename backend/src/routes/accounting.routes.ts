@@ -2,8 +2,13 @@ import { Router } from 'express'
 import { accountingController } from '../controllers/accounting.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireStaff } from '../middlewares/role.middleware'
+import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
+
+// Category and staff ids in the body must belong to the caller's school family.
+const bodyCategory = requireBodyRowsInSchoolFamily('accounting_categories', 'category_id', 'campus_id')
+const bodyStaff = requireBodyRowsInSchoolFamily('staff', 'staff_id')
 
 // All routes require authentication
 router.use(authenticate)
@@ -20,16 +25,16 @@ router.delete('/categories/:id', requireAdmin, (req, res) => accountingControlle
 // INCOMES
 // ==========================================
 router.get('/incomes', requireAdmin, (req, res) => accountingController.getIncomes(req, res))
-router.post('/incomes', requireAdmin, (req, res) => accountingController.createIncome(req, res))
-router.put('/incomes/:id', requireAdmin, (req, res) => accountingController.updateIncome(req, res))
+router.post('/incomes', requireAdmin, bodyCategory, (req, res) => accountingController.createIncome(req, res))
+router.put('/incomes/:id', requireAdmin, bodyCategory, (req, res) => accountingController.updateIncome(req, res))
 router.delete('/incomes/:id', requireAdmin, (req, res) => accountingController.deleteIncome(req, res))
 
 // ==========================================
 // EXPENSES (General - staff_id IS NULL)
 // ==========================================
 router.get('/expenses', requireAdmin, (req, res) => accountingController.getExpenses(req, res))
-router.post('/expenses', requireAdmin, (req, res) => accountingController.createExpense(req, res))
-router.put('/expenses/:id', requireAdmin, (req, res) => accountingController.updateExpense(req, res))
+router.post('/expenses', requireAdmin, bodyCategory, (req, res) => accountingController.createExpense(req, res))
+router.put('/expenses/:id', requireAdmin, bodyCategory, (req, res) => accountingController.updateExpense(req, res))
 router.delete('/expenses/:id', requireAdmin, (req, res) => accountingController.deleteExpense(req, res))
 
 // ==========================================
@@ -37,8 +42,8 @@ router.delete('/expenses/:id', requireAdmin, (req, res) => accountingController.
 // ==========================================
 router.get('/staff-payments', requireAdmin, (req, res) => accountingController.getStaffPayments(req, res))
 router.get('/staff-payments/:staffId', requireAdmin, (req, res) => accountingController.getStaffPaymentsByStaff(req, res))
-router.post('/staff-payments', requireAdmin, (req, res) => accountingController.createStaffPayment(req, res))
-router.put('/staff-payments/:id', requireAdmin, (req, res) => accountingController.updateStaffPayment(req, res))
+router.post('/staff-payments', requireAdmin, bodyCategory, bodyStaff, (req, res) => accountingController.createStaffPayment(req, res))
+router.put('/staff-payments/:id', requireAdmin, bodyCategory, (req, res) => accountingController.updateStaffPayment(req, res))
 router.delete('/staff-payments/:id', requireAdmin, (req, res) => accountingController.deleteStaffPayment(req, res))
 
 // ==========================================

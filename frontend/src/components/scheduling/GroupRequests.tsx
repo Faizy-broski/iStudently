@@ -150,7 +150,13 @@ export function GroupRequests() {
         Array.from(selectedStudentIds),
         selectedCoursePeriod.courseId,
         academicYearId,
-        { campus_id: campusContext?.selectedCampus?.id }
+        {
+          campus_id: campusContext?.selectedCampus?.id,
+          with_teacher_id: withTeacherId !== "na" ? withTeacherId : undefined,
+          not_teacher_id: withoutTeacherId !== "na" ? withoutTeacherId : undefined,
+          with_period_id: withPeriodId !== "na" ? withPeriodId : undefined,
+          not_period_id: withoutPeriodId !== "na" ? withoutPeriodId : undefined,
+        }
       )
       toast.success(t("msg_request_success", { count: result.created }))
       if (result.errors.length > 0) {
@@ -162,7 +168,7 @@ export function GroupRequests() {
     } finally {
       setSubmitting(false)
     }
-  }, [selectedStudentIds, selectedCoursePeriod, academicYearId, campusContext?.selectedCampus?.id, t, tCommon])
+  }, [selectedStudentIds, selectedCoursePeriod, academicYearId, campusContext?.selectedCampus?.id, withTeacherId, withoutTeacherId, withPeriodId, withoutPeriodId, t, tCommon])
 
   return (
     <div className="space-y-4">

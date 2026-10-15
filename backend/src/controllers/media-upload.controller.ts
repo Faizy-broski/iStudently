@@ -14,6 +14,10 @@ const ALLOWED_TYPES: Record<string, string> = {
   'audio/ogg': 'ogg',
   'audio/ogg;codecs=opus': 'ogg',
   'audio/mp4': 'm4a',
+  // Speed Reading recordings from the app (speech recognizer output)
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/wave': 'wav',
   'video/webm': 'webm',
   'video/webm;codecs=vp8,opus': 'webm',
   'video/webm;codecs=vp9,opus': 'webm',
@@ -221,6 +225,39 @@ const ALLOWED_IMAGE_TYPES: Record<string, string> = {
 
 const MAX_IMAGE_SIZE_BYTES = 25 * 1024 * 1024 // 25 MB
 
+/** Checks the file's leading bytes against the claimed image type (raster formats + SVG text). */
+export function imageBytesMatch(mime: string, buf: Buffer): boolean {
+  if (!buf || buf.length < 4) return false
+  const hex = (n: number) => buf.subarray(0, n).toString('hex')
+  switch (mime) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return hex(3) === 'ffd8ff'
+    case 'image/png':
+      return hex(8) === '89504e470d0a1a0a'
+    case 'image/gif':
+      return buf.subarray(0, 6).toString('ascii') === 'GIF87a' || buf.subarray(0, 6).toString('ascii') === 'GIF89a'
+    case 'image/webp':
+      return buf.subarray(0, 4).toString('ascii') === 'RIFF' && buf.subarray(8, 12).toString('ascii') === 'WEBP'
+    case 'image/bmp':
+      return buf.subarray(0, 2).toString('ascii') === 'BM'
+    case 'image/x-icon':
+    case 'image/vnd.microsoft.icon':
+      return hex(4) === '00000100'
+    case 'image/tiff':
+      return hex(4) === '49492a00' || hex(4) === '4d4d002a'
+    case 'image/avif':
+      return buf.subarray(4, 12).toString('ascii').startsWith('ftypavi')
+    case 'image/svg+xml':
+    case 'image/svg': {
+      const head = buf.subarray(0, 512).toString('utf8').replace(/^\uFEFF/, '').trimStart().toLowerCase()
+      return head.startsWith('<svg') || head.startsWith('<?xml')
+    }
+    default:
+      return false
+  }
+}
+
 /**
  * POST /api/media/upload-image
  *
@@ -256,12 +293,13 @@ export const uploadImageAsset = async (
       return
     }
 
-    const mimeBase = (file.mimetype || 'image/png').split(';')[0].trim().toLowerCase()
-    let ext = ALLOWED_IMAGE_TYPES[mimeBase]
-    if (!ext) {
-      // Fallback extension from original filename or default to png
-      const origExt = file.originalname ? file.originalname.split('.').pop()?.toLowerCase() : ''
-      ext = origExt && origExt.length <= 4 ? origExt : 'png'
+    // Only listed image types, and the bytes must match the claimed type (no more fallback that
+    // stored any content in the public bucket under a client-chosen content type).
+    const mimeBase = (file.mimetype || '').split(';')[0].trim().toLowerCase()
+    const ext = ALLOWED_IMAGE_TYPES[mimeBase]
+    if (!ext || !imageBytesMatch(mimeBase, file.buffer)) {
+      res.status(415).json({ success: false, error: 'Unsupported or invalid image file' })
+      return
     }
 
     const fileName = `${adminSchoolId}/public-pages/${randomUUID()}.${ext}`
@@ -292,6 +330,90 @@ export const uploadImageAsset = async (
     })
   } catch (error: any) {
     console.error('[ImageUpload] Unexpected error:', error)
+    res.status(500).json({ success: false, error: error.message || 'Upload failed' })
+  }
+}
+
+// ── Library files (covers + digital documents) ───────────────────────────────
+
+const LIBRARY_BUCKET = 'books'
+
+const LIBRARY_COVER_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+}
+
+/** Same list the web's book dialogs accept (no HTML: the bucket is public). */
+const LIBRARY_DOCUMENT_TYPES: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.ms-powerpoint': 'ppt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+  'text/plain': 'txt',
+  ...LIBRARY_COVER_TYPES,
+}
+
+const LIBRARY_COVER_MAX = 5 * 1024 * 1024
+const LIBRARY_DOCUMENT_MAX = 50 * 1024 * 1024
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * POST /api/media/upload-library-file  (multipart: file, kind = 'cover' | 'document', category_id?)
+ *
+ * The app's replacement for the web's direct Storage uploads (lib/api/storage.ts
+ * uploadLibraryCoverImage / uploadLibraryDocument): same bucket and path layout,
+ *   books/{school_id}/covers/{uuid}.{ext}
+ *   books/{school_id}/documents/{category_id|uncategorized}/{uuid}.{ext}
+ * so the E-Library reader handles both alike. Covers: JPEG/PNG/WebP up to 5 MB;
+ * documents: PDF/Office/txt/images up to 50 MB.
+ */
+export const uploadLibraryFile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' })
+      return
+    }
+    const file = (req as any).file as Express.Multer.File | undefined
+    if (!file) {
+      res.status(400).json({ success: false, error: 'No file uploaded' })
+      return
+    }
+    const kind = req.body?.kind === 'cover' ? 'cover' : 'document'
+    const types = kind === 'cover' ? LIBRARY_COVER_TYPES : LIBRARY_DOCUMENT_TYPES
+    const max = kind === 'cover' ? LIBRARY_COVER_MAX : LIBRARY_DOCUMENT_MAX
+    if (file.size > max) {
+      res.status(413).json({ success: false, error: `File too large (max ${max / 1024 / 1024} MB)` })
+      return
+    }
+    const ext = types[(file.mimetype || '').split(';')[0].trim().toLowerCase()]
+    if (!ext) {
+      res.status(415).json({ success: false, error: `Unsupported file type: ${file.mimetype}` })
+      return
+    }
+    // Images must really be images (the bucket is public).
+    if (LIBRARY_COVER_TYPES[(file.mimetype || '').split(';')[0].trim().toLowerCase()] && !imageBytesMatch(file.mimetype.split(';')[0].trim().toLowerCase(), file.buffer)) {
+      res.status(415).json({ success: false, error: 'File content does not match its type' })
+      return
+    }
+    const categoryId = typeof req.body?.category_id === 'string' && UUID_PATTERN.test(req.body.category_id) ? req.body.category_id : null
+    const path = kind === 'cover' ? `${schoolId}/covers/${randomUUID()}.${ext}` : `${schoolId}/documents/${categoryId ?? 'uncategorized'}/${randomUUID()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage.from(LIBRARY_BUCKET).upload(path, file.buffer, { contentType: file.mimetype, cacheControl: '3600', upsert: false })
+    if (uploadError) {
+      console.error('[LibraryUpload] Supabase storage error:', uploadError)
+      res.status(500).json({ success: false, error: 'Storage upload failed: ' + uploadError.message })
+      return
+    }
+    const { data: urlData } = supabase.storage.from(LIBRARY_BUCKET).getPublicUrl(path)
+    res.status(201).json({ success: true, data: { url: urlData.publicUrl, path, name: file.originalname, size: file.size, mime_type: file.mimetype } })
+  } catch (error: any) {
+    console.error('[LibraryUpload] Unexpected error:', error)
     res.status(500).json({ success: false, error: error.message || 'Upload failed' })
   }
 }

@@ -75,7 +75,9 @@ class SetupStatusController {
     async updateCampus(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const updates = req.body
+            // Only the campus profile columns the web edits; never parent/status/plan fields.
+            const allowed = ['name', 'address', 'city', 'state', 'zip_code', 'contact_email', 'phone', 'principal_name', 'short_name', 'school_number', 'logo_url', 'logo_shape', 'logo_frame_color', 'latitude', 'longitude', 'custom_fields'] as const
+            const updates = Object.fromEntries(allowed.filter((k) => req.body?.[k] !== undefined).map((k) => [k, req.body[k]]))
 
             const campus = await setupStatusService.updateCampus(id, updates)
             res.json(campus)
@@ -91,6 +93,10 @@ class SetupStatusController {
     async deleteCampus(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
+            // A school admin can remove a branch, not their own main school.
+            if (req.profile?.role !== 'super_admin' && id === req.profile?.school_id) {
+                return res.status(400).json({ success: false, error: 'The main school cannot be deleted' })
+            }
 
             await setupStatusService.deleteCampus(id)
             res.json({ message: 'Campus deleted successfully' })

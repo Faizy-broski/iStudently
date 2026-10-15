@@ -1,4 +1,5 @@
 import { Response } from 'express'
+import { getAllCampusIds } from '../utils/school-helpers'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import {
   getEmailLog,
@@ -86,10 +87,13 @@ export const sendToStaff = async (req: AuthRequest, res: Response): Promise<void
 
 export const fetchEmailLog = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { start_date, end_date, page = '1', limit = '50' } = req.query as Record<string, string>
-    const schoolId = req.profile.school_id
+    const { start_date, end_date, page = '1', limit = '50', campus_id } = req.query as Record<string, string>
+    // One campus when asked (authenticate already checked it is in the caller's school family),
+    // otherwise every campus: sends are logged under the campus, so an exact main-school match
+    // hid all branch-campus emails.
+    const schoolIds = campus_id ? [campus_id] : await getAllCampusIds(req.profile.school_id)
 
-    const result = await getEmailLog(schoolId, start_date, end_date, parseInt(page, 10), parseInt(limit, 10))
+    const result = await getEmailLog(schoolIds, start_date, end_date, parseInt(page, 10), parseInt(limit, 10))
 
     res.json({ success: true, data: result.data, total: result.total, page: result.page, totalPages: result.totalPages })
   } catch (error) {

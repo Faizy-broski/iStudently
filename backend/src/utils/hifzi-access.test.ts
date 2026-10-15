@@ -1,12 +1,18 @@
 jest.mock('../config/supabase', () => ({
   supabase: { from: jest.fn() },
 }))
+// Family check: "school-a" and its campus "campus-a" are one family; "school-b" is another.
+jest.mock('./campus-validation', () => ({
+  campusIdsAllowed: jest.fn(async (own: string, ids: string[]) => ids.every((id) => (own === 'school-a' ? ['school-a', 'campus-a'] : [own]).includes(id))),
+}))
 
 import { supabase } from '../config/supabase'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import {
   assertCanAccessStudent,
   assertCanAccessCircle,
+  assertCanAccessEnrollment,
+  assertCanAccessStudents,
   isTeacherAssignedToStudent,
   isTeacherAssignedToCircle,
 } from './hifzi-access'
@@ -23,7 +29,7 @@ type Result = { data: any; error?: any }
 
 function chainable(result: Result) {
   const obj: any = {}
-  for (const m of ['select', 'eq', 'is', 'limit']) obj[m] = jest.fn(() => obj)
+  for (const m of ['select', 'eq', 'is', 'limit', 'in']) obj[m] = jest.fn(() => obj)
   obj.maybeSingle = jest.fn(() => Promise.resolve(result))
   obj.then = (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject)
   return obj
@@ -48,9 +54,16 @@ function req(profile: any): AuthRequest {
 }
 
 describe('assertCanAccessStudent', () => {
-  it('allows admin unconditionally, no query made', async () => {
-    await expect(assertCanAccessStudent(req({ role: 'admin', id: 'p1' }), 's1')).resolves.toBe(true)
-    expect(fromMock).not.toHaveBeenCalled()
+  it('allows an admin for a student of its own school family', async () => {
+    queue('students', { data: { school_id: 'campus-a' } })
+    await expect(assertCanAccessStudent(req({ role: 'admin', id: 'p1', school_id: 'school-a' }), 's1')).resolves.toBe(true)
+  })
+
+  it("denies an admin for another school's student, or a student that doesn't exist", async () => {
+    queue('students', { data: { school_id: 'school-b' } })
+    await expect(assertCanAccessStudent(req({ role: 'admin', id: 'p1', school_id: 'school-a' }), 's1')).resolves.toBe(false)
+    queue('students', { data: null })
+    await expect(assertCanAccessStudent(req({ role: 'admin', id: 'p1', school_id: 'school-a' }), 's2')).resolves.toBe(false)
   })
 
   it('allows super_admin unconditionally, no query made', async () => {
@@ -129,9 +142,14 @@ describe('isTeacherAssignedToCircle', () => {
 })
 
 describe('assertCanAccessCircle', () => {
-  it('allows admin unconditionally, no query made', async () => {
-    await expect(assertCanAccessCircle(req({ role: 'admin', id: 'p1' }), 'c1')).resolves.toBe(true)
-    expect(fromMock).not.toHaveBeenCalled()
+  it('allows an admin for a circle of its own school family', async () => {
+    queue('hifzi_circles', { data: { school_id: 'school-a' } })
+    await expect(assertCanAccessCircle(req({ role: 'admin', id: 'p1', school_id: 'school-a' }), 'c1')).resolves.toBe(true)
+  })
+
+  it("denies an admin for another school's circle", async () => {
+    queue('hifzi_circles', { data: { school_id: 'school-b' } })
+    await expect(assertCanAccessCircle(req({ role: 'admin', id: 'p1', school_id: 'school-a' }), 'c1')).resolves.toBe(false)
   })
 
   it('allows super_admin unconditionally, no query made', async () => {
@@ -156,5 +174,40 @@ describe('assertCanAccessCircle', () => {
   it('denies a non-teacher, non-admin role (e.g. student) without querying', async () => {
     await expect(assertCanAccessCircle(req({ role: 'student', id: 's1' }), 'c1')).resolves.toBe(false)
     expect(fromMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('assertCanAccessEnrollment', () => {
+  it("resolves the enrollment's circle and applies the circle check", async () => {
+    queue('hifzi_enrollments', { data: { circle_id: 'c1' } })
+    queue('hifzi_circles', { data: { school_id: 'school-b' } })
+    await expect(assertCanAccessEnrollment(req({ role: 'admin', id: 'p1', school_id: 'school-a' }), 'e1')).resolves.toBe(false)
+    queue('hifzi_enrollments', { data: { circle_id: 'c1' } })
+    queue('hifzi_circles', { data: { school_id: 'campus-a' } })
+    await expect(assertCanAccessEnrollment(req({ role: 'admin', id: 'p1', school_id: 'school-a' }), 'e1')).resolves.toBe(true)
+  })
+
+  it('denies an unknown enrollment', async () => {
+    queue('hifzi_enrollments', { data: null })
+    await expect(assertCanAccessEnrollment(req({ role: 'admin', id: 'p1', school_id: 'school-a' }), 'e1')).resolves.toBe(false)
+  })
+})
+
+describe('assertCanAccessStudents', () => {
+  const admin = req({ role: 'admin', id: 'p1', school_id: 'school-a' })
+  it('allows when every student is in the family', async () => {
+    queue('students', { data: [{ id: 's1', school_id: 'school-a' }, { id: 's2', school_id: 'campus-a' }] })
+    await expect(assertCanAccessStudents(admin, ['s1', 's2'])).resolves.toBe(true)
+  })
+
+  it('denies when any student is foreign or missing', async () => {
+    queue('students', { data: [{ id: 's1', school_id: 'school-a' }, { id: 's2', school_id: 'school-b' }] })
+    await expect(assertCanAccessStudents(admin, ['s1', 's2'])).resolves.toBe(false)
+    queue('students', { data: [{ id: 's1', school_id: 'school-a' }] })
+    await expect(assertCanAccessStudents(admin, ['s1', 's2'])).resolves.toBe(false)
+  })
+
+  it('denies teachers (bulk enroll is admin-only)', async () => {
+    await expect(assertCanAccessStudents(req({ role: 'teacher', id: 'p1', school_id: 'school-a' }), ['s1'])).resolves.toBe(false)
   })
 })

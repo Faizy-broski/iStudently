@@ -22,16 +22,25 @@ import { AuthRequest } from './auth.middleware'
  * falling back to IP for the rare case no profile is attached — matches the
  * spec's own framing of the limit as "per account", not "per network".
  */
-export function createFinaRateLimit(windowMs: number, max: number) {
+/**
+ * Per-account limiter for authenticated routes (falls back to IP). `failuresOnly` counts only
+ * responses with status >= 400, so normal use never hits it (used for 2FA codes, passwords).
+ */
+export function createProfileRateLimit(windowMs: number, max: number, opts: { failuresOnly?: boolean; message?: string } = {}) {
   return rateLimit({
     windowMs,
     max,
     standardHeaders: true,
     legacyHeaders: false,
+    skipSuccessfulRequests: !!opts.failuresOnly,
     keyGenerator: (req, res) => {
       const profileId = (req as AuthRequest).profile?.id
       return profileId ? `profile:${profileId}` : ipKeyGenerator(req.ip || '')
     },
-    message: { success: false, error: 'Too many requests. Please try again later.' },
+    message: { success: false, error: opts.message ?? 'Too many requests. Please try again later.', code: 'RATE_LIMITED' },
   })
+}
+
+export function createFinaRateLimit(windowMs: number, max: number) {
+  return createProfileRateLimit(windowMs, max)
 }

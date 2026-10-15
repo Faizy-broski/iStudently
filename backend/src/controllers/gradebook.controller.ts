@@ -1,6 +1,10 @@
 import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { gradebookService } from '../services/gradebook.service'
+
+/** Fields a client may never change on update (they move or re-key the row). */
+const PROTECTED = ['id', 'school_id', 'campus_id', 'created_at', 'created_by', 'updated_at']
+const updatable = (body: unknown) => Object.fromEntries(Object.entries((body ?? {}) as Record<string, unknown>).filter(([k]) => !PROTECTED.includes(k))) as any
 import { supabase } from '../config/supabase'
 
 // ============================================================================
@@ -64,7 +68,7 @@ export const createAssignmentType = async (req: Request, res: Response) => {
 export const updateAssignmentType = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const data = await gradebookService.updateAssignmentType(id, req.body)
+    const data = await gradebookService.updateAssignmentType(id, updatable(req.body))
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in updateAssignmentType:', error)
@@ -142,7 +146,7 @@ export const createAssignment = async (req: Request, res: Response) => {
 export const updateAssignment = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const data = await gradebookService.updateAssignment(id, req.body)
+    const data = await gradebookService.updateAssignment(id, updatable(req.body))
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in updateAssignment:', error)
@@ -413,6 +417,26 @@ export const importGradebookGrades = async (req: Request, res: Response) => {
 // CONFIG
 // ============================================================================
 
+/** Booleans/numbers the settings pages read, derived from the stored keys (only when a key is set). */
+export function normalizeGradebookConfig(raw: Record<string, string>) {
+  const yn = (k: string) => (raw[k] === undefined ? undefined : raw[k] === 'Y')
+  const num = (k: string) => (raw[k] === undefined || raw[k] === '' ? undefined : Number(raw[k]))
+  return {
+    ...raw,
+    assignment_sorting: raw.ASSIGNMENT_SORTING,
+    auto_save_final_grades: yn('AUTO_SAVE_FINAL_GRADES'),
+    weight_assignment_types: yn('WEIGHT'),
+    weight_assignments: yn('WEIGHT_ASSIGNMENTS'),
+    default_assigned_date: yn('DEFAULT_ASSIGNED'),
+    default_due_date: yn('DEFAULT_DUE'),
+    hide_letter_grades: yn('LETTER_GRADE_ALL'),
+    hide_prev_quarters: yn('HIDE_PREVIOUS_ASSIGNMENT_TYPES'),
+    eligibility_cumulative: yn('ELIGIBILITY_CUMULITIVE'),
+    anomalous_max: num('ANOMALOUS_MAX'),
+    latency: num('LATENCY') ?? null,
+  }
+}
+
 export const getConfig = async (req: Request, res: Response) => {
   try {
     const schoolId = (req.query.school_id as string) || (req as AuthRequest).profile?.school_id
@@ -420,8 +444,11 @@ export const getConfig = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'school_id is required' })
     }
     const coursePeriodId = req.query.course_period_id as string | undefined
+    // School-wide settings, overridden by the campus's own (saved by the batch endpoint below).
+    const campusId = typeof req.query.campus_id === 'string' && req.query.campus_id !== schoolId ? req.query.campus_id : null
     const data = await gradebookService.getConfig(schoolId, coursePeriodId)
-    res.json({ success: true, data })
+    const campus = campusId ? await gradebookService.getConfig(campusId) : {}
+    res.json({ success: true, data: normalizeGradebookConfig({ ...data, ...campus }) })
   } catch (error: any) {
     console.error('Error in getConfig:', error)
     res.status(500).json({ success: false, error: error.message })
@@ -461,9 +488,12 @@ export const setBatchConfig = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'configs array is required' })
     }
 
+    // School-level keys for the campus (or the school). The campus id used to land in the
+    // course_period_id column, so saved settings were never read back.
+    const target = typeof campus_id === 'string' && campus_id ? campus_id : schoolId
     await Promise.all(
       configs.map(({ key, value }: { key: string; value: string }) =>
-        gradebookService.setConfig(schoolId, campus_id || null, key, String(value))
+        gradebookService.setConfig(target, null, key, String(value))
       )
     )
 

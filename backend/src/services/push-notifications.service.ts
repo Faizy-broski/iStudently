@@ -169,7 +169,7 @@ class PushNotificationsService {
 
     await Promise.allSettled(
       subscriptions.map(async (sub) => {
-        console.log(`[push] sending to subscription ${sub.id} (${sub.endpoint.slice(0, 60)}...)`)
+        console.log(`[push] sending to subscription ${sub.id}`)
         try {
           await webpush.sendNotification(
             {

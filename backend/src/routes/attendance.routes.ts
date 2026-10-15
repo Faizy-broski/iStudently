@@ -2,6 +2,17 @@ import { Router } from 'express'
 import * as attendanceController from '../controllers/attendance.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
+import { teachesSection } from '../utils/student-access'
+import type { AuthRequest } from '../middlewares/auth.middleware'
+import type { NextFunction, Request, Response } from 'express'
+
+// Admins for the whole school; a teacher only for one section they teach (web: /teacher/attendance/daily-summary).
+const adminOrOwnSection = async (req: Request, res: Response, next: NextFunction) => {
+  if ((req as AuthRequest).profile?.role !== 'teacher') return requireAdmin(req, res, next)
+  const section = req.query.section_id
+  if (typeof section === 'string' && (await teachesSection(req as AuthRequest, section))) return next()
+  return res.status(403).json({ success: false, error: 'Access denied' })
+}
 
 const router = Router()
 
@@ -72,14 +83,14 @@ router.get('/reports/ada-by-grade', requireAdmin, attendanceController.getADAByG
 // ============================================================================
 
 router.get('/reports/chart', requireAdmin, attendanceController.getAttendanceChart)
-router.get('/reports/daily-summary-grid', requireAdmin, attendanceController.getDailySummaryGrid)
+router.get('/reports/daily-summary-grid', adminOrOwnSection, attendanceController.getDailySummaryGrid)
 
 // ============================================================================
 // REPORTS > Attendance Summary
 // Per-student summary with code breakdown
 // ============================================================================
 
-router.get('/reports/summary', requireAdmin, attendanceController.getAttendanceSummary)
+router.get('/reports/summary', adminOrOwnSection, attendanceController.getAttendanceSummary)
 router.get('/reports/summary/export', requireAdmin, attendanceController.exportAttendanceSummary)
 
 // ============================================================================

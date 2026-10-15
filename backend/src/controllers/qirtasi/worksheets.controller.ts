@@ -5,6 +5,8 @@ import { supabase } from '../../config/supabase';
 import { matchesFileSignature } from '../../utils/file-signature';
 import { qirtasiWorksheetsService, QIRTASI_WORKSHEET_BUCKET, QirtasiWorksheet } from '../../services/qirtasi/worksheets.service';
 import { createQirtasiWorksheetSchema, updateQirtasiWorksheetSchema } from '../../types/index';
+import { campusIdsAllowed, schoolRootId } from '../../utils/campus-validation';
+import { qirtasiCurriculumService, CurriculumScopeError } from '../../services/qirtasi/curriculum.service';
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -37,6 +39,35 @@ function canManage(req: AuthRequest, worksheet: Pick<QirtasiWorksheet, 'owner_id
   const role = req.profile?.role;
   if (role === 'admin' || role === 'super_admin' || role === 'librarian') return true;
   return !!req.profile?.id && req.profile.id === worksheet.owner_id;
+}
+
+/**
+ * A worksheet may be read by its own school family, or by anyone when it is a published public
+ * marketplace sheet (school_id null). Writes need the caller's own family; public sheets stay
+ * super-admin only. (Every :id handler used to skip this, so any school could read, edit or
+ * delete another school's worksheet by id.)
+ */
+async function canAccess(req: AuthRequest, ws: { school_id?: string | null; visibility_scope?: string | null; status?: string | null }, write: boolean): Promise<boolean> {
+  if (req.profile?.role === 'super_admin') return true;
+  if (!ws.school_id) return !write && ws.visibility_scope === 'public' && ws.status === 'published';
+  return campusIdsAllowed(req.profile?.school_id, [ws.school_id]);
+}
+
+/** grade/subject/track/unit/lesson must come from the worksheet school's own curriculum tree. */
+async function placementError(
+  schoolId: string,
+  dto: { grade_id?: string | null; subject_id?: string | null; track_id?: string | null; unit_id?: string | null; lesson_id?: string | null },
+): Promise<string | null> {
+  const ids = { grade_id: dto.grade_id, subject_id: dto.subject_id, track_id: dto.track_id, unit_id: dto.unit_id, lesson_id: dto.lesson_id };
+  const root = await schoolRootId(schoolId);
+  if (!root) return 'Unknown school';
+  try {
+    await qirtasiCurriculumService.assertWorksheetPlacement(root, ids);
+    return null;
+  } catch (e: any) {
+    if (e instanceof CurriculumScopeError) return e.message;
+    throw e;
+  }
 }
 
 function isStaffRole(req: AuthRequest): boolean {
@@ -88,6 +119,7 @@ export class QirtasiWorksheetsController {
   async getWorksheetById(req: AuthRequest, res: Response) {
     try {
       const data = await qirtasiWorksheetsService.getWorksheetById(req.params.id);
+      if (!(await canAccess(req, data, false))) return res.status(404).json({ success: false, error: 'Not found' });
       res.json({ success: true, data });
     } catch (error: any) {
       res.status(404).json({ success: false, error: error.message });
@@ -123,6 +155,8 @@ export class QirtasiWorksheetsController {
       } catch (parseErr: any) {
         return res.status(400).json({ success: false, error: parseErr.message });
       }
+      const badPlacement = await placementError(schoolId, dto);
+      if (badPlacement) return res.status(400).json({ success: false, error: badPlacement });
 
       const worksheetId = randomUUID(); // used only for the storage path prefix, not the DB id
       const assets: { storage_key: string; mime_type: string; file_size: number; asset_role: string }[] = [];
@@ -166,10 +200,15 @@ export class QirtasiWorksheetsController {
   async updateWorksheet(req: AuthRequest, res: Response) {
     try {
       const existing = await qirtasiWorksheetsService.getWorksheetById(req.params.id);
+      if (!(await canAccess(req, existing, true))) return res.status(404).json({ success: false, error: 'Not found' });
       if (!canManage(req, existing)) {
         return res.status(403).json({ success: false, error: 'Only the owner, an admin, or a librarian can edit this worksheet' });
       }
       const dto = updateQirtasiWorksheetSchema.parse(req.body);
+      if (existing.school_id) {
+        const badPlacement = await placementError(existing.school_id, dto);
+        if (badPlacement) return res.status(400).json({ success: false, error: badPlacement });
+      }
       const data = await qirtasiWorksheetsService.updateWorksheet(req.params.id, dto);
       res.json({ success: true, data });
     } catch (error: any) {
@@ -180,6 +219,7 @@ export class QirtasiWorksheetsController {
   async deleteWorksheet(req: AuthRequest, res: Response) {
     try {
       const existing = await qirtasiWorksheetsService.getWorksheetById(req.params.id);
+      if (!(await canAccess(req, existing, true))) return res.status(404).json({ success: false, error: 'Not found' });
       if (!canManage(req, existing)) {
         return res.status(403).json({ success: false, error: 'Only the owner, an admin, or a librarian can delete this worksheet' });
       }
@@ -193,6 +233,8 @@ export class QirtasiWorksheetsController {
 
   async downloadWorksheet(req: AuthRequest, res: Response) {
     try {
+      const ws = await qirtasiWorksheetsService.getWorksheetById(req.params.id);
+      if (!(await canAccess(req, ws, false))) return res.status(404).json({ success: false, error: 'Not found' });
       const data = await qirtasiWorksheetsService.mintAssetUrl(req.params.id, 'primary');
       if (!data) return res.status(404).json({ success: false, error: 'File not found' });
       res.json({ success: true, data });
@@ -203,6 +245,8 @@ export class QirtasiWorksheetsController {
 
   async thumbnailWorksheet(req: AuthRequest, res: Response) {
     try {
+      const ws = await qirtasiWorksheetsService.getWorksheetById(req.params.id);
+      if (!(await canAccess(req, ws, false))) return res.status(404).json({ success: false, error: 'Not found' });
       const data = await qirtasiWorksheetsService.mintAssetUrl(req.params.id, 'thumbnail');
       res.json({ success: true, data: { url: data?.url ?? null } });
     } catch (error: any) {
@@ -215,6 +259,8 @@ export class QirtasiWorksheetsController {
       if (!isStaffRole(req)) {
         return res.status(403).json({ success: false, error: 'Answer keys are only visible to staff' });
       }
+      const ws = await qirtasiWorksheetsService.getWorksheetById(req.params.id);
+      if (!(await canAccess(req, ws, false))) return res.status(404).json({ success: false, error: 'Not found' });
       const data = await qirtasiWorksheetsService.mintAssetUrl(req.params.id, 'answer_key');
       res.json({ success: true, data: { url: data?.url ?? null } });
     } catch (error: any) {

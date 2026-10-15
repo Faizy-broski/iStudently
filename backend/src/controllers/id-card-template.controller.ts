@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import { supabase } from '../config/supabase';
+import { campusIdsAllowed } from '../utils/campus-validation';
 import { IdCardTemplateService, SUBSTITUTION_TOKENS } from '../services/id-card-template.service';
 import { setupStatusService } from '../services/setup-status.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
@@ -13,6 +15,21 @@ const SAMPLE_AVATAR_DATA_URI =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5e7eb"/>' +
       '<circle cx="50" cy="38" r="18" fill="%239ca3af"/><path d="M18 88c0-20 14-32 32-32s32 12 32 32" fill="%239ca3af"/></svg>'
   );
+
+/**
+ * Teacher/staff ID cards include personal details, so only the person themselves or an admin of the
+ * same school family may generate one (any signed-in user could before, for any school).
+ */
+async function canGenerateCardFor(req: AuthRequest, table: 'teachers' | 'staff', recordId: string): Promise<boolean> {
+  const caller = req.profile
+  if (!caller) return false
+  if (caller.role === 'super_admin') return true
+  const { data: row } = await supabase.from(table).select('school_id, profile_id').eq('id', recordId).maybeSingle()
+  if (!row) return false
+  if (row.profile_id && row.profile_id === caller.id) return true
+  if (caller.role !== 'admin') return false
+  return campusIdsAllowed(caller.school_id, [row.school_id])
+}
 
 export class IdCardTemplateController {
   /**
@@ -243,6 +260,10 @@ export class IdCardTemplateController {
         return res.status(400).json({ error: 'Teacher ID is required' });
       }
 
+      if (!(await canGenerateCardFor(req, 'teachers', teacher_id as string))) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
       const idCard = await templateService.generateTeacherIdCard(teacher_id as string);
 
       res.json({ idCard });
@@ -261,6 +282,10 @@ export class IdCardTemplateController {
 
       if (!staff_id) {
         return res.status(400).json({ error: 'Staff ID is required' });
+      }
+
+      if (!(await canGenerateCardFor(req, 'staff', staff_id as string))) {
+        return res.status(404).json({ error: 'Not found' });
       }
 
       const idCard = await templateService.generateStaffIdCard(staff_id as string);

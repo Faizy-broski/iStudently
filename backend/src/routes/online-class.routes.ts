@@ -2,12 +2,14 @@ import { Router } from 'express'
 import * as ctrl from '../controllers/online-class.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireTeacher, requireAdmin, requireStudent } from '../middlewares/role.middleware'
+import { requireRequestSchoolsInFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 router.use(authenticate)
 
 // Teacher
-router.post('/', requireTeacher, ctrl.submitRequest)
+// body.campus_id is used as given; keep it to the caller's school family.
+router.post('/', requireTeacher, requireRequestSchoolsInFamily, ctrl.submitRequest)
 router.get('/mine', requireTeacher, ctrl.listMyRequests)
 router.post('/:id/cancel', requireTeacher, ctrl.cancelMyRequest)
 router.post('/:id/start-session', requireTeacher, ctrl.startSession) // external_open flow only, still approval-gated

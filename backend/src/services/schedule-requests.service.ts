@@ -158,6 +158,10 @@ export const massCreateRequests = async (
         marking_period_id: dto.marking_period_id,
         campus_id: dto.campus_id,
         priority: dto.priority,
+        with_teacher_id: dto.with_teacher_id || undefined,
+        not_teacher_id: dto.not_teacher_id || undefined,
+        with_period_id: dto.with_period_id || undefined,
+        not_period_id: dto.not_period_id || undefined,
       }, requestedBy)
 
       if (result.success) {

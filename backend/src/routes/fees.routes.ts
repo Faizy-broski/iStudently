@@ -2,8 +2,15 @@ import { Router } from 'express'
 import { feesController } from '../controllers/fees.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireStaff } from '../middlewares/role.middleware'
+import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
+
+// Ids sent in the body must belong to the caller's school family (the services trust them).
+const bodyStudent = requireBodyRowsInSchoolFamily('students', 'student_id')
+const bodyCategory = requireBodyRowsInSchoolFamily('fee_categories', 'fee_category_id')
+const bodyGrades = (field: string) => requireBodyRowsInSchoolFamily('grade_levels', field)
+const bodySections = requireBodyRowsInSchoolFamily('sections', 'section_id')
 
 // All routes require authentication
 router.use(authenticate)
@@ -49,14 +56,14 @@ router.post('/payments', requireStaff, (req, res) => feesController.recordPaymen
 router.get('/payments/students', requireStaff, (req, res) => feesController.getStudentsForPayments(req, res))
 router.get('/payments/all-with-students', requireStaff, (req, res) => feesController.getAllPaymentsWithStudents(req, res))
 router.get('/payments/student/:studentId', requireStaff, (req, res) => feesController.getStudentPayments(req, res))
-router.post('/payments/record', requireStaff, (req, res) => feesController.recordDirectPayment(req, res))
+router.post('/payments/record', requireStaff, bodyStudent, (req, res) => feesController.recordDirectPayment(req, res))
 router.post('/payments/:paymentId/refund', requireAdmin, (req, res) => feesController.refundPayment(req, res))
 router.put('/payments/:paymentId', requireAdmin, (req, res) => feesController.updatePayment(req, res))
 router.delete('/payments/:paymentId', requireAdmin, (req, res) => feesController.deletePayment(req, res))
 
 // Fee Generation
 router.post('/generate', requireAdmin, (req, res) => feesController.generateFee(req, res))
-router.post('/generate-for-student', requireAdmin, (req, res) => feesController.generateFeeForNewStudent(req, res))
+router.post('/generate-for-student', requireAdmin, bodyStudent, bodyGrades('grade_id'), (req, res) => feesController.generateFeeForNewStudent(req, res))
 
 // Admin Actions
 router.post('/students/:id/restore-discount', requireAdmin, (req, res) => feesController.restoreDiscount(req, res))
@@ -71,13 +78,13 @@ router.post('/apply-late-fees', requireAdmin, (req, res) => feesController.apply
 router.post('/cron/apply-late-fees', (req, res) => feesController.applyLateFeesGlobal(req, res))
 
 // Monthly Fee Generation
-router.post('/generate-monthly', requireAdmin, (req, res) => feesController.generateMonthlyFees(req, res))
+router.post('/generate-monthly', requireAdmin, bodyGrades('grade_level_id'), bodySections, (req, res) => feesController.generateMonthlyFees(req, res))
 // Called by external cron with no user session — gated by CRON_SECRET header check inside the controller
 router.post('/cron/generate-monthly', (req, res) => feesController.generateMonthlyFeesGlobal(req, res))
 
 // Student Fee Overrides (Pre-Generation Custom Fees)
 router.get('/overrides', requireAdmin, (req, res) => feesController.getAllSchoolFeeOverrides(req, res))
-router.post('/overrides', requireAdmin, (req, res) => feesController.createStudentFeeOverride(req, res))
+router.post('/overrides', requireAdmin, bodyStudent, bodyCategory, (req, res) => feesController.createStudentFeeOverride(req, res))
 router.get('/overrides/student/:studentId', requireAdmin, (req, res) => feesController.getStudentFeeOverrides(req, res))
 router.put('/overrides/:id', requireAdmin, (req, res) => feesController.updateStudentFeeOverride(req, res))
 router.delete('/overrides/:id', requireAdmin, (req, res) => feesController.deleteStudentFeeOverride(req, res))

@@ -2,7 +2,7 @@ import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { SchoolService } from '../services/school.service'
 import { CreateSchoolDTO, UpdateSchoolDTO } from '../types'
-import { getStoredCredentialsAsSuperAdmin } from '../services/username.service'
+import { getStoredCredentialsAsSuperAdmin, regenerateCredentialsAsSuperAdmin } from '../services/username.service'
 import { copySchoolSettings, type CopySchoolSettingsOptions } from '../services/school-settings-copy.service'
 import * as logoAppearanceService from '../services/logo-appearance.service'
 import { supabase } from '../config/supabase'
@@ -444,7 +444,10 @@ export class SchoolController {
         })
       }
 
-      const credentials = await getStoredCredentialsAsSuperAdmin(adminInfo.user_id)
+      // ?regenerate=false: never reset the real password on a read (the app always sends it).
+      const credentials = await getStoredCredentialsAsSuperAdmin(adminInfo.user_id, {
+        regenerateIfMissing: req.query.regenerate !== 'false',
+      })
 
       res.json({
         success: true,
@@ -468,6 +471,24 @@ export class SchoolController {
    * PATCH /api/schools/:id/admin
    * Super Admin only
    */
+
+  /**
+   * POST /api/schools/:id/admin/credentials/regenerate
+   * Explicitly resets the school admin's password (they must change it at next sign-in).
+   */
+  async regenerateSchoolAdminCredentials(req: AuthRequest, res: Response) {
+    try {
+      const adminInfo = await schoolService.getSchoolAdmin(req.params.id)
+      if (!adminInfo) {
+        return res.status(404).json({ success: false, error: 'Admin information not found for this school' })
+      }
+      const credentials = await regenerateCredentialsAsSuperAdmin(adminInfo.user_id)
+      res.json({ success: true, data: { admin_name: adminInfo.admin_name, admin_email: adminInfo.admin_email, ...credentials } })
+    } catch (error: any) {
+      console.error('Regenerate admin credentials error:', error?.message)
+      res.status(500).json({ success: false, error: 'Failed to regenerate credentials' })
+    }
+  }
   async updateSchoolAdmin(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params

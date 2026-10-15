@@ -114,3 +114,59 @@ export async function resolveSchoolId(
 
   return { schoolId: requestedSchoolId }
 }
+
+// ── School family check (used by authenticate for every campus_id) ───────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const ROOT_TTL_MS = 10 * 60 * 1000
+const rootCache = new Map<string, { root: string | null; at: number }>()
+
+/** Main school id of a school/campus (follows parent_school_id), or null if it doesn't exist. Cached. */
+export async function schoolRootId(id: string): Promise<string | null> {
+  const hit = rootCache.get(id)
+  if (hit && Date.now() - hit.at < ROOT_TTL_MS) return hit.root
+  let current: string | null = id
+  let root: string | null = null
+  for (let depth = 0; current && depth < 5; depth++) {
+    const { data, error } = await supabase.from('schools').select('id, parent_school_id').eq('id', current).maybeSingle()
+    if (error) throw error
+    if (!data) break
+    root = data.id
+    current = data.parent_school_id
+  }
+  rootCache.set(id, { root, at: Date.now() })
+  return root
+}
+
+/** Request fields that many handlers use directly as the school to read or write. */
+const SCOPE_KEYS = ['campus_id', 'school_id', 'campusId', 'schoolId'] as const
+
+/** Every UUID-shaped campus/school id (snake or camel case) in the query string and JSON body (top level). */
+export function requestedCampusIds(query: unknown, body: unknown): string[] {
+  const out: string[] = []
+  const add = (v: unknown) => {
+    for (const x of Array.isArray(v) ? v : [v]) if (typeof x === 'string' && UUID_RE.test(x.trim())) out.push(x.trim())
+  }
+  for (const key of SCOPE_KEYS) {
+    if (query && typeof query === 'object') add((query as Record<string, unknown>)[key])
+    if (body && typeof body === 'object' && !Array.isArray(body)) add((body as Record<string, unknown>)[key])
+  }
+  return [...new Set(out)]
+}
+
+/**
+ * True when every requested campus belongs to the same school family (same main school) as the
+ * caller's school. Many endpoints use campus_id directly as the school id, so without this any
+ * signed-in user could read another school's data by passing its id.
+ */
+export async function campusIdsAllowed(profileSchoolId: string | null | undefined, campusIds: string[]): Promise<boolean> {
+  if (campusIds.length === 0) return true
+  if (!profileSchoolId) return false
+  const own = await schoolRootId(profileSchoolId)
+  if (!own) return false
+  for (const id of campusIds) {
+    if (id === profileSchoolId) continue
+    if ((await schoolRootId(id)) !== own) return false
+  }
+  return true
+}

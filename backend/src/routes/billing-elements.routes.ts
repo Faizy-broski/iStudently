@@ -3,9 +3,22 @@ import { billingElementsService } from '../services/billing-elements.service'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
 import { requireAdmin, requireStaff } from '../middlewares/role.middleware'
 import { supabase } from '../config/supabase'
+import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 router.use(authenticate)
+
+/** Copies only the listed fields that are present, so an update can never move a row to another school. */
+const pick = (body: any, keys: string[]) => Object.fromEntries(keys.filter((k) => body && k in body).map((k) => [k, body[k]]))
+// Ids sent in the body must belong to the caller's school family.
+const bodyRows = (table: string, field: string | ((b: any) => unknown)) => requireBodyRowsInSchoolFamily(table, field)
+const elementRefs = [
+  bodyRows('billing_element_categories', 'category_id'),
+  bodyRows('grade_levels', 'grade_level_id'),
+  bodyRows('sections', 'course_period_section_id'),
+  bodyRows('subjects', 'course_period_subject_id'),
+]
+const studentElementRefs = [bodyRows('students', (b) => [b.student_id, ...(Array.isArray(b.student_ids) ? b.student_ids : [])]), bodyRows('billing_elements', 'billing_element_id')]
 
 // ============================================================================
 // STUDENT SELF-SERVICE (zero-trust: identity derived from req.user, never from client params)
@@ -80,7 +93,7 @@ router.put('/categories/:id', requireAdmin, async (req: AuthRequest, res: Respon
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
 
     const { id } = req.params
-    const data = await billingElementsService.updateCategory(id, schoolId, req.body)
+    const data = await billingElementsService.updateCategory(id, schoolId, pick(req.body, ['title', 'sort_order', 'is_active']))
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error updating billing category:', error)
@@ -133,7 +146,7 @@ router.get('/elements/:id', requireStaff, async (req: AuthRequest, res: Response
   }
 })
 
-router.post('/elements', requireAdmin, async (req: AuthRequest, res: Response) => {
+router.post('/elements', requireAdmin, ...elementRefs, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -161,12 +174,12 @@ router.post('/elements', requireAdmin, async (req: AuthRequest, res: Response) =
   }
 })
 
-router.put('/elements/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
+router.put('/elements/:id', requireAdmin, ...elementRefs, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
 
-    const data = await billingElementsService.updateElement(req.params.id, schoolId, req.body)
+    const data = await billingElementsService.updateElement(req.params.id, schoolId, pick(req.body, ['category_id', 'title', 'amount', 'grade_level_id', 'course_period_section_id', 'course_period_subject_id', 'comment', 'sort_order', 'is_active']))
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error updating billing element:', error)
@@ -207,7 +220,7 @@ router.get('/student-elements', requireStaff, async (req: AuthRequest, res: Resp
   }
 })
 
-router.post('/student-elements', requireStaff, async (req: AuthRequest, res: Response) => {
+router.post('/student-elements', requireStaff, ...studentElementRefs, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -233,7 +246,7 @@ router.post('/student-elements', requireStaff, async (req: AuthRequest, res: Res
   }
 })
 
-router.post('/student-elements/mass-assign', requireAdmin, async (req: AuthRequest, res: Response) => {
+router.post('/student-elements/mass-assign', requireAdmin, ...studentElementRefs, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -259,12 +272,12 @@ router.post('/student-elements/mass-assign', requireAdmin, async (req: AuthReque
   }
 })
 
-router.put('/student-elements/:id', requireStaff, async (req: AuthRequest, res: Response) => {
+router.put('/student-elements/:id', requireStaff, bodyRows('billing_elements', 'billing_element_id'), async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
 
-    const data = await billingElementsService.updateStudentElement(req.params.id, schoolId, req.body)
+    const data = await billingElementsService.updateStudentElement(req.params.id, schoolId, pick(req.body, ['billing_element_id', 'element_title', 'amount', 'due_date', 'comment', 'status']))
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error updating student element:', error)
@@ -289,7 +302,7 @@ router.delete('/student-elements/:id', requireAdmin, async (req: AuthRequest, re
 // TRANSACTIONS
 // ============================================================================
 
-router.post('/transactions', requireStaff, async (req: AuthRequest, res: Response) => {
+router.post('/transactions', requireStaff, bodyRows('students', 'student_id'), bodyRows('student_billing_elements', 'student_billing_element_id'), async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })

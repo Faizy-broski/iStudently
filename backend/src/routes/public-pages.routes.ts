@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
+import { readAppConfig } from '../services/app-config.service'
+import { resolveUsernameEmail } from '../services/resolve-username.service'
+import { createProfileRateLimit } from '../middlewares/rate-limit.middleware'
 import type { AuthRequest } from '../middlewares/auth.middleware'
 import {
   getSchoolBySlug,
@@ -91,9 +94,13 @@ router.get(
       // switcher and previously caused this config to be saved under a
       // different school_settings row than the one the Plugins page activates).
       const campusId = (req.query.campus_id as string | undefined) || null
-      const { config } = await getPublicPagesConfig(schoolId, campusId)
+      const [{ config }, { data: school }] = await Promise.all([
+        getPublicPagesConfig(schoolId, campusId),
+        // The public URL is /p/<slug> of the main school (admins can't read /schools/:id).
+        supabase.from('schools').select('slug').eq('id', schoolId).maybeSingle(),
+      ])
 
-      res.json({ success: true, data: { config, available_pages: ALL_PUBLIC_PAGES } })
+      res.json({ success: true, data: { config, available_pages: ALL_PUBLIC_PAGES, slug: school?.slug ?? null } })
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })
     }
@@ -198,48 +205,26 @@ router.get('/social-login-config', async (_req: Request, res: Response) => {
  * No authentication required — needed before the user can sign in.
  * Returns only { email } — no sensitive data exposed.
  */
-router.post('/resolve-username', async (req: Request, res: Response) => {
+// Counts only failed lookups per IP, so a school network signing in together is never blocked,
+// but guessing usernames (to learn emails) is.
+const resolveUsernameLimit = createProfileRateLimit(15 * 60 * 1000, 20, {
+  failuresOnly: true,
+  message: 'Too many attempts. Please wait a few minutes and try again.',
+})
+
+router.post('/resolve-username', resolveUsernameLimit, async (req: Request, res: Response) => {
   try {
     const { username } = req.body
     if (!username || typeof username !== 'string' || username.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'Username is required' })
     }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .ilike('username', username.trim())
-      .eq('is_active', true)
-      .single()
-
-    if (error || !data?.email) {
+    const email = await resolveUsernameEmail(username)
+    if (!email) {
       return res.status(404).json({ success: false, error: 'User not found' })
     }
 
-    // TEMP DEBUG (remove once the "invalid login credentials despite a
-    // freshly-set password" issue is confirmed resolved): resolve-username
-    // returns profiles.email, but Supabase Auth actually checks against
-    // auth.users.email — if the two have ever diverged for this profile
-    // (e.g. an email edited without the paired auth update, or a leftover
-    // effect of the earlier credential race condition), login fails with a
-    // generic "Invalid login credentials" no matter how correct the password
-    // is. Logging both sides side-by-side turns that guess into a fact.
-    supabase.auth.admin.getUserById(data.id).then(({ data: authData, error: authErr }) => {
-      if (authErr) {
-        console.error('[resolve-username] DEBUG auth lookup failed', { profileId: data.id, error: authErr.message })
-        return
-      }
-      const authEmail = authData.user?.email
-      console.error('[resolve-username] DEBUG', {
-        profileId: data.id,
-        usernameTyped: username.trim(),
-        profilesEmail: data.email,
-        authUsersEmail: authEmail,
-        match: authEmail === data.email,
-      })
-    })
-
-    res.json({ success: true, email: data.email })
+    res.json({ success: true, email })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message })
   }
@@ -248,6 +233,17 @@ router.post('/resolve-username', async (req: Request, res: Response) => {
 // ============================================================================
 // PUBLIC LOGIN LINKS — no auth, used by login page
 // ============================================================================
+
+/**
+ * GET /api/public/app-config
+ * Mobile app configuration needed before sign-in: minimum/latest versions,
+ * maintenance mode, feature flags and server time. No auth. Registered before
+ * the /:slug routes so "app-config" is never treated as a school slug.
+ */
+router.get('/app-config', (_req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store')
+  res.json({ success: true, data: readAppConfig() })
+})
 
 /**
  * GET /api/public/login-links

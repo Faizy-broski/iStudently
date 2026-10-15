@@ -464,6 +464,8 @@ function QuizTaker({
 
           {(q.type === 'gap') && (
             <div className="text-sm text-muted-foreground italic">
+              {/* Server sends the text with blanks as ____ (answers revealed only after submission). */}
+              {q.answer && <p className="not-italic text-foreground mb-1 whitespace-pre-line">{q.answer}</p>}
               Gap fill — answer: {isSubmitted ? (getAnswer(mapId) || '—') : (
                 <Input
                   value={getAnswer(mapId)}
@@ -476,8 +478,9 @@ function QuizTaker({
           )}
 
           {(q.type === 'anatomy_label') && (() => {
-            const correctAnswer = q.correct_answer as { organId: string; hotspotId: string } | null
-            if (!correctAnswer?.organId || !correctAnswer?.hotspotId) {
+            // hotspotId is only present once answers are revealed (submitted + show_correct_answers).
+            const correctAnswer = q.correct_answer as { organId: string; hotspotId?: string } | null
+            if (!correctAnswer?.organId) {
               return <p className="text-sm text-destructive">This question has no answer configured.</p>
             }
             const picked = getAnswer(mapId)
@@ -493,7 +496,7 @@ function QuizTaker({
                 />
                 {picked && (
                   <p className="text-xs text-muted-foreground">
-                    You picked: {picked}{isSubmitted && quiz.show_correct_answers ? ` (correct: ${correctAnswer.hotspotId})` : ''}
+                    You picked: {picked}{isSubmitted && quiz.show_correct_answers && correctAnswer.hotspotId ? ` (correct: ${correctAnswer.hotspotId})` : ''}
                   </p>
                 )}
               </div>

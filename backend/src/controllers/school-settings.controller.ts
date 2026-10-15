@@ -3,6 +3,7 @@ import { DiaryReminderService } from '../services/diary-reminder.service'
 import { supabase } from '../config/supabase'
 import { createTransporter, SmtpConfig } from '../config/mail'
 import { getMainSchoolId } from '../utils/campus.util'
+import { withoutSettingsSecrets } from '../utils/settings-secrets'
 import { UserProfilesService } from '../services/user-profiles.service'
 
 interface AuthRequest extends Request {
@@ -50,7 +51,7 @@ export class SchoolSettingsController {
       const deniedModules = await this.reminderService.getDeniedModules(rootSchoolId)
 
       const formattedSettings = settings ? {
-        ...settings,
+        ...withoutSettingsSecrets(settings),
         allowed_modules: allowedModules,
         denied_modules: deniedModules,
         enable_payment_reminder: settings.enable_payment_reminder ?? true,

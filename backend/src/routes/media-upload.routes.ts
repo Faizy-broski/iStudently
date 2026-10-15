@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import multer from 'multer'
 import { authenticate } from '../middlewares/auth.middleware'
-import { uploadMediaRecording, uploadImageAsset, uploadMessageAttachment } from '../controllers/media-upload.controller'
+import { uploadMediaRecording, uploadImageAsset, uploadMessageAttachment, uploadLibraryFile } from '../controllers/media-upload.controller'
+import { requireRole } from '../middlewares/role.middleware'
 
 const router = Router()
 
@@ -21,5 +22,8 @@ router.post('/upload-image', upload.single('file'), uploadImageAsset)
 
 // POST /api/media/upload-attachment  — field name must be "file"
 router.post('/upload-attachment', upload.single('file'), uploadMessageAttachment)
+
+// POST /api/media/upload-library-file  — library covers/documents (field "file", body kind + category_id)
+router.post('/upload-library-file', requireRole('admin', 'librarian'), upload.single('file'), uploadLibraryFile)
 
 export default router

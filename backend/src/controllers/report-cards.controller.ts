@@ -1,5 +1,9 @@
 import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
+
+/** Fields a client may never change on update (they move or re-key the row). */
+const PROTECTED = ['id', 'school_id', 'campus_id', 'created_at', 'created_by', 'updated_at']
+const updatable = (body: unknown) => Object.fromEntries(Object.entries((body ?? {}) as Record<string, unknown>).filter(([k]) => !PROTECTED.includes(k))) as any
 import { reportCardsService } from '../services/report-cards.service'
 
 // ============================================================================
@@ -34,7 +38,7 @@ export const createCategory = async (req: Request, res: Response) => {
 export const updateCategory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const data = await reportCardsService.updateCategory(id, req.body)
+    const data = await reportCardsService.updateCategory(id, updatable(req.body))
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in updateCategory:', error)
@@ -84,7 +88,7 @@ export const createComment = async (req: Request, res: Response) => {
 export const updateComment = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const data = await reportCardsService.updateComment(id, req.body)
+    const data = await reportCardsService.updateComment(id, updatable(req.body))
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in updateComment:', error)
@@ -123,8 +127,8 @@ export const createCodeScale = async (req: Request, res: Response) => {
   try {
     const schoolId = (req as AuthRequest).profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
-    const { title, comment, campus_id } = req.body
-    const data = await reportCardsService.createCodeScale(schoolId, title, comment, campus_id)
+    const { title, comment, campus_id, sort_order } = req.body
+    const data = await reportCardsService.createCodeScale(schoolId, title, comment, campus_id, typeof sort_order === 'number' ? sort_order : undefined)
     res.status(201).json({ success: true, data })
   } catch (error: any) {
     console.error('Error in createCodeScale:', error)
@@ -141,6 +145,30 @@ export const createCode = async (req: Request, res: Response) => {
     res.status(201).json({ success: true, data })
   } catch (error: any) {
     console.error('Error in createCode:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const updateCodeScale = async (req: Request, res: Response) => {
+  try {
+    const { title, comment, sort_order } = req.body ?? {}
+    if (title !== undefined && !String(title).trim()) return res.status(400).json({ success: false, error: 'title is required' })
+    const data = await reportCardsService.updateCodeScale(req.params.id, { title, comment, sort_order })
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in updateCodeScale:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const updateCode = async (req: Request, res: Response) => {
+  try {
+    const { title, short_name, comment, sort_order } = req.body ?? {}
+    if (title !== undefined && !String(title).trim()) return res.status(400).json({ success: false, error: 'title is required' })
+    const data = await reportCardsService.updateCode(req.params.id, { title, short_name, comment, sort_order })
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in updateCode:', error)
     res.status(500).json({ success: false, error: error.message })
   }
 }

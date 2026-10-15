@@ -80,7 +80,8 @@ class FinalGradesService {
         course_period:course_periods(
           id, title,
           course:courses(id, title, short_name, credit_hours, subject:subjects(id, name, code)),
-          teacher_id
+          teacher_id,
+          teacher:staff!teacher_id(id, profile:profiles!profile_id(first_name, last_name))
         ),
         marking_period:marking_periods(id, title, start_date, end_date)
       `)

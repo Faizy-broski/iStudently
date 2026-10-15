@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { finalGradesService } from '../services/final-grades.service'
+import { canViewCoursePeriod, canViewStudent } from '../utils/student-access'
 
 // ============================================================================
 // FINAL GRADES
@@ -12,6 +13,7 @@ export const getFinalGrades = async (req: Request, res: Response) => {
     if (!course_period_id) {
       return res.status(400).json({ success: false, error: 'course_period_id is required' })
     }
+    if (!(await canViewCoursePeriod(req as AuthRequest, course_period_id as string))) return res.status(404).json({ success: false, error: 'Not found' })
     const data = await finalGradesService.getFinalGrades(
       course_period_id as string,
       marking_period_id as string | undefined
@@ -27,6 +29,7 @@ export const getStudentFinalGrades = async (req: Request, res: Response) => {
   try {
     const { studentId } = req.params
     const { academic_year_id } = req.query
+    if (!(await canViewStudent(req as AuthRequest, studentId))) return res.status(404).json({ success: false, error: 'Not found' })
     const data = await finalGradesService.getStudentFinalGrades(
       studentId,
       academic_year_id as string | undefined
@@ -45,6 +48,10 @@ export const saveFinalGrade = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'school_id is required' })
     }
     const userId = (req as AuthRequest).user?.id
+    // The upsert overwrites any existing row for (student, course period, MP): both must be in the caller's school family.
+    const { student_id, course_period_id } = req.body ?? {}
+    if (!(await canViewStudent(req as AuthRequest, student_id)) || !(await canViewCoursePeriod(req as AuthRequest, course_period_id)))
+      return res.status(404).json({ success: false, error: 'Not found' })
     const data = await finalGradesService.saveFinalGrade(schoolId, req.body, userId)
     res.json({ success: true, data })
   } catch (error: any) {
@@ -208,6 +215,7 @@ export const getGradeBreakdown = async (req: Request, res: Response) => {
     if (!academic_year_id) {
       return res.status(400).json({ success: false, error: 'academic_year_id is required' })
     }
+    if (!(await canViewStudent(req as AuthRequest, studentId))) return res.status(404).json({ success: false, error: 'Not found' })
 
     const data = await finalGradesService.getGradeBreakdown(
       studentId,

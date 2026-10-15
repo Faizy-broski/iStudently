@@ -280,8 +280,10 @@ class PortalService {
   }
 
   async updateNote(noteId: string, dto: UpdateNoteDTO): Promise<PortalNote> {
-    const updateData: any = { ...dto }
-    
+    // Never let the body move the row to another school or rewrite ownership.
+    const { school_id: _s, id: _i, created_by: _c, created_at: _ca, ...rest } = dto as any
+    const updateData: any = { ...rest }
+
     // Clean undefined values
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === undefined) delete updateData[key]
@@ -511,7 +513,8 @@ class PortalService {
     // Extract questions from dto - they're handled separately
     const { questions, ...pollData } = dto
     
-    const updateData: any = { ...pollData }
+    const { school_id: _s, id: _i, created_by: _c, created_at: _ca, ...rest } = pollData as any
+    const updateData: any = { ...rest }
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === undefined) delete updateData[key]
     })

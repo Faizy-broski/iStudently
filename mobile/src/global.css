@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens. Same names as the web's shadcn theme (frontend/src/app/globals.css, oklch converted
+ * to HSL for React Native). Primary is the Studently brand blue; navy for headers/splash.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 11% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 11% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 11% 4%;
+    --primary: 223 100% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 3.5% 95.8%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 3.5% 95.8%;
+    --muted-foreground: 240 4.4% 46.3%;
+    --accent: 240 3.5% 95.8%;
+    --accent-foreground: 240 6% 10%;
+    --destructive: 357 100% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 72% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 223 100% 42%;
+    --brand-navy: 224 97% 23%;
+    --radius: 10px;
+  }
+
+  .dark:root {
+    --background: 240 11% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 6% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 6% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 222 100% 68%;
+    --primary-foreground: 240 11% 4%;
+    --secondary: 240 4% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 15.9%;
+    --muted-foreground: 240 5.7% 64.3%;
+    --accent: 240 4% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 359 100% 70%;
+    --destructive-foreground: 240 11% 4%;
+    --success: 152 60% 50%;
+    --success-foreground: 240 11% 4%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 240 11% 4%;
+    --border: 240 4% 18%;
+    --input: 240 4% 22%;
+    --ring: 222 100% 68%;
+    --brand-navy: 224 70% 35%;
+  }
+}

@@ -98,7 +98,7 @@ function ReferralCard({ referral, fieldNameMap }: { referral: any; fieldNameMap:
         <CardContent className="pt-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {entries.map(([key, value]) => {
-              const label = fieldNameMap[key] || key.replace(/_/g, ' ')
+              const label = fieldNameMap[key] || referral.field_names?.[key] || key.replace(/_/g, ' ')
               const display = formatValue(value)
               return (
                 <div key={key} className="text-sm">

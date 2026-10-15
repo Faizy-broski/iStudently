@@ -2,6 +2,8 @@ import express from 'express'
 import * as gradesReportsController from '../controllers/grades-reports.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin } from '../middlewares/role.middleware'
+import { ownStudentsOr } from '../middlewares/student-access.middleware'
+import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = express.Router()
 
@@ -20,6 +22,7 @@ router.get('/honor-roll', gradesReportsController.getHonorRollStudents)
 
 // GET /grades-reports/class-rank?school_id=&academic_year_id=&marking_period_id=&section_id=&grade_level_id=
 router.get('/class-rank', gradesReportsController.getClassRanks)
+router.get('/gpa-rank', requireAdmin, gradesReportsController.getGpaRankList)
 
 // POST /grades-reports/class-rank/recalculate (admin)
 router.post('/class-rank/recalculate', requireAdmin, gradesReportsController.recalculateRanks)
@@ -32,7 +35,8 @@ router.get('/course-class-rank', gradesReportsController.getCourseClassRank)
 // ============================================================================
 
 // POST /grades-reports/transcripts/generate  (batch - for printing)
-router.post('/transcripts/generate', requireAdmin, gradesReportsController.generateTranscripts)
+// Admins for the school's students; a student for themselves, a parent for linked children (web: /parent/grades/transcripts).
+router.post('/transcripts/generate', ownStudentsOr(requireAdmin, (req) => req.body?.student_ids), requireBodyRowsInSchoolFamily('students', 'student_ids'), gradesReportsController.generateTranscripts)
 
 // GET /grades-reports/transcript/:studentId
 router.get('/transcript/:studentId', gradesReportsController.getTranscript)

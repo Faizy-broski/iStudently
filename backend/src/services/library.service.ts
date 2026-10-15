@@ -2,6 +2,13 @@ import { supabase } from '../config/supabase';
 import { getAllCampusIds, isCampus } from '../utils/school-helpers';
 import { Book, BookCopy, BookLoan, BookCopyStatus, LoanStatus, LibraryCategory, LibraryDocumentField, BorrowerType } from '../types';
 
+/** A search term made safe for a PostgREST .or() filter: commas, parentheses and wildcard/escape
+ * characters would otherwise change the filter itself. */
+function orTerm(value: string): string {
+  return (value || '').replace(/[,()%*\\:"]/g, ' ').trim()
+}
+
+
 export class LibraryService {
   // ==================== BOOK MANAGEMENT ====================
 
@@ -1019,7 +1026,7 @@ export class LibraryService {
             .from('students')
             .select('id, student_number, grade_level, profile_id, profile:profiles!inner(id, first_name, last_name, email)')
             .eq('school_id', schoolId)
-            .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`, { foreignTable: 'profiles' })
+            .or(`first_name.ilike.%${orTerm(q)}%,last_name.ilike.%${orTerm(q)}%,email.ilike.%${orTerm(q)}%`, { foreignTable: 'profiles' })
             .limit(20),
         ]);
 
@@ -1754,7 +1761,7 @@ export class LibraryService {
         category:library_categories(id, name, color_code)
       `)
       .eq('school_id', schoolId)
-      .or(`title.ilike.%${query}%,author.ilike.%${query}%,reference.ilike.%${query}%,isbn.ilike.%${query}%`)
+      .or(`title.ilike.%${orTerm(query)}%,author.ilike.%${orTerm(query)}%,reference.ilike.%${orTerm(query)}%,isbn.ilike.%${orTerm(query)}%`)
       .order('title', { ascending: true })
       .limit(50);
 
@@ -1816,7 +1823,7 @@ export class LibraryService {
       .eq('school_id', schoolId)
       .eq('is_active', true)
       .neq('role', 'student')
-      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+      .or(`first_name.ilike.%${orTerm(query)}%,last_name.ilike.%${orTerm(query)}%,email.ilike.%${orTerm(query)}%`)
       .limit(20);
 
     if (error) throw error;
@@ -1851,7 +1858,7 @@ export class LibraryService {
         .eq('is_active', true);
 
       if (search) {
-        profileQuery = profileQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+        profileQuery = profileQuery.or(`first_name.ilike.%${orTerm(search)}%,last_name.ilike.%${orTerm(search)}%`);
       }
 
       const { data: profiles, error } = await profileQuery.limit(100);
@@ -1900,7 +1907,7 @@ export class LibraryService {
         .eq('is_active', true);
 
       if (search) {
-        profileQuery = profileQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+        profileQuery = profileQuery.or(`first_name.ilike.%${orTerm(search)}%,last_name.ilike.%${orTerm(search)}%`);
       }
 
       const { data: profiles, error } = await profileQuery.limit(100);

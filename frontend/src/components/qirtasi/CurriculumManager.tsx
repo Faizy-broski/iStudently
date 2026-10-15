@@ -199,8 +199,8 @@ export function CurriculumManager() {
       </h1>
       <p className="text-xs text-muted-foreground">
         {tt(
-          "Build the shared curriculum reference tree that worksheets are categorized against. No real curriculum data is pre-loaded — enter it here as it becomes available.",
-          "أنشئ شجرة المنهج المرجعية المشتركة التي تُصنَّف أوراق العمل بناءً عليها. لا توجد بيانات منهج حقيقية محمّلة مسبقًا — أدخلها هنا كلما توفرت."
+          "Build your school's curriculum tree that its worksheets are filed under. Each school has its own tree (shared by its campuses). Nothing is pre-loaded — enter it here as it becomes available.",
+          "أنشئ شجرة منهج مدرستك التي تُصنَّف أوراق عملها بناءً عليها. لكل مدرسة شجرتها الخاصة (تشترك فيها فروعها). لا توجد بيانات محمّلة مسبقًا — أدخلها هنا كلما توفرت."
         )}
       </p>
 

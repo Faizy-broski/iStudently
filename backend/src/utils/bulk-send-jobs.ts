@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { campusIdsAllowed } from './campus-validation'
 
 /**
  * Atomic claim helpers for bulk_send_jobs (see migration
@@ -166,14 +167,20 @@ export interface BulkSendRunStatus {
   completed_at: string | null
 }
 
-export async function getBulkSendRun(runId: string, schoolId: string): Promise<BulkSendRunStatus | null> {
+/**
+ * A run, if it belongs to the caller's school family. Runs are stored under the campus they were
+ * sent for, while an admin's profile school is the main school, so an exact school match made every
+ * branch-campus run "not found". Never lets one school poll another's run by guessing a UUID.
+ */
+export async function getBulkSendRun(runId: string, callerSchoolId: string): Promise<BulkSendRunStatus | null> {
   const { data, error } = await supabase
     .from('bulk_send_runs')
-    .select('id, kind, subject, total_recipients, batches_total, batches_done, success_count, fail_count, skipped_count, status, errors, skipped, created_at, completed_at')
+    .select('id, school_id, kind, subject, total_recipients, batches_total, batches_done, success_count, fail_count, skipped_count, status, errors, skipped, created_at, completed_at')
     .eq('id', runId)
-    .eq('school_id', schoolId) // tenant scoping — never let one school poll another's run by guessing a UUID
     .maybeSingle()
 
   if (error) throw new Error(`Failed to fetch bulk_send_runs row: ${error.message}`)
-  return (data as BulkSendRunStatus | null) ?? null
+  if (!data || !(await campusIdsAllowed(callerSchoolId, [data.school_id]))) return null
+  const { school_id: _school, ...run } = data as BulkSendRunStatus & { school_id: string }
+  return run
 }

@@ -2,6 +2,7 @@ import express from 'express'
 import * as authController from '../controllers/auth.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin } from '../middlewares/role.middleware'
+import { createProfileRateLimit } from '../middlewares/rate-limit.middleware'
 
 const router = express.Router()
 
@@ -9,7 +10,14 @@ const router = express.Router()
 router.use(authenticate)
 
 // POST /auth/change-password  — any authenticated user can change their own password
-router.post('/change-password', authController.changePassword)
+router.post(
+  '/change-password',
+  createProfileRateLimit(15 * 60 * 1000, 5, { failuresOnly: true, message: 'Too many attempts. Please wait 15 minutes and try again.' }),
+  authController.changePassword,
+)
+
+// GET /auth/me  — profile (safe fields), sign-in gates, plugins, branding (mobile + web)
+router.get('/me', authController.getMe)
 
 // GET /auth/me/context  — the caller's own campus/staff context (any authenticated user)
 router.get('/me/context', authController.getMyContext)

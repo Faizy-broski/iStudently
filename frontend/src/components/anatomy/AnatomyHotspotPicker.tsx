@@ -7,10 +7,11 @@
 //  - "author": used by the question builder (RichTextQuestionEditor /
 //    QuestionDialog) — teacher picks an organ, clicks a hotspot on it, that
 //    becomes `quiz_questions.correct_answer`.
-//  - "quiz": used by the student-facing QuizTaker — organ + the correct
-//    hotspot are already fixed (from `correct_answer`), the student's click
-//    is graded immediately with the same green/red flash the original app
-//    used for its own quiz mode (HotspotLayer.flash, unchanged).
+//  - "quiz": used by the student-facing QuizTaker — the organ is fixed (from
+//    `correct_answer`). The correct hotspot is only sent to students after
+//    they submit (and only if the quiz shows answers), so it is optional:
+//    without it the click is recorded and graded by the server; with it the
+//    click gets the original green/red flash (HotspotLayer.flash, unchanged).
 //
 // Deliberately NOT reusing OrganViewer's original built-in `quizActive`
 // round (see OrganViewer.tsx) — that quizzes every hotspot on the organ in
@@ -43,7 +44,8 @@ type AuthorProps = CommonProps & {
 type QuizProps = CommonProps & {
   mode: "quiz"
   organId: OrganId
-  correctHotspotId: string
+  /** Known only once answers are revealed; without it there is no instant feedback. */
+  correctHotspotId?: string | null
   /** Lock out further picks once the student has answered. */
   disabled?: boolean
   onAnswered: (result: { hotspotId: string; correct: boolean }) => void
@@ -70,7 +72,7 @@ export function AnatomyHotspotPicker(props: Props) {
   // Reset per-question lock state when the quiz component is handed a new
   // question (a fresh `key` from the caller is the more common pattern, but
   // this keeps the component safe even if the parent reuses the instance).
-  const questionIdentity = props.mode === "quiz" ? props.correctHotspotId : null
+  const questionIdentity = props.mode === "quiz" ? `${props.organId}:${props.correctHotspotId ?? ""}` : null
   useEffect(() => {
     answeredRef.current = false
   }, [questionIdentity])
@@ -87,6 +89,11 @@ export function AnatomyHotspotPicker(props: Props) {
     // instant feedback the original app's quiz mode gave.
     if (props.disabled || answeredRef.current) return
     answeredRef.current = true
+    if (!props.correctHotspotId) {
+      // Answer not known on the client: record the pick, the server grades it.
+      props.onAnswered({ hotspotId: hotspot.id, correct: false })
+      return
+    }
     const correct = hotspot.id === props.correctHotspotId
     viewerHandle.current?.flash(hotspot.id, correct)
     if (!correct) viewerHandle.current?.flash(props.correctHotspotId, true)

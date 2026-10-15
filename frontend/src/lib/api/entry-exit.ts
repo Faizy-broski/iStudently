@@ -14,27 +14,12 @@ import { getImpersonationHeaders } from "./abortable-fetch";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+// Every entry-exit endpoint requires a signed-in admin, so all requests carry the session token.
 async function apiRequest<T = any>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
-  const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...getImpersonationHeaders(),
-      ...(options?.headers || {}),
-    },
-    ...options,
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `Request failed: ${res.status}`);
-  }
-
-  const json = await res.json();
-  return json.data !== undefined ? json.data : json;
+  return apiRequestToken<T>(path, options);
 }
 
 async function apiRequestToken<T = any>(

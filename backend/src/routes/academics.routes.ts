@@ -2,6 +2,7 @@ import { Router } from 'express'
 import * as academicsController from '../controllers/academics.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher, requireStaff, requireRole } from '../middlewares/role.middleware'
+import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 
@@ -136,12 +137,14 @@ router.post(
 router.put(
   '/academic-years/:id',
   requireAdmin,
+  requireRowInSchoolFamily('academic_years'),
   academicsController.updateAcademicYear
 )
 
 router.delete(
   '/academic-years/:id',
   requireAdmin,
+  requireRowInSchoolFamily('academic_years'),
   academicsController.deleteAcademicYear
 )
 

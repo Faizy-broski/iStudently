@@ -1,4 +1,11 @@
 import { supabase } from '../config/supabase'
+import {
+  matchingPairCount,
+  matchingPermutation,
+  toCanonicalMatchingAnswer,
+  toDisplayedMatchingAnswer,
+  toStudentQuestion,
+} from './quiz-student-view'
 
 // ============================================================================
 // TYPES
@@ -526,7 +533,11 @@ export const removeQuestionFromQuiz = async (mapId: string) => {
 // STUDENT: SUBMIT QUIZ
 // ============================================================================
 
-export const getStudentQuizSubmission = async (quizId: string, studentId: string) => {
+/**
+ * `forStudent`: the caller is the student themselves, so answers are hidden until reveal and
+ * matching answers are shown in the student's shuffled order. Teachers get the raw data.
+ */
+export const getStudentQuizSubmission = async (quizId: string, studentId: string, forStudent = false) => {
   // Get all question map IDs for this quiz
   const { data: maps, error: mapErr } = await supabase
     .from('quiz_question_map')
@@ -551,7 +562,23 @@ export const getStudentQuizSubmission = async (quizId: string, studentId: string
   const answerMap: Record<string, QuizAnswer> = {}
   ;(answers || []).forEach(a => { answerMap[a.quiz_question_map_id] = a })
 
-  return { maps: maps || [], answerMap }
+  if (!forStudent) return { maps: maps || [], answerMap }
+
+  const quiz = await getQuiz(quizId)
+  if (await answersRevealed(quiz, studentId)) return { maps: maps || [], answerMap }
+
+  const hiddenMaps = (maps || []).map((m: any) =>
+    m.question ? { ...m, question: toStudentQuestion(m.question, m.id, studentId) } : m,
+  )
+  for (const m of maps || []) {
+    const q = (m as any).question
+    const a = answerMap[m.id]
+    if (q?.type === 'matching' && a?.answer) {
+      const perm = matchingPermutation(m.id, studentId, matchingPairCount(q.answer))
+      answerMap[m.id] = { ...a, answer: toDisplayedMatchingAnswer(a.answer, perm) }
+    }
+  }
+  return { maps: hiddenMaps, answerMap }
 }
 
 export const submitQuiz = async (
@@ -571,11 +598,16 @@ export const submitQuiz = async (
     .filter(a => validMapIds.has(a.quiz_question_map_id))
     .map(a => {
       const mapRow = (validMaps || []).find(m => m.id === a.quiz_question_map_id)
-      const autoPoints = mapRow ? autoGrade(mapRow.question as any, a.answer, mapRow.points) : null
+      const question = mapRow?.question as any
+      // Students answer matching questions in their shuffled view; store/grade canonical order.
+      const answer = question?.type === 'matching'
+        ? toCanonicalMatchingAnswer(a.answer ?? '', matchingPermutation(a.quiz_question_map_id, studentId, matchingPairCount(question.answer)))
+        : a.answer
+      const autoPoints = mapRow ? autoGrade(question, answer, mapRow.points) : null
       return {
         quiz_question_map_id: a.quiz_question_map_id,
         student_id: studentId,
-        answer: a.answer,
+        answer,
         points: autoPoints,
         updated_at: new Date().toISOString(),
       }
@@ -1070,7 +1102,7 @@ export const getStudentQuizForm = async (quizId: string, studentId: string): Pro
       .is('variant_id', null)
       .order('sort_order', { ascending: true })
     if (error) throw error
-    return data as QuizQuestionMap[]
+    return studentViewOfMaps(quiz, data as QuizQuestionMap[], studentId)
   }
 
   if (!quiz.variants_generated_at) {
@@ -1084,7 +1116,35 @@ export const getStudentQuizForm = async (quizId: string, studentId: string): Pro
     .eq('variant_id', variantId)
     .order('sort_order', { ascending: true })
   if (error) throw error
-  return data as QuizQuestionMap[]
+  return studentViewOfMaps(quiz, data as QuizQuestionMap[], studentId)
+}
+
+// ── Answer hiding for students (see quiz-student-view.ts) ───────────────────
+
+/** True once the student has stored answers for any question of this quiz. */
+export const hasSubmittedQuiz = async (quizId: string, studentId: string): Promise<boolean> => {
+  const { data: maps } = await supabase.from('quiz_question_map').select('id').eq('quiz_id', quizId)
+  const mapIds = (maps || []).map((m: { id: string }) => m.id)
+  if (mapIds.length === 0) return false
+  const { count } = await supabase
+    .from('quiz_answers')
+    .select('id', { count: 'exact', head: true })
+    .eq('student_id', studentId)
+    .in('quiz_question_map_id', mapIds)
+  return (count ?? 0) > 0
+}
+
+/** Answers are shown to a student only after they submitted and only if the quiz allows it. */
+const answersRevealed = async (quiz: { id: string; show_correct_answers?: boolean }, studentId: string) =>
+  !!quiz.show_correct_answers && (await hasSubmittedQuiz(quiz.id, studentId))
+
+async function studentViewOfMaps<M extends { id: string; question?: any }>(
+  quiz: { id: string; show_correct_answers?: boolean },
+  maps: M[],
+  studentId: string,
+): Promise<M[]> {
+  if (await answersRevealed(quiz, studentId)) return maps
+  return maps.map((m) => (m.question ? { ...m, question: toStudentQuestion(m.question, m.id, studentId) } : m))
 }
 
 // Resolve the question-map ids that make up a given student's attempt

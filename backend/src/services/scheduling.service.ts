@@ -364,7 +364,7 @@ export const getClassList = async (
       .select(`
         id, student_id, start_date, end_date, scheduler_lock,
         student:students(
-          id,
+          id, student_number,
           profile:profiles!students_profile_id_fkey(first_name, last_name),
           section:sections(id, name, grade_level:grade_levels(name))
         )
@@ -381,6 +381,7 @@ export const getClassList = async (
       student_name: s.student?.profile
         ? `${s.student.profile.last_name}, ${s.student.profile.first_name}`
         : 'Unknown',
+      student_number: s.student?.student_number,
       section_name: s.student?.section?.name,
       grade_level: s.student?.section?.grade_level?.name,
       start_date: s.start_date,

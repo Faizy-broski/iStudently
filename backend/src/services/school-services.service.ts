@@ -89,6 +89,13 @@ class SchoolServicesService {
         return data || []
     }
 
+    /** School/campus a service belongs to (null if it doesn't exist). */
+    async getServiceSchoolId(serviceId: string): Promise<string | null> {
+        const { data, error } = await supabase.from('school_services').select('school_id').eq('id', serviceId).maybeSingle()
+        if (error) throw new Error(`Failed to fetch service: ${error.message}`)
+        return data?.school_id ?? null
+    }
+
     async getServiceById(serviceId: string, schoolId: string): Promise<SchoolService | null> {
         const { data, error } = await supabase
             .from('school_services')

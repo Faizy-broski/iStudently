@@ -211,8 +211,9 @@ export async function getOrCreateStoredCredentials(
  * school_id, so the campus-access check doesn't apply.
  */
 export async function getStoredCredentialsAsSuperAdmin(
-  profileId: string
-): Promise<{ username: string; password: string }> {
+  profileId: string,
+  opts: { regenerateIfMissing?: boolean } = {}
+): Promise<{ username: string; password: string | null; has_password: boolean }> {
   const { data: profile, error: fetchError } = await supabase
     .from('profiles')
     .select('id, username, login_password_enc, school_id')
@@ -224,12 +225,26 @@ export async function getStoredCredentialsAsSuperAdmin(
   }
 
   if (!profile.login_password_enc) {
+    // Regenerating resets the account's real password, so a plain read must not do it unless the
+    // caller asked (the web card relies on the old behaviour; the app passes regenerate=false).
+    if (opts.regenerateIfMissing === false) {
+      return { username: profile.username, password: null, has_password: false }
+    }
     const { username, plainPassword } = await generateOnce(profileId, profile.school_id)
-    return { username, password: plainPassword }
+    return { username, password: plainPassword, has_password: true }
   }
 
   return {
     username: profile.username,
     password: decryptSecret(profile.login_password_enc),
+    has_password: true,
   }
+}
+
+/** Explicit reset of a profile's login password by a super admin (sets force_password_change). */
+export async function regenerateCredentialsAsSuperAdmin(profileId: string) {
+  const { data: profile, error } = await supabase.from('profiles').select('id, school_id').eq('id', profileId).maybeSingle()
+  if (error || !profile) throw new Error('Profile not found')
+  const { username, plainPassword } = await regenerateCredentials(profileId, profile.school_id)
+  return { username, password: plainPassword, has_password: true }
 }

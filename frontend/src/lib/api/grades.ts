@@ -485,7 +485,7 @@ export async function getClassRanks(params: {
   if (params.academic_year_id) qp.append('academic_year_id', params.academic_year_id)
   if (params.grade_level_id) qp.append('grade_level_id', params.grade_level_id)
   if (params.campus_id) qp.append('campus_id', params.campus_id)
-  return apiRequest<unknown[]>(`/grades-reports/class-ranks?${qp}`)
+  return apiRequest<unknown[]>(`/grades-reports/class-rank?${qp}`)
 }
 
 // ============================================================================
@@ -562,9 +562,49 @@ export async function getStudentGrades(params: {
   campus_id?: string
 }) {
   const qp = new URLSearchParams()
-  if (params.marking_period_id) qp.append('marking_period_id', params.marking_period_id)
   if (params.campus_id) qp.append('campus_id', params.campus_id)
-  return apiRequest<StudentFinalGradeEntry[]>(`/final-grades/student/${params.student_id}?${qp}`)
+  // The API returns every marking period with nested course / teacher / MP objects:
+  // filter to the selected marking period and flatten to the fields the pages show.
+  const res = await apiRequest<RawStudentFinalGrade[]>(`/final-grades/student/${params.student_id}?${qp}`)
+  if (!res.success || !res.data) return res as unknown as ApiResponse<StudentFinalGradeEntry[]>
+  const rows = params.marking_period_id ? res.data.filter((g) => g.marking_period_id === params.marking_period_id) : res.data
+  return {
+    ...res,
+    data: rows.map((g): StudentFinalGradeEntry => {
+      const teacher = g.course_period?.teacher?.profile
+      return {
+        id: g.id,
+        course_period_id: g.course_period_id,
+        course_title: g.course_period?.course?.title || g.course_period?.title || '—',
+        teacher_name: teacher ? `${teacher.first_name ?? ''} ${teacher.last_name ?? ''}`.trim() || undefined : undefined,
+        percent_grade: g.percent_grade != null ? Number(g.percent_grade) : null,
+        letter_grade: g.letter_grade ?? null,
+        grade_points: g.gpa_value != null ? Number(g.gpa_value) : g.grade_points != null ? Number(g.grade_points) : null,
+        credit_hours: g.course_period?.course?.credit_hours ?? undefined,
+        credit_earned: g.credit_earned ?? undefined,
+        comment: g.comment ?? null,
+        marking_period_title: g.marking_period?.title,
+      }
+    }),
+  }
+}
+
+interface RawStudentFinalGrade {
+  id: string
+  course_period_id: string
+  marking_period_id: string
+  percent_grade?: number | string | null
+  letter_grade?: string | null
+  gpa_value?: number | string | null
+  grade_points?: number | string | null
+  credit_earned?: number | null
+  comment?: string | null
+  course_period?: {
+    title?: string | null
+    course?: { title?: string | null; credit_hours?: number | null } | null
+    teacher?: { profile?: { first_name?: string | null; last_name?: string | null } | null } | null
+  } | null
+  marking_period?: { title?: string } | null
 }
 
 // ============================================================================
@@ -1028,50 +1068,58 @@ export interface CommentCode {
   sort_order?: number | null
 }
 
+// Comment codes live under /report-cards (code-scales + codes); there is no /comment-codes router.
 export async function getCommentCodeScales(campusId?: string) {
   const qp = new URLSearchParams()
   if (campusId) qp.append('campus_id', campusId)
-  return apiRequest<CommentCodeScale[]>(`/comment-codes/scales?${qp}`)
+  return apiRequest<CommentCodeScale[]>(`/report-cards/code-scales?${qp}`)
 }
 
 export async function createCommentCodeScale(data: Partial<CommentCodeScale>) {
-  return apiRequest<CommentCodeScale>('/comment-codes/scales', {
+  return apiRequest<CommentCodeScale>('/report-cards/code-scales', {
     method: 'POST',
     body: JSON.stringify(data)
   })
 }
 
 export async function updateCommentCodeScale(id: string, data: Partial<CommentCodeScale>) {
-  return apiRequest<CommentCodeScale>(`/comment-codes/scales/${id}`, {
+  return apiRequest<CommentCodeScale>(`/report-cards/code-scales/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   })
 }
 
 export async function deleteCommentCodeScale(id: string) {
-  return apiRequest(`/comment-codes/scales/${id}`, { method: 'DELETE' })
+  return apiRequest(`/report-cards/code-scales/${id}`, { method: 'DELETE' })
 }
 
+/** Codes of one scale (the scales list embeds them; deleted codes are filtered out). */
 export async function getCommentCodes(scaleId: string) {
-  return apiRequest<CommentCode[]>(`/comment-codes?scale_id=${scaleId}`)
+  const res = await apiRequest<(CommentCodeScale & { codes?: (CommentCode & { is_active?: boolean })[] })[]>(`/report-cards/code-scales`)
+  if (!res.success) return { ...res, data: undefined } as typeof res & { data?: CommentCode[] }
+  const scale = (res.data ?? []).find((s) => s.id === scaleId)
+  const codes = (scale?.codes ?? []).filter((c) => c.is_active !== false).map((c) => ({ ...c, scale_id: scaleId }))
+  codes.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+  return { ...res, data: codes as CommentCode[] }
 }
 
 export async function createCommentCode(data: Partial<CommentCode>) {
-  return apiRequest<CommentCode>('/comment-codes', {
+  const { scale_id, ...rest } = data
+  return apiRequest<CommentCode>(`/report-cards/code-scales/${scale_id}/codes`, {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify(rest)
   })
 }
 
 export async function updateCommentCode(id: string, data: Partial<CommentCode>) {
-  return apiRequest<CommentCode>(`/comment-codes/${id}`, {
+  return apiRequest<CommentCode>(`/report-cards/codes/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   })
 }
 
 export async function deleteCommentCode(id: string) {
-  return apiRequest(`/comment-codes/${id}`, { method: 'DELETE' })
+  return apiRequest(`/report-cards/codes/${id}`, { method: 'DELETE' })
 }
 
 // ============================================================================

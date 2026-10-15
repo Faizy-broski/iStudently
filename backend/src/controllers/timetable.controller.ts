@@ -3,7 +3,8 @@ import * as timetableService from '../services/timetable.service'
 import * as attendanceService from '../services/attendance.service'
 import { z } from 'zod'
 import { scheduleDecisionService } from '../services/schedule-decision/schedule-decision.service'
-import { getEffectiveSchoolId } from '../utils/campus-validation'
+import { campusIdsAllowed, getEffectiveSchoolId } from '../utils/campus-validation'
+import { supabase } from '../config/supabase'
 import { ensureDefaultSectionForGrade } from '../services/grade-default-section.service'
 import { ApiResponse, DayOfWeek } from '../types'
 import { stripConfidentialFamilyStatus } from '../utils/confidential-family-status'
@@ -250,7 +251,12 @@ export const createTimetableEntry = async (req: Request, res: Response) => {
 export const updateTimetableEntry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const result = await timetableService.updateTimetableEntry(id, req.body)
+    // Only the editable columns; never school_id/campus_id/section_id from the body.
+    const { subject_id, teacher_id, period_id, day_of_week, room_number, room_id, is_active } = req.body ?? {}
+    const dto = Object.fromEntries(
+      Object.entries({ subject_id, teacher_id, period_id, day_of_week, room_number, room_id, is_active }).filter(([, v]) => v !== undefined),
+    )
+    const result = await timetableService.updateTimetableEntry(id, dto)
 
     if (!result.success) {
       return res.status(400).json(result)
@@ -306,6 +312,18 @@ export const lockTimetableEntry = async (req: Request, res: Response) => {
 export const bulkLockTimetableEntries = async (req: Request, res: Response) => {
   try {
     const { locked, entry_ids, section_id } = bulkLockTimetableEntriesSchema.parse(req.body)
+
+    // The section / entries must belong to the caller's school family.
+    const profile = (req as AuthRequest).profile
+    if (profile?.role !== 'super_admin') {
+      const rows = entry_ids?.length
+        ? (await supabase.from('timetable_entries').select('school_id').in('id', entry_ids)).data ?? []
+        : (await supabase.from('sections').select('school_id').eq('id', section_id!)).data ?? []
+      const schoolIds = [...new Set(rows.map((r: { school_id: string }) => r.school_id))]
+      if (!schoolIds.length || !(await campusIdsAllowed(profile?.school_id, schoolIds))) {
+        return res.status(404).json({ success: false, error: 'Not found' })
+      }
+    }
 
     const result = await timetableService.bulkSetTimetableEntryLock(locked, entry_ids, section_id)
     if (!result.success) return res.status(400).json(result)

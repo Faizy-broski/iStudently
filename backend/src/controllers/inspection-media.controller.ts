@@ -19,6 +19,10 @@ const ALLOWED_TYPES: Record<string, { ext: string; kind: 'photo' | 'audio' }> = 
   'image/png': { ext: 'png', kind: 'photo' },
   'audio/webm': { ext: 'webm', kind: 'audio' },
   'audio/ogg': { ext: 'ogg', kind: 'audio' },
+  // Recordings made on phones (the mobile app): m4a on iOS/Android, wav from some recorders.
+  'audio/mp4': { ext: 'm4a', kind: 'audio' },
+  'audio/x-m4a': { ext: 'm4a', kind: 'audio' },
+  'audio/wav': { ext: 'wav', kind: 'audio' },
 }
 
 /**

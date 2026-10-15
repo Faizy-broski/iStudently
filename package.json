@@ -1,0 +1,17 @@
+{
+  "name": "studently-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "mobile"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

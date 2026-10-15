@@ -586,7 +586,10 @@ export const createAcademicYear = async (req: Request, res: Response) => {
 export const updateAcademicYear = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const result = await academicsService.updateAcademicYear(id, req.body)
+    // Only editable columns; never school_id from the body.
+    const { name, start_date, end_date, is_current, is_next, is_active } = req.body ?? {}
+    const dto = Object.fromEntries(Object.entries({ name, start_date, end_date, is_current, is_next, is_active }).filter(([, v]) => v !== undefined))
+    const result = await academicsService.updateAcademicYear(id, dto as any)
 
     if (!result.success) {
       return res.status(400).json(result)

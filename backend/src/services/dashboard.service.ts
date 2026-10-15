@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { buildPlatformSummary, type PlatformSummary } from './platform-summary'
 
 interface DashboardStats {
   totalSchools: number
@@ -23,6 +24,20 @@ interface MonthlyRevenue {
 }
 
 export class DashboardService {
+  /** One-call super admin summary (root schools only, like getDashboardStats). */
+  async getPlatformSummary(): Promise<PlatformSummary> {
+    const [schoolsRes, recordsRes] = await Promise.all([
+      supabase
+        .from('schools')
+        .select('id, name, status, is_trial, trial_ends_at, created_at, logo_url')
+        .is('parent_school_id', null),
+      supabase.from('billing_records').select('amount, currency, payment_status, payment_date, due_date'),
+    ])
+    if (schoolsRes.error) throw schoolsRes.error
+    if (recordsRes.error) throw recordsRes.error
+    return buildPlatformSummary(schoolsRes.data || [], recordsRes.data || [])
+  }
+
   /**
    * Get aggregated dashboard statistics
    */

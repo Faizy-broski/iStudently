@@ -288,10 +288,10 @@ export const bulkImportStaff = async (req: Request, res: Response) => {
 // Get current staff/librarian's own profile
 export const getMyProfile = async (req: Request, res: Response) => {
     try {
-        const { id: profileId, school_id: schoolId } = (req as any).profile!
+        const { id: profileId, school_id: schoolId, campus_id: campusId } = (req as any).profile!
 
-        // Get staff record by profile_id
-        const result = await StaffService.getStaffByProfileId(profileId, schoolId)
+        // Get staff record by profile_id; a branch-campus staff row is keyed by the campus, not the main school.
+        const result = await StaffService.getStaffByProfileId(profileId, campusId || schoolId)
 
         if (!result.success) {
             return res.status(404).json(result)

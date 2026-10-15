@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { SAFE_PROFILE_COLUMNS } from '../utils/profile-columns'
 import {
   Parent,
   CreateParentDTO,
@@ -410,7 +411,7 @@ export class ParentService {
       })
       .select(`
         *,
-        profile:profiles(*)
+        profile:profiles(${SAFE_PROFILE_COLUMNS})
       `)
       .single()
 
@@ -490,7 +491,7 @@ export class ParentService {
         .eq('school_id', schoolId)
         .select(`
           *,
-          profile:profiles(*)
+          profile:profiles(${SAFE_PROFILE_COLUMNS})
         `)
         .single()
 

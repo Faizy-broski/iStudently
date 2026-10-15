@@ -10,6 +10,16 @@ export class DashboardController {
    * GET /api/dashboard/stats
    * Super Admin only
    */
+  /** GET /api/dashboard/summary — everything the super admin dashboard needs in one call. */
+  async getSummary(_req: AuthRequest, res: Response) {
+    try {
+      res.json({ success: true, data: await dashboardService.getPlatformSummary() })
+    } catch (error: any) {
+      console.error('Get dashboard summary error:', error?.message)
+      res.status(500).json({ success: false, error: 'Failed to load dashboard summary' })
+    }
+  }
+
   async getStats(req: AuthRequest, res: Response) {
     try {
       const stats = await dashboardService.getDashboardStats()

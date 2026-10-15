@@ -58,7 +58,10 @@ export const createRequest = async (req: Request, res: Response) => {
 export const updateRequest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const dto: UpdateScheduleRequestDTO = req.body
+    // Only the request's own scheduling fields; never school_id / student_id / course_id.
+    const body = (req.body ?? {}) as Record<string, unknown>
+    const allowed = ['with_teacher_id', 'not_teacher_id', 'with_period_id', 'not_period_id', 'priority', 'status']
+    const dto = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k))) as UpdateScheduleRequestDTO
 
     const result = await scheduleRequestsService.updateRequest(id, dto)
     if (!result.success) return res.status(400).json(result)

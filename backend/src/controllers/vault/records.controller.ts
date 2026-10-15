@@ -5,7 +5,7 @@ import { callerFromVaultRequest as callerFrom } from '../../utils/vault-caller'
 
 function handleError(res: Response, error: any) {
   const msg = error?.message || 'Unexpected error'
-  const status = msg.includes('not found') ? 404 : msg.includes('required') || msg.includes('not an encrypted secret') ? 400 : 500
+  const status = msg.includes('not found') ? 404 : msg.includes('required') || msg.includes('not an encrypted secret') || msg.startsWith('Invalid attachments') ? 400 : 500
   return res.status(status).json({ success: false, error: msg })
 }
 

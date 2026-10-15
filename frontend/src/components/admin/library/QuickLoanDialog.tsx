@@ -74,7 +74,16 @@ export function QuickLoanDialog({ open, onOpenChange, onLoanCreated }: QuickLoan
         try {
             setIsSearchingBorrowers(true);
             const res = await searchBorrowers(borrowerSearch, borrowerTab, user.access_token);
-            if (res.success && res.data) setBorrowers(res.data);
+            // Student hits come as { id: students.id, student_number, grade_level, profile: {...} };
+            // loans are keyed by the borrower's profile id, so normalize to that.
+            if (res.success && res.data) setBorrowers((res.data as any[]).map((r) => r.profile ? {
+                id: r.profile.id,
+                first_name: r.profile.first_name || '',
+                last_name: r.profile.last_name || '',
+                admission_number: r.student_number || undefined,
+                class_name: r.grade_level || undefined,
+                email: r.profile.email || undefined,
+            } : r));
             else setBorrowers([]);
         } catch {
             setBorrowers([]);

@@ -80,6 +80,8 @@ const DEFAULT_DISCIPLINE_FIELDS = [
 // Helpers
 // ---------------------------------------------------------------------------
 
+const isLibrarian = (req: Request) => (req as AuthRequest).profile?.role === 'librarian';
+
 function resolveSchoolId(req: Request): string | undefined {
   const body = (req as AuthRequest).body?.school_id;
   if (body) return body;
@@ -371,6 +373,9 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
     if (start_date) query = query.gte('incident_date', start_date);
     if (end_date) query = query.lte('incident_date', end_date);
     if (filteredStudentIds) query = query.in('student_id', filteredStudentIds);
+    // Librarians only ever see library-related student referrals; others may ask for just those.
+    if (isLibrarian(req)) query = query.eq('library_related', true).eq('target_type', 'student');
+    else if (req.query.library_related === 'true') query = query.eq('library_related', true);
 
     let { data, error, count } = await query;
     if (error) {
@@ -413,6 +418,10 @@ export async function getReferralById(req: Request, res: Response): Promise<void
 
     if (error) {
       res.status(error.code === 'PGRST116' ? 404 : 500).json({ error: error.message });
+      return;
+    }
+    if (isLibrarian(req) && !data?.library_related) {
+      res.status(404).json({ error: 'Not found' });
       return;
     }
 
@@ -462,8 +471,15 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       incident_date,
       field_values,
       academic_year_id,
+      library_related,
     } = req.body;
 
+    // A librarian files only library-related incidents about students, as themselves.
+    const librarian = isLibrarian(req);
+    if (librarian && (target_type === 'teacher' || target_type === 'staff')) {
+      res.status(403).json({ error: 'Librarians can only report students' });
+      return;
+    }
     const targetType: 'student' | 'teacher' | 'staff' =
       target_type === 'teacher' ? 'teacher' : target_type === 'staff' ? 'staff' : 'student';
     const usesStaffId = targetType === 'teacher' || targetType === 'staff';
@@ -483,10 +499,12 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       target_type: targetType,
       student_id: targetType === 'student' ? tid : null,
       staff_id: usesStaffId ? tid : null,
-      reporter_id: reporter_id || null,
+      reporter_id: librarian ? ((req as AuthRequest).profile?.id ?? null) : reporter_id || null,
       incident_date: incident_date || new Date().toISOString().slice(0, 10),
       field_values: field_values || {},
       academic_year_id: academic_year_id || null,
+      // Sent only when true, so referrals still save before the column exists (migration order).
+      ...(librarian || library_related === true ? { library_related: true } : {}),
     }));
 
     const { data, error } = await supabase
@@ -527,7 +545,7 @@ export async function createReferral(req: Request, res: Response): Promise<void>
 export async function updateReferral(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { campus_id, reporter_id, incident_date, field_values, academic_year_id } = req.body;
+    const { campus_id, reporter_id, incident_date, field_values, academic_year_id, library_related } = req.body;
 
     const updates: Record<string, any> = { updated_at: new Date().toISOString() };
     if (campus_id !== undefined) updates.campus_id = campus_id;
@@ -535,6 +553,7 @@ export async function updateReferral(req: Request, res: Response): Promise<void>
     if (incident_date !== undefined) updates.incident_date = incident_date;
     if (field_values !== undefined) updates.field_values = field_values;
     if (academic_year_id !== undefined) updates.academic_year_id = academic_year_id;
+    if (typeof library_related === 'boolean') updates.library_related = library_related;
 
     const { data, error } = await supabase
       .from('discipline_referrals')
@@ -680,7 +699,7 @@ export async function createStaffReferral(req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const { student_id, field_values, incident_date } = req.body;
+    const { student_id, field_values, incident_date, library_related } = req.body;
     
     // Zero-Trust: We ignore incoming reporter_id completely and lock it to the active session.
     const reporterId = req.profile?.id;
@@ -697,7 +716,8 @@ export async function createStaffReferral(req: AuthRequest, res: Response): Prom
         student_id,
         reporter_id: reporterId, // strictly enforced
         incident_date: incident_date || new Date().toISOString().slice(0, 10),
-        field_values: field_values || {}
+        field_values: field_values || {},
+        ...(library_related === true ? { library_related: true } : {}),
       })
       .select(`
         *,

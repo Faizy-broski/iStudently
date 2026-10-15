@@ -1,3 +1,4 @@
+import { withDisciplineFieldNames } from './student-dashboard.service'
 import { supabase } from '../config/supabase'
 
 export interface ParentStudent {
@@ -1068,7 +1069,12 @@ class ParentDashboardService {
       .order('incident_date', { ascending: false })
 
     if (error) throw new Error(`Failed to fetch discipline referrals: ${error.message}`)
-    return data || []
+    const referrals = data || []
+    // Parents cannot read /discipline/fields: send the names of the fields these referrals use.
+    const ids = [...new Set(referrals.flatMap((r: any) => Object.keys(r.field_values || {})))]
+    if (ids.length === 0) return referrals
+    const { data: fields } = await supabase.from('discipline_fields').select('id, name').in('id', ids)
+    return withDisciplineFieldNames(referrals, fields || [])
   }
 
   /**

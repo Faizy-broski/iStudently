@@ -501,6 +501,7 @@ export class HostelService {
     entityType: string,
     entityId: string,
     campusId?: string,
+    schoolId?: string,
   ) {
     let query: any = supabase
       .from("hostel_room_files")
@@ -508,10 +509,22 @@ export class HostelService {
       .eq("entity_type", entityType)
       .eq("entity_id", entityId)
       .order("created_at", { ascending: false });
+    if (schoolId) query = query.eq("school_id", schoolId);
     if (campusId) query = query.eq("campus_id", campusId);
     const { data, error } = await query;
     if (error) throw error;
     return data || [];
+  }
+
+  /** True when the building/room exists and belongs to this school. */
+  static async entityInSchool(entityType: "building" | "room", entityId: string, schoolId: string) {
+    const { data } = await supabase
+      .from(entityType === "building" ? "hostel_buildings" : "hostel_rooms")
+      .select("id")
+      .eq("id", entityId)
+      .eq("school_id", schoolId)
+      .maybeSingle();
+    return !!data;
   }
 
   static async addFile(dto: any) {

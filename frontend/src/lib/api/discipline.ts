@@ -35,6 +35,8 @@ export interface DisciplineField {
 
 export interface DisciplineReferral {
   id: string;
+  /** A library incident (e.g. damaged or lost book); the only kind librarians see. */
+  library_related?: boolean;
   school_id: string;
   campus_id: string | null;
   target_type: 'student' | 'teacher' | 'staff';
@@ -215,6 +217,8 @@ export interface GetReferralsParams {
   section_id?: string;
   page?: number;
   limit?: number;
+  /** Only library-related referrals (librarians always get only these). */
+  library_related?: boolean;
 }
 
 export async function getDisciplineReferrals(
@@ -230,6 +234,7 @@ export async function getDisciplineReferrals(
   if (params.academic_year_id) urlParams.append('academic_year_id', params.academic_year_id);
   if (params.grade_level) urlParams.append('grade_level', params.grade_level);
   if (params.section_id) urlParams.append('section_id', params.section_id);
+  if (params.library_related) urlParams.append('library_related', 'true');
   if (params.page) urlParams.append('page', String(params.page));
   if (params.limit) urlParams.append('limit', String(params.limit));
   return apiRequest<DisciplineReferral[]>(`/discipline/referrals?${urlParams}`);
@@ -253,6 +258,7 @@ export async function createDisciplineReferral(data: {
   incident_date?: string;
   field_values?: Record<string, any>;
   academic_year_id?: string | null;
+  library_related?: boolean;
 }): Promise<ApiResponse<DisciplineReferral | DisciplineReferral[]>> {
   return apiRequest<DisciplineReferral | DisciplineReferral[]>('/discipline/referrals', {
     method: 'POST',
@@ -350,6 +356,7 @@ export async function createStaffDisciplineReferral(data: {
   student_id: string;
   incident_date?: string;
   field_values?: Record<string, any>;
+  library_related?: boolean;
 }): Promise<ApiResponse<DisciplineReferral>> {
   return apiRequest<DisciplineReferral>('/discipline/staff/referrals', {
     method: 'POST',

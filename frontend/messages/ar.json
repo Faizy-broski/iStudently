@@ -5685,7 +5685,10 @@
         "msg_record_failed": "فشل إضافة السجلات",
         "btn_record": "تسجيل",
         "msg_loading": "جاري التحميل...",
-        "msg_no_records": "لا توجد سجلات أخيرة"
+        "msg_no_records": "لا توجد سجلات أخيرة",
+        "btn_view_all": "عرض الكل",
+        "msg_records_appear_here": "ستظهر السجلات هنا عند مرور الأشخاص عبر نقاط التفتيش",
+        "btn_change": "تغيير"
       },
       "checkpoints": {
         "page_title": "نقاط التفتيش",
@@ -5812,7 +5815,8 @@
         "msg_error_no_days": "يرجى اختيار يوم واحد على الأقل من أيام الأسبوع",
         "msg_error_no_return_time": "يرجى تحديد وقت العودة",
         "msg_error_no_students": "يرجى تحديد طالب واحد على الأقل",
-        "msg_success_added": "تمت إضافة الإذن المسائي لـ {count} طالب"
+        "msg_success_added": "تمت إضافة الإذن المسائي لـ {count} طالب",
+        "msg_error": "تعذّر إضافة الإذن المسائي"
       },
       "packages": {
         "page_title": "توصيل الحزم",
@@ -5969,7 +5973,9 @@
         "option_all_sections": "جميع الفصول",
         "option_na_all": "غير متاح (جميع نقاط التفتيش)",
         "label_reason": "السبب",
-        "msg_error_load_students": "فشل تحميل الطلاب/المستخدمين"
+        "msg_error_load_students": "فشل تحميل الطلاب/المستخدمين",
+        "label_from": "من",
+        "placeholder_reason": "السبب (اختياري)"
       },
       "take_attendance": {
         "page_title": "برامج المعلمين – تسجيل الحضور",
@@ -6015,7 +6021,47 @@
         "label_yes": "نعم",
         "status_absent": "غائب",
         "status_present": "حاضر",
-        "status_late": "متأخر"
+        "status_late": "متأخر",
+        "msg_error_save": "تعذّر حفظ الحضور",
+        "placeholder_search_teacher": "ابحث عن معلم…"
+      },
+      "report": {
+        "page_title": "سجلات الدخول والخروج",
+        "page_subtitle": "استعراض سجلات نقاط التفتيش وتصفيتها وتصديرها وحذفها",
+        "btn_add_record": "إضافة سجل",
+        "btn_delete_bulk": "حذف المحدد",
+        "btn_export": "تصدير CSV",
+        "dialog_add_record_title": "إضافة سجل دخول/خروج",
+        "filters_title": "عوامل التصفية",
+        "filter_all_checkpoints": "كل نقاط التفتيش",
+        "filter_all_directions": "كل الاتجاهات",
+        "filter_all_status": "كل الحالات",
+        "filter_all_types": "كل الأنواع",
+        "filter_checkpoint_placeholder": "نقطة التفتيش",
+        "filter_date_from_placeholder": "من",
+        "filter_date_to_placeholder": "إلى",
+        "filter_direction_placeholder": "الاتجاه",
+        "filter_person_type_placeholder": "نوع الشخص",
+        "filter_status_placeholder": "الحالة",
+        "label_checkpoint": "نقطة التفتيش",
+        "label_direction": "الاتجاه",
+        "label_person_type": "نوع الشخص",
+        "msg_adjust_filters": "جرّب تعديل عوامل التصفية",
+        "msg_loading_records": "جارٍ تحميل السجلات…",
+        "msg_no_records": "لا توجد سجلات",
+        "msg_recording": "جارٍ التسجيل…",
+        "option_entry": "دخول",
+        "option_exit": "خروج",
+        "option_staff": "موظف",
+        "option_student": "طالب",
+        "status_authorized": "مصرّح",
+        "status_late": "متأخر",
+        "status_unauthorized": "غير مصرّح",
+        "table_checkpoint": "نقطة التفتيش",
+        "table_direction": "الاتجاه",
+        "table_person": "الشخص",
+        "table_status": "الحالة",
+        "table_type": "النوع"
       }
     },
     "user_agreements": {
@@ -8068,7 +8114,16 @@
     "senderOptional": "المرسِل (اختياري)",
     "studentField": "حقل الطالب",
     "studentExceptions": "الطالب - الاستثناءات",
-    "addExceptions": "إضافة استثناءات"
+    "addExceptions": "إضافة استثناءات",
+    "libraryRelated": "متعلقة بالمكتبة",
+    "libraryRelatedHint": "لأمور المكتبة مثل كتاب تالف أو مفقود. لا يرى أمناء المكتبة إلا الإحالات المصنفة بهذا الشكل.",
+    "libraryBadge": "مكتبة",
+    "libraryOnly": "المتعلقة بالمكتبة فقط",
+    "libraryIncidentsTitle": "حوادث المكتبة",
+    "libraryIncidentsSubtitle": "إحالات الانضباط المصنفة متعلقة بالمكتبة، مثل الكتب التالفة أو المفقودة",
+    "noLibraryIncidents": "لا توجد حوادث مكتبة",
+    "noLibraryIncidentsDesc": "لا توجد إحالات متعلقة بالمكتبة مسجلة.",
+    "libraryIncidentCount": "{count, plural, zero {لا حوادث} one {حادثة واحدة} two {حادثتان} few {# حوادث} many {# حادثة} other {# حادثة}}"
   },
   "entryExit": {
     "title": "الدخول والخروج",

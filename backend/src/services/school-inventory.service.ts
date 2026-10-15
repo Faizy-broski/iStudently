@@ -337,7 +337,7 @@ export class SchoolInventoryService {
     if (error) throw error
 
     if (dto.category_ids && dto.category_ids.length > 0) {
-      await this.syncItemCategories(data.id, dto.category_ids)
+      await this.syncItemCategories(data.id, dto.category_ids, schoolId)
     }
 
     return { ...data, categories: [] }
@@ -371,7 +371,7 @@ export class SchoolInventoryService {
     if (error) throw error
 
     if (dto.category_ids !== undefined) {
-      await this.syncItemCategories(id, dto.category_ids)
+      await this.syncItemCategories(id, dto.category_ids, schoolId)
     }
 
     return { ...data, categories: [] }
@@ -387,11 +387,19 @@ export class SchoolInventoryService {
     if (error) throw error
   }
 
-  private async syncItemCategories(itemId: string, categoryIds: string[]): Promise<void> {
+  private async syncItemCategories(itemId: string, categoryIds: string[], schoolId: string): Promise<void> {
     await supabase.from('school_inventory_categoryxitem').delete().eq('item_id', itemId)
 
+    // Only this school's categories (ids from another school were linked before and leaked their titles).
+    let allowed: string[] = []
     if (categoryIds.length > 0) {
-      const rows = categoryIds.map((category_id) => ({ item_id: itemId, category_id }))
+      const { data, error } = await supabase.from('school_inventory_categories').select('id').eq('school_id', schoolId).in('id', categoryIds)
+      if (error) throw error
+      allowed = (data ?? []).map((c: { id: string }) => c.id)
+    }
+
+    if (allowed.length > 0) {
+      const rows = allowed.map((category_id) => ({ item_id: itemId, category_id }))
       const { error } = await supabase.from('school_inventory_categoryxitem').insert(rows)
       if (error) throw error
     }
