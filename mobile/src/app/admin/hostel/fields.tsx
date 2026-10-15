@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { Plus, Save, Trash2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { CheckRow } from '@/features/admin/attendance';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
@@ -128,7 +129,7 @@ export default function HostelFields() {
   const typeOptions = FIELD_TYPES.map((x) => ({ value: x, label: f(`type_${x.replace('-', '_')}`) }));
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: f('header_title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-28" keyboardShouldPersistTaps="handled">
         <FilterChips

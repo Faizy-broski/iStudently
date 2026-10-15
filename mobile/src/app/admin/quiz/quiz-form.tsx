@@ -1,9 +1,10 @@
 import { coursePeriodTeacherName, type AdminQuiz, type DifficultyLevel } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { MultiSelect } from '@/components/app/multi-select';
 import { Picker } from '@/components/app/picker';
@@ -213,7 +214,7 @@ export default function QuizForm() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: qid ? q('actions.editQuiz') : q('newQuiz') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="p-4 pb-10" keyboardShouldPersistTaps="handled">
           {qid && res.isLoading ? (
             <LoadingList rows={5} />

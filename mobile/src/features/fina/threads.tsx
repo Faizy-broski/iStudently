@@ -1,8 +1,9 @@
 import { router, Stack, type Href } from 'expo-router';
 import { Lock, MessageCircle, Plus, Send } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { ListRow } from '@/components/app/list-row';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -149,7 +150,7 @@ export function ThreadScreen({ id, canSend }: { id: string; canSend: boolean }) 
   }
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView className="bg-background flex-1" keyboardVerticalOffset={90}>
       <Stack.Screen options={{ title: f('page_title') }} />
       <View className="flex-row items-center gap-2 bg-amber-50 px-4 py-2 dark:bg-amber-950">
         <Icon as={Lock} className="size-3.5 text-amber-700 dark:text-amber-300" />

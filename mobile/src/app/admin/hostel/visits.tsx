@@ -3,9 +3,10 @@ import { Stack } from 'expo-router';
 import { Eye, LogOut, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -163,7 +164,7 @@ export default function HostelVisits() {
           if (!o) reset();
         }}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
               <DialogHeader>
                 <DialogTitle>{v('dialog_add_title')}</DialogTitle>

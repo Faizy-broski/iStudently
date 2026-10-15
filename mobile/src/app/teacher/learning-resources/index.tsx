@@ -4,8 +4,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { BookOpen, ChevronsLeft, ChevronsRight, Dna, Edit, ExternalLink, Eye, EyeOff, FileText, Link2, Paperclip, Pin, PinOff, Plus, Trash2, Video, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';

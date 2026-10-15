@@ -2,8 +2,9 @@ import { coursePeriodTeacherName, ELIGIBILITY_CODES, type EligibilityCode } from
 import { Stack } from 'expo-router';
 import { Save, Users } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';

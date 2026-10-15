@@ -3,8 +3,9 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { CheckCircle2, Info, Minus, TrendingDown, TrendingUp, User, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { MultiSelect } from '@/components/app/multi-select';
 import { Picker } from '@/components/app/picker';

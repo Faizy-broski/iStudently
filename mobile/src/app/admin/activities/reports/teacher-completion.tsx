@@ -1,8 +1,9 @@
 import { coursePeriodTeacherName, type CoursePeriod, type EligibilityCompleted } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { Plus, Printer, Save, Trash2 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View, type ScrollView as RNScrollView } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
@@ -39,7 +40,7 @@ export default function MarkingPeriods() {
   const pluralLabel = (x: MarkingPeriodType) => t(`school.marking_periods.types_plural.${x}`);
   const toast = useToast();
   const confirm = useConfirm();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<RNScrollView>(null);
   const { campusId, campus } = useCampus();
   const groupsActive = usePluginActive('marking_period_groups');
   const [groupId, setGroupId] = useState<string | null>(null);

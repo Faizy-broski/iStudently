@@ -2,9 +2,10 @@ import type { AdminQuizQuestion, QuizQuestionMapRow } from '@studently/api-clien
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
@@ -102,7 +103,7 @@ export default function ManageQuizQuestions() {
           ]}
         />
       </View>
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-2 p-4 pb-10" keyboardShouldPersistTaps="handled">
           {tab === 'quiz' ? (
             mapped.isLoading ? (

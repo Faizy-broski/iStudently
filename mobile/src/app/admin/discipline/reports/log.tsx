@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Printer, RefreshCcw, Search } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, formatYmd, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';

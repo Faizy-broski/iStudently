@@ -3,9 +3,10 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, ArrowRight, Calendar, CheckCircle, Info, Pencil, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';

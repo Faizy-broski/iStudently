@@ -233,3 +233,22 @@
   - The form sits on the configured background: gradient, color, or image with opacity.
   - Shows the rotating quote (`GET /quotes/current`) and, under "About", the public pages (`GET /public/login-links`). Link pages open the browser; text, image and embed pages open `/(auth)/about-page`.
   - `PageCard` moved to `features/pages/page-card.tsx` (shared with teacher school pages). api-client: `getCurrentQuote`, `getLoginLinks` (contract: 63 calls).
+- 2026-10-15: first preview APK (Android, local build), about 80 MB.
+  - Points at `https://istudent.ly/api`, passed as env at build time; `.env` unchanged.
+  - Rebuild with:
+    ```
+    EXPO_PUBLIC_API_URL=https://istudent.ly/api EXPO_PUBLIC_WEB_URL=https://istudent.ly npx expo prebuild -p android --clean
+    cd android && ./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a -Pandroid.enableMinifyInReleaseBuilds=true -Pandroid.enableShrinkResourcesInReleaseBuilds=true
+    ```
+  - Leaving out x86 cut 156 MB to 80 MB. Minify was checked on the emulator: sign-in and super admin dashboard work.
+  - Signed with the debug key, so testing only. `eas.json` preview builds an APK; `preview-simulator` builds for the iOS simulator.
+- 2026-10-15: keyboard no longer covers inputs (app-wide).
+  - Added `react-native-keyboard-controller` (native module; dev client and APK rebuilt), with `KeyboardProvider` in the root layout.
+  - `components/app/keyboard.tsx` provides a keyboard-aware `ScrollView` (horizontal ones stay plain) and a `KeyboardAvoidingView` that defaults to padding.
+  - `Screen scroll` uses it. Dialogs lift above the keyboard (`components/ui/dialog.tsx`).
+  - Codemod: 61 KeyboardAvoidingView files and 220 input screens now import from `@/components/app/keyboard`.
+- 2026-10-15: app icon, splash and favicon now use the Studently logo (2048 px original from the login page settings).
+  - `icon.png`: full-bleed square, also the iOS icon; `ios.icon` no longer points to Expo's `expo.icon`.
+  - Android adaptive icon: glyph foreground on a blue background (#2563EB), plus a white monochrome version.
+  - `splash-icon.png`: the rounded logo on #022172, imageWidth 180.
+  - Preview APK 1.0.1 (81 MB) with the keyboard fix and the new icons. Checked on the emulator: the bottom field of Platform settings scrolls above the keyboard.

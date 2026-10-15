@@ -2,8 +2,9 @@ import type { JitsiRoom, JitsiRoomInput } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { KeyboardAvoidingView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -61,7 +62,7 @@ export default function MyRooms() {
             ) : null,
         }}
       />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
           {mode !== 'none' ? (
             <Card>

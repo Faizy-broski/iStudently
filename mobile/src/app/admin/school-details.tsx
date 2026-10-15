@@ -3,9 +3,10 @@ import { router, Stack } from 'expo-router';
 import { Building2, ChevronDown, ChevronUp, Compass, GraduationCap, Layers, ListPlus, Mail, MapPin, Pencil, Phone, Save, SlidersHorizontal, Target, ThumbsUp, Users, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, ScrollView, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { EmptyState } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

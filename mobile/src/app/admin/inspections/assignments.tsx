@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Building2, Pencil, Plus, Power, Trash2, UserCog, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';

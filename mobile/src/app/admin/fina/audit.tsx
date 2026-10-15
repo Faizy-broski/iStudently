@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { Button } from '@/components/ui/button';

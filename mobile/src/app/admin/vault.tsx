@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { Check, ChevronDown, ChevronUp, Eye, EyeOff, Lock, Paperclip, Pencil, Plus, Settings2, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField, formatYmd, parseYmd } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -51,7 +52,7 @@ function Sheet({ open, onClose, title, description, children }: { open: boolean;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>

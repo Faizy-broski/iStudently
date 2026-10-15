@@ -2,8 +2,9 @@ import { router, Stack } from 'expo-router';
 import { CalendarRange, Minus, Plus, Save } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { LoadingList } from '@/components/app/states';
 import { TimeField } from '@/components/app/time-field';
 import { useToast } from '@/components/app/toast';

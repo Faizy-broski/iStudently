@@ -1,9 +1,10 @@
 import type { AdminQuestionType, AdminQuizQuestion, DifficultyLevel } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { WebSessionView } from '@/components/app/web-session-view';
@@ -157,7 +158,7 @@ export default function QuestionForm() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: qid ? q('editQuestion') : q('newQuestion') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="p-4 pb-10" keyboardShouldPersistTaps="handled">
           {qid && res.isLoading ? (
             <LoadingList rows={4} />

@@ -3,8 +3,9 @@ import { Check, Download, X } from 'lucide-react-native';
 import { toCsv } from '@studently/shared-utils';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

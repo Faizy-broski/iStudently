@@ -4,8 +4,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { Clock, ExternalLink, Send } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView } from '@/components/app/keyboard';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { PublicWebView } from '@/components/app/web-session-view';
@@ -54,7 +55,7 @@ export default function StudentPhysicsLab() {
   }
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView className="bg-background flex-1" keyboardVerticalOffset={90}>
       <Stack.Screen
         options={{
           title: sim?.title || lab.sim_key,

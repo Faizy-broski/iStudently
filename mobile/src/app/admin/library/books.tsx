@@ -4,9 +4,10 @@ import { router, Stack } from 'expo-router';
 import { AlertTriangle, Barcode, BookOpen, CheckCircle, FolderOpen, ImageIcon, Layers, Pencil, Plus, RotateCcw, Trash2, Upload, Users, Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';

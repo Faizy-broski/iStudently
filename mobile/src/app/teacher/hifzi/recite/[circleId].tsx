@@ -3,8 +3,9 @@ import { randomUUID } from 'expo-crypto';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Play, Undo2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

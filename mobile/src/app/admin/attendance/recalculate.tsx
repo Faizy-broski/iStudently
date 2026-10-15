@@ -2,8 +2,9 @@ import { router, Stack } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';

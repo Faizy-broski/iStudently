@@ -2,9 +2,10 @@ import { Stack } from 'expo-router';
 import { Lock, Mail, Phone, Save, Shield, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Share, View } from 'react-native';
+import { Share, View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';

@@ -2,8 +2,9 @@ import type { FinaAudienceType, FinaPostInput, FinaPostType } from '@studently/a
 import { router, Stack } from 'expo-router';
 import { ArrowLeft, Check, ImagePlus, RefreshCw, Upload, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { TimeField } from '@/components/app/time-field';
@@ -230,7 +231,7 @@ export default function FinaCompose() {
           ),
         }}
       />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <View className="flex-row items-center gap-2">
             <View className="size-9 items-center justify-center rounded-full" style={{ backgroundColor: meta.bg }}>

@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { FolderOpen, Pencil, Plus, Save, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -151,7 +152,7 @@ export default function LibraryCategories() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <ScrollView contentContainerClassName="gap-4" keyboardShouldPersistTaps="handled">
               <DialogHeader>
                 <DialogTitle>{editing ? c('dialog.edit_title') : c('dialog.new_title')}</DialogTitle>

@@ -4,8 +4,9 @@ import { openBrowserAsync } from 'expo-web-browser';
 import { router, Stack } from 'expo-router';
 import { Download, FileStack, FileText, Key, Pencil, Plus, SlidersHorizontal, Star, Trash2, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';

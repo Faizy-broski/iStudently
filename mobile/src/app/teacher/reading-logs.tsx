@@ -4,8 +4,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { BookOpen, Calendar, ChevronDown, ChevronUp, Clock, FileText, MicOff, Pause, Play } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { SearchBar } from '@/components/app/search-bar';
 import { LoadingList } from '@/components/app/states';

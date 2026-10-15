@@ -3,6 +3,7 @@ import '@/i18n';
 
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack, ThemeProvider, usePathname } from 'expo-router';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
@@ -90,28 +91,30 @@ export default function RootLayout() {
   const { colorScheme } = useColorScheme();
   const scheme = colorScheme === 'dark' ? 'dark' : 'light';
   return (
-    <ThemeProvider value={NAV_THEME[scheme]}>
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-      {/* The ref lets the development screenshot tool find the page on screen. */}
-      <View style={{ flex: 1 }} ref={__DEV__ ? setCaptureRoot : undefined}>
-        <DataProvider>
-          <ToastProvider>
-            <ConfirmProvider>
-              <AppConfigGate>
-                <SessionProvider>
-                  <AppLockProvider>
-                    <RootStack />
-                  </AppLockProvider>
-                </SessionProvider>
-              </AppConfigGate>
-            </ConfirmProvider>
-          </ToastProvider>
-        </DataProvider>
-        {__DEV__ ? <CaptureRouteTracker /> : null}
-      </View>
-      {/* Dialogs, selects and sheets render here (React Native Reusables). */}
-      <PortalHost />
-      <OfflineBanner />
-    </ThemeProvider>
+    <KeyboardProvider>
+      <ThemeProvider value={NAV_THEME[scheme]}>
+        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+        {/* The ref lets the development screenshot tool find the page on screen. */}
+        <View style={{ flex: 1 }} ref={__DEV__ ? setCaptureRoot : undefined}>
+          <DataProvider>
+            <ToastProvider>
+              <ConfirmProvider>
+                <AppConfigGate>
+                  <SessionProvider>
+                    <AppLockProvider>
+                      <RootStack />
+                    </AppLockProvider>
+                  </SessionProvider>
+                </AppConfigGate>
+              </ConfirmProvider>
+            </ToastProvider>
+          </DataProvider>
+          {__DEV__ ? <CaptureRouteTracker /> : null}
+        </View>
+        {/* Dialogs, selects and sheets render here (React Native Reusables). */}
+        <PortalHost />
+        <OfflineBanner />
+      </ThemeProvider>
+    </KeyboardProvider>
   );
 }

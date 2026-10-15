@@ -4,8 +4,9 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Calendar, Clock, Edit, FileText, Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
@@ -110,7 +111,7 @@ export default function TeacherHomeworkDetail() {
   return (
     <>
       <Stack.Screen options={{ title: form ? k('editAssignmentTitle') : a.title }} />
-      <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
           {form ? (
             <>

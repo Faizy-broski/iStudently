@@ -2,8 +2,9 @@ import type { HifziBridgePreviewRow, HifziBridgeResult } from '@studently/api-cl
 import { Stack } from 'expo-router';
 import { Eye, Link2, Save, UploadCloud } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -105,7 +106,7 @@ export default function HifziGradebook() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: h('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">{h('subtitle')}</Text>
           {loading ? (

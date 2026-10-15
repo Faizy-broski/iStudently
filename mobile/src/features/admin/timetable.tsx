@@ -2,8 +2,9 @@ import type { AdminTimetableEntry, BellPeriod, RoomType } from '@studently/api-c
 import { AlertCircle, Copy, Eraser, Lock, Plus, Sparkles, Trash2, Unlock, User } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';

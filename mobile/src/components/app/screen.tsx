@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { ScrollView, View, type ScrollViewProps } from 'react-native';
+import { View, type ScrollViewProps } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { cn } from '@/lib/utils';
 
 /** Page wrapper: safe area + theme background. `scroll` for forms and detail pages. */

@@ -2,8 +2,9 @@ import type { HifziPlan, HifziPlanType } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { ErrorState, LoadingList } from '@/components/app/states';
@@ -54,7 +55,7 @@ function PlanDialog({ studentId, circleId, editing, onClose, onSaved }: { studen
   return (
     <Dialog open onOpenChange={(o) => !o && !saving && onClose()}>
       <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
             <DialogHeader>
               <DialogTitle>{editing ? h('edit') : h('create')}</DialogTitle>

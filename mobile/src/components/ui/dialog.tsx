@@ -5,7 +5,8 @@ import * as DialogPrimitive from '@rn-primitives/dialog';
 import { X } from 'lucide-react-native';
 import * as React from 'react';
 import { Platform, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
-import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, ReduceMotion, useAnimatedStyle } from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
 const Dialog = DialogPrimitive.Root;
@@ -70,9 +71,14 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   portalHost?: string;
 }) {
+  // Lift the centered dialog above the keyboard: a bottom margin equal to the keyboard height
+  // re-centers it in the space left above the keyboard (Android edge-to-edge and iOS).
+  const { height } = useReanimatedKeyboardAnimation();
+  const liftStyle = useAnimatedStyle(() => ({ marginBottom: -height.value }));
   return (
     <DialogPortal hostName={portalHost}>
       <DialogOverlay>
+        <Animated.View style={liftStyle}>
         <DialogPrimitive.Content
           className={cn(
             'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
@@ -98,6 +104,7 @@ function DialogContent({
             <Text className="sr-only">Close</Text>
           </DialogPrimitive.Close>
         </DialogPrimitive.Content>
+        </Animated.View>
       </DialogOverlay>
     </DialogPortal>
   );

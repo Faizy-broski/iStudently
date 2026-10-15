@@ -1,8 +1,9 @@
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
 import { Picker } from '@/components/app/picker';
@@ -86,7 +87,7 @@ export default function TeacherCreateHomework() {
   return (
     <>
       <Stack.Screen options={{ title: k('createNewAssignment') }} />
-      <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <View className="gap-1.5">
             <Label>{`${k('gradeLevel')} *`}</Label>

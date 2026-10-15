@@ -3,8 +3,9 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { KeyRound, LogOut, StopCircle, Video } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { ErrorState, LoadingList } from '@/components/app/states';
@@ -273,7 +274,7 @@ export function RoomScreen({ basePath }: { basePath: '/admin/jitsi-meet' | '/stu
         // The Excalidraw whiteboard is the website's room page (switch to its Whiteboard tab).
         <WebSessionView path={`${basePath}/rooms/${room.id}`} campusId={campusId} />
       ) : (
-        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView className="flex-1">
           <ScrollView contentContainerClassName="gap-3 p-4 pt-2 pb-10" keyboardShouldPersistTaps="handled">
             {tab === 'video' ? (
               <Card>

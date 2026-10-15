@@ -6,9 +6,10 @@ import { ChevronRight, ExternalLink, Eye, EyeOff, Languages } from 'lucide-react
 import { useColorScheme } from 'nativewind';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
+import { KeyboardAvoidingView } from '@/components/app/keyboard';
 import { FormError } from '@/components/app/form';
 import { Screen } from '@/components/app/screen';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,7 @@ export default function SignIn() {
   }
 
   return (
-    <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="flex-1">
       <Screen scroll padded={false} edges={['top']} contentContainerClassName="min-h-full gap-6 pb-0 pt-6">
         {/* Branding (web: left side): title, subtitle, logo and the login quote. */}
         <View className="items-center gap-3 px-6">

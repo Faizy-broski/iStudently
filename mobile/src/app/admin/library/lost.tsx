@@ -3,9 +3,10 @@ import { router, Stack } from 'expo-router';
 import { AlertTriangle } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,7 @@ export default function LibraryLost() {
 
   const date = (d?: string) => (d ? new Date(d).toLocaleDateString(i18n.language) : '—');
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: t('app.lb_mark_lost_title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{t('app.lb_lost_desc')}</Text>

@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { BarChart3, CalendarClock, CheckCircle2, Clock, FileText, Info, Plus, RefreshCw, Save, Share2, ToggleRight, Trash2, Users, XCircle, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { HtmlTextField } from '@/components/app/html-text-field';

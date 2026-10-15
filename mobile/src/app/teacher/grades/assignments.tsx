@@ -4,8 +4,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { Award, Paperclip, Plus, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
@@ -156,7 +157,7 @@ export default function TeacherGradebookAssignments() {
   return (
     <>
       <Stack.Screen options={{ title: k('pageTitleWithPeriod', { mpName }) }} />
-      <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView
           contentContainerClassName="gap-3 p-4 pb-10"
           keyboardShouldPersistTaps="handled"

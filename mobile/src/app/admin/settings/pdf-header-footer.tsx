@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { Check, Eye, FileImage, ImagePlus, Link2, Plus, Save } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Image as RNImage, ScrollView, View } from 'react-native';
+import { Image as RNImage, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { CheckRow } from '@/features/admin/attendance';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
 import { Picker } from '@/components/app/picker';
@@ -250,7 +251,7 @@ export default function PdfHeaderFooterSettings() {
   );
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: t('app.pdf_title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <View className="flex-row items-center gap-2">

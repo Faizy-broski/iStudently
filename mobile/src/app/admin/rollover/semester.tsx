@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { AlertTriangle, ArrowLeft, Calendar, CheckCircle2, Info, RotateCcw, TrendingUp, Users } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';

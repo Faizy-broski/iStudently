@@ -3,8 +3,9 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, CheckCircle2, CheckSquare, Circle, CircleDot, Clock, ExternalLink, Square, XCircle } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

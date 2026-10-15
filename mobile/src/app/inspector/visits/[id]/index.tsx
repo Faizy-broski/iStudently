@@ -2,9 +2,10 @@ import { router, Stack, useLocalSearchParams, type Href } from 'expo-router';
 import { Building2, Calendar, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, FileText, GraduationCap, LogIn, Plus, User, Users, X, XCircle, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';

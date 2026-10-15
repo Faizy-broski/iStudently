@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { FileText, Paperclip, Plus, Trash2, Upload, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { EmptyState, LoadingList } from '@/components/app/states';

@@ -31,6 +31,7 @@ School management + LMS. `backend/` is Express + Supabase (TypeScript), `fronten
 - Copy web UI components or `next/*` imports into mobile or packages.
 - Store credentials in plain text (the web "remember me" localStorage password must not be ported).
 - Use physical left/right styles; use start/end (RTL).
+- Import `ScrollView` / `KeyboardAvoidingView` from `react-native` in mobile screens with inputs. Use `@/components/app/keyboard` (react-native-keyboard-controller): Android is edge-to-edge, so `adjustResize` and RN's KeyboardAvoidingView don't move content above the keyboard there.
 - In mobile screens (React Compiler is on), read possibly-missing data inside hooks or render-time callbacks (`useApi` keys, `useAction`, `onPress`) through `x!.prop` or `x?.a ? [x.a] : null`: the compiler reads `x.prop` during render and crashes while `x` is still loading. Copy it into a local first (`const id = s?.id ?? null`), or read ids from the SWR key in the fetcher.
 - Select `profiles(*)` in anything returned to clients (use `SAFE_PROFILE_COLUMNS`), or return `req.profile` to clients (it is `select('*')` and includes TOTP/password columns).
 

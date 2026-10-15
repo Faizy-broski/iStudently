@@ -4,8 +4,9 @@ import { FileDown, Printer } from 'lucide-react-native';
 import { htmlToText, textToHtml } from '@studently/shared-utils';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';

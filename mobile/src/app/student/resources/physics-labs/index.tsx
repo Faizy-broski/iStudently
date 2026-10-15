@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { ChevronRight, FlaskConical } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';

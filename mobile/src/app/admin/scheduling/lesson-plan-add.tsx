@@ -4,9 +4,10 @@ import { openBrowserAsync } from 'expo-web-browser';
 import { ArrowDown, ArrowUp, Download, Pencil, Plus, Save, Trash2, Upload, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
@@ -253,7 +254,7 @@ export default function LessonPlanAdd() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: a('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">{a('desc')}</Text>
           <View className="gap-1">

@@ -3,9 +3,10 @@ import { Stack } from 'expo-router';
 import { Download, Printer, QrCode, RefreshCw, Search } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';

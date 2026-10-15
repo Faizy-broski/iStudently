@@ -4,8 +4,9 @@ import { type Href, router } from 'expo-router';
 import { Archive, ArrowDownWideNarrow, ArrowLeft, ArrowUpNarrowWide, FileText, Inbox, MailOpen, Paperclip, PenSquare, Reply, Send, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { SearchBar } from '@/components/app/search-bar';

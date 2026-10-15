@@ -4,8 +4,9 @@ import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, ChevronRight, Paperclip, Pencil, Save, Send, Trash2, Users, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { MultiSelect } from '@/components/app/multi-select';

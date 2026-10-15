@@ -4,8 +4,9 @@ import { router, Stack } from 'expo-router';
 import { ExternalLink, Eye, Globe, Info, Save } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
@@ -63,7 +64,7 @@ export default function PublicPagesSettings() {
   const pageOptions = [{ value: 'login', label: u('login_default') }, ...PUBLIC_PAGE_IDS.filter((id) => config.pages.includes(id)).map((id) => ({ value: id, label: u(`pages.${id}`) }))];
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: u('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <View className="flex-row items-start gap-2">

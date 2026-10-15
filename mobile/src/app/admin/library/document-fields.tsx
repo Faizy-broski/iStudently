@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { AlignLeft, CalendarDays, CheckSquare, Hash, List, ListChecks, Paperclip, Pencil, Plus, Save, Sliders, Trash2, Type, X, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { EmptyState, LoadingList } from '@/components/app/states';
@@ -174,7 +175,7 @@ export default function LibraryDocumentFields() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <ScrollView contentContainerClassName="gap-4" keyboardShouldPersistTaps="handled">
               <DialogHeader>
                 <DialogTitle>{editing ? d('dialog.edit_title') : d('dialog.new_title')}</DialogTitle>

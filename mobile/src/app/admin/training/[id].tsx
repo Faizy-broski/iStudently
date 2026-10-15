@@ -4,9 +4,10 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { Award, Copy, Download, Pencil, QrCode, Trash2, UserCheck, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, ScrollView, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';

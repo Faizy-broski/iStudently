@@ -3,9 +3,10 @@ import { Stack } from 'expo-router';
 import { Check, Minus, Plus, Settings, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

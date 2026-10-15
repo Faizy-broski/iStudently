@@ -3,8 +3,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { BarChart3, Calendar, CheckCircle2, CheckSquare, Circle, CircleDot, Download, ExternalLink, FileText, Pin, Square } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { EmptyState } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';

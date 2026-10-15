@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { Bold, CheckCircle2, FileDown, Image as ImageIcon, Italic, Plus, Printer, Trash2, Underline, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
@@ -273,7 +274,7 @@ export default function ExamBuilder() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: x('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">{x('subtitle')}</Text>
           <FilterChips

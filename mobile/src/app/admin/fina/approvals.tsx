@@ -2,8 +2,9 @@ import type { FinaPost } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { Check, ShieldCheck, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -121,7 +122,7 @@ export default function FinaApprovals() {
       </ScrollView>
       <Dialog open={!!rejecting} onOpenChange={(o) => !o && setRejecting(null)}>
         <DialogContent className="w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <View className="gap-3">
               <DialogHeader>
                 <DialogTitle>{f('reject_dialog_title')}</DialogTitle>

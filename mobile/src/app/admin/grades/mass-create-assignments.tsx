@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Check, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
 import { LoadingList } from '@/components/app/states';
@@ -117,7 +118,7 @@ export default function MassCreateAssignments() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: m('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">
             {m('subtitle')}

@@ -4,9 +4,10 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, BookOpen, Calendar } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';

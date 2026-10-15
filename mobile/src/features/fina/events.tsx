@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 import { CalendarDays, Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { LoadingList } from '@/components/app/states';
 import { TimeField } from '@/components/app/time-field';
@@ -122,7 +123,7 @@ export function FinaEventsScreen({ canCreate }: { canCreate: boolean }) {
       </ScrollView>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <View className="gap-3">
               <DialogHeader>
                 <DialogTitle>{f('create_button')}</DialogTitle>

@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { BarChart } from '@/components/app/charts';
 import { DateField, parseYmd, todayYmd } from '@/components/app/date-field';
 import { EmptyState, LoadingList } from '@/components/app/states';

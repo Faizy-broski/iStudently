@@ -4,8 +4,9 @@ import Storage from 'expo-sqlite/kv-store';
 import { CalendarDays, Pencil, Printer, RotateCcw, Share2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { formatYmd } from '@/components/app/date-field';
 import { MultiChips } from '@/components/app/filter-chips';
 import { LoadingList } from '@/components/app/states';

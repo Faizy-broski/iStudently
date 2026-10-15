@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Link2, Pencil, Plus, Save, Tags, Trash2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
@@ -219,7 +220,7 @@ export default function ResourceLinks() {
 
       <Dialog open={!!current} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
               <DialogHeader>
                 <DialogTitle>{l('header_title')}</DialogTitle>

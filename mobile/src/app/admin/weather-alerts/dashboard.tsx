@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Check, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

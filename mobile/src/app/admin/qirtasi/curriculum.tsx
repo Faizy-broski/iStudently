@@ -2,8 +2,9 @@ import type { CurriculumLevel, CurriculumNode } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { ChevronRight, GraduationCap, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';

@@ -3,8 +3,9 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { CheckCircle2, Headphones, Maximize2, Mic, MicOff, Minimize2, Minus, Pause, Play, Plus, Square } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, Easing, Pressable, ScrollView, View } from 'react-native';
+import { Animated, Easing, Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { LoadingList } from '@/components/app/states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

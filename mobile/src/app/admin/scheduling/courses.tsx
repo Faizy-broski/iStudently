@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { ArrowDown, ArrowUp, ChevronRight, Pencil, Plus, Trash2, Video } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
@@ -103,7 +104,7 @@ function SubjectDialog({ subject, onClose, onSaved }: { subject: Subject | null;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="w-[94vw] max-w-md">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <View className="gap-3">
             <DialogHeader>
               <DialogTitle>{subject ? c('dialog_subject_edit') : c('dialog_subject_add')}</DialogTitle>
@@ -167,7 +168,7 @@ function CourseDialog({ subject, course, onClose, onSaved }: { subject: Subject;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="w-[94vw] max-w-md">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <View className="gap-3">
             <DialogHeader>
               <DialogTitle>
@@ -278,7 +279,7 @@ function CpDialog({ course, cp, siblings, onClose, onSaved }: { course: Course; 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92%] w-[96vw] max-w-lg">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
             <DialogHeader>
               <DialogTitle>{cp ? c('dialog_cp_edit') : c('dialog_cp_add')}</DialogTitle>
