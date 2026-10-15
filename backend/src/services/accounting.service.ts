@@ -1194,7 +1194,12 @@ class AccountingService {
         const { data, error } = await supabase
             .from('payees')
             .update({
-                ...payeeData,
+                // Only payee fields; anything else in the request body is ignored.
+                ...Object.fromEntries(
+                    (['name', 'email', 'phone', 'address', 'bank', 'account_number', 'swift_iban', 'bsb_bic', 'rollover', 'is_active'] as const)
+                        .filter((k) => k in payeeData)
+                        .map((k) => [k, (payeeData as Record<string, unknown>)[k]])
+                ),
                 updated_at: new Date().toISOString()
             })
             .eq('id', payeeId)

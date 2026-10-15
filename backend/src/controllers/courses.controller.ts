@@ -1,6 +1,21 @@
 import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { coursesService } from '../services/courses.service'
+import { supabase } from '../config/supabase'
+import { campusIdsAllowed } from '../utils/campus-validation'
+
+/** Fields a client may never set on update (they move or re-key the row). */
+const PROTECTED = ['id', 'school_id', 'campus_id', 'course_id', 'created_at', 'created_by', 'updated_at']
+const updatable = (body: unknown) => Object.fromEntries(Object.entries((body ?? {}) as Record<string, unknown>).filter(([k]) => !PROTECTED.includes(k)))
+
+/** Every staff id given as a teacher must belong to the caller's school family. */
+async function teachersInFamily(req: Request, body: Record<string, unknown>): Promise<boolean> {
+  const ids = [body.teacher_id, body.secondary_teacher_id].filter((v): v is string => typeof v === 'string' && v.length > 0)
+  if (!ids.length || (req as AuthRequest).profile?.role === 'super_admin') return true
+  const { data } = await supabase.from('staff').select('id, school_id').in('id', ids)
+  if (!data || data.length !== new Set(ids).size) return false
+  return campusIdsAllowed((req as AuthRequest).profile?.school_id, [...new Set(data.map((r: { school_id: string }) => r.school_id))])
+}
 
 // ============================================================================
 // COURSES CONTROLLERS
@@ -56,7 +71,7 @@ export const createCourse = async (req: Request, res: Response) => {
 export const updateCourse = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const data = await coursesService.updateCourse(id, req.body)
+    const data = await coursesService.updateCourse(id, updatable(req.body))
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in updateCourse:', error)
@@ -127,6 +142,7 @@ export const createCoursePeriod = async (req: Request, res: Response) => {
     }
 
     const userId = (req as AuthRequest).user?.id
+    if (!(await teachersInFamily(req, req.body ?? {}))) return res.status(400).json({ success: false, error: 'Teacher not found' })
     const data = await coursesService.createCoursePeriod(schoolId, req.body, userId)
     res.status(201).json({ success: true, data })
   } catch (error: any) {
@@ -138,7 +154,9 @@ export const createCoursePeriod = async (req: Request, res: Response) => {
 export const updateCoursePeriod = async (req: Request, res: Response) => {
   try {
     const { cpId } = req.params
-    const data = await coursesService.updateCoursePeriod(cpId, req.body)
+    const body = updatable(req.body)
+    if (!(await teachersInFamily(req, body))) return res.status(400).json({ success: false, error: 'Teacher not found' })
+    const data = await coursesService.updateCoursePeriod(cpId, body)
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in updateCoursePeriod:', error)

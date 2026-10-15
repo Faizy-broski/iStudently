@@ -1,6 +1,14 @@
-# 14-week sprint plan (one-week sprints, one developer + Claude)
+# 16-week sprint plan (one-week sprints, one developer + Claude)
 
-Tick items as they finish. Update `PROGRESS.md` at the end of each session. "Drop first" = postpone in this order if behind. Design runs one week ahead of building. Store review time is outside the 14 weeks.
+Tick items as they finish. Update `PROGRESS.md` at the end of each session. "Drop first" = postpone in this order if behind. Design runs one week ahead of building. Store review time is outside the 16 weeks.
+
+## Change 2026-10-07: school admin gets every module
+The admin "on the go" set in Sprint 15 is replaced by a separate admin track: a 2-week foundation
+(Wave 0: campus switcher, admin menu filtered like the web, native 2FA/agreement/forced password,
+dashboard) and seven waves (People 4 wk, Fees & accounting 4, Academics 5, Attendance & discipline 4,
+School & settings 4, Resources & services 3, Plugins 4), about 30 weeks. Modules not built yet open
+"Open on website". Order versus student/parent/teacher is decided after Wave 2. Plan:
+`/Users/meticuloustech/.claude/plans/merry-mixing-donut.md`.
 
 ## Milestones
 | Milestone | Week |
@@ -10,8 +18,9 @@ Tick items as they finish. Update `PROGRESS.md` at the end of each session. "Dro
 | Alpha 1 (about 5 students) | 7 |
 | Student + parent app submitted to stores | 9 |
 | Teacher app complete | 11 |
-| Full app submitted | 13 |
-| Handover | 14 |
+| Super admin complete | 13 |
+| Full app submitted | 15 |
+| Handover | 16 |
 
 ## Sprint 1 (Week 1): Setup, shared foundations and decisions  [milestone: Project start]
 
@@ -483,7 +492,7 @@ Tick items as they finish. Update `PROGRESS.md` at the end of each session. "Dro
 **Design needed**
   - [ ] Class diary, create assignment, submissions list, grading sheet, discipline referral, online class, events, staff rotating code.
   - [ ] E-library and Quran progress screens.
-  - [ ] Scanner designs (all result states) for week 12.
+  - [ ] Super admin designs (dashboard, school directory, billing) for week 12.
 
 **Server (backend)**
   - [ ] Teacher messaging recipient rules check.
@@ -522,14 +531,99 @@ Tick items as they finish. Update `PROGRESS.md` at the end of each session. "Dro
 
 ---
 
-## Sprint 12 (Week 12): QR scanner core and librarian
+## Sprint 12 (Week 12): Super admin part 1  [added 2026-10-06]
+
+**Goal:** A super admin can oversee all schools from the phone: dashboard, school directory, school status and billing. No school impersonation in the app (that stays on the web).
+
+**Design needed**
+  - [ ] Super admin dashboard, school directory (list, detail, status change), billing plans and billing status.
+  - [ ] Credential view behind biometric re-auth.
+  - [ ] Super admin settings, onboarding, feedback and quotes designs for week 13.
+
+**Server (backend)**
+  - [ ] Super admin summary service for the dashboard if the web computes totals in the browser.
+  - [ ] Confirm every super-admin route checks `super_admin` server-side (not only in the web UI).
+  - [ ] Paging and search on the school list and billing records.
+
+**Shared code**
+  - [ ] Super admin modules (schools, billing, feedback, quotes) moved to the shared communication layer.
+
+**Mobile app**
+  - [ ] Super admin tab bar and home dashboard.
+  - [ ] School directory: search, filters, school detail, suspend/activate with confirmation.
+  - [ ] Admin credentials view: biometric re-auth first, never cached, hidden from screenshots/app switcher.
+  - [ ] Billing plans (list, create, edit, delete) and billing status (records, filters, mark as paid).
+
+**Testing and quality**
+  - [ ] Every action tested against the mock database with clearly named test records, cleaned up after.
+  - [ ] Non-super-admin accounts get 403 on every super-admin call.
+  - [ ] English and Arabic; light and dark.
+
+**Demo:** Super admin finds a school, views its details, changes its status and marks a billing record as paid.
+
+**Must finish**
+  - [ ] Dashboard, school directory and status change work end to end.
+  - [ ] Credentials are protected by biometric re-auth.
+
+**Drop first if behind**
+  - [ ] Billing plan create/edit (view first).
+  - [ ] Dashboard charts.
+
+**Needs from client:** Mock schools in several states (active, suspended, trial ending).
+
+**Main risk:** Destructive actions (suspend, delete) on a phone. Every one needs a confirmation step and is tested only on test records.
+
+---
+
+## Sprint 13 (Week 13): Super admin part 2  [added 2026-10-06]
+
+**Goal:** Finish the remaining super admin pages: onboarding, feedback, quotes and platform settings.
+
+**Design needed**
+  - [ ] Onboard school form, feedback and quotes inbox, platform settings, login page settings with preview, public pages editor (simplified), sidebar settings.
+  - [ ] Scanner designs (all result states) for week 14.
+
+**Server (backend)**
+  - [ ] Any missing validation on onboarding and settings endpoints used from the phone.
+  - [ ] Image upload limits for logo and login background uploads from the phone.
+
+**Shared code**
+  - [ ] Settings, login-page, public-pages and sidebar-config modules shared.
+
+**Mobile app**
+  - [ ] Onboard a new school (form with validation).
+  - [ ] Feedback and quotes inbox with detail.
+  - [ ] Platform settings (general, messaging, logo upload).
+  - [ ] Login page settings with preview; public pages editor (text and images, simplified); sidebar settings (order and visibility).
+
+**Testing and quality**
+  - [ ] Onboarding tested with a test school that is removed afterwards.
+  - [ ] Settings changes checked on the website after saving from the phone.
+
+**Demo:** Super admin onboards a test school and changes the login page from the phone; the website shows the change.
+
+**Must finish**
+  - [ ] All 11 super admin pages present.
+  - [ ] Super admin regression: every page in English and Arabic.
+
+**Drop first if behind**
+  - [ ] Public pages editor (link to the web editor instead).
+  - [ ] Login page live preview.
+
+**Needs from client:** Agreement on which settings may be changed from a phone.
+
+**Main risk:** Builder-style settings pages are hard on a small screen. The public pages editor is simplified; complex layouts stay on the web.
+
+---
+
+## Sprint 14 (Week 14): QR scanner core and librarian
 
 **Goal:** Bring the existing QR attendance scanner into the app, working offline, and add the librarian flows that use scanning.
 
 **Design needed**
   - [ ] Scanner result states (accepted check-in, check-out, duplicate, rejected variants), permission screens, offline banner, enrolment.
   - [ ] Librarian issue, return and search screens.
-  - [ ] Inspector and admin on-the-go designs for week 13.
+  - [ ] Inspector and admin on-the-go designs for week 15.
 
 **Server (backend)**
   - [ ] Compatibility tests proving signatures from a phone are accepted.
@@ -568,7 +662,7 @@ Tick items as they finish. Update `PROGRESS.md` at the end of each session. "Dro
 
 ---
 
-## Sprint 13 (Week 13): Scanner experience, inspector, admin, social wall and full submission  [milestone: Full app submitted]
+## Sprint 15 (Week 15): Scanner experience, inspector, admin, social wall and full submission  [milestone: Full app submitted]
 
 **Goal:** Finish every remaining role and screen, test the scanner for real conditions, and submit the full app.
 
@@ -614,7 +708,7 @@ Tick items as they finish. Update `PROGRESS.md` at the end of each session. "Dro
 
 ---
 
-## Sprint 14 (Week 14): Hardening, buffer and handover  [milestone: Handover]
+## Sprint 16 (Week 16): Hardening, buffer and handover  [milestone: Handover]
 
 **Goal:** Make the app secure, fast and supportable, finish anything that slipped, and hand over.
 

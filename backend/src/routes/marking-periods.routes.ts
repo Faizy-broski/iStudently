@@ -6,11 +6,16 @@ import {
   MarkingPeriodType,
 } from '../services/marking-periods.service'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
+import { requireAdmin } from '../middlewares/role.middleware'
+import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 
 // Apply auth middleware to all routes
 router.use(authenticate)
+
+// Rows addressed by id must belong to the caller's school family; writes are admin-only.
+const mpRow = requireRowInSchoolFamily('marking_periods')
 
 // ============================================================================
 // GET /api/marking-periods
@@ -89,7 +94,7 @@ router.get('/current', async (req: AuthRequest, res: Response) => {
 // GET /api/marking-periods/:id
 // Get a single marking period by ID
 // ============================================================================
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', mpRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
 
@@ -110,7 +115,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // GET /api/marking-periods/:id/children
 // Get children of a marking period
 // ============================================================================
-router.get('/:id/children', async (req: AuthRequest, res: Response) => {
+router.get('/:id/children', mpRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
 
@@ -127,7 +132,7 @@ router.get('/:id/children', async (req: AuthRequest, res: Response) => {
 // POST /api/marking-periods
 // Create a new marking period
 // ============================================================================
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     const campusId = req.body.campus_id || req.profile?.campus_id || null
@@ -179,7 +184,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // PUT /api/marking-periods/:id
 // Update a marking period
 // ============================================================================
-router.put('/:id', async (req: AuthRequest, res: Response) => {
+router.put('/:id', requireAdmin, mpRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
 
@@ -208,7 +213,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 // DELETE /api/marking-periods/:id
 // Delete a marking period (soft delete, cascades to children)
 // ============================================================================
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', requireAdmin, mpRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
 

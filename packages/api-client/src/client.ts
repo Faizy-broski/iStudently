@@ -73,10 +73,13 @@ export function createApiClient(adapter: ApiClientAdapter) {
           code: data.code,
           retryable: data.retryable === true || response.status === 503,
           status: response.status,
+          errorData: data,
         }
       }
 
       if (response.status === 204) return { success: true, status: 204 }
+      // A few older endpoints (e.g. GET /setup/campuses) return a bare array instead of the envelope.
+      if (Array.isArray(data)) return { success: true, data: data as T, status: response.status }
       return { ...data, success: data.success ?? true, status: response.status } as ApiResponse<T>
     } catch {
       const timedOut = controller.signal.aborted && !signal?.aborted

@@ -10,6 +10,7 @@
 - Mobile-relevant routes: `/student-dashboard`, `/parent-dashboard` (requireRole parent), `/timetable/attendance/*`, `/messaging`, `/events`, `/grievances`, `/portal`, `/quiz/student/*`, `/library/e-library/*`, `/online-classes`, `/hifzi`, `/fina/*`, `/miqat/*`, `/media/upload*`, `/push/*`.
 - Push: web-push only (`services/push-notifications.service.ts`, table from `migrations/220_create_push_subscriptions.sql`). Callers: grievance, inspection, inspector-broadcast, online-class, training, weather, fina, hifzi. Not wired: messaging, attendance, fees, grades, assignments, events.
 - Files: multer memory storage -> Supabase Storage; signed URLs TTL 300 s (private) vs public URLs (media-recordings, school-assets, reading logs). Puppeteer PDFs return signed URL JSON.
+- **Fixed 2026-10-08:** `/entry-exit/*` had no `authenticate` (open to the internet); now admin-only with row school-family checks. **Still open:** `/hostel/*` (`routes/hostel.routes.ts`) is mounted with no authentication either; used by admin pages and `app/student/hostel`, so it needs per-route roles (fix with Wave 6). `checkpoints.routes.ts`, `eveningLeave.routes.ts`, `package.routes.ts` have no auth but are not mounted (dead code).
 - Tenant: school from profile; `X-School-Id` header only for super_admin; admin `campus_id` validated by `utils/campus-validation.ts`; plugin gates cached 60 s (`miqat-enabled`, `hifzi-enabled`, ...).
 - Heavy: `gpa-rank` (`services/student-dashboard.service.ts` ~1522-1600), parent gradebook/homework N+1 (`parent-dashboard.service.ts`), students default limit 1000, miqat bootstrap full roster.
 - Cron (node-cron, Asia/Karachi) and job runners run in the API process.
@@ -32,6 +33,6 @@
 - RLS enabled broadly in `backend/schema.sql` (dump may not match prod); backend uses service role anyway.
 - Buckets: ~20 in migrations; public ones include fee-attachments, accounting-attachments (privacy concern).
 - Realtime used directly by web for NotificationBell, Jitsi polls, whiteboard.
-- Deploy: cPanel + Passenger, no CI. `.github/` has no workflows.
+- Deploy: VPS (confirmed 2026-10-06; `.htaccess`/Passenger files are leftovers from a cPanel setup), no CI. `.github/` has no workflows.
 - Compliance gaps: no account deletion, no platform privacy policy.
 - No payment gateway in code (fees are ledger-only).

@@ -274,9 +274,18 @@ export const assignProfile = async (req: AuthRequest, res: Response): Promise<Re
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export const seedDefaults = async (req: any, res: Response) => {
   try {
-    const schoolId = req.profile?.school_id
+    // A super admin may target a school explicitly (e.g. right after onboarding it); otherwise the
+    // caller's own / impersonated school. School admins are always limited to their own school.
+    const bodySchoolId = req.body?.school_id
+    if (bodySchoolId !== undefined && (typeof bodySchoolId !== 'string' || !UUID_RE.test(bodySchoolId))) {
+      res.status(400).json({ success: false, error: 'school_id must be a UUID' })
+      return
+    }
+    const schoolId = req.profile?.role === 'super_admin' && bodySchoolId ? bodySchoolId : req.profile?.school_id
     if (!schoolId) {
       res.status(403).json({ success: false, error: 'No school associated with your account' })
       return

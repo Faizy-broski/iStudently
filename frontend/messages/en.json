@@ -5683,7 +5683,10 @@
         "msg_record_failed": "Failed to add records",
         "btn_record": "Record",
         "msg_loading": "Loading...",
-        "msg_no_records": "No recent records"
+        "msg_no_records": "No recent records",
+        "btn_view_all": "View all",
+        "msg_records_appear_here": "Records will appear here as people pass through checkpoints",
+        "btn_change": "Change"
       },
       "checkpoints": {
         "page_title": "Checkpoints",
@@ -5810,7 +5813,8 @@
         "msg_error_no_days": "Please select at least one day of the week",
         "msg_error_no_return_time": "Please set a return time",
         "msg_error_no_students": "Please select at least one student",
-        "msg_success_added": "Evening leave added for {count} student(s)"
+        "msg_success_added": "Evening leave added for {count} student(s)",
+        "msg_error": "Could not add the evening leaves"
       },
       "packages": {
         "page_title": "Package Deliveries",
@@ -5967,7 +5971,9 @@
         "option_all_sections": "All Sections",
         "option_na_all": "N/A (All checkpoints)",
         "label_reason": "Reason",
-        "msg_error_load_students": "Failed to load students/users"
+        "msg_error_load_students": "Failed to load students/users",
+        "label_from": "From",
+        "placeholder_reason": "Reason (optional)"
       },
       "take_attendance": {
         "page_title": "Teacher Programs – Take Attendance",
@@ -6013,7 +6019,47 @@
         "label_yes": "Yes",
         "status_absent": "Absent",
         "status_present": "Present",
-        "status_late": "Tardy"
+        "status_late": "Tardy",
+        "msg_error_save": "Could not save attendance",
+        "placeholder_search_teacher": "Search teachers…"
+      },
+      "report": {
+        "page_title": "Entry & Exit Records",
+        "page_subtitle": "Browse, filter, export and delete checkpoint records",
+        "btn_add_record": "Add Record",
+        "btn_delete_bulk": "Delete selected",
+        "btn_export": "Export CSV",
+        "dialog_add_record_title": "Add Entry/Exit Record",
+        "filters_title": "Filters",
+        "filter_all_checkpoints": "All checkpoints",
+        "filter_all_directions": "All directions",
+        "filter_all_status": "All statuses",
+        "filter_all_types": "All types",
+        "filter_checkpoint_placeholder": "Checkpoint",
+        "filter_date_from_placeholder": "From",
+        "filter_date_to_placeholder": "To",
+        "filter_direction_placeholder": "Direction",
+        "filter_person_type_placeholder": "Person type",
+        "filter_status_placeholder": "Status",
+        "label_checkpoint": "Checkpoint",
+        "label_direction": "Direction",
+        "label_person_type": "Person type",
+        "msg_adjust_filters": "Try adjusting the filters",
+        "msg_loading_records": "Loading records…",
+        "msg_no_records": "No records found",
+        "msg_recording": "Recording…",
+        "option_entry": "Entry",
+        "option_exit": "Exit",
+        "option_staff": "Staff",
+        "option_student": "Student",
+        "status_authorized": "Authorized",
+        "status_late": "Late",
+        "status_unauthorized": "Unauthorized",
+        "table_checkpoint": "Checkpoint",
+        "table_direction": "Direction",
+        "table_person": "Person",
+        "table_status": "Status",
+        "table_type": "Type"
       }
     },
     "user_agreements": {
@@ -8066,7 +8112,16 @@
     "senderOptional": "Sender (Optional)",
     "studentField": "Student Field",
     "studentExceptions": "Student – Exceptions",
-    "addExceptions": "Add Exceptions"
+    "addExceptions": "Add Exceptions",
+    "libraryRelated": "Library-related",
+    "libraryRelatedHint": "For library matters such as a damaged or lost book. Librarians can see only referrals marked this way.",
+    "libraryBadge": "Library",
+    "libraryOnly": "Library-related only",
+    "libraryIncidentsTitle": "Library Incidents",
+    "libraryIncidentsSubtitle": "Discipline referrals marked library-related, such as damaged or lost books",
+    "noLibraryIncidents": "No library incidents",
+    "noLibraryIncidentsDesc": "No library-related referrals on record.",
+    "libraryIncidentCount": "{count, plural, one {# incident} other {# incidents}}"
   },
   "entryExit": {
     "title": "Entry & Exit",

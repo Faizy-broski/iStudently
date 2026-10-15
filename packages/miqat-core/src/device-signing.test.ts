@@ -38,6 +38,12 @@ describe('device signing is accepted by the backend verifier', () => {
     expect(verifyBatchSignature('hello', sig, generateDeviceKeyPair().publicKeyPem)).toBe(false)
   })
 
+  it('accepts an injected random source (Hermes path)', () => {
+    const injected = generateDeviceKeyPair((n) => new Uint8Array(crypto.randomBytes(n)))
+    const { timestamp, signature } = signDeviceRequest('bootstrap', 'dev-2', injected.secretKeyB64)
+    expect(verifyBatchSignature(`bootstrap:dev-2:${timestamp}`, signature, injected.publicKeyPem)).toBe(true)
+  })
+
   it('signature is 64 raw bytes', () => {
     expect(base64ToBytes(signMessage('x', kp.secretKeyB64))).toHaveLength(64)
   })

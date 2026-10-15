@@ -25,6 +25,16 @@ export interface HonorRollStudentResult {
   honor_level: 'high_honor' | 'honor'
 }
 
+export interface GpaRankEntry {
+  student_id: string
+  student_name: string
+  student_number: string | null
+  grade_level?: string
+  unweighted_gpa: number
+  weighted_gpa: number
+  class_rank: number | null
+}
+
 class GradesReportsService {
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -61,7 +71,7 @@ class GradesReportsService {
           does_honor_roll,
           grading_scale_id,
           grading_scale:grading_scales(hr_gpa_value, hhr_gpa_value),
-          teacher:staff(profile:profiles(first_name, last_name))
+          teacher:staff!teacher_id(profile:profiles!profile_id(first_name, last_name))
         ),
         student:students!inner(
           id,
@@ -225,6 +235,69 @@ class GradesReportsService {
   // their percent_grade in a given marking period.
   // Equivalent to GetClassRank() → COUNT(*)+1 of students with higher %.
   // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * GPA / class rank list for one marking period (web /admin/grades/class-ranks), live from final grades.
+   * Unweighted GPA = mean of the grades' GPA values; weighted GPA = mean weighted by credits attempted.
+   * Courses with affects_class_rank = false are left out. Rank (1 = best, ties share a rank) is by weighted
+   * GPA within the returned group (the whole campus, or one grade level when filtered).
+   */
+  async getGpaRankList(
+    schoolId: string,
+    markingPeriodId: string,
+    filters: { campus_id?: string; grade_level_id?: string; search?: string } = {}
+  ): Promise<GpaRankEntry[]> {
+    let query = supabase
+      .from('student_final_grades')
+      .select(
+        'student_id, gpa_value, credit_attempted, course_period:course_periods(affects_class_rank), ' +
+          'student:students!inner(id, student_number, grade_level_id, profile:profiles(first_name, last_name), grade_level:grade_levels(name))'
+      )
+      .eq('school_id', schoolId)
+      .eq('marking_period_id', markingPeriodId)
+      .not('gpa_value', 'is', null)
+    if (filters.campus_id) query = query.eq('campus_id', filters.campus_id)
+    if (filters.grade_level_id) query = query.eq('student.grade_level_id', filters.grade_level_id)
+
+    const { data, error } = await query
+    if (error) throw new Error(`Failed to fetch GPA list: ${error.message}`)
+
+    const byStudent = new Map<string, { name: string; number: string | null; grade: string | null; sum: number; n: number; wSum: number; credits: number }>()
+    for (const row of (data || []) as any[]) {
+      if (row.course_period?.affects_class_rank === false) continue
+      const st = row.student
+      const entry = byStudent.get(row.student_id) ?? {
+        name: `${st?.profile?.first_name ?? ''} ${st?.profile?.last_name ?? ''}`.trim(),
+        number: st?.student_number ?? null,
+        grade: st?.grade_level?.name ?? null,
+        sum: 0, n: 0, wSum: 0, credits: 0,
+      }
+      const gpa = Number(row.gpa_value)
+      const credits = Number(row.credit_attempted) > 0 ? Number(row.credit_attempted) : 1
+      entry.sum += gpa
+      entry.n += 1
+      entry.wSum += gpa * credits
+      entry.credits += credits
+      byStudent.set(row.student_id, entry)
+    }
+
+    const q = (filters.search || '').trim().toLowerCase()
+    const list = [...byStudent.entries()].map(([student_id, e]) => ({
+      student_id,
+      student_name: e.name || e.number || student_id,
+      student_number: e.number,
+      grade_level: e.grade ?? undefined,
+      unweighted_gpa: Math.round((e.sum / e.n) * 100) / 100,
+      weighted_gpa: Math.round((e.wSum / e.credits) * 100) / 100,
+      class_rank: null as number | null,
+    }))
+    list.sort((a, b) => b.weighted_gpa - a.weighted_gpa)
+    list.forEach((x, i) => {
+      x.class_rank = i > 0 && list[i - 1].weighted_gpa === x.weighted_gpa ? list[i - 1].class_rank : i + 1
+    })
+    // Search filters the view only; ranks stay relative to the whole group.
+    return q ? list.filter((x) => x.student_name.toLowerCase().includes(q) || (x.student_number ?? '').toLowerCase().includes(q)) : list
+  }
 
   /**
    * Get ranked list of students within a specific course period for a marking period.

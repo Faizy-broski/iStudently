@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase'
 import { AuthRequest } from '../middlewares/auth.middleware'
+import { campusIdsAllowed } from './campus-validation'
 
 /**
  * Self-scoping guard for Hifzi's student-facing read AND write endpoints
@@ -9,7 +10,9 @@ import { AuthRequest } from '../middlewares/auth.middleware'
  * to parents by checking parent_student_links (see parent.service.ts's
  * getParentWithChildren for the same table/shape).
  *
- * admin / super_admin are unrestricted. teacher is scoped to students
+ * super_admin is unrestricted; admin is limited to rows of its own school family (main school +
+ * campuses) — every id here comes from the client, and without that check an admin could read or
+ * write another school's Hifzi data by id. teacher is scoped to students
  * actually enrolled in a circle the teacher is an active
  * (lead/assistant/substitute) teacher of — see isTeacherAssignedToStudent
  * below, previously a private, unreused check duplicated in
@@ -20,7 +23,8 @@ export async function assertCanAccessStudent(req: AuthRequest, studentId: string
   const role = req.profile?.role
   if (!studentId) return false
 
-  if (role === 'admin' || role === 'super_admin') return true
+  if (role === 'super_admin') return true
+  if (role === 'admin') return rowInCallerFamily(req, 'students', studentId)
 
   if (role === 'teacher') {
     return isTeacherAssignedToStudent(studentId, req.profile.id)
@@ -86,7 +90,35 @@ export async function isTeacherAssignedToCircle(circleId: string, teacherProfile
 export async function assertCanAccessCircle(req: AuthRequest, circleId: string): Promise<boolean> {
   const role = req.profile?.role
   if (!circleId) return false
-  if (role === 'admin' || role === 'super_admin') return true
+  if (role === 'super_admin') return true
+  if (role === 'admin') return rowInCallerFamily(req, 'hifzi_circles', circleId)
   if (role !== 'teacher') return false
   return isTeacherAssignedToCircle(circleId, req.profile.id)
+}
+
+/** Enrollment-scoped guard (withdraw): resolves the enrollment's circle, then applies assertCanAccessCircle. */
+export async function assertCanAccessEnrollment(req: AuthRequest, enrollmentId: string): Promise<boolean> {
+  if (!enrollmentId) return false
+  const { data } = await supabase.from('hifzi_enrollments').select('circle_id').eq('id', enrollmentId).maybeSingle()
+  if (!data?.circle_id) return false
+  return assertCanAccessCircle(req, data.circle_id)
+}
+
+/** Batch form of assertCanAccessStudent for admin bulk writes: every id must be a student of the caller's school family. */
+export async function assertCanAccessStudents(req: AuthRequest, studentIds: string[]): Promise<boolean> {
+  const role = req.profile?.role
+  if (role === 'super_admin') return true
+  if (role !== 'admin') return false
+  const ids = [...new Set(studentIds)]
+  if (ids.length === 0) return true
+  const { data } = await supabase.from('students').select('id, school_id').in('id', ids)
+  if (!data || data.length !== ids.length) return false
+  return campusIdsAllowed(req.profile?.school_id, [...new Set(data.map((r: { school_id: string }) => r.school_id))])
+}
+
+/** True when `table` row `id` exists and its school_id is in the caller's school family. */
+async function rowInCallerFamily(req: AuthRequest, table: 'students' | 'hifzi_circles', id: string): Promise<boolean> {
+  const { data } = await supabase.from(table).select('school_id').eq('id', id).maybeSingle()
+  if (!data?.school_id) return false
+  return campusIdsAllowed(req.profile?.school_id, [data.school_id])
 }

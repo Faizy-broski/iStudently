@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { SAFE_PROFILE_COLUMNS } from '../utils/profile-columns'
 import {
     Staff,
     CreateStaffDTO,
@@ -68,7 +69,7 @@ export const getAllStaff = async (
             .from('staff')
             .select(`
         *,
-        profile:profiles!staff_profile_id_fkey(*)
+        profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS})
       `, { count: 'exact' })
             .eq('school_id', schoolId)
             .eq('is_active', true)
@@ -194,7 +195,7 @@ export const getStaffById = async (id: string, schoolId?: string): Promise<ApiRe
             .from('staff')
             .select(`
         *,
-        profile:profiles!staff_profile_id_fkey(*)
+        profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS})
       `)
             .eq('id', id)
             .single()
@@ -243,7 +244,7 @@ export const getStaffByProfileId = async (profileId: string, schoolId: string): 
             .from('staff')
             .select(`
         *,
-        profile:profiles!staff_profile_id_fkey(*)
+        profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS})
       `)
             .eq('profile_id', profileId)
             .eq('school_id', schoolId)
@@ -495,7 +496,7 @@ export const updateStaff = async (
         // Update Staff Record if there are changes
         let query = supabase.from('staff').select(`
             *,
-            profile:profiles!staff_profile_id_fkey(*)
+            profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS})
         `).eq('id', id).eq('school_id', schoolId)
 
         if (Object.keys(staffUpdate).length > 0) {
@@ -507,7 +508,7 @@ export const updateStaff = async (
                 .eq('school_id', schoolId)
                 .select(`
                     *,
-                    profile:profiles!staff_profile_id_fkey(*)
+                    profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS})
                 `)
                 .single()
 

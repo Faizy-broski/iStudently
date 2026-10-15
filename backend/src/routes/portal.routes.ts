@@ -1,10 +1,17 @@
 import { Router, Response } from 'express'
 import { portalService } from '../services/portal.service'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
+import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 const router = Router()
 
 // Apply authentication to all routes
 router.use(authenticate)
+
+// Notes, polls and questions addressed by id must belong to the caller's school family.
+const noteRow = requireRowInSchoolFamily('portal_notes')
+const pollRow = requireRowInSchoolFamily('portal_polls')
+const pollRowByPollId = requireRowInSchoolFamily('portal_polls', 'pollId')
+const questionRow = requireRowInSchoolFamily('portal_poll_questions', 'id', 'portal_polls!inner(school_id)')
 
 // ================================================================
 // NOTES ROUTES
@@ -52,7 +59,7 @@ router.get('/notes', async (req: AuthRequest, res: Response) => {
  * GET /portal/notes/:id
  * Get a single note by ID
  */
-router.get('/notes/:id', async (req: AuthRequest, res: Response) => {
+router.get('/notes/:id', noteRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const note = await portalService.getNoteById(id)
@@ -109,7 +116,7 @@ router.post('/notes', async (req: AuthRequest, res: Response) => {
  * PUT /portal/notes/:id
  * Update a note (admin only)
  */
-router.put('/notes/:id', async (req: AuthRequest, res: Response) => {
+router.put('/notes/:id', noteRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const role = req.profile?.role
@@ -131,7 +138,7 @@ router.put('/notes/:id', async (req: AuthRequest, res: Response) => {
  * DELETE /portal/notes/:id
  * Delete a note (admin only)
  */
-router.delete('/notes/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/notes/:id', noteRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const role = req.profile?.role
@@ -194,7 +201,7 @@ router.get('/polls', async (req: AuthRequest, res: Response) => {
  * GET /portal/polls/:id
  * Get a single poll with questions
  */
-router.get('/polls/:id', async (req: AuthRequest, res: Response) => {
+router.get('/polls/:id', pollRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const userId = req.profile?.id
@@ -253,7 +260,7 @@ router.post('/polls', async (req: AuthRequest, res: Response) => {
  * PUT /portal/polls/:id
  * Update a poll (admin only)
  */
-router.put('/polls/:id', async (req: AuthRequest, res: Response) => {
+router.put('/polls/:id', pollRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const role = req.profile?.role
@@ -275,7 +282,7 @@ router.put('/polls/:id', async (req: AuthRequest, res: Response) => {
  * DELETE /portal/polls/:id
  * Delete a poll (admin only)
  */
-router.delete('/polls/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/polls/:id', pollRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const role = req.profile?.role
@@ -297,7 +304,7 @@ router.delete('/polls/:id', async (req: AuthRequest, res: Response) => {
  * GET /portal/polls/:id/results
  * Get poll results (admin only, or if show_results is enabled)
  */
-router.get('/polls/:id/results', async (req: AuthRequest, res: Response) => {
+router.get('/polls/:id/results', pollRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const role = req.profile?.role
@@ -325,7 +332,7 @@ router.get('/polls/:id/results', async (req: AuthRequest, res: Response) => {
  * POST /portal/polls/:id/respond
  * Submit responses to a poll
  */
-router.post('/polls/:id/respond', async (req: AuthRequest, res: Response) => {
+router.post('/polls/:id/respond', pollRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const userId = req.profile?.id
@@ -366,7 +373,7 @@ router.post('/polls/:id/respond', async (req: AuthRequest, res: Response) => {
  * GET /portal/polls/:id/my-responses
  * Get current user's responses to a poll
  */
-router.get('/polls/:id/my-responses', async (req: AuthRequest, res: Response) => {
+router.get('/polls/:id/my-responses', pollRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const userId = req.profile?.id
@@ -392,7 +399,7 @@ router.get('/polls/:id/my-responses', async (req: AuthRequest, res: Response) =>
  * POST /portal/polls/:pollId/questions
  * Add a question to a poll
  */
-router.post('/polls/:pollId/questions', async (req: AuthRequest, res: Response) => {
+router.post('/polls/:pollId/questions', pollRowByPollId, async (req: AuthRequest, res: Response) => {
   try {
     const { pollId } = req.params
     const role = req.profile?.role
@@ -414,7 +421,7 @@ router.post('/polls/:pollId/questions', async (req: AuthRequest, res: Response) 
  * PUT /portal/questions/:id
  * Update a question
  */
-router.put('/questions/:id', async (req: AuthRequest, res: Response) => {
+router.put('/questions/:id', questionRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const role = req.profile?.role
@@ -436,7 +443,7 @@ router.put('/questions/:id', async (req: AuthRequest, res: Response) => {
  * DELETE /portal/questions/:id
  * Delete a question
  */
-router.delete('/questions/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/questions/:id', questionRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const role = req.profile?.role

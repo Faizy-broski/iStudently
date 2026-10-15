@@ -677,7 +677,7 @@ export async function deleteDuplicateAttendance(data: {
   end_date?: string
   campus_id?: string
 }): Promise<ApiResponse<{ deleted: number }>> {
-  return apiRequest<{ deleted: number }>('/attendance/utilities/duplicates', {
+  return apiRequest<{ deleted: number }>('/attendance/utilities/duplicates/delete', {
     method: 'POST',
     body: JSON.stringify(data)
   })

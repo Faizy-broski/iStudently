@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createApiClient } from './client'
+import { appConfigApi } from './modules/app-config'
 import { authApi } from './modules/auth'
 
 function mockFetch(status: number, body?: unknown) {
@@ -40,10 +41,23 @@ describe('createApiClient', () => {
     expect(f).not.toHaveBeenCalled()
   })
 
+  it('resolveUsername tells not-found, rate-limited and network apart', async () => {
+    expect(await authApi(setup(mockFetch(404, { success: false, error: 'User not found' }), null).api).resolveUsername('x')).toEqual({ ok: false, reason: 'not_found' })
+    expect(await authApi(setup(mockFetch(429, { success: false, code: 'RATE_LIMITED' }), null).api).resolveUsername('x')).toEqual({ ok: false, reason: 'rate_limited' })
+    expect(await authApi(setup(mockFetch(500, { success: false }), null).api).resolveUsername('x')).toEqual({ ok: false, reason: 'network' })
+  })
+
+  it('wraps a bare array response in the envelope', async () => {
+    const { api } = setup(mockFetch(200, [{ id: 'c1' }]))
+    const res = await api.get<{ id: string }[]>('/setup/campuses')
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual([{ id: 'c1' }])
+  })
+
   it('public requests skip the token', async () => {
     const f = mockFetch(200, { success: true, email: 'a@b.c' })
     const { api } = setup(f, null)
-    expect(await authApi(api).resolveUsername('ali')).toBe('a@b.c')
+    expect(await authApi(api).resolveUsername('ali')).toEqual({ ok: true, email: 'a@b.c' })
     expect((f.mock.calls[0][1]!.headers as Record<string, string>).Authorization).toBeUndefined()
   })
 
@@ -104,5 +118,26 @@ describe('createApiClient', () => {
     const init = f.mock.calls[0][1]!
     expect((init.headers as Record<string, string>)['Content-Type']).toBeUndefined()
     expect(init.body).toBe(fd)
+  })
+})
+
+describe('authApi.getMe', () => {
+  it('calls GET /auth/me with the bearer token', async () => {
+    const f = mockFetch(200, { success: true, data: { profile: { role: 'student' }, gates: {}, plugins: [], school: null } })
+    const { api } = setup(f)
+    const res = await authApi(api).getMe()
+    expect(res.data?.profile.role).toBe('student')
+    expect(f.mock.calls[0][0]).toBe('https://api.test/api/auth/me')
+    expect(f.mock.calls[0][1]!.method).toBe('GET')
+  })
+})
+
+describe('appConfigApi.get', () => {
+  it('is public (no token needed)', async () => {
+    const f = mockFetch(200, { success: true, data: { flags: {} } })
+    const { api } = setup(f, null)
+    const res = await appConfigApi(api).get()
+    expect(res.success).toBe(true)
+    expect(f.mock.calls[0][0]).toBe('https://api.test/api/public/app-config')
   })
 })

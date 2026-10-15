@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import { salaryController } from '../controllers/salary.controller'
 import { cronService } from '../services/cron.service'
-import { authenticate } from '../middlewares/auth.middleware'
+import { authenticate, type AuthRequest } from '../middlewares/auth.middleware'
 import { requireAdmin } from '../middlewares/role.middleware'
+import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 
@@ -11,6 +12,10 @@ router.use(authenticate)
 // This entire module is payroll administration — no self-service routes live here
 // (teacher self-service salary/payment views are under /api/accounting/staff/*)
 router.use(requireAdmin)
+
+// Policy groups by id must belong to the caller's school family (reads and removals used the id alone).
+const policyRow = requireRowInSchoolFamily('salary_policy_groups', 'id')
+const staffRow = requireRowInSchoolFamily('staff', 'staffId')
 
 // Payroll Settings
 router.get('/settings', (req, res) => salaryController.getPayrollSettings(req, res))
@@ -37,8 +42,15 @@ router.post('/generate-bulk', (req, res) => salaryController.generateBulkSalarie
 // Automated Monthly Generation - Manual Trigger (for testing or retry)
 router.post('/automation/trigger', async (req, res) => {
     try {
-        const { school_id } = req.body
-        const result = await cronService.manualTriggerMonthlySalary(school_id)
+        // Without a school_id the job runs for EVERY school, so only a super admin may omit it;
+        // a school admin always runs it for their own school (a given school_id is checked by
+        // authenticate's campus/school-family guard).
+        const profile = (req as AuthRequest).profile
+        const schoolId = (req.body?.school_id as string | undefined) || (profile?.role === 'super_admin' ? undefined : profile?.school_id)
+        if (!schoolId && profile?.role !== 'super_admin') {
+            return res.status(400).json({ success: false, error: 'school_id is required' })
+        }
+        const result = await cronService.manualTriggerMonthlySalary(schoolId)
         res.json({ success: true, data: result })
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message })
@@ -59,10 +71,10 @@ router.get('/dashboard', (req, res) => salaryController.getDashboardStats(req, r
 router.get('/policies', (req, res) => salaryController.getPolicyGroups(req, res))
 router.post('/policies', (req, res) => salaryController.createPolicyGroup(req, res))
 router.get('/policies/teachers', (req, res) => salaryController.getTeachersWithPolicyInfo(req, res))
-router.get('/policies/:id', (req, res) => salaryController.getPolicyGroupWithTeachers(req, res))
-router.put('/policies/:id', (req, res) => salaryController.updatePolicyGroup(req, res))
-router.delete('/policies/:id', (req, res) => salaryController.deletePolicyGroup(req, res))
-router.post('/policies/:id/assign', (req, res) => salaryController.assignTeachersToPolicy(req, res))
-router.delete('/policies/:id/teachers/:staffId', (req, res) => salaryController.removeTeacherFromPolicy(req, res))
+router.get('/policies/:id', policyRow, (req, res) => salaryController.getPolicyGroupWithTeachers(req, res))
+router.put('/policies/:id', policyRow, (req, res) => salaryController.updatePolicyGroup(req, res))
+router.delete('/policies/:id', policyRow, (req, res) => salaryController.deletePolicyGroup(req, res))
+router.post('/policies/:id/assign', policyRow, (req, res) => salaryController.assignTeachersToPolicy(req, res))
+router.delete('/policies/:id/teachers/:staffId', policyRow, staffRow, (req, res) => salaryController.removeTeacherFromPolicy(req, res))
 
 export default router

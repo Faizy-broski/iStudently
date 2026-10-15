@@ -247,8 +247,12 @@ class FeesService {
             .eq('school_id', schoolId)
 
         // Insert new tiers
+        // Only the tier's own fields: ids or other columns from the request are never written.
         const tiersWithSchool = tiers.map(tier => ({
-            ...tier,
+            sibling_count: tier.sibling_count,
+            discount_type: tier.discount_type,
+            discount_value: tier.discount_value,
+            applies_to_categories: Array.isArray(tier.applies_to_categories) ? tier.applies_to_categories : [],
             school_id: schoolId,
             is_active: true
         }))

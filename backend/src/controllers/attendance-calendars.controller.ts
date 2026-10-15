@@ -109,7 +109,12 @@ export class AttendanceCalendarsController {
    */
   async update(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const calendar = await this.service.updateCalendar(req.params.id, req.body)
+      // Only editable columns; never school_id/campus_id/created_by from the body.
+      const { title, is_default, calendar_type, start_date, end_date, weekdays, default_minutes, academic_year_id } = req.body
+      const dto = Object.fromEntries(
+        Object.entries({ title, is_default, calendar_type, start_date, end_date, weekdays, default_minutes, academic_year_id }).filter(([, v]) => v !== undefined),
+      )
+      const calendar = await this.service.updateCalendar(req.params.id, dto)
       res.json({ success: true, data: calendar })
     } catch (error: any) {
       console.error('Error updating calendar:', error)
@@ -179,7 +184,8 @@ export class AttendanceCalendarsController {
   async updateDay(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { dayId } = req.params
-      const day = await this.service.updateCalendarDay(dayId, req.body)
+      const { is_school_day, minutes, notes, block } = req.body
+      const day = await this.service.updateCalendarDay(dayId, { is_school_day, minutes, notes, block })
       res.json({ success: true, data: day })
     } catch (error: any) {
       console.error('Error updating calendar day:', error)

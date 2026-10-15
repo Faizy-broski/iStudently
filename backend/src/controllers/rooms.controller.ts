@@ -52,7 +52,11 @@ export const createRoom = async (req: Request, res: Response) => {
 export const updateRoom = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const dto: UpdateRoomDTO = req.body
+    // Only editable columns; campus_id is checked against the caller's school by authenticate.
+    const { name, campus_id, capacity, building, floor, room_type, is_active } = req.body ?? {}
+    const dto = Object.fromEntries(
+      Object.entries({ name, campus_id, capacity, building, floor, room_type, is_active }).filter(([, v]) => v !== undefined),
+    ) as UpdateRoomDTO
 
     const result = await roomsService.updateRoom(id, dto)
     if (!result.success) return res.status(400).json(result)

@@ -102,8 +102,19 @@ Every screen needs: English (LTR) and Arabic (RTL), light and dark, loading, emp
 - [ ] **Sync status**: Last sync, retry, errors  _(release R2)_
 - [ ] **Permission screens**: Camera and location explanations with settings shortcut  _(release R2)_
 
-### undefined (0)
-
+### Super admin (11) (added 2026-10-06)
+No school impersonation in the app ("switch into school" stays on the web).
+- [ ] **Dashboard**: Platform totals (schools, active/suspended, trials ending, students, staff), recent schools, quick links  _(release R3)_
+- [ ] **School directory**: Search and filter schools, status chips (active, suspended, trial), school detail, suspend/activate with confirmation, admin credentials view **behind biometric re-auth**, never cached  _(release R3)_
+- [ ] **Onboard school**: Create a school with name, slug, contact email, parent school, admin account  _(release R3)_
+- [ ] **Billing plans**: List, create, edit, delete plans  _(release R3)_
+- [ ] **Billing status**: Per-school billing records, filters, mark as paid, create/edit/delete records  _(release R3)_
+- [ ] **Feedback**: Feedback inbox from schools with detail  _(release R3)_
+- [ ] **Quotes**: Quote requests list and detail, status  _(release R3)_
+- [ ] **Platform settings**: General platform settings and messaging settings, logo upload  _(release R3)_
+- [ ] **Login page settings**: Login page configuration with preview  _(release R3)_
+- [ ] **Public pages settings**: Public page content editing (simplified mobile editor)  _(release R3)_
+- [ ] **Sidebar settings**: Web sidebar configuration (ordering and visibility)  _(release R3)_
 
 ### Librarian, minimum set (3)
 - [ ] Issue book (scan)
@@ -119,7 +130,7 @@ Every screen needs: English (LTR) and Arabic (RTL), light and dark, loading, emp
 - [ ] Approvals queue
 - [ ] Alerts feed
 
-_Total mandatory: 94_
+_Total mandatory: 105_
 
 ## Optional (Should/Later) screens
 
@@ -154,7 +165,7 @@ _Total mandatory: 94_
 - [ ] Fonts to embed
 
 ## Design order (one week ahead of build)
-1 tokens; 2 components; 3 sign-in; 4 security; 5 shell + notifications; 6 student core; 7 student engagement + QR card; 8 parent; 9 settings, deletion, store assets; 10-11 teacher; 12 scanner + librarian; 13 inspector + admin; 14 polish.
+1 tokens; 2 components; 3 sign-in; 4 security; 5 shell + notifications; 6 student core; 7 student engagement + QR card; 8 parent; 9 settings, deletion, store assets; 10-11 teacher; 12-13 super admin; 14 scanner + librarian; 15 inspector + admin; 16 polish.
 
 ## Open design decisions
 Scanner brand (dark green #0F3D2E vs main navy/blue), per-school colours (not supported by backend today), tablet support, social wall (not mandatory).

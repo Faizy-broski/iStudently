@@ -33,6 +33,11 @@ const SIGNATURES: Record<string, SignatureCheck> = {
   // MP4/ISO-BMFF: bytes 4-7 are always "ftyp" (the box type), regardless of
   // the specific brand (isom/mp42/mp4v/qt../etc. at bytes 8-11) — checking
   // just "ftyp" covers every real-world MP4 variant a phone/browser produces.
+  // ISO base media ("ftyp" at offset 4): phone voice recordings (.m4a).
+  'audio/mp4': (b) => b.length >= 8 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70,
+  'audio/x-m4a': (b) => b.length >= 8 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70,
+  // RIFF....WAVE
+  'audio/wav': (b) => b.length >= 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WAVE',
   'video/mp4': (b) => b.length >= 8 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70,
 }
 

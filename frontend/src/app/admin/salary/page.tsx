@@ -25,6 +25,8 @@ export default function SalaryPage() {
     const campusContext = useCampus()
     const schoolId = profile?.school_id || null
     const campusId = campusContext?.selectedCampus?.id
+    // Salary records and advances are stored under the staff member's campus.
+    const scopeId = campusId || schoolId
 
     const currentDate = new Date()
     const [month, setMonth] = useState(currentDate.getMonth() + 1)
@@ -36,7 +38,7 @@ export default function SalaryPage() {
     const [dialogOpen, setDialogOpen] = useState(false)
     const [loadingPayslipId, setLoadingPayslipId] = useState<string | null>(null)
 
-    const { data: stats, isLoading: statsLoading, mutate: mutateStats } = useSalaryDashboardStats(schoolId, month, year)
+    const { data: stats, isLoading: statsLoading, mutate: mutateStats } = useSalaryDashboardStats(scopeId, month, year)
     const { data: salaryData, isLoading: salaryLoading, mutate: mutateSalary } = useSalaryRecords(schoolId, {
         month,
         year,
@@ -45,7 +47,7 @@ export default function SalaryPage() {
         limit: 10,
         campus_id: campusId
     })
-    const { data: pendingAdvances, mutate: mutateAdvances } = usePendingAdvances(schoolId, campusId)
+    const { data: pendingAdvances, mutate: mutateAdvances } = usePendingAdvances(scopeId, campusId)
     const { formatCurrency } = useSchoolSettings()
 
     const handleRefresh = async () => {

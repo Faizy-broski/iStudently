@@ -3,10 +3,15 @@ import * as svc from '../services/quiz.service'
 import * as chapterSvc from '../services/chapters.service'
 import * as aiSvc from '../services/ai-question.service'
 import { AuthRequest } from '../middlewares/auth.middleware'
+import { campusIdsAllowed } from '../utils/campus-validation'
 
 const ok = (res: Response, data: unknown) => res.json({ data, error: null })
 const err = (res: Response, e: unknown, status = 500) =>
   res.status(status).json({ data: null, error: (e as Error).message || 'Server error' })
+
+/** Update bodies never move a row to another school or rewrite its identity. */
+const PROTECTED = ['id', 'school_id', 'campus_id', 'created_by', 'created_at', 'quiz_id', 'question_id']
+const updatable = (body: Record<string, unknown> = {}) => Object.fromEntries(Object.entries(body).filter(([k]) => !PROTECTED.includes(k))) as any
 
 // ============================================================================
 // CATEGORIES
@@ -14,7 +19,8 @@ const err = (res: Response, e: unknown, status = 500) =>
 
 export const getCategories = async (req: Request, res: Response) => {
   try {
-    const { school_id, campus_id } = req.query as Record<string, string>
+    const { campus_id } = req.query as Record<string, string>
+    const school_id = (req.query.school_id as string) || (req as AuthRequest).profile?.school_id
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
     ok(res, await svc.getCategories(school_id, campus_id || null))
   } catch (e) { err(res, e) }
@@ -34,7 +40,7 @@ export const createCategory = async (req: AuthRequest, res: Response) => {
 }
 
 export const updateCategory = async (req: Request, res: Response) => {
-  try { ok(res, await svc.updateCategory(req.params.id, req.body)) }
+  try { ok(res, await svc.updateCategory(req.params.id, updatable(req.body))) }
   catch (e) { err(res, e) }
 }
 
@@ -92,7 +98,7 @@ export const createQuestion = async (req: AuthRequest, res: Response) => {
 }
 
 export const updateQuestion = async (req: Request, res: Response) => {
-  try { ok(res, await svc.updateQuestion(req.params.id, req.body)) }
+  try { ok(res, await svc.updateQuestion(req.params.id, updatable(req.body))) }
   catch (e) { err(res, e) }
 }
 
@@ -165,7 +171,7 @@ export const createQuiz = async (req: AuthRequest, res: Response) => {
 }
 
 export const updateQuiz = async (req: Request, res: Response) => {
-  try { ok(res, await svc.updateQuiz(req.params.id, req.body)) }
+  try { ok(res, await svc.updateQuiz(req.params.id, updatable(req.body))) }
   catch (e) { err(res, e) }
 }
 
@@ -198,7 +204,7 @@ export const addQuestionToQuiz = async (req: Request, res: Response) => {
 }
 
 export const updateQuizQuestion = async (req: Request, res: Response) => {
-  try { ok(res, await svc.updateQuizQuestion(req.params.mapId, req.body)) }
+  try { ok(res, await svc.updateQuizQuestion(req.params.mapId, updatable(req.body))) }
   catch (e) { err(res, e) }
 }
 
@@ -272,18 +278,36 @@ export const closeQuizAndSyncAbsentees = async (req: Request, res: Response) => 
 // STUDENT SUBMISSION
 // ============================================================================
 
+// Roles that may view any student's submission (teacher review). Students may only view their own.
+const SUBMISSION_REVIEWER_ROLES = ['teacher', 'admin', 'super_admin', 'staff']
+
 export const getStudentSubmission = async (req: Request, res: Response) => {
   try {
     const { studentId } = req.params
-    ok(res, await svc.getStudentQuizSubmission(req.params.quizId, studentId))
+    const role = String((req as any).profile?.role ?? '').toLowerCase()
+    if (role === 'student') {
+      if (studentId !== resolveStudentId(req)) return err(res, { message: 'You can only view your own submission' }, 403)
+    } else if (!SUBMISSION_REVIEWER_ROLES.includes(role)) {
+      return err(res, { message: 'Not allowed' }, 403)
+    }
+    ok(res, await svc.getStudentQuizSubmission(req.params.quizId, studentId, role === 'student'))
   } catch (e) { err(res, e) }
 }
 
+// Students submit only as themselves: the id comes from the token. A body student_id (sent by the
+// web) must match it; previously any signed-in user could submit as any student.
 export const submitQuiz = async (req: Request, res: Response) => {
   try {
     const { student_id, answers } = req.body
-    if (!student_id || !Array.isArray(answers)) return err(res, { message: 'student_id and answers required' }, 400)
-    ok(res, await svc.submitQuiz(req.params.quizId, student_id, answers))
+    const ownStudentId = resolveStudentId(req)
+    if (!ownStudentId) return err(res, { message: 'Only students can submit a quiz' }, 403)
+    if (student_id && student_id !== ownStudentId) return err(res, { message: 'You can only submit your own quiz' }, 403)
+    if (!Array.isArray(answers)) return err(res, { message: 'answers required' }, 400)
+    // One submission per student: resubmitting after seeing revealed answers would be cheating.
+    if (await svc.hasSubmittedQuiz(req.params.quizId, ownStudentId)) {
+      return err(res, { message: 'You have already submitted this quiz' }, 409)
+    }
+    ok(res, await svc.submitQuiz(req.params.quizId, ownStudentId, answers))
   } catch (e) { err(res, e) }
 }
 
@@ -309,14 +333,14 @@ export const getAnswerBreakdown = async (req: Request, res: Response) => {
 
 export const getQuizConfig = async (req: Request, res: Response) => {
   try {
-    const { school_id } = req.query as Record<string, string>
+    const school_id = (req.query.school_id as string) || (req as AuthRequest).profile?.school_id
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
     ok(res, await svc.getQuizConfig(school_id))
   } catch (e) { err(res, e) }
 }
 
 export const upsertQuizConfig = async (req: Request, res: Response) => {
-  try { ok(res, await svc.upsertQuizConfig(req.body)) }
+  try { ok(res, await svc.upsertQuizConfig({ ...req.body, school_id: req.body?.school_id || (req as AuthRequest).profile?.school_id })) }
   catch (e) { err(res, e) }
 }
 
@@ -326,7 +350,8 @@ export const upsertQuizConfig = async (req: Request, res: Response) => {
 
 export const getAssignments = async (req: Request, res: Response) => {
   try {
-    const { school_id, campus_id, course_period_id } = req.query as Record<string, string>
+    const { campus_id, course_period_id } = req.query as Record<string, string>
+    const school_id = (req.query.school_id as string) || (req as AuthRequest).profile?.school_id
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
     ok(res, await svc.getAssignmentsForQuiz(school_id, campus_id || null, course_period_id))
   } catch (e) { err(res, e) }
@@ -334,7 +359,8 @@ export const getAssignments = async (req: Request, res: Response) => {
 
 export const getCoursePeriods = async (req: Request, res: Response) => {
   try {
-    const { school_id, campus_id } = req.query as Record<string, string>
+    const { campus_id } = req.query as Record<string, string>
+    const school_id = (req.query.school_id as string) || (req as AuthRequest).profile?.school_id
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
     ok(res, await svc.getCoursePeriods(school_id, campus_id || null))
   } catch (e) { err(res, e) }
@@ -379,9 +405,10 @@ export const extractQuestions = async (req: Request, res: Response) => {
 export const generateQuestionsAI = async (req: Request, res: Response) => {
   try {
     const {
-      school_id, grade_level_id, subject_id, chapter_ids,
+      grade_level_id, subject_id, chapter_ids,
       count, allowed_types, prompt,
     } = req.body
+    const school_id = req.body.school_id || (req as AuthRequest).profile?.school_id
 
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
     if (!count || count < 1 || count > 50) return err(res, { message: 'count must be 1-50' }, 400)
@@ -410,6 +437,13 @@ export const bulkCreateQuestions = async (req: Request, res: Response) => {
     if (!Array.isArray(questions) || questions.length === 0) {
       return err(res, { message: 'questions array required' }, 400)
     }
+    // The school and campus inside each question are checked here; the global check only sees the top level.
+    const profile = (req as AuthRequest).profile
+    const scopes = [...new Set(questions.flatMap((q: any) => [q?.school_id, q?.campus_id]).filter((v: unknown): v is string => typeof v === 'string' && !!v))]
+    if (profile?.role !== 'super_admin' && !(await campusIdsAllowed(profile?.school_id, scopes))) {
+      return err(res, { message: 'Not allowed' }, 403)
+    }
+    for (const q of questions) if (!q.school_id) q.school_id = profile?.school_id
 
     const results: svc.QuizQuestion[] = []
     // Process in batches of 3 (per project pattern)
@@ -431,7 +465,8 @@ export const bulkCreateQuestions = async (req: Request, res: Response) => {
 
 export const getChapters = async (req: Request, res: Response) => {
   try {
-    const { subject_id, school_id } = req.query as Record<string, string>
+    const { subject_id } = req.query as Record<string, string>
+    const school_id = (req.query.school_id as string) || (req as AuthRequest).profile?.school_id
     if (!subject_id || !school_id) return err(res, { message: 'subject_id and school_id required' }, 400)
     ok(res, await chapterSvc.getChapters(subject_id, school_id))
   } catch (e) { err(res, e) }
@@ -443,7 +478,7 @@ export const createChapter = async (req: Request, res: Response) => {
 }
 
 export const updateChapter = async (req: Request, res: Response) => {
-  try { ok(res, await chapterSvc.updateChapter(req.params.id, req.body)) }
+  try { ok(res, await chapterSvc.updateChapter(req.params.id, updatable(req.body))) }
   catch (e) { err(res, e) }
 }
 

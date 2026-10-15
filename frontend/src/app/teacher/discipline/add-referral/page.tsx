@@ -162,6 +162,7 @@ function DynamicFieldInput({
 // ---------------------------------------------------------------------------
 
 export default function AddTeacherReferralPage() {
+  const td = useTranslations('discipline')
   const t = useTranslations('teacherPages.disciplineAddReferral')
   const router = useRouter()
   const { user } = useAuth()
@@ -172,6 +173,7 @@ export default function AddTeacherReferralPage() {
   const [studentId, setStudentId] = useState('')
   const [incidentDate, setIncidentDate] = useState(new Date().toISOString().split('T')[0])
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({})
+  const [libraryRelated, setLibraryRelated] = useState(false)
   const [fields, setFields] = useState<DisciplineField[]>([])
   const [loadingFields, setLoadingFields] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -202,6 +204,7 @@ export default function AddTeacherReferralPage() {
         student_id: studentId,
         incident_date: incidentDate,
         field_values: fieldValues,
+        library_related: libraryRelated,
       })
       if (res.success) {
         toast.success(t('referralSubmitted'))
@@ -260,6 +263,14 @@ export default function AddTeacherReferralPage() {
               className="w-48"
             />
           </div>
+
+          <label className="flex items-start gap-2 cursor-pointer">
+            <Checkbox checked={libraryRelated} onCheckedChange={(v) => setLibraryRelated(v === true)} className="mt-0.5" />
+            <span>
+              <span className="text-sm font-medium block">{td('libraryRelated')}</span>
+              <span className="text-xs text-muted-foreground">{td('libraryRelatedHint')}</span>
+            </span>
+          </label>
 
           {/* Dynamic discipline fields */}
           {loadingFields ? (

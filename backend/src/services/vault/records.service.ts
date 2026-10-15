@@ -27,6 +27,23 @@ function encryptCustomFields(customFields: Record<string, unknown>, secretKeys: 
   return result
 }
 
+// Attachment keys come from the client, and GET /vault/media/:recordId/attachments/:i downloads
+// whatever key the record holds. Only keys minted by uploadAttachment for this same school are
+// accepted (plus keys the record already had, on update); otherwise a vault user could store
+// another school's key and read that school's file.
+const ATTACHMENT_KEY = /^([0-9a-f-]{36})\/vault\/[0-9a-f-]{36}(\.[A-Za-z0-9]{1,10})?$/i
+
+export function assertOwnAttachments(schoolId: string, keys: unknown, alreadyOnRecord: string[] = []): string[] {
+  if (keys == null) return []
+  if (!Array.isArray(keys)) throw new Error('Invalid attachments: expected a list of uploaded files')
+  for (const key of keys) {
+    if (typeof key === 'string' && alreadyOnRecord.includes(key)) continue
+    const m = typeof key === 'string' ? ATTACHMENT_KEY.exec(key) : null
+    if (!m || m[1].toLowerCase() !== schoolId.toLowerCase()) throw new Error('Invalid attachments: each attachment must be uploaded through /vault/media/upload')
+  }
+  return keys as string[]
+}
+
 export async function listRecords(
   caller: CallerContext,
   filters: { category?: string } = {}
@@ -57,6 +74,7 @@ export interface CreateVaultRecordInput {
 }
 
 export async function createRecord(caller: CallerContext, input: CreateVaultRecordInput, ip?: string | null): Promise<VaultRecord> {
+  const attachments = assertOwnAttachments(caller.schoolId, input.attachments)
   const secretKeys = await getSecretFieldKeys(caller.schoolId, input.category)
   const customFields = encryptCustomFields(input.customFields ?? {}, secretKeys)
 
@@ -69,7 +87,7 @@ export async function createRecord(caller: CallerContext, input: CreateVaultReco
       title: input.title,
       default_fields: input.defaultFields ?? {},
       custom_fields: customFields,
-      attachments: input.attachments ?? [],
+      attachments,
       expiry_date: input.expiryDate ?? null,
       created_by: caller.profileId,
     })
@@ -104,7 +122,7 @@ export async function updateRecord(caller: CallerContext, id: string, input: Upd
   if (input.title !== undefined) updates.title = input.title
   if (input.subCategory !== undefined) updates.sub_category = input.subCategory
   if (input.defaultFields !== undefined) updates.default_fields = input.defaultFields
-  if (input.attachments !== undefined) updates.attachments = input.attachments
+  if (input.attachments !== undefined) updates.attachments = assertOwnAttachments(caller.schoolId, input.attachments, existing.attachments ?? [])
   if (input.expiryDate !== undefined) updates.expiry_date = input.expiryDate
   if (input.customFields !== undefined) {
     const secretKeys = await getSecretFieldKeys(caller.schoolId, existing.category)

@@ -200,6 +200,10 @@ export interface MassCreateRequestDTO {
   marking_period_id?: string
   campus_id?: string
   priority?: number
+  with_teacher_id?: string
+  not_teacher_id?: string
+  with_period_id?: string
+  not_period_id?: string
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -342,6 +346,7 @@ export interface ClassListEntry {
   schedule_id: string
   student_id: string
   student_name: string
+  student_number?: string
   section_name?: string
   grade_level?: string
   start_date: string

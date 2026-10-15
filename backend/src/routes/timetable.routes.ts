@@ -5,41 +5,50 @@ import * as constraintsController from '../controllers/teacher-constraints.contr
 import * as generationController from '../controllers/timetable-generation.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
+import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 
 // All routes require authentication
 router.use(authenticate)
 
+// Timetable entries addressed by id must belong to the caller's school family.
+const entryRow = requireRowInSchoolFamily('timetable_entries')
+const requirementRow = requireRowInSchoolFamily('timetable_requirements')
+const jobRow = requireRowInSchoolFamily('timetable_generation_jobs', 'jobId')
+const teacherRow = requireRowInSchoolFamily('staff', 'teacherId')
+const yearInQuery = requireRowInSchoolFamily('academic_years', 'academic_year_id', 'school_id', 'query')
+const yearInBody = requireRowInSchoolFamily('academic_years', 'academic_year_id', 'school_id', 'body')
+
 // ============================================================================
 // TIMETABLE GENERATOR — GENERATION JOBS (Phase 2)
 // ============================================================================
 
-router.post('/generate', requireAdmin, generationController.startGeneration)
+router.post('/generate', requireAdmin, yearInBody, generationController.startGeneration)
 router.get('/generate/jobs', requireAdmin, generationController.listJobs)
-router.get('/generate/:jobId/status', requireAdmin, generationController.getJobStatus)
-router.post('/generate/:jobId/cancel', requireAdmin, generationController.cancelJob)
-router.post('/generate/:jobId/rollback', requireAdmin, generationController.rollbackJob)
+router.get('/generate/:jobId/status', requireAdmin, jobRow, generationController.getJobStatus)
+router.post('/generate/:jobId/cancel', requireAdmin, jobRow, generationController.cancelJob)
+router.post('/generate/:jobId/rollback', requireAdmin, jobRow, generationController.rollbackJob)
 
 // ============================================================================
 // TIMETABLE GENERATOR — REQUIREMENTS (Phase 2)
 // ============================================================================
 
-router.get('/requirements', requireAdmin, requirementsController.listRequirements)
-router.post('/requirements', requireAdmin, requirementsController.createRequirement)
+router.get('/requirements', requireAdmin, yearInQuery, requirementsController.listRequirements)
+router.post('/requirements', requireAdmin, yearInBody, requirementsController.createRequirement)
 router.post('/requirements/bulk', requireAdmin, requirementsController.bulkCreateRequirements)
-router.post('/requirements/seed-from-assignments', requireAdmin, requirementsController.seedFromAssignments)
-router.get('/requirements/coverage', requireAdmin, requirementsController.getCoverage)
-router.put('/requirements/:id', requireAdmin, requirementsController.updateRequirement)
-router.delete('/requirements/:id', requireAdmin, requirementsController.deleteRequirement)
+router.post('/requirements/seed-from-assignments', requireAdmin, yearInBody, requirementsController.seedFromAssignments)
+router.get('/requirements/coverage', requireAdmin, yearInQuery, requirementsController.getCoverage)
+router.put('/requirements/:id', requireAdmin, requirementRow, requirementsController.updateRequirement)
+router.delete('/requirements/:id', requireAdmin, requirementRow, requirementsController.deleteRequirement)
 
 // ============================================================================
 // TIMETABLE GENERATOR — TEACHER CONSTRAINTS + GENERATION SETTINGS (Phase 2)
 // ============================================================================
 
-router.get('/teacher-constraints', requireAdmin, constraintsController.listTeacherConstraints)
-router.get('/teacher-constraints/:teacherId', requireAdmin, constraintsController.getTeacherConstraints)
-router.put('/teacher-constraints/:teacherId', requireAdmin, constraintsController.upsertTeacherConstraints)
+router.get('/teacher-constraints', requireAdmin, yearInQuery, constraintsController.listTeacherConstraints)
+router.get('/teacher-constraints/:teacherId', requireAdmin, teacherRow, constraintsController.getTeacherConstraints)
+router.put('/teacher-constraints/:teacherId', requireAdmin, teacherRow, constraintsController.upsertTeacherConstraints)
 
 router.get('/generation-settings', requireAdmin, constraintsController.getGenerationSettings)
 router.put('/generation-settings', requireAdmin, constraintsController.updateGenerationSettings)
@@ -48,7 +57,7 @@ router.put('/generation-settings', requireAdmin, constraintsController.updateGen
 // TIMETABLE GENERATOR — LOCK / UNLOCK (Phase 2)
 // ============================================================================
 
-router.put('/:id/lock', requireAdmin, timetableController.lockTimetableEntry)
+router.put('/:id/lock', requireAdmin, entryRow, timetableController.lockTimetableEntry)
 router.post('/bulk-lock', requireAdmin, timetableController.bulkLockTimetableEntries)
 
 // ============================================================================
@@ -70,8 +79,8 @@ router.get('/check-conflict', requireAdmin, timetableController.checkTeacherConf
 router.post('/validate-change', requireAdmin, timetableController.validateScheduleChange)
 router.post('/ensure-grade-section', requireAdmin, timetableController.ensureGradeSection)
 router.post('/', requireAdmin, timetableController.createTimetableEntry)
-router.put('/:id', requireAdmin, timetableController.updateTimetableEntry)
-router.delete('/:id', requireAdmin, timetableController.deleteTimetableEntry)
+router.put('/:id', requireAdmin, entryRow, timetableController.updateTimetableEntry)
+router.delete('/:id', requireAdmin, entryRow, timetableController.deleteTimetableEntry)
 
 // ============================================================================
 // STEP 4: TEACHER'S SCHEDULE VIEW ROUTES

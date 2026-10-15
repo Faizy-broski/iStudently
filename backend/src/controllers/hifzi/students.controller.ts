@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../../middlewares/auth.middleware'
 import { hifziEnrollmentsService, hifziStudentProfilesService } from '../../services/hifzi/student-profiles.service'
-import { assertCanAccessStudent } from '../../utils/hifzi-access'
+import { assertCanAccessCircle, assertCanAccessEnrollment, assertCanAccessStudent, assertCanAccessStudents } from '../../utils/hifzi-access'
 
 function handleError(res: Response, error: any) {
   const msg = error?.message || 'Unexpected error'
@@ -11,6 +11,9 @@ function handleError(res: Response, error: any) {
 
 export const listEnrollments = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessCircle(req, req.query.circle_id as string))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziEnrollmentsService.getEnrollments(req.query.circle_id as string)
     return res.json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }
@@ -18,6 +21,9 @@ export const listEnrollments = async (req: AuthRequest, res: Response) => {
 
 export const enrollStudent = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessCircle(req, req.body.circle_id)) || !(await assertCanAccessStudent(req, req.body.student_id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziEnrollmentsService.enroll({ circleId: req.body.circle_id, studentId: req.body.student_id })
     return res.status(201).json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }
@@ -33,6 +39,10 @@ export const enrollStudentsBulk = async (req: AuthRequest, res: Response) => {
     // general students bulk-import's 500-row cap.
     if (studentIds.length > 200) return res.status(400).json({ success: false, error: 'Maximum 200 students per bulk enrollment' })
 
+    if (!(await assertCanAccessCircle(req, circleId)) || !(await assertCanAccessStudents(req, studentIds))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
+
     const data = await hifziEnrollmentsService.enrollBulk(circleId, studentIds)
     return res.status(200).json({ success: true, data, message: `Enrolled ${data.success_count} student(s) with ${data.error_count} error(s)` })
   } catch (error: any) { return handleError(res, error) }
@@ -40,6 +50,9 @@ export const enrollStudentsBulk = async (req: AuthRequest, res: Response) => {
 
 export const withdrawEnrollment = async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await assertCanAccessEnrollment(req, req.params.id))) {
+      return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
     const data = await hifziEnrollmentsService.withdraw(req.params.id)
     return res.json({ success: true, data })
   } catch (error: any) { return handleError(res, error) }

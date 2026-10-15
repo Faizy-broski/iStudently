@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { weatherAlertsController } from '../../controllers/weather/alerts.controller';
 import { authenticate } from '../../middlewares/auth.middleware';
 import { requireAdmin } from '../../middlewares/role.middleware';
+import { requireRowInSchoolFamily } from '../../middlewares/row-school-scope.middleware';
 import { requireWeatherAlertsEnabled } from '../../middlewares/weather-alerts-enabled.middleware';
 
 const router = Router();
@@ -14,7 +15,7 @@ router.get('/widget', weatherAlertsController.widget);
 
 // Reviewing/approving drafts is admin-only.
 router.get('/', requireAdmin, weatherAlertsController.list);
-router.post('/:id/approve', requireAdmin, weatherAlertsController.approve);
-router.post('/:id/reject', requireAdmin, weatherAlertsController.reject);
+router.post('/:id/approve', requireAdmin, requireRowInSchoolFamily('weather_alerts'), weatherAlertsController.approve);
+router.post('/:id/reject', requireAdmin, requireRowInSchoolFamily('weather_alerts'), weatherAlertsController.reject);
 
 export default router;

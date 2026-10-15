@@ -223,7 +223,7 @@ function StaffSearch({
 // Dynamic field input renderer
 // ---------------------------------------------------------------------------
 
-function DynamicFieldInput({
+export function DynamicFieldInput({
   field,
   value,
   onChange,
@@ -432,6 +432,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
     new Date().toISOString().slice(0, 10)
   );
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
+  const [libraryRelated, setLibraryRelated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -566,6 +567,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
             staff_ids: multiStaffIds,
             reporter_id: user?.id ?? null,
             incident_date: incidentDate,
+            library_related: targetKind === 'student' && libraryRelated,
             field_values: fieldValues,
           });
 
@@ -602,6 +604,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
           staff_id: selectedStaff.id,
           reporter_id: user?.id ?? null,
           incident_date: incidentDate,
+          library_related: targetKind === 'student' && libraryRelated,
           field_values: fieldValues,
         });
 
@@ -647,6 +650,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
           student_id: selectedStudent.id,
           reporter_id: user?.id ?? null,
           incident_date: incidentDate,
+          library_related: targetKind === 'student' && libraryRelated,
           field_values: fieldValues,
         });
 
@@ -687,6 +691,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
         student_ids: multiStudentIds,
         reporter_id: user?.id ?? null,
         incident_date: incidentDate,
+        library_related: targetKind === 'student' && libraryRelated,
         field_values: fieldValues,
       });
 
@@ -982,6 +987,16 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
                 className="w-48"
               />
             </div>
+
+            {targetKind === 'student' && (
+              <label className="flex items-start gap-2 cursor-pointer">
+                <Checkbox checked={libraryRelated} onCheckedChange={(v) => setLibraryRelated(v === true)} className="mt-0.5" />
+                <span>
+                  <span className="text-sm font-medium block">{t('libraryRelated')}</span>
+                  <span className="text-xs text-muted-foreground">{t('libraryRelatedHint')}</span>
+                </span>
+              </label>
+            )}
 
             {/* Dynamic custom fields */}
             {loadingFields ? (

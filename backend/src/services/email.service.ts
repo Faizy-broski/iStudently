@@ -432,7 +432,8 @@ export async function sendEmailToStaff(options: SendOptions): Promise<EmailSendR
 // ─── Email log retrieval ─────────────────────────────────────────────────────
 
 export async function getEmailLog(
-  schoolId: string,
+  /** Schools/campuses whose sends to include (logs are stored under the campus they were sent for). */
+  schoolIds: string[],
   startDate?: string,
   endDate?: string,
   page = 1,
@@ -459,7 +460,7 @@ export async function getEmailLog(
       `,
       { count: 'exact' }
     )
-    .eq('school_id', schoolId)
+    .in('school_id', schoolIds)
     .order('created_at', { ascending: false })
 
   if (startDate) query = query.gte('created_at', startDate)

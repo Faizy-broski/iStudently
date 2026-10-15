@@ -1,9 +1,18 @@
 import { Router } from 'express';
 import * as disciplineController from '../controllers/discipline.controller';
 import { authenticate } from '../middlewares/auth.middleware';
-import { requireAdmin, requireTeacher } from '../middlewares/role.middleware';
+import { requireAdmin, requireRole, requireTeacher } from '../middlewares/role.middleware';
+import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware';
 
 const router = Router();
+
+// Referrals and fields addressed by id must belong to the caller's school family (before, any
+// teacher could read, and any admin edit or delete, another school's referral or field by id).
+const referralRow = requireRowInSchoolFamily('discipline_referrals');
+const fieldRow = requireRowInSchoolFamily('discipline_fields');
+// Librarians see and file only library-related referrals (damaged / lost books); the controller
+// enforces that for them.
+const staffOrLibrarian = requireRole('super_admin', 'admin', 'teacher', 'librarian');
 
 
 // ============================================================================
@@ -14,7 +23,7 @@ const router = Router();
  * GET /api/discipline/fields
  * Query: school_id, include_inactive?
  */
-router.get('/discipline/fields', authenticate, requireTeacher, disciplineController.getFields);
+router.get('/discipline/fields', authenticate, staffOrLibrarian, disciplineController.getFields);
 
 /**
  * POST /api/discipline/fields
@@ -26,13 +35,13 @@ router.post('/discipline/fields', authenticate, requireAdmin, disciplineControll
  * PATCH /api/discipline/fields/:id
  * Update a discipline field
  */
-router.patch('/discipline/fields/:id', authenticate, requireAdmin, disciplineController.updateField);
+router.patch('/discipline/fields/:id', authenticate, requireAdmin, fieldRow, disciplineController.updateField);
 
 /**
  * DELETE /api/discipline/fields/:id
  * Delete a discipline field
  */
-router.delete('/discipline/fields/:id', authenticate, requireAdmin, disciplineController.deleteField);
+router.delete('/discipline/fields/:id', authenticate, requireAdmin, fieldRow, disciplineController.deleteField);
 
 // ============================================================================
 // DISCIPLINE REFERRALS
@@ -42,31 +51,31 @@ router.delete('/discipline/fields/:id', authenticate, requireAdmin, disciplineCo
  * GET /api/discipline/referrals
  * Query: school_id, campus_id?, student_id?, start_date?, end_date?, academic_year_id?, page?, limit?
  */
-router.get('/discipline/referrals', authenticate, requireTeacher, disciplineController.getReferrals);
+router.get('/discipline/referrals', authenticate, staffOrLibrarian, disciplineController.getReferrals);
 
 /**
  * GET /api/discipline/referrals/:id
  * Get a single referral
  */
-router.get('/discipline/referrals/:id', authenticate, requireTeacher, disciplineController.getReferralById);
+router.get('/discipline/referrals/:id', authenticate, staffOrLibrarian, referralRow, disciplineController.getReferralById);
 
 /**
  * POST /api/discipline/referrals
  * Create a new referral
  */
-router.post('/discipline/referrals', authenticate, requireTeacher, disciplineController.createReferral);
+router.post('/discipline/referrals', authenticate, staffOrLibrarian, disciplineController.createReferral);
 
 /**
  * PATCH /api/discipline/referrals/:id
  * Update a referral (admin only)
  */
-router.patch('/discipline/referrals/:id', authenticate, requireAdmin, disciplineController.updateReferral);
+router.patch('/discipline/referrals/:id', authenticate, requireAdmin, referralRow, disciplineController.updateReferral);
 
 /**
  * DELETE /api/discipline/referrals/:id
  * Delete a referral (admin only)
  */
-router.delete('/discipline/referrals/:id', authenticate, requireAdmin, disciplineController.deleteReferral);
+router.delete('/discipline/referrals/:id', authenticate, requireAdmin, referralRow, disciplineController.deleteReferral);
 
 // ============================================================================
 // DISCIPLINE SCORE
@@ -83,7 +92,6 @@ router.get('/discipline/score/:studentId', authenticate, requireTeacher, discipl
 // STRICT ROLE-BASED ENDPOINTS (Zero-Trust)
 // ============================================================================
 
-import { requireRole } from '../middlewares/role.middleware';
 
 /**
  * TEACHER SCOPE (Staff)

@@ -4,9 +4,19 @@ import { authenticate } from '../middlewares/auth.middleware'
 import { requireRole, requireSuperAdmin } from '../middlewares/role.middleware'
 import type { AuthRequest } from '../middlewares/auth.middleware'
 import { getStudentRelatives } from '../services/parent.service'
+import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 const studentController = new StudentController()
+
+// Bulk import enrolls into one target grade/section or, in "whole school" mode, a grade/section per row:
+// every one of them must belong to the caller's school family.
+const importIds = (field: 'grade_level_id' | 'section_id') => (b: any) => [
+  b[field],
+  ...(Array.isArray(b.students) ? b.students.map((s: any) => s?.[field]) : []),
+]
+const importGrades = requireBodyRowsInSchoolFamily('grade_levels', importIds('grade_level_id'))
+const importSections = requireBodyRowsInSchoolFamily('sections', importIds('section_id'))
 
 // All routes require authentication
 router.use(authenticate)
@@ -96,7 +106,7 @@ router.get('/import-template', requireRole('admin'), (req, res) =>
  * Bulk import students from parsed CSV/Excel data
  * Admin only
  */
-router.post('/bulk-import', requireRole('admin'), (req, res) =>
+router.post('/bulk-import', requireRole('admin'), importGrades, importSections, (req, res) =>
   studentController.bulkImportStudents(req, res)
 )
 

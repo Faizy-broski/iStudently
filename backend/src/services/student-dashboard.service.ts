@@ -980,7 +980,13 @@ export class StudentDashboardService {
       .order('incident_date', { ascending: false })
 
     if (error) throw new Error(`Failed to fetch discipline referrals: ${error.message}`)
-    return data || []
+    const referrals = data || []
+    // field_values is keyed by discipline field id; students cannot read /discipline/fields,
+    // so send the names of the fields these referrals use.
+    const ids = [...new Set(referrals.flatMap((r: any) => Object.keys(r.field_values || {})))]
+    if (ids.length === 0) return referrals
+    const { data: fields } = await supabase.from('discipline_fields').select('id, name').in('id', ids)
+    return withDisciplineFieldNames(referrals, fields || [])
   }
 
   /**
@@ -1779,4 +1785,13 @@ export class StudentDashboardService {
       school: school || null
     }
   }
+}
+
+/** Adds `field_names` (field id → name, only the fields the referral uses) to each discipline referral. */
+export function withDisciplineFieldNames<T extends { field_values?: Record<string, unknown> | null }>(referrals: T[], fields: { id: string; name: string }[]) {
+  const names = new Map(fields.map((f) => [f.id, f.name]))
+  return referrals.map((r) => ({
+    ...r,
+    field_names: Object.fromEntries(Object.keys(r.field_values || {}).filter((k) => names.has(k)).map((k) => [k, names.get(k) as string])),
+  }))
 }

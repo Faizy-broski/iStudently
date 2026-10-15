@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { customFieldsService, EntityType } from '../services/custom-fields.service'
+import { resolveSchoolId } from '../utils/campus-validation'
 
 // "School" custom fields (shown on the Campus Details page) are managed by
 // super_admin for any school, or by a school's own admin — but only for
@@ -23,7 +24,13 @@ export class CustomFieldsController {
             const entityType = req.params.entityType as EntityType
             // Use campus_id if provided, otherwise fall back to admin's school_id
             const campusId = req.query.campus_id as string | undefined
-            const effectiveSchoolId = campusId || adminSchoolId
+            // A campus id from the query must belong to the caller's school (super admin: any school).
+            const resolved = await resolveSchoolId(req, campusId)
+            if (resolved.error) {
+                res.status(resolved.status ?? 403).json({ success: false, error: resolved.error })
+                return
+            }
+            const effectiveSchoolId = resolved.schoolId
 
             if (!effectiveSchoolId) {
                 res.status(400).json({
@@ -91,7 +98,13 @@ export class CustomFieldsController {
             const adminSchoolId = req.profile?.school_id
             // Use campus_id if provided, otherwise fall back to admin's school_id
             const campusId = req.query.campus_id as string | undefined
-            const effectiveSchoolId = campusId || adminSchoolId
+            // A campus id from the query must belong to the caller's school (super admin: any school).
+            const resolved = await resolveSchoolId(req, campusId)
+            if (resolved.error) {
+                res.status(resolved.status ?? 403).json({ success: false, error: resolved.error })
+                return
+            }
+            const effectiveSchoolId = resolved.schoolId
 
             if (!effectiveSchoolId) {
                 res.status(400).json({
@@ -169,7 +182,13 @@ export class CustomFieldsController {
         try {
             const adminSchoolId = req.profile?.school_id
             const campusId = req.query.campus_id as string | undefined
-            const effectiveSchoolId = campusId || adminSchoolId
+            // A campus id from the query must belong to the caller's school (super admin: any school).
+            const resolved = await resolveSchoolId(req, campusId)
+            if (resolved.error) {
+                res.status(resolved.status ?? 403).json({ success: false, error: resolved.error })
+                return
+            }
+            const effectiveSchoolId = resolved.schoolId
             const fieldId = req.params.id
 
             if (!effectiveSchoolId) {
@@ -233,7 +252,13 @@ export class CustomFieldsController {
         try {
             const adminSchoolId = req.profile?.school_id
             const campusId = req.query.campus_id as string | undefined
-            const effectiveSchoolId = campusId || adminSchoolId
+            // A campus id from the query must belong to the caller's school (super admin: any school).
+            const resolved = await resolveSchoolId(req, campusId)
+            if (resolved.error) {
+                res.status(resolved.status ?? 403).json({ success: false, error: resolved.error })
+                return
+            }
+            const effectiveSchoolId = resolved.schoolId
             const fieldId = req.params.id
 
             if (!effectiveSchoolId) {
@@ -287,13 +312,24 @@ export class CustomFieldsController {
             const adminSchoolId = req.profile?.school_id
             // Use campus_id if provided, otherwise fall back to admin's school_id
             const campusId = req.query.campus_id as string | undefined
-            const effectiveSchoolId = campusId || adminSchoolId
+            // A campus id from the query must belong to the caller's school (super admin: any school).
+            const resolved = await resolveSchoolId(req, campusId)
+            if (resolved.error) {
+                res.status(resolved.status ?? 403).json({ success: false, error: resolved.error })
+                return
+            }
+            const effectiveSchoolId = resolved.schoolId
 
             if (!effectiveSchoolId) {
                 res.status(400).json({
                     success: false,
                     error: 'School context required'
                 })
+                return
+            }
+
+            if (!['admin', 'super_admin', 'staff'].includes(String(req.profile?.role))) {
+                res.status(403).json({ success: false, error: 'Only admins can reorder custom fields' })
                 return
             }
 

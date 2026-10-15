@@ -11,6 +11,7 @@ router.use(authenticate)
 router.use(requireSuperAdmin)
 
 // Dashboard routes
+router.get('/summary', (req, res) => dashboardController.getSummary(req, res))
 router.get('/stats', (req, res) => dashboardController.getStats(req, res))
 router.get('/school-growth', (req, res) => dashboardController.getSchoolGrowth(req, res))
 router.get('/revenue', (req, res) => dashboardController.getRevenue(req, res))

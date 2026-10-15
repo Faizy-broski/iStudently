@@ -1,4 +1,9 @@
+export * from './admin-menu'
+export * from './features'
 export * from './roles'
+export * from './plugins'
+export * from './sidebar-sections'
+export * from './setup-steps'
 
 export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student' | 'parent' | 'staff' | 'librarian' | 'counselor' | 'inspector' | 'media_officer' | 'fina_supervisor' | 'financial_admin'
 export type SchoolStatus = 'active' | 'suspended'

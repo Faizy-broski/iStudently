@@ -6,10 +6,14 @@ import {
 } from '../services/marking-period-groups.service'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
 import { requireAdmin } from '../middlewares/role.middleware'
+import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 
 router.use(authenticate)
+
+// Groups addressed by id must belong to the caller's school family.
+const groupRow = requireRowInSchoolFamily('marking_period_groups')
 
 // ============================================================================
 // GET /api/marking-period-groups
@@ -37,7 +41,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // ============================================================================
 // GET /api/marking-period-groups/:id
 // ============================================================================
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', groupRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const data = await markingPeriodGroupsService.getById(id)
@@ -78,7 +82,7 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
 // ============================================================================
 // PUT /api/marking-period-groups/:id (admin only)
 // ============================================================================
-router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
+router.put('/:id', requireAdmin, groupRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const dto: UpdateMarkingPeriodGroupDTO = {}
@@ -96,7 +100,7 @@ router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
 // ============================================================================
 // DELETE /api/marking-period-groups/:id (admin only) — Default group is protected
 // ============================================================================
-router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
+router.delete('/:id', requireAdmin, groupRow, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     await markingPeriodGroupsService.delete(id)

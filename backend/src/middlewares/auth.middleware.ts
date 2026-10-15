@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
+import { campusIdsAllowed, requestedCampusIds } from '../utils/campus-validation'
 import { supabaseAuth, supabase } from '../config/supabase'
 import { twoFAService } from '../services/two-fa.service'
 import { TtlCache } from '../utils/ttl-cache'
@@ -251,7 +252,6 @@ export const authenticate = async (
         hasToken: !!token,
         tokenLength: token?.length,
         segments: token?.split('.').length,
-        tokenPreview: token ? `${token.substring(0, 20)}...` : 'empty'
       })
       return res.status(401).json({
         success: false,
@@ -362,7 +362,9 @@ export const authenticate = async (
       const path = req.originalUrl.split('?')[0]  // full path, no query string
       const skipPaths = ['/two-fa/', '/auth/change-password', '/auth/language',
         '/user-agreements/check', '/user-agreements/accept', '/user-agreements/reject']
-      const should2FACheck = !skipPaths.some(p => path.includes(p))
+      // GET /auth/me reports the 2FA state instead of being blocked by it (exact match only).
+      const isMe = /\/auth\/me\/?$/.test(path)
+      const should2FACheck = !isMe && !skipPaths.some(p => path.includes(p))
 
       if (should2FACheck && authContext.twoFARequired) {
         // Check skip grace period
@@ -391,6 +393,24 @@ export const authenticate = async (
       console.error('⚠️ 2FA check error (failing open):', twoFAErr)
     }
     // ── End 2FA enforcement ──────────────────────────────────────────────────
+
+    // ── Campus scope ─────────────────────────────────────────────────────────
+    // Many handlers use ?campus_id / ?school_id (or the same in the body) directly as the school to
+    // read or write. It must belong to the caller's own school family (main school + branches);
+    // super admins may target any school.
+    if (profile.role !== 'super_admin') {
+      const campusIds = requestedCampusIds(req.query, req.body)
+      if (campusIds.length > 0) {
+        try {
+          if (!(await campusIdsAllowed(profile.school_id, campusIds))) {
+            return res.status(403).json({ success: false, code: 'CAMPUS_FORBIDDEN', error: 'You do not have access to this campus' })
+          }
+        } catch (campusErr) {
+          console.error('Campus scope check error:', campusErr)
+          return res.status(503).json({ success: false, retryable: true, error: 'Could not verify campus access' })
+        }
+      }
+    }
 
     return next()
   } catch (error) {

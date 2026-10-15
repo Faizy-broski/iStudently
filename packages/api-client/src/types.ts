@@ -7,7 +7,17 @@ export interface ApiResponse<T = unknown> {
   /** True when the server said the failure is transient (503 from the auth middleware). */
   retryable?: boolean
   status?: number
+  /** The raw JSON body of a failed response, for endpoints that put extra fields next to `error` (e.g. a 409's existing id). */
+  errorData?: Record<string, unknown>
+  /** List endpoints that page their results. */
+  pagination?: { total: number; page: number; limit: number; totalPages: number }
 }
+
+/**
+ * A file to upload. React Native FormData takes { uri, name, type }; the web passes a Blob/File.
+ * Uploads go through the API (never straight to Supabase Storage).
+ */
+export type UploadFile = Blob | { uri: string; name: string; type: string }
 
 /** Special codes the backend returns (see backend/src/middlewares/auth.middleware.ts). */
 export type ApiErrorCode =

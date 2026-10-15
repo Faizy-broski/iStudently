@@ -99,7 +99,10 @@ class SpeedReadingController {
       const schoolId = req.profile?.school_id
       if (!schoolId) return res.status(401).json({ success: false, error: 'Unauthorized' })
       const data = await speedReadingService.getSessionLog(req.params.id, schoolId)
-      if (!data) return res.status(404).json({ success: false, error: 'Session not found' })
+      // Staff see any log in their school family; a student only their own (audio + word results).
+      const role = req.profile?.role
+      const allowed = role === 'admin' || role === 'teacher' || role === 'super_admin' || (role === 'student' && data?.student_id === req.profile?.id)
+      if (!data || !allowed) return res.status(404).json({ success: false, error: 'Session not found' })
       return res.json({ success: true, data })
     } catch (error: any) {
       console.error('speed-reading getSessionLog error:', error)

@@ -1,5 +1,21 @@
 import { Request, Response } from 'express'
 import { salaryService } from '../services/salary.service'
+import { supabase } from '../config/supabase'
+import type { AuthRequest } from '../middlewares/auth.middleware'
+import { campusIdsAllowed } from '../utils/campus-validation'
+
+/** Super admins pass; everyone else only reaches schools in their own school family. */
+async function schoolsAllowed(req: Request, schoolIds: string[]): Promise<boolean> {
+    const profile = (req as AuthRequest).profile
+    if (profile?.role === 'super_admin') return true
+    return campusIdsAllowed(profile?.school_id, [...new Set(schoolIds)])
+}
+
+/** A policy group id from the URL: true only when the group exists and belongs to the caller's school family. */
+async function policyGroupAllowed(req: Request, groupId: string): Promise<boolean> {
+    const { data } = await supabase.from('salary_policy_groups').select('school_id').eq('id', groupId).maybeSingle()
+    return !!data && (await schoolsAllowed(req, [data.school_id]))
+}
 
 export class SalaryController {
     // ==========================================
@@ -191,7 +207,9 @@ export class SalaryController {
     async processAdvance(req: Request, res: Response) {
         try {
             const { id } = req.params
-            const { school_id, action, admin_id, recovery_month, recovery_year } = req.body
+            const { school_id, action, recovery_month, recovery_year } = req.body
+            // The approver is the signed-in user, never an id from the body.
+            const admin_id = (req as AuthRequest).profile?.id
 
             if (!school_id || !action || !admin_id) {
                 return res.status(400).json({ success: false, error: 'school_id, action, and admin_id are required' })
@@ -390,6 +408,7 @@ export class SalaryController {
     async getPolicyGroupWithTeachers(req: Request, res: Response) {
         try {
             const { id } = req.params
+            if (!(await policyGroupAllowed(req, id))) return res.status(404).json({ success: false, error: 'Policy group not found' })
             const group = await salaryService.getPolicyGroupWithTeachers(id)
             return res.json({ success: true, data: group })
         } catch (error: any) {
@@ -438,6 +457,14 @@ export class SalaryController {
             const { school_id, staff_ids } = req.body
             if (!school_id || !Array.isArray(staff_ids))
                 return res.status(400).json({ success: false, error: 'school_id and staff_ids[] required' })
+            if (!(await policyGroupAllowed(req, id))) return res.status(404).json({ success: false, error: 'Policy group not found' })
+            // Every staff member must exist and belong to the caller's school family (the upsert would otherwise move another school's staff).
+            if (staff_ids.length) {
+                const { data: staff, error } = await supabase.from('staff').select('id, school_id').in('id', staff_ids)
+                if (error) throw error
+                if ((staff ?? []).length !== new Set(staff_ids).size || !(await schoolsAllowed(req, (staff ?? []).map((s: { school_id: string }) => s.school_id))))
+                    return res.status(403).json({ success: false, error: 'Staff not in your school' })
+            }
             await salaryService.assignTeachersToPolicy(id, school_id, staff_ids)
             return res.json({ success: true })
         } catch (error: any) {
@@ -448,6 +475,7 @@ export class SalaryController {
     async removeTeacherFromPolicy(req: Request, res: Response) {
         try {
             const { id, staffId } = req.params
+            if (!(await policyGroupAllowed(req, id))) return res.status(404).json({ success: false, error: 'Policy group not found' })
             await salaryService.removeTeacherFromPolicy(staffId, id)
             return res.json({ success: true })
         } catch (error: any) {

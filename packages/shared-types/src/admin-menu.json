@@ -1,0 +1,1583 @@
+[
+  {
+    "title": "dashboard",
+    "href": "/admin/dashboard",
+    "items": []
+  },
+  {
+    "title": "school",
+    "href": "/admin/academics",
+    "items": [
+      {
+        "title": "school_details",
+        "href": "/admin/school-details"
+      },
+      {
+        "title": "overview",
+        "href": "/admin/academics"
+      },
+      {
+        "title": "grade_levels",
+        "href": "/admin/academics/grades"
+      },
+      {
+        "title": "sections",
+        "href": "/admin/academics/sections"
+      },
+      {
+        "title": "subjects",
+        "href": "/admin/academics/subjects"
+      },
+      {
+        "title": "periods",
+        "href": "/admin/periods"
+      },
+      {
+        "title": "marking_periods",
+        "href": "/admin/marking-periods"
+      },
+      {
+        "title": "timetable",
+        "href": "/admin/timetable"
+      },
+      {
+        "title": "bulk_import_timetable",
+        "href": "/admin/timetable/import"
+      },
+      {
+        "title": "calendar",
+        "href": "/admin/events"
+      },
+      {
+        "title": "portal_notes",
+        "href": "/admin/portal/notes"
+      },
+      {
+        "title": "portal_polls",
+        "href": "/admin/portal/polls"
+      },
+      {
+        "title": "utilities",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "year_end_rollover",
+        "href": "/admin/rollover"
+      },
+      {
+        "title": "semester_rollover",
+        "href": "/admin/rollover/semester"
+      },
+      {
+        "title": "configuration",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "plugins",
+        "href": "/admin/settings/plugins"
+      },
+      {
+        "title": "marking_period_groups",
+        "href": "/admin/settings/marking-period-groups",
+        "plugin": "marking_period_groups"
+      }
+    ]
+  },
+  {
+    "title": "scheduling",
+    "href": "/admin/scheduling",
+    "items": [
+      {
+        "title": "dashboard",
+        "href": "/admin/scheduling/dashboard"
+      },
+      {
+        "title": "courses",
+        "href": "/admin/scheduling/courses"
+      },
+      {
+        "title": "student_schedule",
+        "href": "/admin/scheduling/student-schedule"
+      },
+      {
+        "title": "group_schedule",
+        "href": "/admin/scheduling/group-schedule"
+      },
+      {
+        "title": "group_requests",
+        "href": "/admin/scheduling/group-requests"
+      },
+      {
+        "title": "group_drops",
+        "href": "/admin/scheduling/group-drops"
+      },
+      {
+        "title": "lesson_plans",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "lesson_plans",
+        "href": "/admin/scheduling/lesson-plans"
+      },
+      {
+        "title": "lesson_plan_read",
+        "href": "/admin/scheduling/lesson-plan-read"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "print_schedules",
+        "href": "/admin/scheduling/print-schedules"
+      },
+      {
+        "title": "print_class_pictures",
+        "href": "/admin/scheduling/print-class-pictures"
+      },
+      {
+        "title": "schedule_report",
+        "href": "/admin/scheduling/schedule-report"
+      },
+      {
+        "title": "requests_report",
+        "href": "/admin/scheduling/requests-report"
+      },
+      {
+        "title": "incomplete_schedules",
+        "href": "/admin/scheduling/incomplete-schedules"
+      },
+      {
+        "title": "add_drop_report",
+        "href": "/admin/scheduling/add-drop-report"
+      }
+    ]
+  },
+  {
+    "title": "students",
+    "href": "/admin/students",
+    "items": [
+      {
+        "title": "student_info",
+        "href": "/admin/students/student-info"
+      },
+      {
+        "title": "group_assign",
+        "href": "/admin/students/group-assign"
+      },
+      {
+        "title": "add_student",
+        "href": "/admin/students/add-student"
+      },
+      {
+        "title": "bulk_import",
+        "href": "/admin/students/bulk-import"
+      },
+      {
+        "title": "custom_fields",
+        "href": "/admin/students/custom-fields"
+      },
+      {
+        "title": "student_id_card",
+        "href": "/admin/students/id-card"
+      },
+      {
+        "title": "certificate",
+        "href": "/admin/students/certificate-enrollment"
+      },
+      {
+        "title": "certificate_templates",
+        "href": "/admin/certificate-templates"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "print_student_info",
+        "href": "/admin/students/print-info"
+      },
+      {
+        "title": "print_letters",
+        "href": "/admin/students/print-letters"
+      },
+      {
+        "title": "student_breakdown",
+        "href": "/admin/students/breakdown"
+      },
+      {
+        "title": "withdrawal_chart",
+        "href": "/admin/students/withdrawal-chart"
+      },
+      {
+        "title": "advanced_report",
+        "href": "/admin/students/advanced-report"
+      },
+      {
+        "title": "email_students",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "send_email",
+        "href": "/admin/email/students"
+      }
+    ]
+  },
+  {
+    "title": "email",
+    "href": "/admin/email/students",
+    "items": [
+      {
+        "title": "send_to_students",
+        "href": "/admin/email/students"
+      },
+      {
+        "title": "send_to_staff",
+        "href": "/admin/email/staff"
+      },
+      {
+        "title": "email_log",
+        "href": "/admin/email/log"
+      },
+      {
+        "title": "notifications",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "email_notifications",
+        "href": "/admin/email/notifications"
+      }
+    ]
+  },
+  {
+    "title": "activities",
+    "href": "/admin/activities",
+    "items": [
+      {
+        "title": "student_screen",
+        "href": "/admin/activities"
+      },
+      {
+        "title": "add_activity",
+        "href": "/admin/activities/add-activity"
+      },
+      {
+        "title": "enter_eligibility",
+        "href": "/admin/activities/enter-eligibility"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "student_list",
+        "href": "/admin/activities/reports/student-list"
+      },
+      {
+        "title": "teacher_completion",
+        "href": "/admin/activities/reports/teacher-completion"
+      },
+      {
+        "title": "setup",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "activities",
+        "href": "/admin/activities/setup/activities"
+      },
+      {
+        "title": "entry_times",
+        "href": "/admin/activities/setup/entry-times"
+      }
+    ]
+  },
+  {
+    "title": "discipline",
+    "href": "/admin/discipline",
+    "items": [
+      {
+        "title": "add_referral_student",
+        "href": "/admin/discipline/add-referral-student"
+      },
+      {
+        "title": "add_referral_teacher",
+        "href": "/admin/discipline/add-referral-teacher"
+      },
+      {
+        "title": "add_referral_staff",
+        "href": "/admin/discipline/add-referral-staff"
+      },
+      {
+        "title": "referrals",
+        "href": "/admin/discipline"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "category_breakdown",
+        "href": "/admin/discipline/reports/category-breakdown"
+      },
+      {
+        "title": "breakdown_over_time",
+        "href": "/admin/discipline/reports/category-breakdown-time"
+      },
+      {
+        "title": "breakdown_by_student_field",
+        "href": "/admin/discipline/reports/breakdown-student-field"
+      },
+      {
+        "title": "discipline_log",
+        "href": "/admin/discipline/reports/log"
+      },
+      {
+        "title": "setup",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "referral_form",
+        "href": "/admin/discipline/referral-form"
+      }
+    ]
+  },
+  {
+    "title": "quiz",
+    "href": "/admin/quiz",
+    "items": [
+      {
+        "title": "quizzes",
+        "href": "/admin/quiz/quizzes"
+      },
+      {
+        "title": "questions",
+        "href": "/admin/quiz/questions"
+      },
+      {
+        "title": "exam_builder",
+        "href": "/admin/quiz/exam-builder"
+      },
+      {
+        "title": "premium",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "answer_breakdown",
+        "href": "/admin/quiz/answer-breakdown"
+      },
+      {
+        "title": "configuration",
+        "href": "/admin/quiz/configuration"
+      }
+    ]
+  },
+  {
+    "title": "online_classes",
+    "href": "/admin/online-classes",
+    "plugin": "online_classes",
+    "items": [
+      {
+        "title": "review_queue",
+        "href": "/admin/online-classes"
+      },
+      {
+        "title": "active_sessions",
+        "href": "/admin/online-classes/active"
+      },
+      {
+        "title": "meet",
+        "href": "/admin/jitsi-meet"
+      },
+      {
+        "title": "my_rooms",
+        "href": "/admin/jitsi-meet/rooms"
+      },
+      {
+        "title": "configuration",
+        "href": "/admin/jitsi-meet/configuration"
+      }
+    ]
+  },
+  {
+    "title": "speed_reading",
+    "href": "/admin/speed-reading",
+    "items": [
+      {
+        "title": "overview",
+        "href": "/admin/speed-reading"
+      },
+      {
+        "title": "manage_texts",
+        "href": "/admin/speed-reading/texts"
+      },
+      {
+        "title": "student_sessions",
+        "href": "/admin/speed-reading/sessions"
+      }
+    ]
+  },
+  {
+    "title": "staff_absences",
+    "href": "/admin/staff-absences",
+    "items": [
+      {
+        "title": "add_absence",
+        "href": "/admin/staff-absences/add-absence"
+      },
+      {
+        "title": "absences",
+        "href": "/admin/staff-absences/absences"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "cancelled_classes",
+        "href": "/admin/staff-absences/cancelled-classes"
+      },
+      {
+        "title": "days_absent_breakdown",
+        "href": "/admin/staff-absences/breakdown"
+      },
+      {
+        "title": "setup",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "absence_fields",
+        "href": "/admin/staff-absences/fields"
+      }
+    ]
+  },
+  {
+    "title": "teachers",
+    "href": "/admin/teachers",
+    "items": [
+      {
+        "title": "all_teachers",
+        "href": "/admin/teachers"
+      },
+      {
+        "title": "add_teacher",
+        "href": "/admin/teachers/add"
+      },
+      {
+        "title": "bulk_import",
+        "href": "/admin/teachers/bulk-import"
+      },
+      {
+        "title": "group_assign",
+        "href": "/admin/teachers/group-assign"
+      },
+      {
+        "title": "workload",
+        "href": "/admin/teachers/workload"
+      },
+      {
+        "title": "custom_fields",
+        "href": "/admin/teachers/custom-fields"
+      },
+      {
+        "title": "teacher_programs",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "input_final_grades",
+        "href": "/admin/teacher-programs/final-grades"
+      },
+      {
+        "title": "gradebook",
+        "href": "/admin/teacher-programs/gradebook"
+      },
+      {
+        "title": "anomalous_grades",
+        "href": "/admin/teacher-programs/anomalous-grades"
+      },
+      {
+        "title": "take_attendance",
+        "href": "/admin/teacher-programs/attendance"
+      },
+      {
+        "title": "enter_eligibility",
+        "href": "/admin/activities/enter-eligibility"
+      }
+    ]
+  },
+  {
+    "title": "staff",
+    "href": "/admin/staff",
+    "items": [
+      {
+        "title": "all_staff",
+        "href": "/admin/staff"
+      },
+      {
+        "title": "add_staff",
+        "href": "/admin/staff/add-staff"
+      },
+      {
+        "title": "bulk_import",
+        "href": "/admin/staff/bulk-import"
+      },
+      {
+        "title": "group_assign",
+        "href": "/admin/staff/group-assign"
+      },
+      {
+        "title": "financial_statements",
+        "href": "/admin/staff/financial-statements"
+      },
+      {
+        "title": "custom_fields",
+        "href": "/admin/staff/custom-fields"
+      },
+      {
+        "title": "settings",
+        "href": "/admin/staff/settings"
+      }
+    ]
+  },
+  {
+    "title": "performance_efficiency",
+    "href": "/admin/performance",
+    "items": [
+      {
+        "title": "incidents_log",
+        "href": "/admin/performance"
+      },
+      {
+        "title": "catalog",
+        "href": "/admin/performance/catalog"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "category_breakdown",
+        "href": "/admin/performance/reports/category-breakdown"
+      },
+      {
+        "title": "breakdown_over_time",
+        "href": "/admin/performance/reports/category-breakdown-time"
+      },
+      {
+        "title": "breakdown_by_staff_field",
+        "href": "/admin/performance/reports/breakdown-staff-field"
+      },
+      {
+        "title": "performance_log",
+        "href": "/admin/performance/reports/log"
+      }
+    ]
+  },
+  {
+    "title": "user_management",
+    "href": "/admin/signup-links",
+    "items": [
+      {
+        "title": "signup_links",
+        "href": "/admin/signup-links"
+      },
+      {
+        "title": "pending_approvals",
+        "href": "/admin/pending-approvals"
+      }
+    ]
+  },
+  {
+    "title": "parents",
+    "href": "/admin/parents",
+    "items": [
+      {
+        "title": "parent_info",
+        "href": "/admin/parents/parent-info"
+      },
+      {
+        "title": "add_parent",
+        "href": "/admin/parents/add-parent"
+      },
+      {
+        "title": "associate_parent",
+        "href": "/admin/parents/associate-parent"
+      },
+      {
+        "title": "custom_fields",
+        "href": "/admin/parents/custom-fields"
+      },
+      {
+        "title": "email_parents",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "notifications",
+        "href": "/admin/email/notifications"
+      }
+    ]
+  },
+  {
+    "title": "attendance",
+    "href": "/admin/attendance",
+    "items": [
+      {
+        "title": "administration",
+        "href": "/admin/attendance/administration"
+      },
+      {
+        "title": "add_absences",
+        "href": "/admin/attendance/add-absences"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "teacher_completion",
+        "href": "/admin/attendance/teacher-completion"
+      },
+      {
+        "title": "average_daily_attendance",
+        "href": "/admin/attendance/average-daily"
+      },
+      {
+        "title": "attendance_chart",
+        "href": "/admin/attendance/chart"
+      },
+      {
+        "title": "monthly_attendance_sheet",
+        "href": "/admin/attendance/monthly-sheet"
+      },
+      {
+        "title": "utilities",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "recalculate_daily_attendance",
+        "href": "/admin/attendance/recalculate"
+      },
+      {
+        "title": "delete_duplicate_attendance",
+        "href": "/admin/attendance/delete-duplicates"
+      },
+      {
+        "title": "setup",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "attendance_codes",
+        "href": "/admin/attendance/codes"
+      },
+      {
+        "title": "attendance_summary",
+        "href": "/admin/attendance/summary",
+        "plugin": "automatic_attendance"
+      },
+      {
+        "title": "print_attendance_sheets",
+        "href": "/admin/attendance/print-sheets",
+        "plugin": "automatic_attendance"
+      },
+      {
+        "title": "take_missing_attendance",
+        "href": "/admin/attendance/take-missing",
+        "plugin": "automatic_attendance"
+      },
+      {
+        "title": "send_days_absent",
+        "href": "/admin/attendance/email-parents",
+        "plugin": "automatic_attendance"
+      }
+    ]
+  },
+  {
+    "title": "grades",
+    "href": "/admin/grades",
+    "items": [
+      {
+        "title": "report_cards",
+        "href": "/admin/grades/report-cards"
+      },
+      {
+        "title": "transcripts",
+        "href": "/admin/grades/transcripts"
+      },
+      {
+        "title": "student_grades",
+        "href": "/admin/grades/student-grades"
+      },
+      {
+        "title": "progress_reports",
+        "href": "/admin/grades/progress-reports"
+      },
+      {
+        "title": "teacher_completion",
+        "href": "/admin/grades/teacher-completion"
+      },
+      {
+        "title": "gradebook_breakdown",
+        "href": "/admin/grades/gradebook"
+      },
+      {
+        "title": "final_grades",
+        "href": "/admin/grades/final-grades"
+      },
+      {
+        "title": "mass_create_assignments",
+        "href": "/admin/grades/mass-create-assignments"
+      },
+      {
+        "title": "setup",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "configuration",
+        "href": "/admin/grades/configuration"
+      },
+      {
+        "title": "grading_scales",
+        "href": "/admin/grades/grading-scales"
+      },
+      {
+        "title": "report_card_comments",
+        "href": "/admin/grades/report-card-comments"
+      },
+      {
+        "title": "comment_codes",
+        "href": "/admin/grades/comment-codes"
+      },
+      {
+        "title": "history_marking_periods",
+        "href": "/admin/grades/history-marking-periods"
+      },
+      {
+        "title": "historical_grades",
+        "href": "/admin/grades/historical-grades"
+      },
+      {
+        "title": "graduation_paths",
+        "href": "/admin/grades/graduation-paths"
+      },
+      {
+        "title": "import_grades",
+        "href": "/admin/grades/import-grades"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "honor_roll",
+        "href": "/admin/grades/honor-roll"
+      },
+      {
+        "title": "gpa_class_ranks",
+        "href": "/admin/grades/class-ranks"
+      },
+      {
+        "title": "email_students",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "send_report_cards",
+        "href": "/admin/grades/email-students"
+      },
+      {
+        "title": "email_parents",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "send_report_cards",
+        "href": "/admin/grades/email-parents"
+      }
+    ]
+  },
+  {
+    "title": "student_billing",
+    "href": "/admin/fees",
+    "items": [
+      {
+        "title": "dashboard",
+        "href": "/admin/fees"
+      },
+      {
+        "title": "payments",
+        "href": "/admin/fees/payments"
+      },
+      {
+        "title": "generate_fees",
+        "href": "/admin/fees/generate"
+      },
+      {
+        "title": "fee_overrides",
+        "href": "/admin/fees/overrides"
+      },
+      {
+        "title": "student_balances",
+        "href": "/admin/fees/student-balances"
+      },
+      {
+        "title": "fee_structures",
+        "href": "/admin/fees/structures"
+      },
+      {
+        "title": "fee_categories",
+        "href": "/admin/fees/fee-categories"
+      },
+      {
+        "title": "print_invoices",
+        "href": "/admin/fees/print-invoices"
+      },
+      {
+        "title": "print_receipts",
+        "href": "/admin/fees/print-receipts"
+      },
+      {
+        "title": "daily_transactions",
+        "href": "/admin/billing-elements/daily-transactions"
+      },
+      {
+        "title": "settings",
+        "href": "/admin/fees/settings"
+      },
+      {
+        "title": "email_students",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "send_balances",
+        "href": "/admin/fees/email-students"
+      },
+      {
+        "title": "email_parents",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "send_balances",
+        "href": "/admin/fees/email-parents"
+      }
+    ]
+  },
+  {
+    "title": "billing_elements",
+    "href": "/admin/billing-elements",
+    "items": [
+      {
+        "title": "elements",
+        "href": "/admin/billing-elements"
+      },
+      {
+        "title": "mass_assign",
+        "href": "/admin/billing-elements/mass-assign"
+      },
+      {
+        "title": "student_elements",
+        "href": "/admin/billing-elements/student-elements"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "category_breakdown",
+        "href": "/admin/billing-elements/category-breakdown"
+      }
+    ]
+  },
+  {
+    "title": "salary",
+    "href": "/admin/salary",
+    "items": [
+      {
+        "title": "dashboard",
+        "href": "/admin/salary"
+      },
+      {
+        "title": "generate_salaries",
+        "href": "/admin/salary/generate"
+      },
+      {
+        "title": "advances",
+        "href": "/admin/salary/advances"
+      },
+      {
+        "title": "settings",
+        "href": "/admin/salary/settings"
+      }
+    ]
+  },
+  {
+    "title": "accounting",
+    "href": "/admin/accounting/incomes",
+    "items": [
+      {
+        "title": "incomes",
+        "href": "/admin/accounting/incomes"
+      },
+      {
+        "title": "expenses",
+        "href": "/admin/accounting/expenses"
+      },
+      {
+        "title": "staff_payments",
+        "href": "/admin/accounting/staff-payments"
+      },
+      {
+        "title": "teacher_hours",
+        "href": "/admin/accounting/teacher-hours"
+      },
+      {
+        "title": "payees",
+        "href": "/admin/accounting/payees"
+      },
+      {
+        "title": "reports",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "daily_transactions",
+        "href": "/admin/accounting/daily-transactions"
+      },
+      {
+        "title": "staff_balances",
+        "href": "/admin/accounting/staff-balances"
+      },
+      {
+        "title": "category_rollup",
+        "href": "/admin/accounting/reports"
+      },
+      {
+        "title": "setup",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "categories",
+        "href": "/admin/accounting/categories"
+      }
+    ]
+  },
+  {
+    "title": "library",
+    "href": "/admin/library",
+    "items": [
+      {
+        "title": "overview",
+        "href": "/admin/library"
+      },
+      {
+        "title": "books",
+        "href": "/admin/library/books"
+      },
+      {
+        "title": "e_library",
+        "href": "/admin/library/e-library"
+      },
+      {
+        "title": "loan_directory",
+        "href": "/admin/library/loans"
+      },
+      {
+        "title": "fines",
+        "href": "/admin/library/fines"
+      },
+      {
+        "title": "textbooks",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "textbooks_overview",
+        "href": "/admin/textbooks"
+      },
+      {
+        "title": "textbooks_matrix",
+        "href": "/admin/textbooks/matrix"
+      },
+      {
+        "title": "textbooks_dashboard",
+        "href": "/admin/textbooks/dashboard"
+      },
+      {
+        "title": "textbooks_return_mode",
+        "href": "/admin/textbooks/return-mode"
+      },
+      {
+        "title": "setup",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "document_categories",
+        "href": "/admin/library/categories"
+      },
+      {
+        "title": "document_fields",
+        "href": "/admin/library/document-fields"
+      }
+    ]
+  },
+  {
+    "title": "my_worksheet",
+    "href": "/admin/qirtasi/worksheets",
+    "plugin": "qirtasi",
+    "items": [
+      {
+        "title": "my_worksheet",
+        "href": "/admin/qirtasi/worksheets"
+      },
+      {
+        "title": "qirtasi_curriculum",
+        "href": "/admin/qirtasi/curriculum"
+      }
+    ]
+  },
+  {
+    "title": "reports",
+    "href": "/admin/reports/calculations",
+    "items": [
+      {
+        "title": "calculations",
+        "href": "/admin/reports/calculations"
+      },
+      {
+        "title": "calculation_reports",
+        "href": "/admin/reports/calculation-reports"
+      }
+    ]
+  },
+  {
+    "title": "entry_exit",
+    "href": "/admin/entry-exit",
+    "items": [
+      {
+        "title": "dashboard",
+        "href": "/admin/entry-exit"
+      },
+      {
+        "title": "add_records",
+        "href": "/admin/entry-exit/add-records"
+      },
+      {
+        "title": "records",
+        "href": "/admin/entry-exit/report"
+      },
+      {
+        "title": "checkpoints",
+        "href": "/admin/entry-exit/checkpoints"
+      },
+      {
+        "title": "evening_leaves",
+        "href": "/admin/entry-exit/evening-leaves"
+      },
+      {
+        "title": "mass_evening_leaves",
+        "href": "/admin/entry-exit/mass-evening-leaves"
+      },
+      {
+        "title": "packages",
+        "href": "/admin/entry-exit/packages"
+      },
+      {
+        "title": "automatic_records",
+        "href": "/admin/entry-exit/automatic-records"
+      },
+      {
+        "title": "exceptions",
+        "href": "/admin/entry-exit/exceptions"
+      },
+      {
+        "title": "add_exceptions",
+        "href": "/admin/entry-exit/add-exceptions"
+      },
+      {
+        "title": "take_attendance",
+        "href": "/admin/entry-exit/take-attendance"
+      }
+    ]
+  },
+  {
+    "title": "hostel",
+    "href": "/admin/hostel",
+    "items": [
+      {
+        "title": "dashboard",
+        "href": "/admin/hostel"
+      },
+      {
+        "title": "buildings",
+        "href": "/admin/hostel/buildings"
+      },
+      {
+        "title": "rooms",
+        "href": "/admin/hostel/rooms"
+      },
+      {
+        "title": "assignments",
+        "href": "/admin/hostel/assignments"
+      },
+      {
+        "title": "visits",
+        "href": "/admin/hostel/visits"
+      },
+      {
+        "title": "fees",
+        "href": "/admin/hostel/fees"
+      },
+      {
+        "title": "room_fields",
+        "href": "/admin/hostel/fields"
+      },
+      {
+        "title": "configuration",
+        "href": "/admin/hostel/settings"
+      }
+    ]
+  },
+  {
+    "title": "resources",
+    "href": "/admin/resources/links",
+    "items": [
+      {
+        "title": "resources",
+        "href": "/admin/resources/links"
+      },
+      {
+        "title": "dashboards",
+        "href": "/admin/resources/dashboards"
+      },
+      {
+        "title": "school_inventory",
+        "href": "/admin/resources/school-inventory"
+      },
+      {
+        "title": "inventory_snapshots",
+        "href": "/admin/resources/inventory-snapshots"
+      },
+      {
+        "title": "physics_labs",
+        "href": "/admin/physics-labs"
+      },
+      {
+        "title": "physics_virtual_labs",
+        "href": "/admin/resources/physics-virtual-labs"
+      },
+      {
+        "title": "chemistry_virtual_labs",
+        "href": "/admin/resources/chemistry-virtual-labs"
+      },
+      {
+        "title": "virtual_labs",
+        "href": "/admin/resources/virtual-labs"
+      },
+      {
+        "title": "periodic_table",
+        "href": "/admin/resources/jperiod"
+      },
+      {
+        "title": "circuit_simulator",
+        "href": "/admin/resources/circuit-simulator"
+      },
+      {
+        "title": "calculators_arena",
+        "href": "/admin/resources/calculators-arena"
+      },
+      {
+        "title": "interactive_geometry",
+        "href": "/admin/resources/interactive-geometry"
+      },
+      {
+        "title": "mental_math",
+        "href": "/admin/resources/mental-math"
+      },
+      {
+        "title": "arabic_fluency",
+        "href": "/admin/resources/arabic-fluency"
+      },
+      {
+        "title": "anatomy_3d",
+        "href": "/admin/resources/anatomy-3d"
+      },
+      {
+        "title": "qaida_al_jahabidha",
+        "href": "/admin/resources/qaida"
+      },
+      {
+        "title": "embedded_resources",
+        "href": "/admin/resources/embedded",
+        "plugin": "embedded_resources"
+      },
+      {
+        "title": "premium_resources",
+        "href": "#",
+        "label": true,
+        "plugin": "vlaby"
+      },
+      {
+        "title": "human_atlas",
+        "href": "/admin/resources/human-atlas",
+        "plugin": "human_atlas"
+      }
+    ]
+  },
+  {
+    "title": "training",
+    "href": "/admin/training",
+    "items": [
+      {
+        "title": "all_sessions",
+        "href": "/admin/training"
+      },
+      {
+        "title": "new_session",
+        "href": "/admin/training/create"
+      }
+    ]
+  },
+  {
+    "title": "messaging",
+    "href": "/admin/messaging",
+    "items": [
+      {
+        "title": "inbox",
+        "href": "/admin/messaging"
+      },
+      {
+        "title": "write",
+        "href": "/admin/messaging/write"
+      },
+      {
+        "title": "teacher_messaging_permissions",
+        "href": "/admin/settings/teacher-messaging"
+      }
+    ]
+  },
+  {
+    "title": "vault",
+    "href": "/admin/vault",
+    "plugin": "vault",
+    "items": []
+  },
+  {
+    "title": "hifzi",
+    "href": "/admin/hifzi",
+    "plugin": "hifzi",
+    "items": [
+      {
+        "title": "circles",
+        "href": "/admin/hifzi/circles"
+      },
+      {
+        "title": "students",
+        "href": "/admin/hifzi/students"
+      },
+      {
+        "title": "curriculum",
+        "href": "/admin/hifzi/curriculum"
+      },
+      {
+        "title": "quran",
+        "href": "/admin/hifzi/quran"
+      },
+      {
+        "title": "gradebook",
+        "href": "/admin/hifzi/gradebook"
+      },
+      {
+        "title": "compliance",
+        "href": "/admin/hifzi/compliance"
+      },
+      {
+        "title": "plans",
+        "href": "/admin/hifzi/plans"
+      },
+      {
+        "title": "attendance",
+        "href": "/admin/hifzi/attendance"
+      },
+      {
+        "title": "reports",
+        "href": "/admin/hifzi/reports"
+      },
+      {
+        "title": "settings",
+        "href": "/admin/hifzi/settings"
+      }
+    ]
+  },
+  {
+    "title": "miqat",
+    "href": "/admin/miqat/dashboard",
+    "plugin": "miqat",
+    "items": [
+      {
+        "title": "dashboard",
+        "href": "/admin/miqat/dashboard"
+      },
+      {
+        "title": "devices",
+        "href": "/admin/miqat/devices"
+      },
+      {
+        "title": "cards",
+        "href": "/admin/miqat/cards"
+      },
+      {
+        "title": "permissions",
+        "href": "/admin/miqat/permissions"
+      },
+      {
+        "title": "reports",
+        "href": "/admin/miqat/reports"
+      },
+      {
+        "title": "settings",
+        "href": "/admin/miqat/settings"
+      }
+    ]
+  },
+  {
+    "title": "weather_alerts",
+    "href": "/admin/weather-alerts/dashboard",
+    "plugin": "weather_alerts",
+    "items": [
+      {
+        "title": "pending_alerts",
+        "href": "/admin/weather-alerts/dashboard"
+      },
+      {
+        "title": "settings",
+        "href": "/admin/weather-alerts/settings"
+      }
+    ]
+  },
+  {
+    "title": "hadith_forty",
+    "href": "/admin/resources/hadith-forty",
+    "plugin": "hadith_forty",
+    "items": [
+      {
+        "title": "hadiths",
+        "href": "/admin/resources/hadith-forty"
+      },
+      {
+        "title": "class_progress",
+        "href": "/admin/resources/hadith-forty/class"
+      }
+    ]
+  },
+  {
+    "title": "grievances",
+    "href": "/admin/grievances",
+    "plugin": "grievance_portal",
+    "items": [
+      {
+        "title": "all_complaints",
+        "href": "/admin/grievances"
+      },
+      {
+        "title": "submit_complaint",
+        "href": "/admin/grievances/submit"
+      },
+      {
+        "title": "dashboard",
+        "href": "/admin/grievances/dashboard"
+      },
+      {
+        "title": "reports",
+        "href": "/admin/grievances/reports"
+      },
+      {
+        "title": "categories",
+        "href": "/admin/grievances/categories"
+      },
+      {
+        "title": "settings",
+        "href": "/admin/grievances/settings"
+      }
+    ]
+  },
+  {
+    "title": "inspections",
+    "href": "/admin/inspections/assignments",
+    "items": [
+      {
+        "title": "dashboard",
+        "href": "/admin/inspections/dashboard"
+      },
+      {
+        "title": "assignments",
+        "href": "/admin/inspections/assignments"
+      },
+      {
+        "title": "visits",
+        "href": "/admin/inspections/visits"
+      },
+      {
+        "title": "rubrics",
+        "href": "/admin/inspections/rubrics"
+      },
+      {
+        "title": "training",
+        "href": "/admin/inspections/training-prescriptions"
+      },
+      {
+        "title": "reports",
+        "href": "/admin/inspections/reports"
+      },
+      {
+        "title": "appeals",
+        "href": "/admin/inspections/appeals"
+      }
+    ]
+  },
+  {
+    "title": "fina",
+    "href": "/admin/fina/wall",
+    "items": [
+      {
+        "title": "fina_wall",
+        "href": "/admin/fina/wall"
+      },
+      {
+        "title": "fina_compose",
+        "href": "/admin/fina/compose"
+      },
+      {
+        "title": "media",
+        "href": "/admin/fina/media"
+      },
+      {
+        "title": "fina_albums",
+        "href": "/admin/fina/albums"
+      },
+      {
+        "title": "fina_approvals",
+        "href": "/admin/fina/approvals"
+      },
+      {
+        "title": "fina_groups",
+        "href": "/admin/fina/groups"
+      },
+      {
+        "title": "fina_events",
+        "href": "/admin/fina/events"
+      },
+      {
+        "title": "fina_threads",
+        "href": "/admin/fina/threads"
+      },
+      {
+        "title": "fina_notifications",
+        "href": "/admin/fina/notifications"
+      },
+      {
+        "title": "fina_audit",
+        "href": "/admin/fina/audit"
+      },
+      {
+        "title": "fina_reports",
+        "href": "/admin/fina/reports"
+      }
+    ]
+  },
+  {
+    "title": "settings",
+    "href": "/admin/settings",
+    "items": [
+      {
+        "title": "general",
+        "href": "/admin/settings"
+      },
+      {
+        "title": "campuses",
+        "href": "/admin/settings/campuses"
+      },
+      {
+        "title": "sidebar_theme",
+        "href": "/admin/settings/sidebar-theme"
+      },
+      {
+        "title": "academic_years",
+        "href": "/admin/settings/academic-years"
+      },
+      {
+        "title": "services",
+        "href": "/admin/settings/services"
+      },
+      {
+        "title": "user_agreements",
+        "href": "/admin/settings/user-agreements"
+      },
+      {
+        "title": "user_profiles",
+        "href": "/admin/settings/user-profiles"
+      },
+      {
+        "title": "id_card_designer",
+        "href": "/admin/id-card"
+      },
+      {
+        "title": "push_notifications",
+        "href": "/admin/settings/push-notifications"
+      },
+      {
+        "title": "profile",
+        "href": "/admin/profile"
+      },
+      {
+        "title": "email_reminders",
+        "href": "/admin/settings/email-reminders",
+        "plugin": "email_reminders"
+      },
+      {
+        "title": "email_smtp",
+        "href": "/admin/settings/email-smtp",
+        "plugin": "email_smtp"
+      },
+      {
+        "title": "pdf_header_footer",
+        "href": "/admin/settings/pdf-header-footer",
+        "plugin": "pdf_header_footer"
+      },
+      {
+        "title": "public_pages",
+        "href": "/admin/settings/public-pages",
+        "plugin": "public_pages"
+      },
+      {
+        "title": "two_factor_auth",
+        "href": "/admin/settings/two-factor-auth",
+        "plugin": "two_factor_auth"
+      }
+    ]
+  }
+]

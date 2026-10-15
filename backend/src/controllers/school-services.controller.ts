@@ -3,6 +3,19 @@ import { AuthRequest } from '../middlewares/auth.middleware'
 import { schoolServicesService } from '../services/school-services.service'
 import { resolveSchoolId } from '../utils/campus-validation'
 
+const SERVICE_UPDATE_FIELDS = ['name', 'code', 'description', 'service_type', 'charge_frequency', 'default_charge', 'is_mandatory', 'is_active', 'display_order'] as const
+
+/**
+ * School of the service in :id. The route's requireRowInSchoolFamily already checked it is in the
+ * caller's family; using the row's own school (not the caller's main school) lets an admin edit
+ * services of any campus they selected.
+ */
+async function serviceSchool(req: AuthRequest, res: Response): Promise<string | null> {
+    const schoolId = await schoolServicesService.getServiceSchoolId(req.params.id)
+    if (!schoolId) res.status(404).json({ success: false, error: 'Service not found' })
+    return schoolId
+}
+
 export class SchoolServicesController {
     /**
      * GET /api/school-services
@@ -38,12 +51,8 @@ export class SchoolServicesController {
     async getServiceById(req: AuthRequest, res: Response): Promise<void> {
         try {
             const serviceId = req.params.id
-            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
-
-            if (!schoolId) {
-                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
-                return
-            }
+            const schoolId = await serviceSchool(req, res)
+            if (!schoolId) return
 
             const service = await schoolServicesService.getServiceById(serviceId, schoolId)
 
@@ -91,14 +100,14 @@ export class SchoolServicesController {
     async updateService(req: AuthRequest, res: Response): Promise<void> {
         try {
             const serviceId = req.params.id
-            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id)
+            const schoolId = await serviceSchool(req, res)
+            if (!schoolId) return
 
-            if (!schoolId) {
-                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
-                return
-            }
+            const updates: Record<string, unknown> = {}
+            for (const f of SERVICE_UPDATE_FIELDS) if (req.body?.[f] !== undefined) updates[f] = req.body[f]
+            if (typeof updates.code === 'string') updates.code = updates.code.toUpperCase()
 
-            const service = await schoolServicesService.updateService(serviceId, schoolId, req.body)
+            const service = await schoolServicesService.updateService(serviceId, schoolId, updates)
 
             res.json({ success: true, data: service, message: 'Service updated' })
         } catch (error: any) {
@@ -114,12 +123,8 @@ export class SchoolServicesController {
     async deleteService(req: AuthRequest, res: Response): Promise<void> {
         try {
             const serviceId = req.params.id
-            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
-
-            if (!schoolId) {
-                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
-                return
-            }
+            const schoolId = await serviceSchool(req, res)
+            if (!schoolId) return
 
             await schoolServicesService.deleteService(serviceId, schoolId)
 
@@ -137,13 +142,13 @@ export class SchoolServicesController {
     async setGradeCharges(req: AuthRequest, res: Response): Promise<void> {
         try {
             const serviceId = req.params.id
-            const { charges } = req.body
-            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id)
-
-            if (!schoolId) {
-                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
+            const charges = Array.isArray(req.body?.charges) ? req.body.charges : null
+            if (!charges) {
+                res.status(400).json({ success: false, error: 'charges must be an array' })
                 return
             }
+            const schoolId = await serviceSchool(req, res)
+            if (!schoolId) return
 
             const result = await schoolServicesService.setGradeCharges(serviceId, schoolId, charges)
 

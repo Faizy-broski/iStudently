@@ -3,6 +3,8 @@ import { libraryController } from '../controllers/library.controller';
 import { elibraryReadingController } from '../controllers/elibrary-reading.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/role.middleware';
+import type { AuthRequest } from '../middlewares/auth.middleware';
+import type { NextFunction, Response } from 'express';
 
 const router = Router();
 
@@ -41,9 +43,17 @@ router.get('/loans', requireRole('admin', 'teacher', 'librarian'), libraryContro
 router.post('/loans/issue', requireRole('admin', 'librarian'), libraryController.issueBook);
 router.post('/loans/:loanId/return', requireRole('admin', 'librarian'), libraryController.returnBook);
 router.post('/loans/:loanId/lost', requireRole('admin', 'librarian'), libraryController.markBookLost);
-router.get('/students/:studentId/loans/active', requireRole('admin', 'teacher', 'librarian'), libraryController.getActiveLoans);
-router.get('/students/:studentId/loans/overdue', requireRole('admin', 'teacher', 'librarian'), libraryController.getOverdueLoans);
-router.get('/students/:studentId/loans/history', requireRole('admin', 'teacher', 'librarian'), libraryController.getStudentLoanHistory);
+// Students read their own loans and fines (library_loans.student_id is the borrower's profile id).
+const ownLoans = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.profile?.role === 'student' && req.params.studentId !== req.profile.id) {
+    res.status(403).json({ success: false, error: 'Access denied' });
+    return;
+  }
+  next();
+};
+router.get('/students/:studentId/loans/active', requireRole('admin', 'teacher', 'librarian', 'student'), ownLoans, libraryController.getActiveLoans);
+router.get('/students/:studentId/loans/overdue', requireRole('admin', 'teacher', 'librarian', 'student'), ownLoans, libraryController.getOverdueLoans);
+router.get('/students/:studentId/loans/history', requireRole('admin', 'teacher', 'librarian', 'student'), ownLoans, libraryController.getStudentLoanHistory);
 
 // ==================== STUDENT SEARCH ROUTES ====================
 router.get('/students/search', requireRole('admin', 'teacher', 'librarian'), libraryController.searchStudents);
@@ -51,7 +61,7 @@ router.get('/students/:studentId/eligibility', requireRole('admin', 'teacher', '
 
 // ==================== FINE ROUTES ====================
 router.get('/fines/stats', requireRole('admin', 'librarian'), libraryController.getFineStats);
-router.get('/students/:studentId/fines/unpaid', requireRole('admin', 'teacher', 'librarian'), libraryController.getUnpaidFines);
+router.get('/students/:studentId/fines/unpaid', requireRole('admin', 'teacher', 'librarian', 'student'), ownLoans, libraryController.getUnpaidFines);
 router.post('/fines/:fineId/pay', requireRole('admin', 'librarian'), libraryController.payFine);
 
 // ==================== STATS ROUTE ====================

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { gradesReportsService } from '../services/grades-reports.service'
+import { canViewCoursePeriod, canViewStudent } from '../utils/student-access'
 
 // ============================================================================
 // HONOR ROLL (RosarioSIS-style — no rules, direct per-grade threshold check)
@@ -77,6 +78,20 @@ export const recalculateRanks = async (req: Request, res: Response) => {
 // PER-COURSE CLASS RANK
 // ============================================================================
 
+export const getGpaRankList = async (req: Request, res: Response) => {
+  try {
+    const schoolId = (req as AuthRequest).profile?.school_id
+    if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+    const { marking_period_id, grade_level_id, campus_id, search } = req.query as Record<string, string | undefined>
+    if (!marking_period_id) return res.status(400).json({ success: false, error: 'marking_period_id is required' })
+    const data = await gradesReportsService.getGpaRankList(schoolId, marking_period_id, { campus_id, grade_level_id, search })
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getGpaRankList:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
 export const getCourseClassRank = async (req: Request, res: Response) => {
   try {
     const schoolId = (req.query.school_id as string) || (req as AuthRequest).profile?.school_id
@@ -90,6 +105,7 @@ export const getCourseClassRank = async (req: Request, res: Response) => {
       })
     }
 
+    if (!(await canViewCoursePeriod(req as AuthRequest, course_period_id as string))) return res.status(404).json({ success: false, error: 'Not found' })
     const data = await gradesReportsService.getCourseClassRank(
       schoolId,
       course_period_id as string,
@@ -109,6 +125,7 @@ export const getCourseClassRank = async (req: Request, res: Response) => {
 export const getTranscript = async (req: Request, res: Response) => {
   try {
     const { studentId } = req.params
+    if (!(await canViewStudent(req as AuthRequest, studentId))) return res.status(404).json({ success: false, error: 'Not found' })
     const data = await gradesReportsService.getTranscript(studentId)
     res.json({ success: true, data })
   } catch (error: any) {
@@ -172,6 +189,7 @@ export const addTransferCredit = async (req: Request, res: Response) => {
 export const getCumulativeGPA = async (req: Request, res: Response) => {
   try {
     const { studentId } = req.params
+    if (!(await canViewStudent(req as AuthRequest, studentId))) return res.status(404).json({ success: false, error: 'Not found' })
     const data = await gradesReportsService.getCumulativeGPA(studentId)
     res.json({ success: true, data })
   } catch (error: any) {

@@ -74,8 +74,13 @@ export interface DeviceKeyPair {
   publicKeyPem: string
 }
 
-export function generateDeviceKeyPair(): DeviceKeyPair {
-  const secretKey = p256.utils.randomSecretKey()
+/**
+ * Hermes has no crypto.getRandomValues, so the app must pass a CSPRNG
+ * (expo-crypto getRandomBytes). Node/web fall back to WebCrypto.
+ */
+export function generateDeviceKeyPair(randomBytes?: (byteCount: number) => Uint8Array): DeviceKeyPair {
+  const seed = randomBytes?.(p256.lengths.seed!)
+  const secretKey = p256.utils.randomSecretKey(seed)
   const publicKey = p256.getPublicKey(secretKey, false)
   return { secretKeyB64: bytesToBase64(secretKey), publicKeyPem: publicKeyToSpkiPem(publicKey) }
 }

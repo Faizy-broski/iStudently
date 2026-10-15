@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { cronSecretValid } from '../utils/cron-secret'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { feesService } from '../services/fees.service'
 import { validateCampusAccess, resolveSchoolId } from '../utils/campus-validation'
@@ -444,11 +445,8 @@ export class FeesController {
      */
     async applyLateFeesGlobal(req: Request, res: Response) {
         try {
-            // Optional: Add secret key validation for cron security
-            const cronSecret = req.headers['x-cron-secret']
-            const expectedSecret = process.env.CRON_SECRET
-
-            if (expectedSecret && cronSecret !== expectedSecret) {
+            // Platform-wide job: only with the configured CRON_SECRET (fails closed when unset).
+            if (!cronSecretValid(req.headers['x-cron-secret'])) {
                 return res.status(401).json({ success: false, error: 'Unauthorized' })
             }
 
@@ -594,10 +592,8 @@ export class FeesController {
      */
     async generateMonthlyFeesGlobal(req: Request, res: Response) {
         try {
-            const cronSecret = req.headers['x-cron-secret']
-            const expectedSecret = process.env.CRON_SECRET
-
-            if (expectedSecret && cronSecret !== expectedSecret) {
+            // Platform-wide job: only with the configured CRON_SECRET (fails closed when unset).
+            if (!cronSecretValid(req.headers['x-cron-secret'])) {
                 return res.status(401).json({ success: false, error: 'Unauthorized' })
             }
 

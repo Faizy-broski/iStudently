@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { SAFE_PROFILE_COLUMNS } from '../utils/profile-columns'
 import bcrypt from 'bcrypt'
 import { Student, CreateStudentDTO, UpdateStudentDTO } from '../types'
 import { generateCredentials, applyCredentialUpdate } from './username.service'
@@ -583,7 +584,9 @@ export class StudentService {
       .from('students')
       .select(`
         *,
-        profile:profiles(*)
+        profile:profiles(${SAFE_PROFILE_COLUMNS}),
+        grade:grade_levels!grade_level_id(id, name),
+        section:sections!section_id(id, name)
       `)
       .eq('student_number', studentNumber)
       .eq('school_id', schoolId)
@@ -714,7 +717,7 @@ export class StudentService {
       })
       .select(`
         *,
-        profile:profiles(*)
+        profile:profiles(${SAFE_PROFILE_COLUMNS})
       `)
       .single()
 
@@ -1124,7 +1127,7 @@ export class StudentService {
       studentUpdates.confidential_family_status = updateData.confidential_family_status
     }
 
-    const selectQuery = `*, profile:profiles(*)`
+    const selectQuery = `*, profile:profiles(${SAFE_PROFILE_COLUMNS})`
     let data: any
     let queryError: any
 

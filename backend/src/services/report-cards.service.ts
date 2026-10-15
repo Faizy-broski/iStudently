@@ -170,10 +170,10 @@ class ReportCardsService {
     return (data || []) as CommentCodeScale[]
   }
 
-  async createCodeScale(schoolId: string, title: string, comment?: string, campusId?: string): Promise<CommentCodeScale> {
+  async createCodeScale(schoolId: string, title: string, comment?: string, campusId?: string, sortOrder?: number): Promise<CommentCodeScale> {
     const { data, error } = await supabase
       .from('comment_code_scales')
-      .insert({ school_id: schoolId, campus_id: campusId || null, title, comment })
+      .insert({ school_id: schoolId, campus_id: campusId || null, title, comment, ...(sortOrder != null ? { sort_order: sortOrder } : {}) })
       .select()
       .single()
 
@@ -201,6 +201,27 @@ class ReportCardsService {
       .single()
 
     if (error) throw new Error(`Failed to create code: ${error.message}`)
+    return data as CommentCode
+  }
+
+  async updateCodeScale(id: string, updates: { title?: string; comment?: string | null; sort_order?: number | null }): Promise<CommentCodeScale> {
+    const patch: Record<string, unknown> = {}
+    if (updates.title !== undefined) patch.title = updates.title
+    if (updates.comment !== undefined) patch.comment = updates.comment
+    if (updates.sort_order !== undefined) patch.sort_order = updates.sort_order ?? 0
+    const { data, error } = await supabase.from('comment_code_scales').update(patch).eq('id', id).select().single()
+    if (error) throw new Error(`Failed to update code scale: ${error.message}`)
+    return data as CommentCodeScale
+  }
+
+  async updateCode(id: string, updates: { title?: string; short_name?: string | null; comment?: string | null; sort_order?: number | null }): Promise<CommentCode> {
+    const patch: Record<string, unknown> = {}
+    if (updates.title !== undefined) patch.title = updates.title
+    if (updates.short_name !== undefined) patch.short_name = updates.short_name
+    if (updates.comment !== undefined) patch.comment = updates.comment
+    if (updates.sort_order !== undefined) patch.sort_order = updates.sort_order ?? 0
+    const { data, error } = await supabase.from('comment_codes').update(patch).eq('id', id).select().single()
+    if (error) throw new Error(`Failed to update code: ${error.message}`)
     return data as CommentCode
   }
 

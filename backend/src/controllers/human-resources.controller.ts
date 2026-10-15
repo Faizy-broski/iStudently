@@ -9,6 +9,12 @@ interface AuthRequest extends Request {
 // ALL QUALIFICATIONS
 // ============================================================================
 
+/** Updates never move a row to another school or person. */
+const updatable = (body: Record<string, unknown> = {}) => {
+  const { id: _id, school_id: _s, campus_id: _c, profile_id: _p, created_at: _ca, ...rest } = body
+  return rest as any
+}
+
 export const getQualifications = async (req: AuthRequest, res: Response) => {
   try {
     const { profile_id } = req.params
@@ -33,7 +39,7 @@ export const createSkill = async (req: AuthRequest, res: Response) => {
 
 export const updateSkill = async (req: Request, res: Response) => {
   try {
-    res.json(await svc.updateSkill(req.params.id, req.body))
+    res.json(await svc.updateSkill(req.params.id, updatable(req.body)))
   } catch (e: any) { res.status(500).json({ data: null, error: e.message }) }
 }
 
@@ -58,7 +64,7 @@ export const createEducation = async (req: AuthRequest, res: Response) => {
 
 export const updateEducation = async (req: Request, res: Response) => {
   try {
-    res.json(await svc.updateEducation(req.params.id, req.body))
+    res.json(await svc.updateEducation(req.params.id, updatable(req.body)))
   } catch (e: any) { res.status(500).json({ data: null, error: e.message }) }
 }
 
@@ -83,7 +89,7 @@ export const createCertification = async (req: AuthRequest, res: Response) => {
 
 export const updateCertification = async (req: Request, res: Response) => {
   try {
-    res.json(await svc.updateCertification(req.params.id, req.body))
+    res.json(await svc.updateCertification(req.params.id, updatable(req.body)))
   } catch (e: any) { res.status(500).json({ data: null, error: e.message }) }
 }
 
@@ -108,7 +114,7 @@ export const createLanguage = async (req: AuthRequest, res: Response) => {
 
 export const updateLanguage = async (req: Request, res: Response) => {
   try {
-    res.json(await svc.updateLanguage(req.params.id, req.body))
+    res.json(await svc.updateLanguage(req.params.id, updatable(req.body)))
   } catch (e: any) { res.status(500).json({ data: null, error: e.message }) }
 }
 

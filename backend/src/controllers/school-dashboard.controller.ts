@@ -1,8 +1,24 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { SchoolDashboardService } from '../services/school-dashboard.service'
+import { resolveSchoolId } from '../utils/campus-validation'
 
 const schoolDashboardService = new SchoolDashboardService()
+
+/**
+ * ?campus_id must be the caller's own school or one of its campuses (was trusted as-is, so any
+ * school's dashboard could be read). Sends 403 and returns null when it isn't.
+ */
+async function allowedCampusId(req: AuthRequest, res: Response): Promise<string | undefined | null> {
+  const requested = (req.query.campus_id as string) || undefined
+  if (!requested) return undefined
+  const resolved = await resolveSchoolId(req, requested)
+  if (resolved.error) {
+    res.status(resolved.status ?? 403).json({ success: false, error: resolved.error })
+    return null
+  }
+  return resolved.schoolId ?? undefined
+}
 
 export class SchoolDashboardController {
   /**
@@ -12,7 +28,8 @@ export class SchoolDashboardController {
   async getStats(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const schoolId = req.profile?.school_id
-      const campus_id = req.query.campus_id as string
+      const campus_id = await allowedCampusId(req, res)
+      if (campus_id === null) return res
       const academic_year_id = req.query.academic_year_id as string
 
       if (!schoolId) {
@@ -44,7 +61,8 @@ export class SchoolDashboardController {
   async getAttendanceData(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const schoolId = req.profile?.school_id
-      const campus_id = req.query.campus_id as string
+      const campus_id = await allowedCampusId(req, res)
+      if (campus_id === null) return res
 
       if (!schoolId) {
         return res.status(400).json({
@@ -77,7 +95,8 @@ export class SchoolDashboardController {
   async getStudentGrowth(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const schoolId = req.profile?.school_id
-      const campus_id = req.query.campus_id as string
+      const campus_id = await allowedCampusId(req, res)
+      if (campus_id === null) return res
 
       if (!schoolId) {
         return res.status(400).json({
@@ -110,7 +129,8 @@ export class SchoolDashboardController {
   async getGradeDistribution(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const schoolId = req.profile?.school_id
-      const campus_id = req.query.campus_id as string
+      const campus_id = await allowedCampusId(req, res)
+      if (campus_id === null) return res
 
       if (!schoolId) {
         return res.status(400).json({
@@ -143,7 +163,8 @@ export class SchoolDashboardController {
   async getClassBreakdown(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const schoolId = req.profile?.school_id
-      const campus_id = req.query.campus_id as string
+      const campus_id = await allowedCampusId(req, res)
+      if (campus_id === null) return res
       const academic_year_id = req.query.academic_year_id as string
 
       if (!schoolId) {

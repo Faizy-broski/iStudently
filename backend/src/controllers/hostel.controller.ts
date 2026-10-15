@@ -300,7 +300,13 @@ export class HostelController {
           success: false,
           error: "entity_type and entity_id are required",
         });
-      const data = await HostelService.getFiles(entityType, entityId);
+      // Scoped to the caller's school (authenticate() family-checks school_id).
+      const schoolId = req.query.school_id as string;
+      if (!schoolId)
+        return res
+          .status(400)
+          .json({ success: false, error: "school_id is required" });
+      const data = await HostelService.getFiles(entityType, entityId, undefined, schoolId);
       res.json({ success: true, data });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -309,7 +315,25 @@ export class HostelController {
 
   static async addFile(req: Request, res: Response) {
     try {
-      const data = await HostelService.addFile(req.body);
+      const b = req.body ?? {};
+      if (!b.school_id || !["building", "room"].includes(b.entity_type) || !b.entity_id || !b.file_name || !b.file_url)
+        return res.status(400).json({
+          success: false,
+          error: "school_id, entity_type (building|room), entity_id, file_name and file_url are required",
+        });
+      // The building/room must be in the same school.
+      if (!(await HostelService.entityInSchool(b.entity_type, b.entity_id, b.school_id)))
+        return res.status(404).json({ success: false, error: "Not found" });
+      const data = await HostelService.addFile({
+        entity_type: b.entity_type,
+        entity_id: b.entity_id,
+        school_id: b.school_id,
+        file_name: b.file_name,
+        file_url: b.file_url,
+        file_type: b.file_type ?? null,
+        file_size: typeof b.file_size === "number" ? b.file_size : null,
+        uploaded_by: (req as any).profile?.id ?? null,
+      });
       res.status(201).json({ success: true, data });
     } catch (err: any) {
       console.error("addFile error:", err);

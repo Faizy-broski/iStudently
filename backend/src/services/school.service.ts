@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { generateInvoiceNumber } from './platform-billing.service'
 import { CreateSchoolDTO, UpdateSchoolDTO, School, SchoolStats } from '../types'
 import bcrypt from 'bcrypt'
 import { encryptSecret } from '../utils/crypto'
@@ -234,7 +235,7 @@ export class SchoolService {
       // 5. Create billing record if billing data is provided
       let billingRecord = null
       if (billingData) {
-        const invoiceNumber = `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`
+        const invoiceNumber = generateInvoiceNumber()
 
         const { data: billing, error: billingError } = await supabase
           .from('billing_records')

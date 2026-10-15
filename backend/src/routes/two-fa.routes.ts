@@ -2,11 +2,20 @@ import { Router, Response } from 'express'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
 import { twoFAService } from '../services/two-fa.service'
+import { createProfileRateLimit } from '../middlewares/rate-limit.middleware'
 
 const router = Router()
 
 // All routes require authentication
 router.use(authenticate)
+
+// Brute-force protection: only failed attempts count (a 6-digit code has 1,000,000 values).
+const FIFTEEN_MIN = 15 * 60 * 1000
+const tooMany = 'Too many incorrect attempts. Please wait 15 minutes and try again.'
+const verifyLimit = createProfileRateLimit(FIFTEEN_MIN, 10, { failuresOnly: true, message: tooMany })
+const recoveryLimit = createProfileRateLimit(FIFTEEN_MIN, 5, { failuresOnly: true, message: tooMany })
+const setupLimit = createProfileRateLimit(FIFTEEN_MIN, 10, { failuresOnly: true, message: tooMany })
+const disableLimit = createProfileRateLimit(FIFTEEN_MIN, 5, { failuresOnly: true, message: tooMany })
 
 // ── User: status ──────────────────────────────────────────────────────────────
 
@@ -61,7 +70,7 @@ router.post('/setup/begin', async (req: AuthRequest, res: Response) => {
  * Verify the TOTP code, save encrypted secret + recovery hash, mark session verified.
  * Body: { secret: string, token: string, recoveryCode: string }
  */
-router.post('/setup/complete', async (req: AuthRequest, res: Response) => {
+router.post('/setup/complete', setupLimit, async (req: AuthRequest, res: Response) => {
   try {
     const profile = req.profile
     if (!profile) { res.status(401).json({ success: false, error: 'Not authenticated' }); return }
@@ -105,7 +114,7 @@ router.post('/skip', async (req: AuthRequest, res: Response) => {
  * Verify a TOTP token and mark the current session as verified.
  * Body: { token: string }
  */
-router.post('/verify', async (req: AuthRequest, res: Response) => {
+router.post('/verify', verifyLimit, async (req: AuthRequest, res: Response) => {
   try {
     const profile = req.profile
     if (!profile) { res.status(401).json({ success: false, error: 'Not authenticated' }); return }
@@ -144,7 +153,7 @@ router.post('/verify', async (req: AuthRequest, res: Response) => {
  * Use recovery code to bypass 2FA and disable it (forces re-enroll on next login).
  * Body: { code: string }
  */
-router.post('/recovery', async (req: AuthRequest, res: Response) => {
+router.post('/recovery', recoveryLimit, async (req: AuthRequest, res: Response) => {
   try {
     const profile = req.profile
     if (!profile) { res.status(401).json({ success: false, error: 'Not authenticated' }); return }
@@ -173,7 +182,7 @@ router.post('/recovery', async (req: AuthRequest, res: Response) => {
  * Disable 2FA after confirming with a valid TOTP token.
  * Body: { token: string }
  */
-router.delete('/disable', async (req: AuthRequest, res: Response) => {
+router.delete('/disable', disableLimit, async (req: AuthRequest, res: Response) => {
   try {
     const profile = req.profile
     if (!profile) { res.status(401).json({ success: false, error: 'Not authenticated' }); return }
@@ -216,7 +225,13 @@ router.post('/admin/config', requireRole('admin', 'super_admin'), async (req: Au
       res.status(400).json({ success: false, error: 'roles_required array is required' })
       return
     }
-    await twoFAService.updateTwoFAConfig(school_id, campusId, cfg)
+    // Store only the known fields (the body used to be saved verbatim).
+    const grace = Number(cfg.skip_grace_days)
+    await twoFAService.updateTwoFAConfig(school_id, campusId, {
+      roles_required: cfg.roles_required.filter((r: unknown): r is string => typeof r === 'string'),
+      setup_skippable: cfg.setup_skippable !== false,
+      skip_grace_days: Number.isFinite(grace) ? Math.min(30, Math.max(1, Math.round(grace))) : 7,
+    })
     res.json({ success: true, message: '2FA configuration saved' })
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message })

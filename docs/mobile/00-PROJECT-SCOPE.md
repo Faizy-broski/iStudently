@@ -1,7 +1,7 @@
 # Mobile app: complete project scope
 
 ## Goal
-One React Native (Expo) app for Android and iOS, one login, role-based tabs, English + Arabic (RTL), light + dark, reusing the existing Express/Supabase backend. Delivered end to end in 14 one-week sprints by one developer working with Claude. This is very aggressive (a team of ~5 was estimated at ~29 weeks): protect the date with each sprint's "Must finish" / "Drop first" lists and the week-14 buffer.
+One React Native (Expo) app for Android and iOS, one login, role-based tabs, English + Arabic (RTL), light + dark, reusing the existing Express/Supabase backend. Delivered end to end in 16 one-week sprints (14 planned + 2 for super admin, added 2026-10-06) by one developer working with Claude. This is very aggressive (a team of ~5 was estimated at ~29 weeks): protect the date with each sprint's "Must finish" / "Drop first" lists and the week-16 buffer.
 
 ## Decisions already made (do not re-litigate)
 - **One app for all roles**, not one per role. Optional later split: a dedicated "Scanner" app if schools want kiosk devices.
@@ -20,10 +20,11 @@ One React Native (Expo) app for Android and iOS, one login, role-based tabs, Eng
 | Teacher | Home, timetable, take attendance, diary, assignments, submissions and grading, messages, discipline referral, online class, staff rotating QR, classroom scan |
 | Scanner (gate staff/teachers) | Device enrolment, gate scan, class scan, results (accepted/duplicate/rejected), offline queue, sync, permissions |
 | Librarian / Inspector / Admin on the go | Minimum sets only (issue/return/search; visits; live attendance, approvals, alerts) |
+| Super admin (added 2026-10-06) | All 11 web super-admin pages natively: dashboard, school directory (status, admin credentials behind biometric re-auth), onboard school, billing plans, billing status, feedback, quotes, platform settings (general, login page, public pages, sidebar). **No school impersonation in the app**: switching into a school stays on the web. |
 
-Total mandatory screens: 94. Optional: e-library, Quran (hifzi), polls/notes, social wall (Fina), ID card, discipline/activities views, etc.
+Total mandatory screens: 105 (94 + 11 super admin). Optional: e-library, Quran (hifzi), polls/notes, social wall (Fina), ID card, discipline/activities views, etc.
 
-**Out of scope / stays on web:** admin back office (372 pages), timetable/exam/ID-card/certificate builders, bulk imports, 3D labs, circuit/physics simulations, Excalidraw whiteboard, TipTap editing, super-admin tools, public school pages.
+**Out of scope / stays on web:** admin back office (372 pages), timetable/exam/ID-card/certificate builders, bulk imports, 3D labs, circuit/physics simulations, Excalidraw whiteboard, TipTap editing, super-admin school impersonation ("switch into school"), public school pages.
 
 ## Backend additions required (ordered)
 P0 blockers
@@ -59,7 +60,7 @@ P2: rate limits (only fina/media has one): `resolve-username` (also an enumerati
 - `req.profile` is `select('*')` (includes TOTP/password columns): never return it.
 - Web "remember me" stores email and plaintext password in localStorage: do not port.
 - Fee/accounting attachments in public-URL buckets; service-role key everywhere so tenant isolation relies on every query's `school_id` filter.
-- No CI/CD; manual cPanel/Passenger deploys; web has `ignoreBuildErrors: true`.
+- No CI/CD; manual deploys to a VPS (older docs said cPanel/Passenger); web has `ignoreBuildErrors: true`.
 - 2FA check fails open on error; no lockout.
 - Roles `counselor` and `financial_admin` have no login destination on web.
 - Hard-coded English on parent dashboard, change-password, ID card, student assignment submit.
@@ -68,7 +69,12 @@ P2: rate limits (only fina/media has one): `resolve-username` (also an enumerati
 Public privacy policy URL, in-app account deletion, accurate data-safety labels (camera, location for scanner, photos, minors' data), HTTPS only, no payment gateway exists (no in-app purchase issue), store listing + en/ar screenshots, reviewer test accounts (include a 2FA account).
 
 ## Assumptions
-~50 focused hours/week with Claude; designs (or a UI kit) one week ahead; staging server with sample data for all roles, Apple/Google/Firebase accounts in week 1; pilot school from week 7; scope fixed; store review outside the 14 weeks (student+parent submitted week 9, full app week 13).
+~50 focused hours/week with Claude; designs (or a UI kit) one week ahead; staging server with sample data for all roles, Apple/Google/Firebase accounts in week 1; pilot school from week 7; scope fixed; store review outside the 16 weeks (student+parent submitted week 9, full app week 15).
+
+## Decisions log
+- 2026-10-05: multiple schools.
+- 2026-10-06: super admin gets all 11 pages in the app (no impersonation); admin stays the on-the-go set; super-admin work is added as Sprints 12-13 after the teacher sprints, extending the plan to 16 weeks.
+- 2026-10-07: **changed**: school admin gets every admin module natively (not only the on-the-go set), in waves after a 2-week foundation (campus switcher, module registry with "Open on website" for modules not built yet, native 2FA). Waves: People, Fees & accounting, Academics, Attendance & discipline, School & settings, Resources & services, Plugins (about 30 weeks). Staff share the admin shell.
 
 ## Open decisions
-Single vs multiple schools; scanner brand; per-school colours; tablet support; Google/Microsoft sign-in on mobile; whether to ship scanner as a separate app later.
+Scanner brand; per-school colours; tablet support; Google/Microsoft sign-in on mobile; whether to ship scanner as a separate app later.

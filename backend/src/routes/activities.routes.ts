@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as activitiesController from '../controllers/activities.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware';
+import { requireBodyRowsInSchoolFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware';
 
 const router = Router();
 
@@ -11,29 +12,38 @@ const router = Router();
 // ============================================================================
 
 /** GET /api/activities */
+// Activities, students and course periods given by id must belong to the caller's school family.
+const activityRow = requireRowInSchoolFamily('activities');
+const studentParam = requireRowInSchoolFamily('students', 'studentId');
+const bodyStudents = requireBodyRowsInSchoolFamily('students', 'student_ids');
+const queryCp = requireRowInSchoolFamily('course_periods', 'course_period_id', 'school_id', 'query');
+const queryStudent = requireRowInSchoolFamily('students', 'student_id', 'school_id', 'query');
+const bodyCp = requireBodyRowsInSchoolFamily('course_periods', 'course_period_id');
+const bodyRecordStudents = requireBodyRowsInSchoolFamily('students', (b) => (Array.isArray(b.records) ? b.records.map((r: { student_id?: unknown }) => r?.student_id) : undefined));
+
 router.get('/activities', authenticate, requireTeacher, activitiesController.getActivities);
 
 /** POST /api/activities */
 router.post('/activities', authenticate, requireAdmin, activitiesController.createActivity);
 
 /** PATCH /api/activities/:id */
-router.patch('/activities/:id', authenticate, requireAdmin, activitiesController.updateActivity);
+router.patch('/activities/:id', authenticate, requireAdmin, activityRow, activitiesController.updateActivity);
 
 /** DELETE /api/activities/:id */
-router.delete('/activities/:id', authenticate, requireAdmin, activitiesController.deleteActivity);
+router.delete('/activities/:id', authenticate, requireAdmin, activityRow, activitiesController.deleteActivity);
 
 // ============================================================================
 // STUDENT ENROLLMENT
 // ============================================================================
 
 /** GET /api/activities/:id/students */
-router.get('/activities/:id/students', authenticate, requireTeacher, activitiesController.getActivityStudents);
+router.get('/activities/:id/students', authenticate, requireTeacher, activityRow, activitiesController.getActivityStudents);
 
 /** POST /api/activities/:id/students */
-router.post('/activities/:id/students', authenticate, requireAdmin, activitiesController.enrollStudents);
+router.post('/activities/:id/students', authenticate, requireAdmin, activityRow, bodyStudents, activitiesController.enrollStudents);
 
 /** DELETE /api/activities/:id/students/:studentId */
-router.delete('/activities/:id/students/:studentId', authenticate, requireAdmin, activitiesController.unenrollStudent);
+router.delete('/activities/:id/students/:studentId', authenticate, requireAdmin, activityRow, studentParam, activitiesController.unenrollStudent);
 
 // ============================================================================
 // ELIGIBILITY
@@ -41,13 +51,13 @@ router.delete('/activities/:id/students/:studentId', authenticate, requireAdmin,
 // ============================================================================
 
 /** GET /api/activities/eligibility/student */
-router.get('/activities/eligibility/student', authenticate, requireTeacher, activitiesController.getStudentEligibility);
+router.get('/activities/eligibility/student', authenticate, requireTeacher, queryStudent, activitiesController.getStudentEligibility);
 
 /** GET /api/activities/eligibility */
-router.get('/activities/eligibility', authenticate, requireTeacher, activitiesController.getEligibility);
+router.get('/activities/eligibility', authenticate, requireTeacher, queryCp, activitiesController.getEligibility);
 
 /** POST /api/activities/eligibility */
-router.post('/activities/eligibility', authenticate, requireTeacher, activitiesController.saveEligibility);
+router.post('/activities/eligibility', authenticate, requireTeacher, bodyCp, bodyRecordStudents, activitiesController.saveEligibility);
 
 // ============================================================================
 // SETTINGS

@@ -1,0 +1,165 @@
+import type { Section } from '@studently/api-client';
+import { Stack } from 'expo-router';
+import { Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Pressable, View } from 'react-native';
+
+import { useConfirm } from '@/components/app/confirm';
+import { DataList } from '@/components/app/data-list';
+import { Picker } from '@/components/app/picker';
+import { useToast } from '@/components/app/toast';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Icon } from '@/components/ui/icon';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Text } from '@/components/ui/text';
+import { useCampus } from '@/features/campus/campus';
+import { adminAcademics } from '@/lib/api';
+import { useApi } from '@/lib/data';
+import { cn } from '@/lib/utils';
+
+type Form = { grade_level_id: string; name: string; capacity: string };
+
+/** Sections per grade: capacity, strength, free seats (web: /admin/academics/sections). */
+export default function Sections() {
+  const { t } = useTranslation();
+  const s = (k: string, o?: Record<string, unknown>) => t(`school.sections.${k}`, o);
+  const toast = useToast();
+  const confirm = useConfirm();
+  const { campusId } = useCampus();
+  const [grade, setGrade] = useState('all');
+  const grades = useApi(['admin', 'grades', campusId ?? 'school'], () => adminAcademics.grades(campusId));
+  const active = (grades.data ?? []).filter((x) => x.is_active !== false);
+  const list = useApi(['admin', 'sections', campusId ?? 'school', grade], () => adminAcademics.sections(campusId, grade === 'all' ? undefined : grade));
+  const [editing, setEditing] = useState<Section | null>(null);
+  const [form, setForm] = useState<Form | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const color = (x: Section) => {
+    const u = ((x.current_strength ?? 0) / (x.capacity || 1)) * 100;
+    return u >= 90 ? 'text-destructive' : u >= 75 ? 'text-yellow-600' : 'text-green-600';
+  };
+
+  async function save() {
+    if (!form) return;
+    if (!form.grade_level_id) return toast.error(s('grade_required'));
+    if (!form.name.trim()) return toast.error(s('name_required'));
+    const capacity = parseInt(form.capacity, 10);
+    if (!capacity || capacity < 1) return toast.error(s('capacity_min'));
+    setSaving(true);
+    try {
+      const res = editing ? await adminAcademics.updateSection(editing.id, { name: form.name, capacity }) : await adminAcademics.createSection({ grade_level_id: form.grade_level_id, name: form.name, capacity, campus_id: campusId });
+      if (!res.success) return toast.error(res.error || s('fetch_error'));
+      toast.success(s(editing ? 'update_success' : 'create_success'));
+      setForm(null);
+      list.mutate();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(x: Section) {
+    if (!(await confirm({ title: s('delete_confirm_title'), body: s('delete_confirm_desc'), confirmLabel: s('delete'), destructive: true }))) return;
+    const res = await adminAcademics.deleteSection(x.id, campusId);
+    if (!res.success) return toast.error(res.error || s('fetch_error'));
+    toast.success(s('delete_success'));
+    list.mutate();
+  }
+
+  return (
+    <>
+      <Stack.Screen options={{ title: s('title') }} />
+      <View className="bg-background flex-1">
+        <DataList
+          header={
+            <View className="gap-3 p-4">
+              <Text variant="muted">{s('subtitle')}</Text>
+              <Button
+                onPress={() => {
+                  setEditing(null);
+                  setForm({ grade_level_id: grade !== 'all' ? grade : '', name: '', capacity: '30' });
+                }}>
+                <Icon as={Plus} className="text-primary-foreground size-4" />
+                <Text>{s('add_section')}</Text>
+              </Button>
+              <Picker value={grade} onChange={setGrade} options={[{ value: 'all', label: s('all_grades') }, ...active.map((x) => ({ value: x.id, label: x.name }))]} />
+            </View>
+          }
+          items={list.data}
+          error={list.error}
+          isLoading={list.isLoading}
+          onRefresh={() => list.mutate()}
+          emptyTitle={s('no_sections')}
+          keyExtractor={(x) => x.id}
+          renderItem={(x) => (
+            <View className="gap-1.5 px-4 py-3">
+              <View className="flex-row items-center gap-2">
+                <View className="flex-1">
+                  <Text className="font-medium">{x.name}</Text>
+                  <Text className="text-muted-foreground text-xs">{x.grade_name ?? ''}</Text>
+                </View>
+                <Badge variant={x.is_active !== false ? 'default' : 'secondary'}>
+                  <Text>{x.is_active !== false ? s('active') : s('inactive')}</Text>
+                </Badge>
+              </View>
+              <View className="flex-row flex-wrap gap-3">
+                <Text className="text-muted-foreground text-xs">{`${s('capacity')}: ${x.capacity ?? '—'}`}</Text>
+                <Text className={cn('text-xs font-medium', color(x))}>{`${s('strength')}: ${x.current_strength ?? 0}`}</Text>
+                <Text className="text-muted-foreground text-xs">{`${s('available')}: ${s('seats', { count: x.available_seats ?? 0 })}`}</Text>
+              </View>
+              <View className="flex-row justify-end gap-4">
+                <Pressable
+                  onPress={() => {
+                    setEditing(x);
+                    setForm({ grade_level_id: x.grade_level_id, name: x.name, capacity: String(x.capacity ?? '') });
+                  }}
+                  hitSlop={8}>
+                  <Icon as={Pencil} className="text-muted-foreground size-4" />
+                </Pressable>
+                <Pressable onPress={() => remove(x)} hitSlop={8}>
+                  <Icon as={Trash2} className="text-destructive size-4" />
+                </Pressable>
+              </View>
+            </View>
+          )}
+        />
+      </View>
+      <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
+        <DialogContent className="w-[94vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editing ? s('edit_title') : s('add_title')}</DialogTitle>
+            <DialogDescription>{editing ? s('edit_desc') : s('add_desc')}</DialogDescription>
+          </DialogHeader>
+          {form ? (
+            <View className="gap-3">
+              <View className="gap-1.5">
+                <Label>{s('grade_label')}</Label>
+                <Picker value={form.grade_level_id} onChange={(v) => setForm({ ...form, grade_level_id: v })} placeholder={s('select_grade')} options={active.map((x) => ({ value: x.id, label: x.name }))} />
+              </View>
+              <View className="gap-1.5">
+                <Label>{s('name_label')}</Label>
+                <Input value={form.name} onChangeText={(v) => setForm({ ...form, name: v })} placeholder={s('name_placeholder')} />
+              </View>
+              <View className="gap-1.5">
+                <Label>{s('capacity_label')}</Label>
+                <Input value={form.capacity} onChangeText={(v) => setForm({ ...form, capacity: v.replace(/[^0-9]/g, '') })} keyboardType="number-pad" />
+                <Text className="text-muted-foreground text-xs">{s('capacity_desc')}</Text>
+              </View>
+            </View>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onPress={() => setForm(null)}>
+              <Text>{s('cancel')}</Text>
+            </Button>
+            <Button onPress={save} disabled={saving}>
+              <Text>{saving ? s(editing ? 'updating' : 'creating') : s(editing ? 'update' : 'create')}</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

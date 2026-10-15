@@ -1,7 +1,10 @@
 import { Request, Response } from 'express'
+import { campusIdsAllowed } from '../utils/campus-validation'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { authService } from '../services/auth.service'
 import { supabase } from '../config/supabase'
+import { twoFAService } from '../services/two-fa.service'
+import { userAgreementService } from '../services/user-agreement.service'
 
 // ============================================================================
 // AUTH CONTROLLER — password management
@@ -161,6 +164,15 @@ export const getLastLogin = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'profileId is required' })
     }
 
+    // School admins may only look up people in their own school family.
+    const caller = (req as AuthRequest).profile
+    if (caller?.role !== 'super_admin') {
+      const { data: target } = await supabase.from('profiles').select('school_id').eq('id', profileId).maybeSingle()
+      if (!target?.school_id || !(await campusIdsAllowed(caller?.school_id, [target.school_id]))) {
+        return res.status(404).json({ success: false, error: 'Not found' })
+      }
+    }
+
     const { data, error } = await supabase.auth.admin.getUserById(profileId)
     if (error || !data?.user) {
       return res.json({ success: true, data: { last_sign_in: null } })
@@ -183,32 +195,7 @@ export const getMyContext = async (req: Request, res: Response) => {
   const profile = (req as AuthRequest).profile
   if (!profile) return res.status(401).json({ success: false, error: 'Unauthorized' })
 
-  // The school/campus the account belongs to, with the same logo inheritance the frontend
-  // uses (a campus without its own logo shows its parent school's).
-  let school: Record<string, any> | null = null
-  const ownSchoolId = profile.campus_id || profile.school_id
-  if (ownSchoolId) {
-    const { data: row } = await supabase
-      .from('schools')
-      .select('id, name, short_name, parent_school_id, logo_url')
-      .eq('id', ownSchoolId)
-      .maybeSingle()
-    if (row) {
-      school = { ...row }
-      const settingsSchoolId = row.parent_school_id ?? row.id
-      if (!school.logo_url && row.parent_school_id) {
-        const { data: parent } = await supabase.from('schools').select('logo_url').eq('id', row.parent_school_id).maybeSingle()
-        if (parent?.logo_url) school.logo_url = parent.logo_url
-      }
-      const { data: appearance } = await supabase
-        .from('school_settings')
-        .select('logo_shape, logo_border_width, logo_border_color')
-        .eq('school_id', settingsSchoolId)
-        .is('campus_id', null)
-        .maybeSingle()
-      if (appearance) Object.assign(school, appearance)
-    }
-  }
+  const school = await loadSchoolBranding(profile)
 
   return res.json({
     success: true,
@@ -220,6 +207,147 @@ export const getMyContext = async (req: Request, res: Response) => {
       school,
     },
   })
+}
+
+/**
+ * The school/campus the account belongs to, with the same logo inheritance the frontend
+ * uses (a campus without its own logo shows its parent school's).
+ */
+async function loadSchoolBranding(profile: any): Promise<Record<string, any> | null> {
+  const ownSchoolId = profile.campus_id || profile.school_id
+  if (!ownSchoolId) return null
+  const { data: row } = await supabase
+    .from('schools')
+    .select('id, name, short_name, parent_school_id, logo_url')
+    .eq('id', ownSchoolId)
+    .maybeSingle()
+  if (!row) return null
+  const school: Record<string, any> = { ...row }
+  const settingsSchoolId = row.parent_school_id ?? row.id
+  if (!school.logo_url && row.parent_school_id) {
+    const { data: parent } = await supabase.from('schools').select('logo_url').eq('id', row.parent_school_id).maybeSingle()
+    if (parent?.logo_url) school.logo_url = parent.logo_url
+  }
+  const { data: appearance } = await supabase
+    .from('school_settings')
+    .select('logo_shape, logo_border_width, logo_border_color')
+    .eq('school_id', settingsSchoolId)
+    .is('campus_id', null)
+    .maybeSingle()
+  if (appearance) Object.assign(school, appearance)
+  return school
+}
+
+/** Plugins switched on at school level or for the caller's campus (same rule as the *-enabled middlewares). */
+async function loadActivePlugins(schoolId: string | null, campusId: string | null): Promise<string[]> {
+  if (!schoolId) return []
+  const [campusResult, schoolResult] = await Promise.all([
+    campusId
+      ? supabase.from('school_settings').select('active_plugins').eq('school_id', schoolId).eq('campus_id', campusId).maybeSingle()
+      : Promise.resolve({ data: null as { active_plugins?: Record<string, unknown> } | null }),
+    supabase.from('school_settings').select('active_plugins').eq('school_id', schoolId).is('campus_id', null).maybeSingle(),
+  ])
+  const enabled = new Set<string>()
+  for (const plugins of [schoolResult.data?.active_plugins, campusResult.data?.active_plugins]) {
+    for (const [key, on] of Object.entries(plugins ?? {})) if (on) enabled.add(key)
+  }
+  return [...enabled].sort()
+}
+
+/**
+ * GET /api/auth/me
+ * Everything a client needs right after sign-in: who the user is (safe columns only, never
+ * req.profile itself, which carries TOTP/password columns), the sign-in gates it must show
+ * (forced password change, 2FA, agreement), enabled plugins and school branding.
+ *
+ * Exempt from the 2FA block in authenticate() so a client can learn that 2FA is needed;
+ * it only exposes the caller's own non-secret data, which the web already reads via RLS.
+ */
+export const getMe = async (req: Request, res: Response) => {
+  const authReq = req as AuthRequest
+  const profile = authReq.profile
+  if (!profile) return res.status(401).json({ success: false, error: 'Unauthorized' })
+
+  try {
+    const schoolId: string | null = profile.school_id ?? null
+    const campusId: string | null = profile.campus_id ?? null
+
+    const [school, plugins, twoFARequired, agreement] = await Promise.all([
+      loadSchoolBranding(profile),
+      loadActivePlugins(schoolId, campusId),
+      // Same call as authenticate() (including a null school for super admins) so both agree.
+      twoFAService.isTwoFARequiredForRole(profile.role, profile.school_id, campusId),
+      schoolId
+        ? userAgreementService.checkUser(profile.id, schoolId, profile.role, campusId).catch((err) => {
+            console.error('getMe: agreement check failed:', err?.message)
+            return null
+          })
+        : Promise.resolve(null),
+    ])
+
+    const skipUntil = profile.totp_skip_until ? new Date(profile.totp_skip_until) : null
+    const inGrace = !!skipUntil && skipUntil > new Date()
+    let sessionVerified = false
+    if (twoFARequired && profile.totp_enabled) {
+      const token = (req.headers.authorization || '').replace('Bearer ', '')
+      const sessionId = twoFAService.extractSessionId(token)
+      sessionVerified = sessionId ? await twoFAService.isSessionVerified(profile.id, sessionId) : false
+    }
+    const twoFAState = !twoFARequired || inGrace
+      ? 'ok'
+      : !profile.totp_enabled
+        ? 'setup_required'
+        : sessionVerified
+          ? 'ok'
+          : 'verify_required'
+
+    return res.json({
+      success: true,
+      data: {
+        profile: {
+          id: profile.id,
+          role: profile.role,
+          email: profile.email ?? null,
+          username: profile.username ?? null,
+          first_name: profile.first_name ?? null,
+          last_name: profile.last_name ?? null,
+          phone: profile.phone ?? null,
+          avatar_url: profile.avatar_url ?? null,
+          profile_photo_url: profile.profile_photo_url ?? null,
+          language: profile.language_preference === 'ar' ? 'ar' : profile.language_preference === 'en' ? 'en' : null,
+          school_id: schoolId,
+          campus_id: campusId,
+          student_id: profile.student_id ?? null,
+          parent_id: profile.parent_id ?? null,
+          staff_id: profile.staff_id ?? null,
+          section_id: profile.section_id ?? null,
+          gender: profile.gender ?? null,
+          created_at: profile.created_at ?? null,
+        },
+        gates: {
+          force_password_change: !!profile.force_password_change,
+          two_fa: {
+            state: twoFAState,
+            required: twoFARequired,
+            enabled: !!profile.totp_enabled,
+            skip_until: inGrace ? skipUntil!.toISOString() : null,
+          },
+          agreement: agreement
+            ? {
+                must_accept: agreement.must_accept,
+                blocked: agreement.blocked,
+                message: agreement.message ?? null,
+              }
+            : null,
+        },
+        plugins,
+        school,
+      },
+    })
+  } catch (error: any) {
+    console.error('getMe error:', error)
+    return res.status(500).json({ success: false, error: 'Failed to load account' })
+  }
 }
 
 export const forcePasswordChangeStatus = async (req: Request, res: Response) => {

@@ -2,12 +2,25 @@ import { Router } from 'express'
 import { parentDashboardController } from '../controllers/parent-dashboard.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
+import type { AuthRequest } from '../middlewares/auth.middleware'
+import { canViewStudent } from '../utils/student-access'
 
 const router = Router()
 
 // All routes require authentication and parent role
 router.use(authenticate)
 router.use(requireRole('parent'))
+
+// Every :studentId must be one of the caller's actively linked children (most handlers below
+// did not check, so any parent could read any student's records by id).
+router.param('studentId', async (req, res, next, studentId: string) => {
+  try {
+    if (await canViewStudent(req as AuthRequest, studentId)) return next()
+    res.status(403).json({ success: false, error: 'Access denied to this student' })
+  } catch (err) {
+    next(err)
+  }
+})
 
 /**
  * GET /api/parent-dashboard/students

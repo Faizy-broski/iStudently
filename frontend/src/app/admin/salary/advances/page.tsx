@@ -24,9 +24,11 @@ export default function AdvancesPage() {
     const campusContext = useCampus()
     const schoolId = profile?.school_id || null
     const campusId = campusContext?.selectedCampus?.id
+    // Advances are stored under the staff member's campus.
+    const scopeId = campusId || schoolId
     const adminId = profile?.id || null
 
-    const { data: advances, mutate } = usePendingAdvances(schoolId, campusId)
+    const { data: advances, mutate } = usePendingAdvances(scopeId, campusId)
 
     const [selectedAdvance, setSelectedAdvance] = useState<any>(null)
     const [action, setAction] = useState<'approve' | 'reject'>('approve')
@@ -44,11 +46,11 @@ export default function AdvancesPage() {
     }
 
     const handleProcess = async () => {
-        if (!schoolId || !adminId || !selectedAdvance) return
+        if (!scopeId || !adminId || !selectedAdvance) return
         setProcessing(true)
         try {
             await processAdvance(selectedAdvance.id, {
-                school_id: schoolId,
+                school_id: scopeId,
                 action,
                 admin_id: adminId,
                 recovery_month: action === 'approve' ? recoveryMonth : undefined,

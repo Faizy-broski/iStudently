@@ -2,12 +2,17 @@ import { Router } from 'express'
 import { DashboardsController } from '../controllers/dashboards.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
+import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 const controller = new DashboardsController()
 
 // All routes require authentication
 router.use(authenticate)
+
+// Element routes act on a dashboard by id: it must belong to the caller's school family
+// (they used to skip this, so any school's dashboard elements could be read or changed).
+const dashboardInFamily = requireRowInSchoolFamily('dashboards')
 
 // ---- Dashboards CRUD ----
 
@@ -47,30 +52,30 @@ router.delete('/:id', requireRole('admin'), (req, res) => controller.remove(req,
  * GET /api/resource-dashboards/:id/elements
  * List all elements for a dashboard
  */
-router.get('/:id/elements', (req, res) => controller.listElements(req, res))
+router.get('/:id/elements', dashboardInFamily, (req, res) => controller.listElements(req, res))
 
 /**
  * POST /api/resource-dashboards/:id/elements
  * Add an element to a dashboard (admin only)
  */
-router.post('/:id/elements', requireRole('admin'), (req, res) => controller.addElement(req, res))
+router.post('/:id/elements', dashboardInFamily, requireRole('admin'), (req, res) => controller.addElement(req, res))
 
 /**
  * PUT /api/resource-dashboards/:id/elements/reorder
  * Reorder elements (must come before :elementId route)
  */
-router.put('/:id/elements/reorder', requireRole('admin'), (req, res) => controller.reorderElements(req, res))
+router.put('/:id/elements/reorder', dashboardInFamily, requireRole('admin'), (req, res) => controller.reorderElements(req, res))
 
 /**
  * PUT /api/resource-dashboards/:id/elements/:elementId
  * Update an element (admin only)
  */
-router.put('/:id/elements/:elementId', requireRole('admin'), (req, res) => controller.updateElement(req, res))
+router.put('/:id/elements/:elementId', dashboardInFamily, requireRole('admin'), (req, res) => controller.updateElement(req, res))
 
 /**
  * DELETE /api/resource-dashboards/:id/elements/:elementId
  * Delete an element (admin only)
  */
-router.delete('/:id/elements/:elementId', requireRole('admin'), (req, res) => controller.removeElement(req, res))
+router.delete('/:id/elements/:elementId', dashboardInFamily, requireRole('admin'), (req, res) => controller.removeElement(req, res))
 
 export default router

@@ -143,7 +143,15 @@ export async function massCreateRequests(
   studentIds: string[],
   courseId: string,
   academicYearId: string,
-  options?: { marking_period_id?: string; campus_id?: string; priority?: number }
+  options?: {
+    marking_period_id?: string
+    campus_id?: string
+    priority?: number
+    with_teacher_id?: string
+    not_teacher_id?: string
+    with_period_id?: string
+    not_period_id?: string
+  }
 ): Promise<{ created: number; errors: string[] }> {
   return authFetch(`${API_URL}/schedule-requests/mass`, {
     method: 'POST',
