@@ -69,18 +69,29 @@ export const bulkGetOrCreateCredentials = async (
       return
     }
 
+    // Resolving a profile with no stored credentials yet calls Supabase Auth's
+    // admin API (a real network round-trip) plus a username-uniqueness loop —
+    // sequentially awaiting that per person, one at a time, made a moderately
+    // sized school's worth of profiles (99 students, mostly first-time) take
+    // long enough to hit the reverse proxy's timeout (504). Same bounded
+    // concurrency already used by miqat/cards.controller.ts's qrBatch issuing
+    // loop, for the same reason.
     const credentials: { id: string; username: string; password: string }[] = []
-    for (const profileId of profileIds) {
-      try {
-        const { username, password } = await usernameService.getOrCreateStoredCredentials(
-          profileId,
-          schoolId
-        )
-        credentials.push({ id: profileId, username, password })
-      } catch (err: any) {
-        console.error('bulkGetOrCreateCredentials failed for profileId', profileId, err.message)
-        // Continue — don't let one failure break the batch
-      }
+    for (let i = 0; i < profileIds.length; i += 10) {
+      await Promise.all(
+        profileIds.slice(i, i + 10).map(async (profileId) => {
+          try {
+            const { username, password } = await usernameService.getOrCreateStoredCredentials(
+              profileId,
+              schoolId
+            )
+            credentials.push({ id: profileId, username, password })
+          } catch (err: any) {
+            console.error('bulkGetOrCreateCredentials failed for profileId', profileId, err.message)
+            // Continue — don't let one failure break the batch
+          }
+        })
+      )
     }
 
     res.json({ success: true, data: { credentials } } as ApiResponse)

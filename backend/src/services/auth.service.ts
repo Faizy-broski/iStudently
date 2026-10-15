@@ -1,4 +1,5 @@
 import { supabase, supabaseAuth } from '../config/supabase'
+import { syncPasswordDisplayCache } from './username.service'
 
 // ============================================================================
 // AUTH SERVICE — password management & force-change admin operations
@@ -23,6 +24,16 @@ class AuthService {
       .eq('id', userId)
 
     if (profileError) throw new Error(`Failed to clear force_password_change: ${profileError.message}`)
+
+    // Mirror into the admin-facing display cache (system_password hash +
+    // login_password_enc) the same way every other password-setting path
+    // does (regenerateCredentials, applyCredentialUpdate) — without this, a
+    // user changing their OWN password (e.g. this mandatory first-login
+    // flow) silently desyncs it from what the admin's "Update Credentials"
+    // screen shows forever after, even though the real login keeps working
+    // fine with the user's own new password. Best-effort, same as elsewhere:
+    // must never undo the real auth password change above if it fails.
+    await syncPasswordDisplayCache(userId, newPassword)
   }
 
   /**

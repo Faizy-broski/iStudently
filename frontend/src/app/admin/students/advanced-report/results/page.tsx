@@ -19,6 +19,7 @@ import { getConfidentialFamilyStatusLabel } from "@/lib/constants/confidential-f
 import { ExportButton } from "@/components/shared/ExportButton"
 import QRCode from "react-qr-code"
 import { getCardQrBatch } from "@/lib/api/miqat"
+import { bulkGetOrCreateCredentials, type UserCredentials } from "@/lib/api/credentials"
 import { serialNumberColumn, type ExportColumn } from "@/lib/utils/tableExport"
 
 type ReportRole = 'student' | 'teacher' | 'staff' | 'librarian' | 'parent'
@@ -59,6 +60,11 @@ export default function AdvancedReportResultsPage() {
   // Miqat QR payloads by profile id, only fetched when the QR column was picked.
   const [miqatQr, setMiqatQr] = useState<Record<string, string>>({})
   const [loadingQr, setLoadingQr] = useState(false)
+  // Login credentials by profile id — only fetched when Username/Password was picked,
+  // same opt-in pattern as the QR column above. Each row exposes a real, usable
+  // plaintext password, so this is never fetched unless explicitly requested.
+  const [credentials, setCredentials] = useState<Record<string, UserCredentials>>({})
+  const [loadingCredentials, setLoadingCredentials] = useState(false)
 
   useEffect(() => {
     const fieldsParam = searchParams.get('fields')
@@ -148,6 +154,38 @@ export default function AdvancedReportResultsPage() {
     return () => { cancelled = true }
   }, [wantsQr, rows, campusId])
 
+  const wantsCredentials = selectedFields.includes('username') || selectedFields.includes('password')
+  useEffect(() => {
+    if (!wantsCredentials || rows.length === 0) return
+    const ids = Array.from(new Set(rows.map((r: any) => r.profile_id).filter(Boolean))) as string[]
+    if (ids.length === 0) return
+    let cancelled = false
+    const load = async () => {
+      setLoadingCredentials(true)
+      try {
+        const merged: Record<string, UserCredentials> = {}
+        // Chunked defensively — the backend endpoint resolves each profile
+        // sequentially (no internal batching), so one huge request for a
+        // large school risks a slow/timed-out call.
+        for (let i = 0; i < ids.length; i += 200) {
+          const res = await bulkGetOrCreateCredentials(ids.slice(i, i + 200))
+          if (!res.success || !res.data) {
+            toast.error(res.error || 'Could not load login credentials')
+            return
+          }
+          for (const c of res.data.credentials) merged[c.id] = c
+        }
+        if (!cancelled) setCredentials(merged)
+      } catch {
+        toast.error('Could not load login credentials')
+      } finally {
+        if (!cancelled) setLoadingCredentials(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [wantsCredentials, rows])
+
   const customFieldLabelMap = useMemo(() =>
     Object.fromEntries(customFields.map(f => [`custom_${f.field_key}`, getCustomFieldLabel(f, locale)])),
     [customFields, locale]
@@ -232,7 +270,11 @@ export default function AdvancedReportResultsPage() {
     ...selectedFields.map(fieldId => ({
       key: fieldId,
       label: getFieldLabel(fieldId),
-      accessor: (row: any) => getDisplayValue(row, fieldId),
+      accessor: (row: any) => {
+        if (fieldId === 'username') return row.profile_id ? credentials[row.profile_id]?.username ?? '' : ''
+        if (fieldId === 'password') return row.profile_id ? credentials[row.profile_id]?.password ?? '' : ''
+        return getDisplayValue(row, fieldId)
+      },
       // The QR column is an image in the PDF (Excel leaves it out).
       ...(fieldId === 'miqat_qr'
         ? { qr: (row: any) => (row.profile_id ? miqatQr[row.profile_id] : undefined) }
@@ -348,6 +390,15 @@ export default function AdvancedReportResultsPage() {
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}
+                            </TableCell>
+                          )
+                        }
+                        if (fieldId === 'username' || fieldId === 'password') {
+                          const cred = row.profile_id ? credentials[row.profile_id] : undefined
+                          const value = cred ? (fieldId === 'username' ? cred.username : cred.password) : undefined
+                          return (
+                            <TableCell key={fieldId} className="whitespace-nowrap text-sm font-mono">
+                              {value ?? (loadingCredentials ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <span className="text-muted-foreground">—</span>)}
                             </TableCell>
                           )
                         }
