@@ -1,14 +1,17 @@
 import { ROOM_TYPES, type Room, type RoomType } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Eye, EyeOff, Plus, Power, Trash2 } from 'lucide-react-native';
+import { DoorOpen, Eye, EyeOff, Plus, Power } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
+import { IconTile, RowActions } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { SearchBar } from '@/components/app/search-bar';
+import { StatusChip } from '@/components/app/status-chip';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -16,7 +19,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { ROOM_TYPE_TONE } from '@/features/admin/timetable';
 import { useCampus } from '@/features/campus/campus';
@@ -116,8 +118,8 @@ export default function Rooms() {
           </CardContent>
         </Card>
 
-        <View className="flex-row items-center justify-between">
-          <Text className="font-semibold">{r('list_title', { count: rooms.length })}</Text>
+        <View className="flex-row items-center justify-between gap-2">
+          <StatusChip label={r('list_title', { count: rooms.length })} tone="info" className="px-2.5 py-1" />
           <Button size="sm" variant="outline" onPress={() => setShowInactive((v) => !v)}>
             <Icon as={showInactive ? EyeOff : Eye} className="text-foreground size-4" />
             <Text>{showInactive ? r('hide_inactive') : r('show_inactive')}</Text>
@@ -129,38 +131,35 @@ export default function Rooms() {
         ) : rooms.length === 0 ? (
           <EmptyState title={q ? r('no_match') : r('none')} body={q ? undefined : r('none_hint')} />
         ) : (
-          <Card>
+          <Panel>
             {rooms.map((room, i) => (
-              <View key={room.id}>
-                {i > 0 ? <Separator /> : null}
-                <View className={cn('gap-1.5 px-4 py-3', !room.is_active && 'opacity-60')}>
-                  <View className="flex-row items-center justify-between gap-2">
-                    <Text className="flex-1 font-medium" numberOfLines={1}>
+              <View key={room.id} className={cn('gap-2 px-4 py-3', i > 0 && 'border-info-soft dark:border-border border-t', !room.is_active && 'opacity-60')}>
+                <View className="flex-row items-center gap-3">
+                  <IconTile icon={DoorOpen} tone={room.is_active ? 'brand' : 'muted'} size={40} />
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-sm font-semibold" numberOfLines={1}>
                       {room.name}
                     </Text>
-                    <View className={cn('rounded-full px-2 py-0.5', ROOM_TYPE_TONE[room.room_type])}>
-                      <Text className={cn('text-xs', ROOM_TYPE_TONE[room.room_type])}>{typeLabel(room.room_type)}</Text>
-                    </View>
+                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      {[`${r('capacity_short')} ${room.capacity ?? '—'}`, room.building, room.floor ? `${r('f_floor')} ${room.floor}` : null].filter(Boolean).join(' · ')}
+                    </Text>
                   </View>
-                  <Text className="text-muted-foreground text-xs">
-                    {r('capacity_short')}: {room.capacity ?? '—'} · {r('f_building')}: {room.building || '—'} · {r('f_floor')}: {room.floor || '—'}
-                  </Text>
-                  <View className="flex-row items-center justify-between">
-                    <Text className={cn('text-xs font-medium', room.is_active ? 'text-green-600' : 'text-muted-foreground')}>{room.is_active ? t('common.active') : t('common.inactive')}</Text>
-                    <View className="flex-row gap-1">
-                      <Button size="sm" variant="ghost" onPress={() => toggle(room)}>
-                        <Icon as={Power} className="text-foreground size-4" />
-                        <Text>{room.is_active ? r('deactivate') : r('reactivate')}</Text>
-                      </Button>
-                      <Button size="icon" variant="ghost" onPress={() => remove(room)} accessibilityLabel={t('common.delete')}>
-                        <Icon as={Trash2} className="text-destructive size-4" />
-                      </Button>
-                    </View>
+                  <View className={cn('rounded-full px-2 py-0.5', ROOM_TYPE_TONE[room.room_type])}>
+                    <Text className={cn('text-[11px] font-semibold', ROOM_TYPE_TONE[room.room_type])}>{typeLabel(room.room_type)}</Text>
                   </View>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <StatusChip label={room.is_active ? t('common.active') : t('common.inactive')} tone={room.is_active ? 'success' : 'muted'} className="px-2 py-0.5" />
+                  <RowActions onDelete={() => remove(room)} deleteLabel={t('common.delete')}>
+                    <Pressable onPress={() => toggle(room)} className="bg-info-soft flex-row items-center gap-1 rounded-full px-3 py-2 active:opacity-70" accessibilityRole="button">
+                      <Icon as={Power} className="text-brand dark:text-brand-secondary size-3.5" />
+                      <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{room.is_active ? r('deactivate') : r('reactivate')}</Text>
+                    </Pressable>
+                  </RowActions>
                 </View>
               </View>
             ))}
-          </Card>
+          </Panel>
         )}
       </ScrollView>
     </View>

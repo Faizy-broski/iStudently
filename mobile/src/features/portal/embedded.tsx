@@ -3,15 +3,15 @@ import * as WebBrowser from 'expo-web-browser';
 import { AlertTriangle, ExternalLink, Globe, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
-import { Picker } from '@/components/app/picker';
+import { FilterChips } from '@/components/app/filter-chips';
+import { HeaderButton, IconTile, RowItem, RowPill } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { PublicWebView } from '@/components/app/web-session-view';
-import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { portal } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -36,9 +36,8 @@ export function EmbeddedListScreen({ role }: { role: PortalRole }) {
   if (data.isLoading) return <LoadingList rows={5} />;
   if (data.error) {
     return (
-      <View className="bg-background flex-1 items-center justify-center gap-3 p-6">
-        <Icon as={AlertTriangle} className="size-8 text-yellow-500" />
-        <Text className="text-muted-foreground">{data.error.message || k('failedToLoadResources')}</Text>
+      <View className="bg-background flex-1">
+        <ErrorState message={data.error.message || k('failedToLoadResources')} onRetry={() => data.mutate()} />
       </View>
     );
   }
@@ -65,14 +64,16 @@ export function EmbeddedListScreen({ role }: { role: PortalRole }) {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
-        <Text variant="muted">{k('pageSubtitle')}</Text>
-        <View className="border-border bg-card gap-2 rounded-xl border p-3">
+        <Text variant="muted" className="text-sm">
+          {k('pageSubtitle')}
+        </Text>
+        <View className="gap-2.5">
           <SearchBar value={search} onChangeText={setSearch} placeholder={k('searchByTitle')} />
-          {gradeOptions.length ? <Picker value={grade} onChange={setGrade} options={[{ value: 'all', label: k('allGrades') }, ...gradeOptions.map((g) => ({ value: g.id, label: g.name }))]} /> : null}
-          {teachers.length ? <Picker value={teacher} onChange={setTeacher} options={[{ value: 'all', label: k('allTeachers') }, ...teachers.map((n) => ({ value: n, label: n }))]} /> : null}
-          <Picker
+          {gradeOptions.length ? <FilterChips value={grade} onChange={setGrade} options={[{ value: 'all', label: k('allGrades') }, ...gradeOptions.map((g) => ({ value: g.id, label: g.name }))]} /> : null}
+          {teachers.length ? <FilterChips value={teacher} onChange={setTeacher} options={[{ value: 'all', label: k('allTeachers') }, ...teachers.map((n) => ({ value: n, label: n }))]} /> : null}
+          <FilterChips<Sort>
             value={sort}
-            onChange={(v) => setSort(v as Sort)}
+            onChange={setSort}
             options={[
               { value: 'title_asc', label: k('titleAZ') },
               { value: 'title_desc', label: k('titleZA') },
@@ -82,10 +83,9 @@ export function EmbeddedListScreen({ role }: { role: PortalRole }) {
           />
           {filtering ? (
             <>
-              <Button variant="outline" size="sm" className="self-start border-red-200" onPress={clear}>
-                <Icon as={X} className="size-3.5 text-red-600" />
-                <Text className="text-red-600">{k('clear')}</Text>
-              </Button>
+              <View className="self-start">
+                <RowPill icon={X} label={k('clear')} tone="destructive" onPress={clear} />
+              </View>
               <Text className="text-muted-foreground text-xs">
                 {k('showingXOfYResources', { filtered: shown.length, total: all.length })}
                 {grade !== 'all' ? ` · ${k('gradeLabel')}: ${gradeOptions.find((g) => g.id === grade)?.name ?? ''}` : ''}
@@ -95,33 +95,20 @@ export function EmbeddedListScreen({ role }: { role: PortalRole }) {
           ) : null}
         </View>
         {shown.length === 0 ? (
-          <View className="items-center py-12">
-            <Icon as={Globe} className="text-muted-foreground mb-3 size-12 opacity-30" />
-            <Text className="text-muted-foreground font-medium">{filtering ? k('noResourcesMatchFilters') : k('noEmbeddedResourcesAvailable')}</Text>
-            {filtering ? (
-              <Pressable onPress={clear} className="mt-3" accessibilityRole="button">
-                <Text className="text-sm text-blue-600">{k('clearFilters')}</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          <EmptyState icon={Globe} title={filtering ? k('noResourcesMatchFilters') : k('noEmbeddedResourcesAvailable')} actionLabel={filtering ? k('clearFilters') : undefined} onAction={filtering ? clear : undefined} />
         ) : (
-          shown.map((r) => (
-            <Pressable
-              key={r.id}
-              onPress={() => router.push({ pathname: `/${role}/resources/embedded/[id]`, params: { id: r.id } } as never)}
-              accessibilityRole="button"
-              className="border-border bg-card flex-row items-start gap-3 rounded-xl border p-3">
-              <View className="rounded-lg bg-blue-50 p-2.5 dark:bg-blue-950/30">
-                <Icon as={Globe} className="size-5 text-blue-600" />
-              </View>
-              <View className="flex-1">
-                <Text className="font-semibold" numberOfLines={1}>
-                  {r.title}
-                </Text>
-                {r.creator_name ? <Text className="text-muted-foreground mt-0.5 text-xs">{k('byCreator', { name: r.creator_name })}</Text> : null}
-              </View>
-            </Pressable>
-          ))
+          <Panel>
+            {shown.map((r, i) => (
+              <RowItem
+                key={r.id}
+                leading={<IconTile icon={Globe} size={40} />}
+                title={r.title}
+                meta={r.creator_name ? k('byCreator', { name: r.creator_name }) : null}
+                onPress={() => router.push({ pathname: `/${role}/resources/embedded/[id]`, params: { id: r.id } } as never)}
+                last={i === shown.length - 1}
+              />
+            ))}
+          </Panel>
         )}
       </ScrollView>
     </>
@@ -137,9 +124,8 @@ export function EmbedViewerScreen({ role, id }: { role: PortalRole; id: string }
   const r = (data.data ?? []).find((x) => x.id === id);
   if (!r) {
     return (
-      <View className="bg-background flex-1 items-center justify-center gap-4 p-6">
-        <Icon as={AlertTriangle} className="size-10 text-yellow-500" />
-        <Text className="text-lg font-medium">{k('resourceNotFound')}</Text>
+      <View className="bg-background flex-1">
+        <EmptyState icon={AlertTriangle} title={k('resourceNotFound')} />
       </View>
     );
   }
@@ -148,11 +134,7 @@ export function EmbedViewerScreen({ role, id }: { role: PortalRole; id: string }
       <Stack.Screen
         options={{
           title: r.title,
-          headerRight: () => (
-            <Pressable onPress={() => WebBrowser.openBrowserAsync(r.url)} hitSlop={8} accessibilityRole="button" accessibilityLabel={k('openInNewTab')}>
-              <Icon as={ExternalLink} className="size-5" />
-            </Pressable>
-          ),
+          headerRight: () => <HeaderButton icon={ExternalLink} label={k('openInNewTab')} onPress={() => WebBrowser.openBrowserAsync(r.url)} />,
         }}
       />
       <PublicWebView url={r.url} />

@@ -21,17 +21,17 @@ function AlertDialogOverlay({
   children,
   ...props
 }: Omit<React.ComponentProps<typeof AlertDialogPrimitive.Overlay>, 'asChild'> & {
-    children?: React.ReactNode;
-  }) {
+  children?: React.ReactNode;
+}) {
   return (
     <FullWindowOverlay>
       <AlertDialogPrimitive.Overlay
         className={cn(
-          'absolute bottom-0 left-0 right-0 top-0 z-50 flex items-center justify-center bg-black/50 p-2',
+          'absolute inset-0 z-50 flex items-center justify-center bg-black/50 p-2',
           Platform.select({
             web: 'animate-in fade-in-0 fixed',
           }),
-          className
+          className,
         )}
         {...props}
         asChild={Platform.OS !== 'web'}>
@@ -51,18 +51,18 @@ function AlertDialogContent({
   portalHost,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
-    portalHost?: string;
-  }) {
+  portalHost?: string;
+}) {
   return (
     <AlertDialogPortal hostName={portalHost}>
       <AlertDialogOverlay>
         <AlertDialogPrimitive.Content
           className={cn(
-            'bg-background border-border z-50 flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
+            'bg-background border-border z-50 flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 sm:max-w-lg',
             Platform.select({
               web: 'animate-in fade-in-0 zoom-in-95 duration-200',
             }),
-            className
+            className,
           )}
           {...props}
         />
@@ -73,7 +73,7 @@ function AlertDialogContent({
 
 function AlertDialogHeader({ className, ...props }: ViewProps) {
   return (
-    <TextClassContext.Provider value="text-center sm:text-left">
+    <TextClassContext.Provider value="text-center sm:text-start">
       <View className={cn('flex flex-col gap-2', className)} {...props} />
     </TextClassContext.Provider>
   );

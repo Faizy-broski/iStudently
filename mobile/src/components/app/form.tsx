@@ -3,6 +3,7 @@ import { Controller, type Control, type FieldPath, type FieldValues } from 'reac
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -19,7 +20,17 @@ function useErrorText(message?: string) {
   return message ? t(message, { defaultValue: message }) : undefined;
 }
 
-function FieldShell({ label, error, hint, children }: { label?: string; error?: string; hint?: string; children: ReactNode }) {
+function FieldShell({
+  label,
+  error,
+  hint,
+  children,
+}: {
+  label?: string;
+  error?: string;
+  hint?: string;
+  children: ReactNode;
+}) {
   const errorText = useErrorText(error);
   return (
     <View className="gap-1.5">
@@ -36,7 +47,12 @@ function FieldShell({ label, error, hint, children }: { label?: string; error?: 
   );
 }
 
-type BaseProps<T extends FieldValues> = { control: Control<T>; name: FieldPath<T>; label?: string; hint?: string };
+type BaseProps<T extends FieldValues> = {
+  control: Control<T>;
+  name: FieldPath<T>;
+  label?: string;
+  hint?: string;
+};
 
 export function TextField<T extends FieldValues>({
   control,
@@ -45,7 +61,10 @@ export function TextField<T extends FieldValues>({
   hint,
   multiline,
   ...inputProps
-}: BaseProps<T> & { multiline?: boolean } & Omit<ComponentProps<typeof Input>, 'value' | 'onChangeText'>) {
+}: BaseProps<T> & { multiline?: boolean } & Omit<
+    ComponentProps<typeof Input>,
+    'value' | 'onChangeText'
+  >) {
   return (
     <Controller
       control={control}
@@ -70,7 +89,13 @@ export function TextField<T extends FieldValues>({
 }
 
 /** Numeric input stored as number | null. */
-export function NumberField<T extends FieldValues>({ control, name, label, hint, ...inputProps }: BaseProps<T> & Omit<ComponentProps<typeof Input>, 'value' | 'onChangeText'>) {
+export function NumberField<T extends FieldValues>({
+  control,
+  name,
+  label,
+  hint,
+  ...inputProps
+}: BaseProps<T> & Omit<ComponentProps<typeof Input>, 'value' | 'onChangeText'>) {
   return (
     <Controller
       control={control}
@@ -118,8 +143,13 @@ export function FormError({ message, solid }: { message?: string | null; solid?:
   const text = useErrorText(message ?? undefined);
   if (!text) return null;
   return (
-    <View className={solid ? 'border-destructive rounded-md border bg-white p-3 shadow-sm' : 'border-destructive/40 bg-destructive/10 rounded-md border p-3'}>
-      <Text className={solid ? 'font-medium text-red-700' : 'text-destructive'}>{text}</Text>
+    <View
+      className={
+        solid
+          ? 'border-destructive rounded-md border bg-white p-3'
+          : 'border-destructive/40 bg-destructive/10 rounded-md border p-3'
+      }>
+      <Text className={solid ? 'text-destructive font-medium' : 'text-destructive'}>{text}</Text>
     </View>
   );
 }
@@ -137,7 +167,11 @@ export function ColorField<T extends FieldValues>({ control, name, label, hint }
           <View className="flex-row items-center gap-2">
             <View
               className="border-border size-10 rounded-md border"
-              style={{ backgroundColor: HEX.test(String(field.value ?? '')) ? String(field.value) : 'transparent' }}
+              style={{
+                backgroundColor: HEX.test(String(field.value ?? ''))
+                  ? String(field.value)
+                  : 'transparent',
+              }}
             />
             <Input
               value={field.value == null ? '' : String(field.value)}
@@ -146,7 +180,7 @@ export function ColorField<T extends FieldValues>({ control, name, label, hint }
               autoCapitalize="none"
               autoCorrect={false}
               maxLength={7}
-              placeholder="#022172"
+              placeholder={colors.brand}
               className={cn('flex-1', fieldState.error && 'border-destructive')}
             />
           </View>

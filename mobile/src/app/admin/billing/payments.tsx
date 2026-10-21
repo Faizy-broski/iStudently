@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';
 import { MultiSelect } from '@/components/app/multi-select';
 import { SearchBar } from '@/components/app/search-bar';
@@ -96,9 +97,9 @@ export default function PaymentStudents() {
         return await shareTextFile('students_payments.csv', toCsv(headers, rows), 'text/csv', 'public.comma-separated-values-text');
       }
       if (kind === 'excel') return await shareTextFile('fee_payments.xls', toExcelXml(p('title'), columns, rowsFor(filtered)), 'application/vnd.ms-excel', 'com.microsoft.excel.xls');
-      const th = columns.map((c) => `<th style="text-align:start;padding:4px;border-bottom:2px solid #111;font-size:9px">${escapeHtml(c)}</th>`).join('');
+      const th = columns.map((c) => `<th style="text-align:start;padding:4px;border-bottom:2px solid ${colors.printText};font-size:9px">${escapeHtml(c)}</th>`).join('');
       const tr = rowsFor(filtered)
-        .map((r) => `<tr>${r.map((c) => `<td style="padding:4px;border-bottom:1px solid #eee;font-size:9px">${escapeHtml(String(c))}</td>`).join('')}</tr>`)
+        .map((r) => `<tr>${r.map((c) => `<td style="padding:4px;border-bottom:1px solid ${colors.printBorder};font-size:9px">${escapeHtml(String(c))}</td>`).join('')}</tr>`)
         .join('');
       const body = `<h2 style="margin:0 0 10px">${escapeHtml(p('title'))}</h2><table style="width:100%;border-collapse:collapse"><tr>${th}</tr>${tr}</table>`;
       await sharePdf(buildPrintHtml({ title: p('title'), pages: [body], school: print.school, layout: print.layout, withHeader: true, reportLabel: p('title') }), 'fee_payments.pdf', { width: 842, height: 595 });

@@ -91,7 +91,7 @@ export default function StudentActivities() {
                       <Icon as={Minus} className="text-destructive size-4" />
                     </Button>
                     <View className="flex-1">
-                      <Text className="font-medium">{act.title}</Text>
+                      <Text className="text-sm font-semibold">{act.title}</Text>
                       <Text className="text-muted-foreground text-xs">
                         {a('starts')}: {longDate(act.start_date, i18n.language)} · {a('ends')}: {longDate(act.end_date, i18n.language)}
                       </Text>

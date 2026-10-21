@@ -54,11 +54,27 @@ function bareRow(r: ApiResponse<Campus>): ApiResponse<Campus> {
   return { success: true, status, data: row as unknown as Campus }
 }
 
+/** First-run setup state (GET /setup/status answers with the bare object). */
+export interface SetupStatus {
+  hasCampuses: boolean
+  hasAcademicYear: boolean
+  isComplete: boolean
+  campusCount: number
+  academicYearCount: number
+}
+
 export function campusesApi(api: ApiClient) {
   const id = (v: string) => encodeURIComponent(v)
   return {
     /** Active branch campuses of the admin's school (admin/librarian). */
     list: () => api.get<Campus[]>('/setup/campuses'),
+    /** Web DashboardLayout sends admins to /admin/setup until this says isComplete. */
+    setupStatus: async (): Promise<ApiResponse<SetupStatus>> => {
+      const r = await api.get<SetupStatus>('/setup/status')
+      if (!r.success || r.data) return r
+      const { success: _s, status, ...row } = r as ApiResponse<SetupStatus> & Record<string, unknown>
+      return { success: true, status, data: row as unknown as SetupStatus }
+    },
     /** One campus (any role, used for staff locked to their own campus). */
     get: (campusId: string) => api.get<Campus>(`/setup/campuses/${id(campusId)}`),
     create: async (body: CampusUpdate & { name: string }) => bareRow(await api.post<Campus>('/setup/campuses', body)),

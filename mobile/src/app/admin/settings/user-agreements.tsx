@@ -1,6 +1,6 @@
 import type { AgreementItem, AgreementReportRow, AgreementRole, RoleAgreementConfig, RoleAgreementConfigs } from '@studently/api-client';
 import { toCsv, todayIso } from '@studently/shared-utils';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { BarChart3, CalendarClock, CheckCircle2, Clock, FileText, Info, Plus, RefreshCw, Save, Share2, ToggleRight, Trash2, Users, XCircle, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,8 +9,8 @@ import { Pressable, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
-import { HtmlTextField } from '@/components/app/html-text-field';
-import { LoadingList } from '@/components/app/states';
+import { RichTextField } from '@/components/app/rich-text-field';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -132,7 +132,7 @@ export default function UserAgreementsSettings() {
       <Pressable onPress={() => setRole(role, { reset_mode: value })} accessibilityRole="radio" accessibilityState={{ checked: on }} className="flex-row items-start gap-3">
         <View className={cn('border-primary mt-0.5 size-5 items-center justify-center rounded-full border-2')}>{on ? <View className="bg-primary size-2.5 rounded-full" /> : null}</View>
         <View className="flex-1">
-          <Text className="font-medium">{title}</Text>
+          <Text className="text-sm font-semibold">{title}</Text>
           <Text className="text-muted-foreground text-xs">{desc}</Text>
         </View>
       </Pressable>
@@ -156,6 +156,10 @@ export default function UserAgreementsSettings() {
       <Stack.Screen options={{ title: u('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-28" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{u('subtitle')}</Text>
+        <Button variant="outline" size="sm" className="self-start" onPress={() => router.push('/admin/settings/parent-agreement')}>
+          <Icon as={FileText} className="size-4" />
+          <Text>{t('app.pag_open')}</Text>
+        </Button>
 
         {section(
           Info,
@@ -168,7 +172,7 @@ export default function UserAgreementsSettings() {
                 • {plainMessage(`school.user_agreements.${k}`)}
               </Text>
             ))}
-            {campusId ? <Text className="text-sm text-blue-600">• {u('campus_specific')}</Text> : null}
+            {campusId ? <Text className="text-sm text-brand dark:text-brand-secondary">• {u('campus_specific')}</Text> : null}
           </View>,
         )}
 
@@ -184,7 +188,7 @@ export default function UserAgreementsSettings() {
           </View>,
           <>
             {!cfg.agreements.length ? (
-              <View className="border-border items-center rounded-lg border border-dashed py-8">
+              <View className="border-info-soft dark:border-border items-center rounded-xl border border-dashed py-8">
                 <Icon as={FileText} className="text-muted-foreground mb-2 size-8" />
                 <Text className="text-muted-foreground text-sm">{u('no_agreements')}</Text>
                 <Text className="text-muted-foreground mt-1 text-center text-xs">{u('no_agreements_hint')}</Text>
@@ -195,17 +199,17 @@ export default function UserAgreementsSettings() {
                 return (
                   <View key={item.id} className={cn('border-border gap-3 rounded-lg border p-3', !cfg.enabled && 'opacity-50')} pointerEvents={cfg.enabled ? 'auto' : 'none'}>
                     <View className="flex-row flex-wrap items-center gap-2">
-                      <Text className="text-muted-foreground text-xs font-semibold uppercase">{u('agreement_n', { n: idx + 1 })}</Text>
+                      <Text className="text-muted-foreground text-sm font-semibold">{u('agreement_n', { n: idx + 1 })}</Text>
                       {!item.enabled ? (
-                        <View className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 dark:border-amber-700 dark:bg-amber-950/30">
-                          <Text className="text-xs text-amber-600 dark:text-amber-400">{u('disabled')}</Text>
+                        <View className="rounded border border-warning/30 bg-warning-soft px-1.5 py-0.5  ">
+                          <Text className="text-xs text-warning ">{u('disabled')}</Text>
                         </View>
                       ) : null}
                       <View className="flex-1" />
                       <Switch checked={item.enabled} onCheckedChange={(v) => updateItem(tab, item.id, { enabled: v })} />
                       <Button size="sm" variant="ghost" onPress={() => setRole(tab, { agreements: cfg.agreements.filter((a) => a.id !== item.id) })}>
-                        <Icon as={Trash2} className="size-3.5 text-red-500" />
-                        <Text className="text-red-500">{u('remove')}</Text>
+                        <Icon as={Trash2} className="size-3.5 text-destructive" />
+                        <Text className="text-destructive">{u('remove')}</Text>
                       </Button>
                     </View>
                     <View className={cn('gap-3', !item.enabled && 'opacity-50')} pointerEvents={item.enabled ? 'auto' : 'none'}>
@@ -225,7 +229,7 @@ export default function UserAgreementsSettings() {
                           </View>
                           <View className="gap-1.5">
                             <Label>نص الاتفاقية (بالعربية) / Arabic Content</Label>
-                            <HtmlTextField key={`${item.id}-ar`} value={item.content} onChange={(v) => updateItem(tab, item.id, { content: v })} />
+                            <RichTextField key={`${item.id}-ar`} value={item.content} onChange={(v) => updateItem(tab, item.id, { content: v })} />
                           </View>
                         </>
                       ) : (
@@ -236,7 +240,7 @@ export default function UserAgreementsSettings() {
                           </View>
                           <View className="gap-1.5">
                             <Label>English Content / نص الاتفاقية بالإنجليزية</Label>
-                            <HtmlTextField key={`${item.id}-en`} value={item.content_en ?? ''} onChange={(v) => updateItem(tab, item.id, { content_en: v })} />
+                            <RichTextField key={`${item.id}-en`} value={item.content_en ?? ''} onChange={(v) => updateItem(tab, item.id, { content_en: v })} />
                           </View>
                         </>
                       )}
@@ -271,8 +275,8 @@ export default function UserAgreementsSettings() {
               u('block_students_desc'),
               <Switch checked={cfg.block_linked_students ?? false} onCheckedChange={(v) => setRole('parent', { block_linked_students: v })} disabled={!cfg.enabled} />,
               cfg.block_linked_students ? (
-                <View className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
-                  <Text className="text-xs text-amber-600 dark:text-amber-400">{u('block_students_warning')}</Text>
+                <View className="rounded-xl border border-warning/30 bg-warning-soft p-3">
+                  <Text className="text-xs text-warning ">{u('block_students_warning')}</Text>
                 </View>
               ) : null,
               !cfg.enabled,
@@ -306,18 +310,18 @@ export default function UserAgreementsSettings() {
             {!report.isLoading && rows.length ? (
               <View className="flex-row flex-wrap gap-2">
                 {pill(Users, u('total_users'), rows.length, 'bg-muted', 'text-foreground')}
-                {pill(CheckCircle2, u('accepted_count'), rows.filter((r) => r.status === 'accepted').length, 'bg-green-50 dark:bg-green-950/30', 'text-green-700 dark:text-green-400')}
-                {pill(XCircle, u('rejected_count'), rows.filter((r) => r.status === 'rejected').length, 'bg-red-50 dark:bg-red-950/30', 'text-red-700 dark:text-red-400')}
-                {pill(Clock, u('pending_count'), rows.filter((r) => !r.status).length, 'bg-amber-50 dark:bg-amber-950/30', 'text-amber-700 dark:text-amber-400')}
+                {pill(CheckCircle2, u('accepted_count'), rows.filter((r) => r.status === 'accepted').length, 'bg-success-soft ', 'text-success ')}
+                {pill(XCircle, u('rejected_count'), rows.filter((r) => r.status === 'rejected').length, 'bg-destructive-soft ', 'text-destructive ')}
+                {pill(Clock, u('pending_count'), rows.filter((r) => !r.status).length, 'bg-warning-soft ', 'text-warning ')}
               </View>
             ) : null}
             {report.isLoading ? (
               <View className="gap-2">
                 <LoadingList rows={3} />
-                <Text className="text-muted-foreground text-center text-sm">{u('loading_report')}</Text>
+                <EmptyState title={u('loading_report')} />
               </View>
             ) : !rows.length ? (
-              <Text className="text-muted-foreground py-10 text-center text-sm">{u('no_users')}</Text>
+              <EmptyState title={u('no_users')} />
             ) : (
               <View>
                 {rows.map((row, i) => (
@@ -325,25 +329,25 @@ export default function UserAgreementsSettings() {
                     {i > 0 ? <Separator /> : null}
                     <View className="gap-1 py-2.5">
                       <View className="flex-row items-center gap-2">
-                        <Text className="flex-1 font-medium">{row.name || '—'}</Text>
+                        <Text className="flex-1 text-sm font-semibold">{row.name || '—'}</Text>
                         <View
                           className={cn(
                             'flex-row items-center gap-1 rounded-full px-2 py-0.5',
-                            row.status === 'accepted' ? 'bg-green-100 dark:bg-green-950/50' : row.status === 'rejected' ? 'bg-red-100 dark:bg-red-950/50' : 'bg-amber-100 dark:bg-amber-950/50',
+                            row.status === 'accepted' ? 'bg-success-soft ' : row.status === 'rejected' ? 'bg-destructive-soft ' : 'bg-warning-soft ',
                           )}
                         >
                           <Icon
                             as={row.status === 'accepted' ? CheckCircle2 : row.status === 'rejected' ? XCircle : Clock}
-                            className={cn('size-3', row.status === 'accepted' ? 'text-green-700 dark:text-green-400' : row.status === 'rejected' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400')}
+                            className={cn('size-3', row.status === 'accepted' ? 'text-success ' : row.status === 'rejected' ? 'text-destructive ' : 'text-warning ')}
                           />
-                          <Text className={cn('text-xs font-medium', row.status === 'accepted' ? 'text-green-700 dark:text-green-400' : row.status === 'rejected' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400')}>
+                          <Text className={cn('text-xs font-medium', row.status === 'accepted' ? 'text-success ' : row.status === 'rejected' ? 'text-destructive ' : 'text-warning ')}>
                             {statusLabel(row.status)}
                           </Text>
                         </View>
                       </View>
                       <Text className="text-muted-foreground text-xs">{row.email || '—'}</Text>
                       <View className="flex-row gap-3">
-                        <Text className={cn('text-xs font-medium', row.is_active ? 'text-green-600 dark:text-green-400' : 'text-red-500')}>{row.is_active ? u('account_active') : u('account_inactive')}</Text>
+                        <Text className={cn('text-xs font-medium', row.is_active ? 'text-success ' : 'text-destructive')}>{row.is_active ? u('account_active') : u('account_inactive')}</Text>
                         <Text className="text-muted-foreground text-xs">{fmtDate(row.updated_at)}</Text>
                       </View>
                     </View>

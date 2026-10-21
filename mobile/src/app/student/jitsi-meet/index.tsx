@@ -1,8 +1,8 @@
 import { router, Stack } from 'expo-router';
+import { Video } from 'lucide-react-native';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Text } from '@/components/ui/text';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { RoomCard, useLc } from '@/features/admin/jitsi';
 import { jitsi } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -15,11 +15,11 @@ export default function StudentMeet() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: l('heading') }} />
-      <ScrollView contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
+      <ScrollView contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
         {res.isLoading ? (
           <LoadingList rows={3} />
         ) : !rooms.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{l('no_rooms_yet')}</Text>
+          <EmptyState icon={Video} title={l('no_rooms_yet')} />
         ) : (
           rooms.map((r) => <RoomCard key={r.id} room={r} onJoin={() => router.push({ pathname: '/student/jitsi-meet/rooms/[id]', params: { id: r.id } })} />)
         )}

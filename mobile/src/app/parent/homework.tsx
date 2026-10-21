@@ -1,23 +1,22 @@
 import type { HomeworkAssignment } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { AlertCircle, BookOpen, Calendar, CheckCircle, ClipboardList, Clock, Filter, type LucideIcon } from 'lucide-react-native';
+import { AlertCircle, BookOpen, CheckCircle, ClipboardList, Clock, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
 import { FilterChips } from '@/components/app/filter-chips';
-import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { IconTile, RowItem, Section, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { Segmented } from '@/components/app/segmented';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip, type ChipTone } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { NoChild, useChild } from '@/features/parent/child';
 import { PortalError } from '@/features/portal/ui';
 import { parent } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate } from '@/lib/format';
-import { cn } from '@/lib/utils';
 import i18n from '@/i18n';
 
 type Tab = 'pending' | 'submitted' | 'overdue';
@@ -57,28 +56,20 @@ export default function ParentHomework() {
     <>
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => hw.mutate()} />}>
-        <Text variant="muted">{k('subtitle', { name: `${child.first_name} ${child.last_name}` })}</Text>
-        <View className="flex-row gap-2">
-          <Stat icon={Clock} box="bg-yellow-100 dark:bg-yellow-900/30" iconTone="text-yellow-600" value={groups.pending.length} label={k('pending')} />
-          <Stat icon={CheckCircle} box="bg-green-100 dark:bg-green-900/30" iconTone="text-green-600" value={groups.submitted.length} label={k('submitted')} valueTone="text-green-600" />
-          <Stat icon={AlertCircle} box="bg-red-100 dark:bg-red-900/30" iconTone="text-red-600" value={groups.overdue.length} label={k('overdue')} valueTone="text-red-600" />
-        </View>
-        <Card>
-          <CardHeader className="gap-3">
-            <CardTitle>{k('assignments')}</CardTitle>
-            <View className="flex-row items-center gap-2">
-              <Icon as={Filter} className="text-muted-foreground size-4" />
-              <View className="flex-1">
-                <Picker
-                  value={String(month)}
-                  onChange={(v) => setMonth(Number(v))}
-                  options={[{ value: '0', label: k('all_months') }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${monthName(i + 1)} ${year}` }))]}
-                />
-              </View>
-            </View>
-          </CardHeader>
-          <CardContent className="gap-3">
-            <FilterChips<Tab>
+        <Text variant="muted" className="text-sm">{k('subtitle', { name: `${child.first_name} ${child.last_name}` })}</Text>
+        <StatTiles>
+          <StatTile icon={Clock} tone="warning" label={k('pending')} value={String(groups.pending.length)} />
+          <StatTile icon={CheckCircle} tone="success" label={k('submitted')} value={String(groups.submitted.length)} />
+          <StatTile icon={AlertCircle} tone="destructive" label={k('overdue')} value={String(groups.overdue.length)} />
+        </StatTiles>
+        <Section title={k('assignments')}>
+          <View className="gap-3">
+            <FilterChips
+              value={String(month)}
+              onChange={(v) => setMonth(Number(v))}
+              options={[{ value: '0', label: k('all_months') }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${monthName(i + 1)} ${year}` }))]}
+            />
+            <Segmented<Tab>
               value={tab}
               onChange={setTab}
               options={[
@@ -88,70 +79,37 @@ export default function ParentHomework() {
               ]}
             />
             {groups[tab].length === 0 ? (
-              <View className="items-center py-10">
-                <Icon as={empty[0]} className={cn('mb-3 size-14', empty[3] ? 'text-green-500' : 'text-muted-foreground/40')} />
-                <Text className={cn('text-lg', empty[3] ? 'text-green-600' : 'text-muted-foreground')}>{empty[1]}</Text>
-                <Text className="text-muted-foreground text-sm">{empty[2]}</Text>
-              </View>
+              <EmptyState icon={empty[0]} title={empty[1]} body={empty[2]} />
             ) : (
-              groups[tab].map((h) => {
-                const late = h.status === 'pending' && new Date(h.due_date).getTime() < now;
-                return (
-                  <View key={h.id} className="border-border flex-row items-start gap-3 rounded-lg border p-3">
-                    <View className="bg-primary/10 rounded-lg p-2">
-                      <Icon as={BookOpen} className="text-primary size-5" />
-                    </View>
-                    <View className="flex-1 gap-1">
-                      <View className="flex-row flex-wrap items-center gap-2">
-                        <Text className="font-semibold">{h.title}</Text>
-                        <Badge variant="outline">
-                          <Text className="text-xs">{h.subject}</Text>
-                        </Badge>
-                        {tab !== 'pending' ? (
-                          <Badge variant={h.status === 'graded' ? 'default' : h.status === 'submitted' ? 'secondary' : late || h.status === 'overdue' ? 'destructive' : 'outline'}>
-                            <Text className="text-xs">{late ? k('overdue') : k(`status_${h.status}`)}</Text>
-                          </Badge>
-                        ) : null}
+              <Panel>
+                {groups[tab].map((h, i, arr) => {
+                  const late = h.status === 'pending' && new Date(h.due_date).getTime() < now;
+                  const tone: ChipTone = h.status === 'graded' ? 'success' : h.status === 'submitted' ? 'info' : late || h.status === 'overdue' ? 'destructive' : 'muted';
+                  return (
+                    <RowItem
+                      key={h.id}
+                      leading={<IconTile icon={BookOpen} size={40} />}
+                      title={h.title}
+                      meta={[k('due', { date: formatDate(h.due_date) }), h.teacher_name ? k('by', { name: h.teacher_name }) : null].filter(Boolean).join(' · ')}
+                      trailing={h.marks_obtained !== undefined && h.marks_obtained !== null ? <StatusChip label={`${h.marks_obtained}/${h.total_marks || 100}`} tone="success" /> : undefined}
+                      last={i === arr.length - 1}>
+                      <View className="flex-row flex-wrap items-center gap-1.5">
+                        <StatusChip label={h.subject} tone="info" />
+                        {tab !== 'pending' ? <StatusChip label={late ? k('overdue') : k(`status_${h.status}`)} tone={tone} /> : null}
                       </View>
                       {h.description ? (
-                        <Text className="text-muted-foreground text-sm" numberOfLines={1}>
+                        <Text className="text-muted-foreground text-xs" numberOfLines={1}>
                           {h.description}
                         </Text>
                       ) : null}
-                      <View className="flex-row flex-wrap items-center gap-3">
-                        <View className="flex-row items-center gap-1">
-                          <Icon as={Calendar} className="text-muted-foreground size-3" />
-                          <Text className="text-muted-foreground text-xs">{k('due', { date: formatDate(h.due_date) })}</Text>
-                        </View>
-                        {h.teacher_name ? <Text className="text-muted-foreground text-xs">{k('by', { name: h.teacher_name })}</Text> : null}
-                      </View>
-                    </View>
-                    {h.marks_obtained !== undefined && h.marks_obtained !== null ? (
-                      <Badge className="bg-green-500">
-                        <Text className="text-white">{`${h.marks_obtained}/${h.total_marks || 100}`}</Text>
-                      </Badge>
-                    ) : null}
-                  </View>
-                );
-              })
+                    </RowItem>
+                  );
+                })}
+              </Panel>
             )}
-          </CardContent>
-        </Card>
+          </View>
+        </Section>
       </ScrollView>
     </>
-  );
-}
-
-function Stat({ icon, box, iconTone, value, label, valueTone }: { icon: LucideIcon; box: string; iconTone: string; value: number; label: string; valueTone?: string }) {
-  return (
-    <Card className="flex-1">
-      <CardContent className="items-center gap-1.5 p-3">
-        <View className={cn('rounded-full p-2', box)}>
-          <Icon as={icon} className={cn('size-5', iconTone)} />
-        </View>
-        <Text className={cn('text-2xl font-bold', valueTone)}>{String(value)}</Text>
-        <Text className="text-muted-foreground text-xs">{label}</Text>
-      </CardContent>
-    </Card>
   );
 }

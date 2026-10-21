@@ -12,6 +12,7 @@ import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useAttendanceScope } from '@/features/admin/attendance';
 import { CHARTABLE_TYPES, chosenValues, fieldOptions } from '@/features/admin/discipline';
@@ -98,7 +99,7 @@ export default function DisciplineBreakdownOverTime() {
             </CardHeader>
             <CardContent>
               {periods.length === 0 ? (
-                <Text variant="muted" className="py-8 text-center">{d('noDataForFilters')}</Text>
+                <EmptyState title={d('noDataForFilters')} />
               ) : (
                 <TimeSeriesBreakdown periods={periods} options={options} counts={counts} optionHeader={d('option')} labels={{ column: d('column'), list: d('list') }} />
               )}

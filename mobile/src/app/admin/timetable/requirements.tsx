@@ -1,13 +1,15 @@
 import { ROOM_TYPES, type RoomType, type TimetableRequirement } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { AlertTriangle, BookOpen, CheckCircle2, DoorOpen, Info, ListChecks, PlayCircle, Settings, Sparkles, Trash2, Wand2 } from 'lucide-react-native';
+import { AlertTriangle, BookOpen, CheckCircle2, DoorOpen, Info, ListChecks, PlayCircle, Settings, Sparkles, Wand2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
+import { IconTile, RowActions } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
+import { StatusChip } from '@/components/app/status-chip';
 import { SearchBar } from '@/components/app/search-bar';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -245,9 +247,9 @@ export default function Requirements() {
               </View>
             ) : null}
             {gradeOnly ? (
-              <View className="flex-row items-center gap-2 rounded-md bg-blue-50 p-2 dark:bg-blue-950/30">
-                <Icon as={Info} className="size-4 text-blue-700 dark:text-blue-300" />
-                <Text className="flex-1 text-xs text-blue-700 dark:text-blue-300">{q('grade_mode', { grade: gradeName })}</Text>
+              <View className="flex-row items-center gap-2 rounded-md bg-info-soft p-2 ">
+                <Icon as={Info} className="size-4 text-brand dark:text-brand-secondary " />
+                <Text className="flex-1 text-xs text-brand dark:text-brand-secondary ">{q('grade_mode', { grade: gradeName })}</Text>
               </View>
             ) : null}
             <View className="self-start">{seedBtn}</View>
@@ -264,21 +266,19 @@ export default function Requirements() {
         ) : (
           <>
             {cov ? (
-              <View className={cn('flex-row items-center gap-2 rounded-md border p-3', cov.is_over_capacity ? 'border-destructive/50 bg-destructive/5' : 'border-green-500/50 bg-green-50 dark:bg-green-950/20')}>
-                <Icon as={cov.is_over_capacity ? AlertTriangle : CheckCircle2} className={cov.is_over_capacity ? 'text-destructive size-4' : 'size-4 text-green-600'} />
-                <Text className={cn('flex-1 text-sm font-medium', cov.is_over_capacity ? 'text-destructive' : 'text-green-700 dark:text-green-400')}>
+              <View className={cn('flex-row items-center gap-2 rounded-md border p-3', cov.is_over_capacity ? 'border-destructive/50 bg-destructive/5' : 'border-success bg-success-soft ')}>
+                <Icon as={cov.is_over_capacity ? AlertTriangle : CheckCircle2} className={cov.is_over_capacity ? 'text-destructive size-4' : 'size-4 text-success'} />
+                <Text className={cn('flex-1 text-sm font-medium', cov.is_over_capacity ? 'text-destructive' : 'text-success ')}>
                   {q('coverage', { used: cov.required_periods_per_week ?? totalRequired, available: cov.available_periods_per_week, name: scopeName })}
                   {cov.is_over_capacity ? q('over_capacity') : ''}
                 </Text>
-                <View className={cn('rounded-full px-2 py-0.5', cov.is_over_capacity ? 'bg-destructive' : 'bg-green-600')}>
-                  <Text className="text-xs text-white">{q('req_count', { count: cov.requirement_count })}</Text>
-                </View>
+                <StatusChip label={q('req_count', { count: cov.requirement_count })} tone={cov.is_over_capacity ? 'destructive' : 'success'} />
               </View>
             ) : null}
             {dupWarnings.length ? (
-              <View className="gap-1 rounded-md border border-amber-500/50 bg-amber-50 p-3 dark:bg-amber-950/20">
+              <View className="gap-1 rounded-xl border border-warning/30 bg-warning-soft p-3">
                 {dupWarnings.map((w) => (
-                  <Text key={w} className="text-sm text-amber-800 dark:text-amber-400">
+                  <Text key={w} className="text-sm text-warning ">
                     {w}
                   </Text>
                 ))}
@@ -328,7 +328,7 @@ export default function Requirements() {
             </Card>
 
             <View className="gap-2">
-              <Text className="font-semibold">{q('list_title', { count: filtered.length })}</Text>
+              <StatusChip label={q('list_title', { count: filtered.length })} tone="info" className="self-start px-2.5 py-1" />
               <SearchBar value={search} onChangeText={setSearch} placeholder={q('search_ph')} />
               {filtered.length ? <CheckRow checked={allChecked} onPress={() => setSelected(allChecked ? new Set() : new Set(filtered.map((r) => r.id)))} label={q('select_all')} /> : null}
               {selected.size ? (
@@ -343,17 +343,7 @@ export default function Requirements() {
             {reqs.isLoading ? (
               <LoadingList />
             ) : list.length === 0 ? (
-              <Card>
-                <CardContent className="items-center gap-3 py-8">
-                  <Icon as={BookOpen} className="text-muted-foreground/40 size-12" />
-                  <Text className="text-muted-foreground text-center font-medium">{q('empty_title', { name: scopeName })}</Text>
-                  <Text className="text-muted-foreground text-center text-sm">{gradeOnly ? q('empty_body_grade') : q('empty_body_section')}</Text>
-                  <Button onPress={seed} disabled={seeding}>
-                    <Icon as={Wand2} className="text-primary-foreground size-4" />
-                    <Text>{q('seed')}</Text>
-                  </Button>
-                </CardContent>
-              </Card>
+              <EmptyState icon={BookOpen} title={q('empty_title', { name: scopeName })} body={gradeOnly ? q('empty_body_grade') : q('empty_body_section')} actionLabel={seeding ? undefined : q('seed')} onAction={seeding ? undefined : seed} />
             ) : (
               filtered.map((r) => <RequirementCard key={r.id} req={r} checked={selected.has(r.id)} onCheck={() => toggleOne(r.id)} teacherOptions={teacherOptions} roomOptions={roomOptions} onPatch={(b) => patch(r.id, b)} onDelete={() => remove(r.id)} />)
             )}
@@ -390,15 +380,20 @@ function RequirementCard({
   return (
     <Card className={cn(!req.is_active && 'opacity-60')}>
       <CardContent className="gap-3 pt-4">
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-3">
           <CheckRow checked={checked} onPress={onCheck} label="" />
-          <Text className="flex-1 font-medium" numberOfLines={1}>
-            {req.subject_name || req.subject_id}
-            {req.subject_code ? <Text className="text-muted-foreground text-xs"> ({req.subject_code})</Text> : null}
-          </Text>
-          <Button size="icon" variant="ghost" onPress={onDelete} accessibilityLabel={t('common.delete')}>
-            <Icon as={Trash2} className="text-destructive size-4" />
-          </Button>
+          <IconTile icon={BookOpen} />
+          <View className="flex-1">
+            <Text className="text-sm font-semibold" numberOfLines={1}>
+              {req.subject_name || req.subject_id}
+            </Text>
+            {req.subject_code ? (
+              <Text variant="muted" className="text-[11px]">
+                {req.subject_code}
+              </Text>
+            ) : null}
+          </View>
+          <RowActions onDelete={onDelete} deleteLabel={t('common.delete')} />
         </View>
         <View className="gap-1">
           <Label>{q('f_teacher')}</Label>

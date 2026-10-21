@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAcademicYear } from '@/features/admin/use-academic-year';
 import { useCurrency } from '@/features/admin/use-currency';
@@ -79,8 +80,13 @@ export default function StaffPayments() {
           keyboardShouldPersistTaps="handled"
           renderItem={({ item: x }) => (
             <Pressable onPress={() => setPicked(x)} className="active:bg-muted border-border border-b px-4 py-3">
-              <Text className="text-primary font-medium">{nameOf(x)}</Text>
-              <Text className="text-muted-foreground text-xs">{[roleLabel(x.role), x.title].filter(Boolean).join(' · ')}</Text>
+              <View className="flex-row items-center gap-3">
+                <Initials name={nameOf(x) || '?'} />
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold">{nameOf(x)}</Text>
+                  <Text className="text-muted-foreground text-xs">{[roleLabel(x.role), x.title].filter(Boolean).join(' · ')}</Text>
+                </View>
+              </View>
             </Pressable>
           )}
         />
@@ -139,7 +145,7 @@ export default function StaffPayments() {
       <Stack.Screen options={{ title: s('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
         <Button variant="ghost" size="sm" className="self-start" onPress={() => setPicked(null)}>
-          <Icon as={ArrowLeft} className="size-4 rtl:rotate-180" />
+          <Icon flipRtl as={ArrowLeft} className="size-4" />
           <Text>{t('common.back')}</Text>
         </Button>
         <Text className="text-lg font-semibold">{`${nameOf(picked)}${picked.title ? ` (${picked.title})` : ''}`}</Text>
@@ -160,7 +166,7 @@ export default function StaffPayments() {
               <Card key={r.id} className="py-3">
                 <CardContent className="gap-1 px-4">
                   <View className="flex-row items-center justify-between">
-                    <Text className="font-medium">{`${new Date(2000, r.month - 1).toLocaleString(undefined, { month: 'long' })} ${r.year}`}</Text>
+                    <Text className="text-sm font-semibold">{`${new Date(2000, r.month - 1).toLocaleString(undefined, { month: 'long' })} ${r.year}`}</Text>
                     {statusBadge(r.status)}
                   </View>
                   <Text className="text-muted-foreground text-xs">{`${s('salary_col_base')}: ${money(r.base_salary)} · ${s('salary_col_allowances')}: ${money(r.total_allowances)} · ${s('salary_col_deductions')}: ${money(r.total_deductions)}`}</Text>
@@ -188,11 +194,11 @@ export default function StaffPayments() {
                 <CardContent className="gap-1 px-4">
                   <View className="flex-row justify-between">
                     <Text className="text-sm">{s('salary_total_paid')}</Text>
-                    <Text className="text-sm text-green-600 dark:text-green-400">{money(totalPaid)}</Text>
+                    <Text className="text-sm text-success ">{money(totalPaid)}</Text>
                   </View>
                   <View className="flex-row justify-between">
                     <Text className="text-sm">{s('salary_total_pending')}</Text>
-                    <Text className="text-sm text-yellow-600">{money(totalDue)}</Text>
+                    <Text className="text-sm text-warning">{money(totalDue)}</Text>
                   </View>
                   <View className="border-border flex-row justify-between border-t pt-1">
                     <Text className="font-bold">{s('salary_grand_total')}</Text>
@@ -225,8 +231,8 @@ export default function StaffPayments() {
                         </Pressable>
                       ) : null}
                     </View>
-                    <Pressable onPress={() => remove(p)} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={8}>
-                      <Icon as={Trash2} className="text-muted-foreground size-4" />
+                    <Pressable onPress={() => remove(p)} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                      <Icon as={Trash2} className="text-destructive size-4" />
                     </Pressable>
                   </CardContent>
                 </Card>

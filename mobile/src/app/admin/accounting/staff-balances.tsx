@@ -15,6 +15,7 @@ import { Text } from '@/components/ui/text';
 import { useAcademicYear } from '@/features/admin/use-academic-year';
 import { useCurrency } from '@/features/admin/use-currency';
 import { useCampus } from '@/features/campus/campus';
+import { PrintTableButton } from '@/features/admin/print-table';
 import { adminAccounting, adminEmployees, adminSalary } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -74,7 +75,7 @@ export default function StaffBalances() {
 
   const status = (r: Row) =>
     r.balance <= 0 ? (
-      <Badge className="bg-green-600">
+      <Badge className="bg-success">
         <Text>{b('status_paid')}</Text>
       </Badge>
     ) : r.total_salary_paid > 0 || r.manual_payments > 0 ? (
@@ -94,8 +95,8 @@ export default function StaffBalances() {
   const cards: [string, string, string?][] = [
     [b('card_total_staff'), String(rows.length)],
     [b('card_with_salaries'), String(rows.filter((r) => r.salary_count > 0).length)],
-    [b('card_total_paid'), money(total('total_salary_paid')), 'text-green-600 dark:text-green-400'],
-    [b('card_total_balance'), money(total('balance')), total('balance') > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'],
+    [b('card_total_paid'), money(total('total_salary_paid')), 'text-success '],
+    [b('card_total_balance'), money(total('balance')), total('balance') > 0 ? 'text-destructive ' : 'text-success '],
   ];
   const sortLabels: Record<SortKey, string> = {
     staff_name: b('col_name'),
@@ -149,8 +150,8 @@ export default function StaffBalances() {
         {(
           [
             [b('footer_total_generated'), total('total_salary_due'), ''],
-            [b('footer_total_paid'), total('total_salary_paid'), 'text-green-600 dark:text-green-400'],
-            [b('footer_total_manual'), total('manual_payments'), 'text-blue-600 dark:text-blue-400'],
+            [b('footer_total_paid'), total('total_salary_paid'), 'text-success '],
+            [b('footer_total_manual'), total('manual_payments'), 'text-brand dark:text-brand-secondary '],
           ] as [string, number, string][]
         ).map(([label, v, tone]) => (
           <View key={label} className="flex-row justify-between">
@@ -168,7 +169,25 @@ export default function StaffBalances() {
 
   return (
     <>
-      <Stack.Screen options={{ title: b('title') }} />
+      <Stack.Screen
+        options={{
+          title: b('title'),
+          headerRight: () => (
+            <PrintTableButton
+              title={b('title')}
+              subtitle={campus?.name}
+              disabled={loading}
+              sections={() => [
+                {
+                  columns: [b('col_name'), b('col_title'), b('col_salary_due'), b('col_salary_paid'), b('col_manual'), b('col_balance')],
+                  rows: sorted.map((r) => [r.staff_name, r.designation || '-', money(r.total_salary_due), money(r.total_salary_paid), money(r.manual_payments), money(r.balance)]),
+                  footer: ['', '', money(total('total_salary_due')), money(total('total_salary_paid')), money(total('manual_payments')), money(total('balance'))],
+                },
+              ]}
+            />
+          ),
+        }}
+      />
       {error ? (
         <ErrorState message={error.message} onRetry={() => [payments, salaries, staff].forEach((x) => x.mutate())} />
       ) : (
@@ -184,7 +203,7 @@ export default function StaffBalances() {
             <View className="border-border gap-1 border-b px-4 py-3">
               <View className="flex-row items-center justify-between gap-2">
                 <View className="flex-1">
-                  <Text className="font-medium">{r.staff_name}</Text>
+                  <Text className="text-sm font-semibold">{r.staff_name}</Text>
                   <Text className="text-muted-foreground text-xs">{r.designation || '-'}</Text>
                 </View>
                 {status(r)}
@@ -192,7 +211,7 @@ export default function StaffBalances() {
               <Text className="text-muted-foreground text-xs">
                 {`${b('col_salary_due')}: ${money(r.total_salary_due)} · ${b('col_salary_paid')}: ${money(r.total_salary_paid)} · ${b('col_manual')}: ${money(r.manual_payments)}`}
               </Text>
-              <Text className={cn('font-semibold', r.balance > 0 ? 'text-red-600 dark:text-red-400' : r.balance < 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground')}>
+              <Text className={cn('font-semibold', r.balance > 0 ? 'text-destructive ' : r.balance < 0 ? 'text-success ' : 'text-muted-foreground')}>
                 {`${b('col_balance')}: ${money(r.balance)}`}
               </Text>
             </View>

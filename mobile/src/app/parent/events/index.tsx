@@ -7,6 +7,9 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from '
 
 import { CalendarGrid, gridMonthRange } from '@/components/app/calendar-grid';
 import { FilterChips } from '@/components/app/filter-chips';
+import { HeroCard } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { raised } from '@/components/app/tile-grid';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { CATEGORY_ICONS, EVENT_CATEGORIES, EVENT_COLORS } from '@/features/admin/events';
@@ -14,6 +17,7 @@ import { useHijriOffset } from '@/features/admin/use-hijri-offset';
 import { NoChild, useChild } from '@/features/parent/child';
 import { adminCalendars, events as eventsApi } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { useColors } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 
 type CalType = 'gregorian' | 'hijri';
@@ -29,6 +33,7 @@ export default function ParentEvents() {
   const { child } = useChild();
   const campusId = child?.campus_id ?? null;
   const offset = useHijriOffset();
+  const colors = useColors();
   const [tab, setTab] = useState<CalType>('gregorian');
   const [category, setCategory] = useState<EventCategory | 'all'>('all');
   const [month, setMonth] = useState(() => new Date());
@@ -81,13 +86,13 @@ export default function ParentEvents() {
         className="bg-background flex-1"
         contentContainerClassName="gap-4 p-4 pb-10"
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([events.mutate(), calendars.mutate(), days.mutate(), counts.mutate()])} />}>
-        <View>
-          <Text className="text-xl font-bold text-[#022172] dark:text-white">{e('title')}</Text>
-          <Text className="text-muted-foreground mt-1 text-sm">
+        <HeroCard>
+          <Text className="text-xl font-bold text-white">{e('title')}</Text>
+          <Text className="text-sm text-white/80">
             {t('app.pa_ev_subtitle')}
-            <Text className="text-sm font-medium text-[#022172] dark:text-blue-400">{child.campus_name}</Text>
+            <Text className="text-sm font-semibold text-white">{child.campus_name}</Text>
           </Text>
-        </View>
+        </HeroCard>
 
         <View className="flex-row flex-wrap gap-2">
           {EVENT_CATEGORIES.map((c) => (
@@ -96,12 +101,13 @@ export default function ParentEvents() {
               onPress={() => setCategory(category === c ? 'all' : c)}
               accessibilityRole="button"
               accessibilityState={{ selected: category === c }}
-              className={cn('bg-card border-border w-[31.5%] flex-row items-center gap-2 rounded-xl border p-2.5', category === c && 'border-2 border-[#022172]')}>
-              <View className="rounded-lg p-1.5" style={{ backgroundColor: `${EVENT_COLORS[c]}20` }}>
+              style={raised(colors.brand)}
+              className={cn('w-[31.5%] flex-row items-center gap-2 rounded-2xl border p-2.5 active:opacity-80', category === c ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border bg-card')}>
+              <View className="rounded-xl p-1.5" style={{ backgroundColor: `${EVENT_COLORS[c]}20` }}>
                 <Icon as={CATEGORY_ICONS[c]} size={16} color={EVENT_COLORS[c]} />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-bold">{counts.data?.[c] ?? 0}</Text>
+                <Text className="text-brand dark:text-foreground text-lg font-bold">{counts.data?.[c] ?? 0}</Text>
                 <Text className="text-muted-foreground text-[10px]" numberOfLines={1}>
                   {e(`categories.${c}`)}
                 </Text>
@@ -134,15 +140,15 @@ export default function ParentEvents() {
         />
 
         {loading ? (
-          <View className="border-border bg-card h-80 items-center justify-center rounded-xl border">
+          <Panel className="h-80 items-center justify-center">
             <ActivityIndicator />
             <Text className="text-muted-foreground mt-3 text-sm">{e('loading_calendar')}</Text>
-          </View>
+          </Panel>
         ) : (
           <View>
             {updating ? (
-              <View className="bg-background/90 border-border absolute end-2 top-2 z-10 flex-row items-center gap-2 rounded-full border px-3 py-1">
-                <View className="size-2 rounded-full bg-blue-500" />
+              <View className="bg-card/95 border-info-soft dark:border-border absolute end-2 top-2 z-10 flex-row items-center gap-2 rounded-full border px-3 py-1">
+                <View className="size-2 rounded-full bg-brand" />
                 <Text className="text-muted-foreground text-xs">{e('status_updating')}</Text>
               </View>
             ) : null}

@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { campusIdsAllowed } from '../utils/campus-validation'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { authService } from '../services/auth.service'
+import { requestAccountDeletion } from '../services/account-deletion.service'
 import { supabase } from '../config/supabase'
 import { twoFAService } from '../services/two-fa.service'
 import { userAgreementService } from '../services/user-agreement.service'
@@ -364,5 +365,24 @@ export const forcePasswordChangeStatus = async (req: Request, res: Response) => 
   } catch (error: any) {
     console.error('Error in forcePasswordChangeStatus:', error)
     res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+/**
+ * POST /api/auth/delete-account
+ * Body: { reason?: string }
+ * The signed-in user deletes their own account (store requirement). The app confirms the current
+ * password first. Sign-in is turned off at once; the data is erased by the school / platform team.
+ */
+export const deleteAccount = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    if (!profile?.id) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    const result = await requestAccountDeletion({ id: profile.id, role: profile.role, school_id: profile.school_id }, req.body?.reason)
+    if (result.ok === false) return res.status(result.status).json({ success: false, error: result.error, code: result.code })
+    res.json({ success: true, message: 'Account deletion requested' })
+  } catch (error: any) {
+    console.error('Error in deleteAccount:', error)
+    res.status(500).json({ success: false, error: 'Could not delete the account. Please try again.' })
   }
 }

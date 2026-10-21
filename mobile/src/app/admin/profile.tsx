@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
-import { Clock, Mail, Phone, Share2, ShieldCheck, type LucideIcon } from 'lucide-react-native';
+import { Clock, Download, Mail, Phone, Share2, ShieldCheck, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Share, View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { colors } from '@/lib/colors';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +12,8 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { env } from '@/lib/env';
+import { qrGifBase64 } from '@/lib/print';
+import { shareBase64File } from '@/lib/share-file';
 
 /** The admin's own account details and identity QR (web: /admin/profile). */
 export default function AdminProfile() {
@@ -31,7 +34,7 @@ export default function AdminProfile() {
       </View>
       <View className="flex-1">
         <Text className="text-muted-foreground text-sm">{label}</Text>
-        <Text className="font-medium" selectable>
+        <Text className="text-sm font-semibold" selectable>
           {value}
         </Text>
       </View>
@@ -64,10 +67,10 @@ export default function AdminProfile() {
               <Text className="text-lg font-semibold">{p('account_info')}</Text>
               <Text className="text-muted-foreground text-sm">{p('account_info_desc')}</Text>
             </View>
-            {info(Mail, 'bg-blue-100 dark:bg-blue-900', p('email'), profile.email || '—')}
-            {info(Phone, 'bg-green-100 dark:bg-green-900', p('phone'), profile.phone || '—')}
-            {info(Clock, 'bg-purple-100 dark:bg-purple-900', p('last_login'), lastLogin)}
-            {info(ShieldCheck, 'bg-orange-100 dark:bg-orange-900', p('role'), role || '—')}
+            {info(Mail, 'bg-info-soft ', p('email'), profile.email || '—')}
+            {info(Phone, 'bg-success-soft ', p('phone'), profile.phone || '—')}
+            {info(Clock, 'bg-chart-6/10 ', p('last_login'), lastLogin)}
+            {info(ShieldCheck, 'bg-warning-soft ', p('role'), role || '—')}
           </CardContent>
         </Card>
 
@@ -78,12 +81,16 @@ export default function AdminProfile() {
               <Text className="text-muted-foreground text-sm">{p('qr_desc')}</Text>
             </View>
             <View className="rounded-xl bg-white p-4" accessibilityRole="image" accessibilityLabel={p('qr_title')}>
-              <QRCode value={qrValue} size={200} bgColor="#FFFFFF" fgColor="#000000" />
+              <QRCode value={qrValue} size={200} bgColor={colors.white} fgColor={colors.black} />
             </View>
             <Text className="text-center font-medium">{[name, role].filter(Boolean).join(' · ')}</Text>
             <Button variant="outline" onPress={() => Share.share({ message: qrValue })}>
               <Icon as={Share2} className="size-4" />
               <Text>{t('app.qr_share')}</Text>
+            </Button>
+            <Button variant="outline" onPress={() => shareBase64File(`qr-${profile.id.slice(0, 8)}.gif`, qrGifBase64(qrValue), 'image/gif')}>
+              <Icon as={Download} className="size-4" />
+              <Text>{t('app.qr_save_image')}</Text>
             </Button>
           </CardContent>
         </Card>

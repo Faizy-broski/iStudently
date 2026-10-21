@@ -110,15 +110,14 @@ export default function ScaleGrades() {
                 {x.comment ? <Text className="text-muted-foreground text-xs">{x.comment}</Text> : null}
               </View>
               <Pressable
-                hitSlop={8}
                 accessibilityLabel={t('app.bl_delete')}
                 onPress={async () => {
                   if (!(await confirm({ title: t('app.bl_delete'), body: x.title, destructive: true, confirmLabel: t('app.bl_delete') }))) return;
                   const res = await adminGrades.deleteScaleGrade(id, x.id);
                   if (!res.success) return toast.error(res.error || s('toast_save_failed'));
                   rows.mutate();
-                }}>
-                <Icon as={Trash2} className="text-muted-foreground size-4" />
+                }} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </Pressable>
           )}

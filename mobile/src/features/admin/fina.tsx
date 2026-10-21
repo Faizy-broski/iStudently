@@ -28,12 +28,14 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
+import { IconTile, RowPill } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -65,14 +67,14 @@ export function useFinaViewer() {
 export const isFinaKey = (k: unknown) => Array.isArray(k) && k[0] === 'admin' && typeof k[1] === 'string' && k[1].startsWith('fina-');
 
 export const POST_TYPE_META: Record<FinaPostType, { icon: LucideIcon; color: string; bg: string }> = {
-  activity: { icon: Backpack, color: '#1d4ed8', bg: '#eff6ff' },
-  announcement: { icon: Megaphone, color: '#1e3a8a', bg: '#eef2ff' },
-  achievement: { icon: Trophy, color: '#b45309', bg: '#fffbeb' },
-  congratulation: { icon: PartyPopper, color: '#be185d', bg: '#fdf2f8' },
-  urgent: { icon: Zap, color: '#b91c1c', bg: '#fef2f2' },
-  resource: { icon: BookOpen, color: '#15803d', bg: '#f0fdf4' },
-  poll: { icon: BarChart3, color: '#7e22ce', bg: '#faf5ff' },
-  reminder: { icon: AlarmClock, color: '#c2410c', bg: '#fff7ed' },
+  activity: { icon: Backpack, color: colors.brand, bg: colors.infoSoft },
+  announcement: { icon: Megaphone, color: colors.brand, bg: colors.infoSoft },
+  achievement: { icon: Trophy, color: colors.warning, bg: colors.warningSoft },
+  congratulation: { icon: PartyPopper, color: colors.chart8, bg: colors.printSurface },
+  urgent: { icon: Zap, color: colors.destructive, bg: colors.destructiveSoft },
+  resource: { icon: BookOpen, color: colors.success, bg: colors.successSoft },
+  poll: { icon: BarChart3, color: colors.chart6, bg: colors.printSurface },
+  reminder: { icon: AlarmClock, color: colors.warning, bg: colors.warningSoft },
 };
 export const POST_TYPES = Object.keys(POST_TYPE_META) as FinaPostType[];
 
@@ -124,7 +126,7 @@ export function GatedImage({ mediaId, variant = 'md', raw, thumb, className }: {
 }
 
 function Comments({ post }: { post: FinaPost }) {
-  const { f } = useFn('wall');
+  const { f, t } = useFn('wall');
   const toast = useToast();
   const { campusId } = useCampus();
   const { role, profileId } = useFinaViewer();
@@ -161,24 +163,24 @@ function Comments({ post }: { post: FinaPost }) {
 
   const list = res.data ?? [];
   return (
-    <View className="border-border gap-2 border-t pt-3">
+    <View className="border-info-soft dark:border-border gap-2.5 border-t pt-3">
       {res.isLoading ? (
         <ActivityIndicator />
       ) : !list.length ? (
         <Text className="text-muted-foreground text-xs">{f('no_comments_yet')}</Text>
       ) : (
         list.map((c) => (
-          <View key={c.id} className="flex-row items-start gap-2">
+          <View key={c.id} className="bg-muted/50 flex-row items-start gap-2 rounded-xl px-3 py-2">
             <Text className="flex-1 text-sm">
               <Text className="text-sm font-semibold">{personName(c.author) || '—'}</Text> {c.body}
-              {c.state === 'pending' ? <Text className="text-xs text-amber-600"> · {f('comment_pending_badge')}</Text> : null}
+              {c.state === 'pending' ? <Text className="text-xs text-warning"> · {f('comment_pending_badge')}</Text> : null}
             </Text>
             {c.state === 'pending' && canModerate ? (
               <View className="flex-row gap-1">
-                <Pressable onPress={() => moderate(c, 'approve')} disabled={busy === c.id} hitSlop={6} className="p-1" accessibilityLabel={f('moderate_approve')}>
-                  <Icon as={Check} className="size-4 text-green-600" />
+                <Pressable onPress={() => moderate(c, 'approve')} disabled={busy === c.id} hitSlop={6} className="bg-success-soft size-8 items-center justify-center rounded-full active:opacity-70" accessibilityLabel={f('moderate_approve')}>
+                  <Icon as={Check} className="size-4 text-success" />
                 </Pressable>
-                <Pressable onPress={() => moderate(c, 'reject')} disabled={busy === c.id} hitSlop={6} className="p-1" accessibilityLabel={f('moderate_reject')}>
+                <Pressable onPress={() => moderate(c, 'reject')} disabled={busy === c.id} hitSlop={6} className="bg-destructive-soft size-8 items-center justify-center rounded-full active:opacity-70" accessibilityLabel={f('moderate_reject')}>
                   <Icon as={X} className="text-destructive size-4" />
                 </Pressable>
               </View>
@@ -189,7 +191,7 @@ function Comments({ post }: { post: FinaPost }) {
       {post.comments_enabled ? (
         <View className="flex-row items-center gap-2">
           <Input className="flex-1" value={body} onChangeText={setBody} placeholder={f('write_comment_placeholder')} returnKeyType="send" onSubmitEditing={send} />
-          <Button size="icon" onPress={send} disabled={busy === 'send' || !body.trim()}>
+          <Button size="icon" className="rounded-full" onPress={send} disabled={busy === 'send' || !body.trim()} accessibilityLabel={t('app.a11y_send')}>
             <Icon as={Send} className="text-primary-foreground size-4" />
           </Button>
         </View>
@@ -219,19 +221,32 @@ export function PostCard({ post, onDeleted }: { post: FinaPost; onDeleted: (id: 
 
   async function react(kind: FinaReactionKind) {
     setPicker(false);
-    const had = !!mine;
+    const prev = { mine, count, isSuper };
     setMine(kind);
-    setCount((n) => (had ? n : n + 1));
+    setCount((n) => (prev.mine ? n : n + 1));
     setIsSuper(superReactor);
     const r = await fina.setReaction(postId, kind, campusId);
+    if (!r.success) {
+      setMine(prev.mine);
+      setCount(prev.count);
+      setIsSuper(prev.isSuper);
+      return toast.error(r.error || '');
+    }
     if (r.data?.promotedToHonorRoll) setHonor(true);
   }
   async function clear() {
     setPicker(false);
+    const prev = { mine, count, isSuper };
     setMine(null);
     setCount((n) => Math.max(0, n - 1));
     setIsSuper(false);
-    await fina.removeReaction(postId, campusId);
+    const r = await fina.removeReaction(postId, campusId);
+    if (!r.success) {
+      setMine(prev.mine);
+      setCount(prev.count);
+      setIsSuper(prev.isSuper);
+      toast.error(r.error || '');
+    }
   }
   async function togglePin() {
     const next = !pinned;
@@ -253,10 +268,9 @@ export function PostCard({ post, onDeleted }: { post: FinaPost; onDeleted: (id: 
   const preview = post.media.slice(0, 4);
   const extra = post.media.length - preview.length;
   return (
-    <Card>
-      <CardContent className="gap-3 pt-4">
+    <Panel className="gap-3 p-4">
         <View className="flex-row items-start gap-3">
-          <View className="size-9 items-center justify-center rounded-full" style={{ backgroundColor: meta.bg }}>
+          <View className="size-10 items-center justify-center rounded-xl" style={{ backgroundColor: meta.bg }}>
             <Icon as={meta.icon} className="size-4" color={meta.color} />
           </View>
           <View className="flex-1 gap-0.5">
@@ -268,23 +282,23 @@ export function PostCard({ post, onDeleted }: { post: FinaPost; onDeleted: (id: 
                 </View>
               ) : null}
               {honor ? (
-                <View className="flex-row items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 dark:bg-yellow-900">
-                  <Icon as={Sparkles} className="size-3 text-yellow-700 dark:text-yellow-300" />
-                  <Text className="text-xs text-yellow-800 dark:text-yellow-200">{f('wall.spotlight_badge')}</Text>
+                <View className="flex-row items-center gap-1 rounded-full bg-warning-soft px-2.5 py-1">
+                  <Icon as={Sparkles} className="size-3 text-warning" />
+                  <Text className="text-[11px] font-semibold text-warning">{f('wall.spotlight_badge')}</Text>
                 </View>
               ) : null}
-              <Text className="text-xs font-medium" style={{ color: meta.color }}>
+              <Text className="text-xs font-semibold" style={{ color: meta.color }}>
                 {f(`posts.type_${post.type}`)}
               </Text>
             </View>
-            {post.title ? <Text className="font-semibold">{post.title}</Text> : null}
+            {post.title ? <Text className="text-sm font-semibold">{post.title}</Text> : null}
           </View>
           {canModerate ? (
-            <View className="flex-row gap-1">
-              <Pressable onPress={togglePin} hitSlop={6} className="p-1" accessibilityLabel={pinned ? f('wall.unpin_post') : f('wall.pin_post')}>
-                <Icon as={pinned ? PinOff : Pin} className="text-muted-foreground size-4" />
+            <View className="flex-row gap-2">
+              <Pressable onPress={togglePin} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70" accessibilityLabel={pinned ? f('wall.unpin_post') : f('wall.pin_post')}>
+                <Icon as={pinned ? PinOff : Pin} className="text-brand dark:text-brand-secondary size-4" />
               </Pressable>
-              <Pressable onPress={remove} hitSlop={6} className="p-1" accessibilityLabel={f('wall.delete_post')}>
+              <Pressable onPress={remove} accessibilityLabel={f('wall.delete_post')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                 <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </View>
@@ -294,7 +308,7 @@ export function PostCard({ post, onDeleted }: { post: FinaPost; onDeleted: (id: 
         {preview.length ? (
           <View className="flex-row flex-wrap gap-1">
             {preview.map((m, i) => (
-              <View key={m.id} className={cn('overflow-hidden rounded-md', preview.length === 1 ? 'aspect-video w-full' : 'aspect-square w-[49%]')}>
+              <View key={m.id} className={cn('overflow-hidden rounded-xl', preview.length === 1 ? 'aspect-video w-full' : 'aspect-square w-[49%]')}>
                 <GatedImage mediaId={m.id} variant="sm" className="size-full" />
                 {i === preview.length - 1 && extra > 0 ? (
                   <View className="absolute inset-0 items-center justify-center bg-black/50">
@@ -313,29 +327,29 @@ export function PostCard({ post, onDeleted }: { post: FinaPost; onDeleted: (id: 
           <Pressable
             onPress={() => (mine ? setPicker((p) => !p) : react('clap'))}
             onLongPress={() => setPicker(true)}
-            className={cn('flex-row items-center gap-1 rounded-full px-2 py-1', mine ? 'bg-amber-50 dark:bg-amber-950' : '', isSuper && 'border border-yellow-400')}>
+            className={cn('flex-row items-center gap-1 rounded-full px-2.5 py-1', mine ? 'bg-warning-soft' : 'bg-muted', isSuper && 'border border-warning')}>
             <Text>{emojiOf(mine)}</Text>
-            <Text className={cn('text-sm', mine && 'text-amber-700 dark:text-amber-300')}>{count}</Text>
-            {isSuper ? <Text className="text-xs font-bold text-yellow-600">×3</Text> : null}
+            <Text className={cn('text-sm', mine && 'text-warning ')}>{count}</Text>
+            {isSuper ? <Text className="text-xs font-bold text-warning">×3</Text> : null}
           </Pressable>
           {post.comments_enabled ? (
-            <Pressable onPress={() => setShowComments((s) => !s)} className="flex-row items-center gap-1" hitSlop={6}>
+            <Pressable onPress={() => setShowComments((s) => !s)} className="bg-muted flex-row items-center gap-1 rounded-full px-2.5 py-1 active:opacity-70" hitSlop={6}>
               <Icon as={MessageCircle} className="text-muted-foreground size-4" />
               <Text className="text-muted-foreground text-sm">{post.commentsCount}</Text>
             </Pressable>
           ) : null}
         </View>
         {picker ? (
-          <View className="border-border gap-2 rounded-lg border p-2">
+          <View className="border-info-soft dark:border-border bg-card gap-2 rounded-2xl border p-2">
             {superReactor ? (
               <View className="flex-row items-center gap-1">
-                <Icon as={Sparkles} className="size-3 text-yellow-600" />
-                <Text className="text-xs text-yellow-700 dark:text-yellow-300">{f('wall.super_reaction_hint')}</Text>
+                <Icon as={Sparkles} className="size-3 text-warning" />
+                <Text className="text-xs text-warning ">{f('wall.super_reaction_hint')}</Text>
               </View>
             ) : null}
             <View className="flex-row flex-wrap justify-between">
               {REACTIONS.map((r) => (
-                <Pressable key={r.kind} onPress={() => react(r.kind)} accessibilityLabel={t(`fina.reactions.${r.kind}`)} className={cn('rounded-md p-2', mine === r.kind && 'bg-amber-50 dark:bg-amber-950')}>
+                <Pressable key={r.kind} onPress={() => react(r.kind)} accessibilityLabel={t(`fina.reactions.${r.kind}`)} className={cn('rounded-xl p-2', mine === r.kind && 'bg-warning-soft')}>
                   <Text className="text-xl">{r.emoji}</Text>
                 </Pressable>
               ))}
@@ -348,8 +362,7 @@ export function PostCard({ post, onDeleted }: { post: FinaPost; onDeleted: (id: 
           </View>
         ) : null}
         {showComments && post.comments_enabled ? <Comments post={post} /> : null}
-      </CardContent>
-    </Card>
+    </Panel>
   );
 }
 
@@ -366,17 +379,17 @@ export function StoriesBar() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
         {list.map((s) => (
           <Pressable key={s.id} onPress={() => setViewing(s.media_id)} className="w-16 items-center gap-1">
-            <View className="size-16 overflow-hidden rounded-full border-2 border-[#022172]">
+            <View className="size-16 overflow-hidden rounded-full border-2 border-brand-secondary">
               <GatedImage mediaId={s.media_id} variant="thumb" className="size-full" />
             </View>
-            <Text className="text-xs" numberOfLines={1}>
+            <Text className="text-[11px] font-medium" numberOfLines={1}>
               {s.author?.first_name || f('story')}
             </Text>
           </Pressable>
         ))}
       </ScrollView>
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
-        <DialogContent className="w-[94vw] max-w-md p-2">{viewing ? <GatedImage mediaId={viewing} variant="lg" className="aspect-[3/4] w-full rounded-md" /> : null}</DialogContent>
+        <DialogContent className="w-[94vw] max-w-md p-2">{viewing ? <GatedImage mediaId={viewing} variant="lg" className="aspect-[3/4] w-full rounded-xl" /> : null}</DialogContent>
       </Dialog>
     </>
   );
@@ -416,18 +429,14 @@ export function ClassGoals() {
 
   const list = goals.data ?? [];
   return (
-    <Card>
-      <CardContent className="gap-3 pt-4">
-        <View className="flex-row items-center gap-2">
-          <Icon as={Target} className="text-primary size-4" />
+    <Panel className="gap-3 p-4">
+        <View className="flex-row items-center gap-2.5">
+          <IconTile icon={Target} size={32} />
           <Text className="flex-1 font-semibold">{f('class_goals_title')}</Text>
-          <Button size="sm" variant="ghost" onPress={() => setOpen((o) => !o)}>
-            <Icon as={Plus} className="text-foreground size-4" />
-            <Text>{f('class_goal_create')}</Text>
-          </Button>
+          <RowPill icon={Plus} label={f('class_goal_create')} onPress={() => setOpen((o) => !o)} />
         </View>
         {open ? (
-          <View className="gap-2">
+          <View className="bg-muted/50 gap-2 rounded-2xl p-3">
             <Picker
               value={grade}
               onChange={(v) => {
@@ -465,19 +474,18 @@ export function ClassGoals() {
                 <Text className="flex-1 text-sm" numberOfLines={1}>
                   {where} · {emoji} {t(`fina.reactions.${g.reaction_kind}`)}
                 </Text>
-                <Text className="text-muted-foreground text-xs">
+                <Text className="text-muted-foreground text-xs font-semibold">
                   {g.currentCount}/{g.target_count}
                 </Text>
               </View>
-              <View className="bg-muted h-2 overflow-hidden rounded-full">
-                <View className={cn('h-full rounded-full', reached ? 'bg-green-500' : 'bg-amber-400')} style={{ width: `${pct}%` }} />
+              <View className="bg-muted h-1.5 overflow-hidden rounded-full">
+                <View className={cn('h-full rounded-full', reached ? 'bg-success' : 'bg-warning')} style={{ width: `${pct}%` }} />
               </View>
-              {reached ? <Text className="text-xs text-green-600">{f('class_goal_target_reached')}</Text> : null}
+              {reached ? <Text className="text-xs font-medium text-success">{f('class_goal_target_reached')}</Text> : null}
             </View>
           );
         })}
-      </CardContent>
-    </Card>
+    </Panel>
   );
 }
 
@@ -489,7 +497,7 @@ export function NotificationBell({ href = '/admin/fina/notifications' }: { href?
   const unread = res.data?.count ?? 0;
   return (
     <Pressable onPress={() => router.push(href)} hitSlop={8} className="p-1" accessibilityLabel={a('fn_notifications')}>
-      <Icon as={Bell} className="text-foreground size-5" />
+      <Icon as={Bell} className="text-brand dark:text-brand-secondary size-5" />
       {unread > 0 ? (
         <View className="bg-destructive absolute -end-0.5 -top-0.5 min-w-4 items-center rounded-full px-1">
           <Text className="text-[10px] font-bold text-white">{unread > 9 ? '9+' : unread}</Text>

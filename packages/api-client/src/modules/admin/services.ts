@@ -29,6 +29,7 @@ export interface SchoolServiceInput {
   charge_frequency: ChargeFrequency
   default_charge: number
   is_mandatory: boolean
+  display_order?: number
 }
 
 export function adminServicesApi(api: ApiClient) {
@@ -41,5 +42,9 @@ export function adminServicesApi(api: ApiClient) {
     remove: (serviceId: string) => api.del<void>(`/school-services/${id(serviceId)}`),
     setGradeCharges: (serviceId: string, charges: { grade_level_id: string; charge_amount: number }[]) =>
       api.put<unknown>(`/school-services/${id(serviceId)}/grade-charges`, { charges }),
+    /** Active services offered to a new student (web AddStudentForm: getServices(true, campus)). */
+    active: (campusId?: string) => api.get<SchoolService[]>(`/school-services${qs({ active: 'true', campus_id: campusId })}`),
+    /** Subscribe a student to services (web: subscribeStudentToServices). */
+    subscribeStudent: (studentId: string, serviceIds: string[]) => api.post<unknown>(`/school-services/student/${id(studentId)}/subscribe`, { serviceIds }),
   }
 }

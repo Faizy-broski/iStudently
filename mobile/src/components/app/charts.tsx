@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { ScrollView, useColorScheme, View, type LayoutChangeEvent } from 'react-native';
+import { ScrollView, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, G, Line, Path, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
-import { NAV_THEME } from '@/lib/theme';
+import { chartPalette, useColors } from '@/lib/colors';
 
 /** Same series palette as the web charts. */
-export const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6366f1'];
+/** Series colour for index i (the chart palette from src/global.css, repeating). */
+export const chartColor = (i: number) => {
+  const p = chartPalette();
+  return p[i % p.length];
+};
 
 export interface ChartSeries {
   name: string;
@@ -22,9 +26,8 @@ function niceMax(v: number) {
 }
 
 function useChartColors() {
-  const dark = useColorScheme() === 'dark';
-  const c = NAV_THEME[dark ? 'dark' : 'light'].colors;
-  return { text: dark ? '#a1a1aa' : '#71717a', grid: c.border };
+  const c = useColors();
+  return { text: c.mutedForeground, grid: c.border };
 }
 
 export function ChartLegend({ series }: { series: { name: string; color?: string }[] }) {
@@ -32,7 +35,7 @@ export function ChartLegend({ series }: { series: { name: string; color?: string
     <View className="flex-row flex-wrap gap-x-4 gap-y-1.5">
       {series.map((s, i) => (
         <View key={`${s.name}-${i}`} className="flex-row items-center gap-1.5">
-          <View className="size-3 rounded-sm" style={{ backgroundColor: s.color ?? CHART_COLORS[i % CHART_COLORS.length] }} />
+          <View className="size-3 rounded-sm" style={{ backgroundColor: s.color ?? chartColor(i) }} />
           <Text className="text-xs">{s.name}</Text>
         </View>
       ))}
@@ -48,7 +51,7 @@ export function BarChart({ categories, series, stacked, height = 260, yLabel }: 
   const colors = useChartColors();
   const [width, setWidth] = useState(0);
   const [tip, setTip] = useState<string | null>(null);
-  const palette = series.map((s, i) => s.color ?? CHART_COLORS[i % CHART_COLORS.length]);
+  const palette = series.map((s, i) => s.color ?? chartColor(i));
   const totals = categories.map((_, ci) => (stacked ? series.reduce((sum, s) => sum + (s.values[ci] ?? 0), 0) : Math.max(0, ...series.map((s) => s.values[ci] ?? 0))));
   const max = niceMax(Math.max(0, ...totals));
   const left = 34;
@@ -115,7 +118,7 @@ export function LineChart({ categories, series, height = 240, area }: { categori
   const colors = useChartColors();
   const [width, setWidth] = useState(0);
   const [tip, setTip] = useState<string | null>(null);
-  const palette = series.map((s, i) => s.color ?? CHART_COLORS[i % CHART_COLORS.length]);
+  const palette = series.map((s, i) => s.color ?? chartColor(i));
   const max = niceMax(Math.max(0, ...series.flatMap((s) => s.values.map((v) => v ?? 0))));
   const left = 34;
   const bottom = 34;
@@ -183,7 +186,7 @@ export function PieChart({ data, size = 200, donut = true }: { data: { name: str
       sweep >= Math.PI * 2 - 1e-6
         ? `M ${p(r, 0)} A ${r} ${r} 0 1 1 ${p(r, Math.PI)} A ${r} ${r} 0 1 1 ${p(r, 0)} ${inner ? `M ${p(inner, 0)} A ${inner} ${inner} 0 1 0 ${p(inner, Math.PI)} A ${inner} ${inner} 0 1 0 ${p(inner, 0)}` : ''} Z`
         : `M ${p(r, a0)} A ${r} ${r} 0 ${large} 1 ${p(r, a1)} L ${p(inner, a1)} ${inner ? `A ${inner} ${inner} 0 ${large} 0 ${p(inner, a0)}` : ''} Z`;
-    return { path, color: d.color ?? CHART_COLORS[i % CHART_COLORS.length], d };
+    return { path, color: d.color ?? chartColor(i), d };
   });
   return (
     <View className="items-center gap-3">

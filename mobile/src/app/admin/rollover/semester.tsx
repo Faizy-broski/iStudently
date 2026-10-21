@@ -23,12 +23,12 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 const STATUS_TONE: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  promoted: 'bg-blue-100 text-blue-800',
-  retained: 'bg-gray-100 text-gray-700',
-  dropped: 'bg-red-100 text-red-800',
-  graduated: 'bg-green-100 text-green-800',
-  transferred: 'bg-purple-100 text-purple-800',
+  pending: 'bg-warning-soft text-warning',
+  promoted: 'bg-info-soft text-brand dark:text-brand-secondary',
+  retained: 'bg-muted text-muted-foreground',
+  dropped: 'bg-destructive-soft text-destructive',
+  graduated: 'bg-success-soft text-success',
+  transferred: 'bg-chart-6/10 text-chart-6',
 };
 const STATUSES = ['pending', 'promoted', 'retained', 'dropped', 'graduated', 'transferred'] as const;
 
@@ -123,11 +123,11 @@ export default function SemesterRollover() {
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10">
         <Text className="text-muted-foreground text-sm">{s('subtitle')}</Text>
         <Button size="sm" variant="outline" className="self-start" onPress={() => router.push('/admin/rollover')}>
-          <Icon as={ArrowLeft} className="text-foreground size-4 rtl:rotate-180" />
+          <Icon flipRtl as={ArrowLeft} className="text-foreground size-4" />
           <Text>{s('btn_year_end_rollover')}</Text>
         </Button>
 
-        <View className="border-border gap-1 rounded-md border p-3">
+        <View className="border-info-soft dark:border-border gap-1 rounded-xl border p-3">
           <View className="flex-row items-center gap-2">
             <Icon as={Info} className="text-foreground size-4" />
             <Text className="font-semibold">{s('how_it_works_title')}</Text>
@@ -140,9 +140,9 @@ export default function SemesterRollover() {
         </View>
 
         {!fyList.length ? (
-          <View className="flex-row gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950/30">
-            <Icon as={AlertTriangle} className="size-4 text-amber-500" />
-            <Text className="flex-1 text-sm text-amber-800 dark:text-amber-300">{a('no_fy')}</Text>
+          <View className="flex-row gap-2 rounded-xl border border-warning/30 bg-warning-soft p-3">
+            <Icon as={AlertTriangle} className="size-4 text-warning" />
+            <Text className="flex-1 text-sm text-warning ">{a('no_fy')}</Text>
             <Button size="sm" variant="outline" onPress={() => router.push('/admin/marking-periods')}>
               <Text>{t('school.marking_periods.title')}</Text>
             </Button>
@@ -157,7 +157,7 @@ export default function SemesterRollover() {
             </View>
             <Label>{s('label_academic_year')}</Label>
             <Picker value={fyId} onChange={changeYear} placeholder={a('select_year')} options={fyList.map((f) => ({ value: f.id, label: `${f.title}${matchYear(f, years)?.is_current ? ` ${t('app.tr_current')}` : ''}` }))} />
-            {fyId && !matched ? <Text className="text-xs text-amber-600">{a('no_match_year')}</Text> : null}
+            {fyId && !matched ? <Text className="text-xs text-warning">{a('no_match_year')}</Text> : null}
             <Label>{s('label_semester')}</Label>
             {semesters.length ? (
               <Picker value={semId} onChange={setSemId} placeholder={s('placeholder_select_semester')} options={semesters.map((x) => ({ value: x.id, label: x.title }))} />
@@ -202,21 +202,21 @@ export default function SemesterRollover() {
         ) : null}
 
         {result?.success ? (
-          <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+          <Card className="border-success/30 bg-success-soft ">
             <CardContent className="gap-3 pt-4">
               <View className="flex-row items-center gap-2">
-                <Icon as={CheckCircle2} className="size-5 text-green-600" />
-                <Text className="font-semibold text-green-900 dark:text-green-300">{s('rollover_complete')}</Text>
+                <Icon as={CheckCircle2} className="size-5 text-success" />
+                <Text className="font-semibold text-success ">{s('rollover_complete')}</Text>
               </View>
               <View className="flex-row flex-wrap justify-around gap-3">
                 {(['promoted', 'retained', 'dropped', 'graduated', 'transferred'] as const).map((k) => (
                   <View key={k} className="items-center">
-                    <Text className="text-2xl font-bold text-green-900 dark:text-green-300">{result[k]}</Text>
-                    <Text className="text-xs text-green-700">{t(`common.${k}`)}</Text>
+                    <Text className="text-2xl font-bold text-success ">{result[k]}</Text>
+                    <Text className="text-xs text-success">{t(`common.${k}`)}</Text>
                   </View>
                 ))}
               </View>
-              <Text className="text-center text-xs text-green-700">{s('total_processed', { count: result.total })}</Text>
+              <Text className="text-center text-xs text-success">{s('total_processed', { count: result.total })}</Text>
             </CardContent>
           </Card>
         ) : null}
@@ -236,16 +236,16 @@ export default function SemesterRollover() {
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="w-[94vw] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center uppercase">{s('confirm_title')}</DialogTitle>
+            <DialogTitle className="text-center">{s('confirm_title')}</DialogTitle>
           </DialogHeader>
           <Text className="text-center text-sm font-semibold">{s('confirm_question')}</Text>
           <Text className="text-muted-foreground text-center text-xs">
             {s('semester_end_date_confirm', { date: endDate })}
             {sem ? ` (${sem.title})` : ''}
           </Text>
-          <View className="gap-1 border-s-4 border-yellow-500 bg-yellow-50 p-3 dark:bg-yellow-950/30">
+          <View className="gap-1 border-s-4 border-warning bg-warning-soft p-3 ">
             <View className="flex-row items-center gap-1">
-              <Icon as={AlertTriangle} className="size-4 text-yellow-700" />
+              <Icon as={AlertTriangle} className="size-4 text-warning" />
               <Text className="text-sm font-semibold">{s('warning_title')}</Text>
             </View>
             {[1, 2, 3, 4].map((i) => (

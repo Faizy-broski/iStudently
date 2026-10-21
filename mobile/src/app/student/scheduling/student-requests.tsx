@@ -3,8 +3,9 @@ import { ClipboardList } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { InfoBanner } from '@/features/admin/settings-ui';
 
@@ -15,21 +16,15 @@ export default function StudentRequestsPage() {
   return (
     <>
       <Stack.Screen options={{ title: k('title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
-        <Text variant="muted">{k('subtitle')}</Text>
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={ClipboardList} className="size-5" />
-            <CardTitle>{k('card')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <View className="items-center py-10">
-              <Icon as={ClipboardList} className="text-muted-foreground mb-3 size-12" />
-              <Text className="mb-1 text-lg font-medium">{k('none')}</Text>
-              <Text className="text-muted-foreground text-center text-sm">{k('none_body')}</Text>
-            </View>
-          </CardContent>
-        </Card>
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
+        <Text className="text-muted-foreground text-sm">{k('subtitle')}</Text>
+        <Panel>
+          <View className="flex-row items-center gap-3 px-4 pt-4">
+            <IconTile icon={ClipboardList} size={40} />
+            <Text className="flex-1 text-base font-semibold">{k('card')}</Text>
+          </View>
+          <EmptyState icon={ClipboardList} title={k('none')} body={k('none_body')} />
+        </Panel>
         <InfoBanner>{k('contact')}</InfoBanner>
       </ScrollView>
     </>

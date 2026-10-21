@@ -98,12 +98,12 @@ function Form({ initial }: { initial: ReadingText | null }) {
           <CardContent className="gap-4 pt-4">
             <Text className="font-semibold">{s('quizQuestions')}</Text>
             {quiz.map((q, i) => (
-              <View key={i} className="border-border gap-2 rounded-md border p-3">
+              <View key={i} className="border-info-soft dark:border-border gap-2 rounded-xl border p-3">
                 <View className="flex-row items-center">
                   <Label className="flex-1">
                     {s('questionLabel')} {i + 1}
                   </Label>
-                  <Pressable onPress={() => setQuiz((rows) => rows.filter((_, j) => j !== i))} hitSlop={6} className="p-1">
+                  <Pressable onPress={() => setQuiz((rows) => rows.filter((_, j) => j !== i))} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
@@ -54,10 +54,10 @@ export function DailyTransactionsView({ data }: { data: { data?: PortalPayment[]
         </View>
         <Card>
           <CardContent className="flex-row items-center gap-4 p-4">
-            <Icon as={DollarSign} className="size-10 text-green-500" />
+            <Icon as={DollarSign} className="size-10 text-success" />
             <View>
               <Text className="text-muted-foreground text-sm">{k('monthly_total', { month: months[month], year })}</Text>
-              <Text className="text-3xl font-bold text-green-600">{money(total)}</Text>
+              <Text className="text-3xl font-bold text-success">{money(total)}</Text>
               <Text className="text-muted-foreground text-xs">{k('transactions_count', { count: inMonth.length })}</Text>
             </View>
           </CardContent>
@@ -71,7 +71,7 @@ export function DailyTransactionsView({ data }: { data: { data?: PortalPayment[]
             {days.length === 0 ? (
               <View className="items-center py-10">
                 <Icon as={DollarSign} className="text-muted-foreground mb-3 size-12" />
-                <Text className="text-muted-foreground text-center">{k('no_transactions', { month: months[month], year })}</Text>
+                <EmptyState title={k('no_transactions', { month: months[month], year })} />
               </View>
             ) : (
               days.map(([day, items]) => (
@@ -80,14 +80,14 @@ export function DailyTransactionsView({ data }: { data: { data?: PortalPayment[]
                     {new Date(`${day}T00:00:00`).toLocaleDateString(loc, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                   </Text>
                   {items.map((p) => (
-                    <View key={p.id} className="border-border bg-card flex-row items-center justify-between gap-2 rounded-lg border p-3">
+                    <View key={p.id} className="border-info-soft dark:border-border bg-card flex-row items-center justify-between gap-2 rounded-xl border p-3">
                       <View className="flex-1 flex-row items-center gap-2">
                         <Badge variant="outline">
                           <Text className="text-xs">{p.payment_method || '—'}</Text>
                         </Badge>
                         <Text className="text-muted-foreground flex-1 text-sm">{p.payment_reference || p.fee_name || k('no_reference')}</Text>
                       </View>
-                      <Text className="font-semibold text-green-600">{money(p.amount)}</Text>
+                      <Text className="font-semibold text-success">{money(p.amount)}</Text>
                     </View>
                   ))}
                 </View>

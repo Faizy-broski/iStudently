@@ -10,12 +10,14 @@ import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { useRoleBase } from '@/features/portal/role-base';
 import { FILTER_FACET_KEYS, tt, TYPE_MAP, WORKSHEET_TYPES } from '@/features/admin/qirtasi';
 import { useCampus } from '@/features/campus/campus';
 import { adminQirtasi } from '@/lib/api';
@@ -31,12 +33,12 @@ function Thumb({ id, campusId, type }: { id: string; campusId?: string; type: st
   const url = res.data?.url;
   const info = TYPE_MAP[type];
   return (
-    <View className="bg-muted aspect-[210/297] items-center justify-center overflow-hidden rounded-md border border-black/5">
+    <View className="bg-info-soft border-info-soft dark:border-border aspect-[210/297] items-center justify-center overflow-hidden rounded-xl border">
       {url ? (
         <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
       ) : (
         <>
-          <Icon as={FileText} className="text-muted-foreground size-8" />
+          <Icon as={FileText} className="text-brand dark:text-brand-secondary size-8" />
           <Text className="text-muted-foreground mt-1 text-[10px]">A4 {info ? tt(info.en, info.ar) : ''}</Text>
         </>
       )}
@@ -49,6 +51,7 @@ function Thumb({ id, campusId, type }: { id: string; campusId?: string; type: st
  * (admin/teacher/librarian) also upload, answer key, edit and delete (web: WorksheetLibrary).
  */
 export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
+  const { href: roleHref } = useRoleBase();
   const toast = useToast();
   const confirm = useConfirm();
   const { campusId } = useCampus();
@@ -102,8 +105,8 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
   }
 
   const chip = (label: string, on: boolean, onPress: () => void) => (
-    <Pressable key={label + on} onPress={onPress} className={cn('rounded-full border px-2.5 py-0.5', on ? 'border-primary bg-primary' : 'border-border')}>
-      <Text className={cn('text-[11px] font-medium', on && 'text-primary-foreground')}>{label}</Text>
+    <Pressable key={label + on} onPress={onPress} className={cn('rounded-full border px-3 py-1 active:opacity-70', on ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
+      <Text className={cn('text-[11px] font-semibold', on ? 'text-white' : 'text-muted-foreground')}>{label}</Text>
     </Pressable>
   );
 
@@ -114,7 +117,7 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
         <View className="flex-row items-start gap-3">
           <Text className="text-muted-foreground flex-1 text-sm">{tt('Browse and manage educational worksheets', 'تصفح وإدارة أوراق العمل التعليمية')}</Text>
           {canUpload ? (
-            <Button size="sm" onPress={() => router.push('/admin/qirtasi/worksheet-form')}>
+            <Button size="sm" onPress={() => router.push(roleHref('/qirtasi/worksheet-form'))}>
               <Icon as={Plus} className="text-primary-foreground size-4" />
               <Text>{tt('Upload Worksheet', 'رفع ورقة عمل')}</Text>
             </Button>
@@ -125,8 +128,8 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
           {[{ value: 'all', en: 'All Types', ar: 'جميع الأنواع' }, ...WORKSHEET_TYPES].map((w) => {
             const on = type === w.value;
             return (
-              <Pressable key={w.value} onPress={() => setType(on && w.value !== 'all' ? 'all' : w.value)} className={cn('items-center rounded-xl border px-4 py-3', on ? 'border-primary bg-primary' : 'border-border bg-card')}>
-                <Text className={cn('text-xs font-medium', on && 'text-primary-foreground')}>{tt(w.en, w.ar)}</Text>
+              <Pressable key={w.value} onPress={() => setType(on && w.value !== 'all' ? 'all' : w.value)} className={cn('items-center rounded-2xl border px-4 py-3 active:opacity-70', on ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
+                <Text className={cn('text-xs font-semibold', on ? 'text-white' : 'text-muted-foreground')}>{tt(w.en, w.ar)}</Text>
               </Pressable>
             );
           })}
@@ -146,29 +149,27 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
         </View>
 
         {showFilters ? (
-          <Card>
-            <CardContent className="gap-3 pt-4">
-              <Text className="text-xs font-semibold">{tt('Grade', 'الصف')}</Text>
-              <Picker
-                value={grade}
-                onChange={(v) => {
-                  setGrade(v);
-                  setSubject('all');
-                }}
-                options={[{ value: 'all', label: tt('All grades', 'جميع الصفوف') }, ...(grades.data ?? []).map((g) => ({ value: g.id, label: g.name_ar }))]}
-              />
-              <Text className="text-xs font-semibold">{tt('Subject', 'المادة')}</Text>
-              <View pointerEvents={grade === 'all' ? 'none' : 'auto'} style={{ opacity: grade === 'all' ? 0.5 : 1 }}>
-                <Picker value={subject} onChange={setSubject} options={[{ value: 'all', label: tt('All subjects', 'جميع المواد') }, ...(subjects.data ?? []).map((s) => ({ value: s.id, label: s.name_ar }))]} />
+          <Panel className="gap-3 p-4">
+            <Text className="text-muted-foreground text-xs font-semibold">{tt('Grade', 'الصف')}</Text>
+            <Picker
+              value={grade}
+              onChange={(v) => {
+                setGrade(v);
+                setSubject('all');
+              }}
+              options={[{ value: 'all', label: tt('All grades', 'جميع الصفوف') }, ...(grades.data ?? []).map((g) => ({ value: g.id, label: g.name_ar }))]}
+            />
+            <Text className="text-muted-foreground text-xs font-semibold">{tt('Subject', 'المادة')}</Text>
+            <View pointerEvents={grade === 'all' ? 'none' : 'auto'} style={{ opacity: grade === 'all' ? 0.5 : 1 }}>
+              <Picker value={subject} onChange={setSubject} options={[{ value: 'all', label: tt('All subjects', 'جميع المواد') }, ...(subjects.data ?? []).map((s) => ({ value: s.id, label: s.name_ar }))]} />
+            </View>
+            {chipFacets.map((f) => (
+              <View key={f.id} className="gap-1.5">
+                <Text className="text-muted-foreground text-xs font-semibold">{f.name_ar}</Text>
+                <View className="flex-row flex-wrap gap-1.5">{f.values.map((v) => chip(v.label_ar, facetIds.includes(v.id), () => toggleFacet(v.id)))}</View>
               </View>
-              {chipFacets.map((f) => (
-                <View key={f.id} className="gap-1.5">
-                  <Text className="text-xs font-semibold">{f.name_ar}</Text>
-                  <View className="flex-row flex-wrap gap-1.5">{f.values.map((v) => chip(v.label_ar, facetIds.includes(v.id), () => toggleFacet(v.id)))}</View>
-                </View>
-              ))}
-            </CardContent>
-          </Card>
+            ))}
+          </Panel>
         ) : null}
 
         {activeCount ? (
@@ -181,9 +182,9 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
               const v = allValues.find((x) => x.id === id);
               return v ? chip(`${v.label_ar} ✕`, true, () => toggleFacet(id)) : null;
             })}
-            <Pressable onPress={clearAll} className="flex-row items-center gap-1 px-1">
-              <Icon as={X} className="text-muted-foreground size-3" />
-              <Text className="text-muted-foreground text-xs underline">{tt('Clear all', 'مسح الكل')}</Text>
+            <Pressable onPress={clearAll} className="bg-destructive-soft flex-row items-center gap-1 rounded-full px-3 py-1 active:opacity-70">
+              <Icon as={X} className="text-destructive size-3" />
+              <Text className="text-destructive text-[11px] font-semibold">{tt('Clear all', 'مسح الكل')}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -192,63 +193,55 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
         {list.isLoading ? (
           <LoadingList />
         ) : !(list.data?.items ?? []).length ? (
-          <View className="items-center gap-3 py-12">
-            <Icon as={FileStack} className="text-muted-foreground size-10" />
-            <Text className="text-muted-foreground">{tt('No worksheets found.', 'لم يتم العثور على أوراق عمل.')}</Text>
-            {canUpload ? (
-              <Button size="sm" onPress={() => router.push('/admin/qirtasi/worksheet-form')}>
-                <Icon as={Plus} className="text-primary-foreground size-4" />
-                <Text>{tt('Upload your first worksheet', 'ارفع ورقة عملك الأولى')}</Text>
-              </Button>
-            ) : null}
-          </View>
+          <EmptyState
+            icon={FileStack}
+            title={tt('No worksheets found.', 'لم يتم العثور على أوراق عمل.')}
+            actionLabel={canUpload ? tt('Upload your first worksheet', 'ارفع ورقة عملك الأولى') : undefined}
+            onAction={canUpload ? () => router.push(roleHref('/qirtasi/worksheet-form')) : undefined}
+          />
         ) : (
           <View className="flex-row flex-wrap gap-3">
             {(list.data?.items ?? []).map((w) => {
               const info = TYPE_MAP[w.worksheet_type];
               return (
-                <Card key={w.id} className="w-[47%]">
-                  <CardContent className="gap-2 px-2 pt-2">
-                    <Thumb id={w.id} campusId={campusId} type={w.worksheet_type} />
-                    {info ? <Text className="text-primary text-[10px] font-semibold">{tt(info.en, info.ar)}</Text> : null}
-                    <Text className="text-sm font-medium" numberOfLines={2} style={{ writingDirection: 'rtl' }}>
-                      {w.title_ar}
-                    </Text>
-                    {gradeName[w.grade_id] ? (
-                      <View className="border-border self-start rounded border px-1">
-                        <Text className="text-[10px]">{gradeName[w.grade_id]}</Text>
-                      </View>
+                <Panel key={w.id} className="w-[47%] gap-2 p-2">
+                  <Thumb id={w.id} campusId={campusId} type={w.worksheet_type} />
+                  {info ? <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{tt(info.en, info.ar)}</Text> : null}
+                  <Text className="text-sm font-semibold" numberOfLines={2} style={{ writingDirection: 'rtl' }}>
+                    {w.title_ar}
+                  </Text>
+                  {gradeName[w.grade_id] ? (
+                    <StatusChip label={gradeName[w.grade_id]} tone="muted" className="self-start" />
+                  ) : null}
+                  <View className="flex-row items-center gap-2">
+                    <Icon as={Download} className="text-muted-foreground size-3" />
+                    <Text className="text-muted-foreground text-[11px]">{w.download_count}</Text>
+                    {w.rating_avg > 0 ? (
+                      <>
+                        <Icon as={Star} className="size-3 text-warning" />
+                        <Text className="text-muted-foreground text-[11px]">{w.rating_avg.toFixed(1)}</Text>
+                      </>
                     ) : null}
-                    <View className="flex-row items-center gap-2">
-                      <Icon as={Download} className="text-muted-foreground size-3" />
-                      <Text className="text-muted-foreground text-[11px]">{w.download_count}</Text>
-                      {w.rating_avg > 0 ? (
-                        <>
-                          <Icon as={Star} className="size-3 text-amber-500" />
-                          <Text className="text-muted-foreground text-[11px]">{w.rating_avg.toFixed(1)}</Text>
-                        </>
-                      ) : null}
-                    </View>
-                    <View className="flex-row flex-wrap gap-1">
-                      {canUpload ? (
-                        <>
-                          <Button size="icon" variant="outline" onPress={() => open('answer', w)} accessibilityLabel={tt('Answer key', 'نموذج الإجابة')}>
-                            <Icon as={Key} className="text-foreground size-3.5" />
-                          </Button>
-                          <Button size="icon" variant="outline" onPress={() => router.push({ pathname: '/admin/qirtasi/worksheet-form', params: { id: w.id } })} accessibilityLabel={tt('Edit', 'تعديل')}>
-                            <Icon as={Pencil} className="text-foreground size-3.5" />
-                          </Button>
-                          <Button size="icon" variant="outline" onPress={() => remove(w)} accessibilityLabel={tt('Delete', 'حذف')}>
-                            <Icon as={Trash2} className="text-destructive size-3.5" />
-                          </Button>
-                        </>
-                      ) : null}
-                      <Button size="icon" onPress={() => open('download', w)} accessibilityLabel={tt('Download', 'تنزيل')}>
-                        <Icon as={Download} className="text-primary-foreground size-3.5" />
-                      </Button>
-                    </View>
-                  </CardContent>
-                </Card>
+                  </View>
+                  <View className="flex-row flex-wrap gap-1">
+                    {canUpload ? (
+                      <>
+                        <Pressable onPress={() => open('answer', w)} accessibilityRole="button" accessibilityLabel={tt('Answer key', 'نموذج الإجابة')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                          <Icon as={Key} className="text-brand dark:text-brand-secondary size-4" />
+                        </Pressable>
+                        <Pressable onPress={() => router.push(roleHref('/qirtasi/worksheet-form', { id: w.id }))} accessibilityRole="button" accessibilityLabel={tt('Edit', 'تعديل')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                          <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                        </Pressable>
+                        <Pressable onPress={() => remove(w)} accessibilityRole="button" accessibilityLabel={tt('Delete', 'حذف')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                          <Icon as={Trash2} className="text-destructive size-4" />
+                        </Pressable>
+                      </>
+                    ) : null}
+                    <Pressable onPress={() => open('download', w)} accessibilityRole="button" accessibilityLabel={tt('Download', 'تنزيل')} hitSlop={4} className="bg-brand dark:bg-brand-secondary size-9 items-center justify-center rounded-full active:opacity-70">
+                      <Icon as={Download} className="size-4 text-white" />
+                    </Pressable>
+                  </View>
+                </Panel>
               );
             })}
           </View>

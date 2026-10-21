@@ -20,22 +20,25 @@ import {
 import { Settings, DollarSign, BookOpen, Clock, Save, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
-const librarySettingsSchema = z.object({
-  fine_per_day: z.number().min(0, "Fine must be 0 or greater").max(100, "Fine cannot exceed $100"),
-  max_books_per_student: z.number().int().min(1, "Must allow at least 1 book").max(20, "Cannot exceed 20 books"),
-  loan_duration_days: z.number().int().min(1, "Must be at least 1 day").max(365, "Cannot exceed 365 days"),
-});
+const makeSchema = (t: (k: string) => string) =>
+  z.object({
+    fine_per_day: z.number().min(0, t("v_fine_min")).max(100, t("v_fine_max")),
+    max_books_per_student: z.number().int().min(1, t("v_books_min")).max(20, t("v_books_max")),
+    loan_duration_days: z.number().int().min(1, t("v_days_min")).max(365, t("v_days_max")),
+  });
 
-type LibrarySettingsFormData = z.infer<typeof librarySettingsSchema>;
+type LibrarySettingsFormData = z.infer<ReturnType<typeof makeSchema>>;
 
 export function LibrarySettings() {
+  const t = useTranslations("library_settings");
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<LibrarySettingsFormData>({
-    resolver: zodResolver(librarySettingsSchema),
+    resolver: zodResolver(makeSchema(t)),
     defaultValues: {
       fine_per_day: 0.5,
       max_books_per_student: 3,
@@ -51,7 +54,7 @@ export function LibrarySettings() {
       try {
         setIsLoading(true);
         const response = await fetch(
-          `${API_URL}/schools/settings`,
+          `${API_URL}/schools/settings/library`,
           {
             headers: { Authorization: `Bearer ${user.access_token}` },
           }
@@ -59,11 +62,12 @@ export function LibrarySettings() {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.data?.library) {
+          // GET /schools/settings/library returns the policies with defaults filled in.
+          if (data.success && data.data) {
             form.reset({
-              fine_per_day: data.data.library.fine_per_day || 0.5,
-              max_books_per_student: data.data.library.max_books_per_student || 3,
-              loan_duration_days: data.data.library.loan_duration_days || 14,
+              fine_per_day: Number(data.data.fine_per_day),
+              max_books_per_student: Number(data.data.max_books_per_student),
+              loan_duration_days: Number(data.data.loan_duration_days),
             });
           }
         }
@@ -79,35 +83,33 @@ export function LibrarySettings() {
 
   const onSubmit = async (data: LibrarySettingsFormData) => {
     if (!user?.access_token) {
-      toast.error("Authentication required");
+      toast.error(t("auth_required"));
       return;
     }
 
     try {
       setIsSaving(true);
       const response = await fetch(
-        `${API_URL}/schools/settings`,
+        `${API_URL}/schools/settings/library`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${user.access_token}`,
           },
-          body: JSON.stringify({
-            library: data,
-          }),
+          body: JSON.stringify(data),
         }
       );
 
       if (response.ok) {
-        toast.success("Library settings saved successfully!");
+        toast.success(t("saved"));
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to save settings");
+        toast.error(error.error || t("save_failed"));
       }
     } catch (error) {
       console.error("Error saving settings:", error);
-      toast.error("Failed to save settings");
+      toast.error(t("save_failed"));
     } finally {
       setIsSaving(false);
     }
@@ -119,10 +121,10 @@ export function LibrarySettings() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Settings className="h-8 w-8" />
-            Library Settings
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
-            Configure library policies and fine rates
+            {t("subtitle")}
           </p>
         </div>
       </div>
@@ -131,10 +133,10 @@ export function LibrarySettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            Library Policies
+            {t("policies")}
           </CardTitle>
           <CardDescription>
-            Set rules and configurations for your library system
+            {t("policies_desc")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -153,7 +155,7 @@ export function LibrarySettings() {
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4" />
-                          Overdue Fine Per Day ($)
+                          {t("fine")}
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -165,7 +167,7 @@ export function LibrarySettings() {
                           />
                         </FormControl>
                         <FormDescription>
-                          Amount charged for each day a book is overdue
+                          {t("fine_desc")}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -179,7 +181,7 @@ export function LibrarySettings() {
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
                           <BookOpen className="h-4 w-4" />
-                          Maximum Books Per Student
+                          {t("max_books")}
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -194,7 +196,7 @@ export function LibrarySettings() {
                           />
                         </FormControl>
                         <FormDescription>
-                          Maximum number of books a student can borrow at once
+                          {t("max_books_desc")}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -208,7 +210,7 @@ export function LibrarySettings() {
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
                           <Clock className="h-4 w-4" />
-                          Default Loan Duration (Days)
+                          {t("loan_days")}
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -223,7 +225,7 @@ export function LibrarySettings() {
                           />
                         </FormControl>
                         <FormDescription>
-                          Default number of days for book loans
+                          {t("loan_days_desc")}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -238,7 +240,7 @@ export function LibrarySettings() {
                     onClick={() => form.reset()}
                     disabled={isSaving}
                   >
-                    Reset
+                    {t("reset")}
                   </Button>
                   <Button
                     type="submit"
@@ -248,12 +250,12 @@ export function LibrarySettings() {
                     {isSaving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
+                        {t("saving")}
                       </>
                     ) : (
                       <>
                         <Save className="mr-2 h-4 w-4" />
-                        Save Settings
+                        {t("save")}
                       </>
                     )}
                   </Button>

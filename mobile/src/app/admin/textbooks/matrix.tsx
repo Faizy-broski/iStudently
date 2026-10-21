@@ -1,13 +1,13 @@
 import type { DeliveryMatrix } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
-import { ScanLine } from 'lucide-react-native';
+import { BookOpen, ScanLine } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { BarcodeScanDialog } from '@/components/app/barcode-scan';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,6 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
+import { IconTile, Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { GradeSectionPicker } from '@/features/admin/textbooks';
@@ -46,7 +48,10 @@ export default function TextbookMatrix() {
   const mark = (keys: string[], on: boolean) =>
     setPending((p) => {
       const n = new Set(p);
-      for (const k of keys) (on ? n.add(k) : n.delete(k));
+      for (const k of keys) {
+        if (on) n.add(k);
+        else n.delete(k);
+      }
       return n;
     });
 
@@ -130,11 +135,11 @@ export default function TextbookMatrix() {
         <GradeSectionPicker ns="matrix" grade={grade} section={section} onGrade={setGrade} onSection={setSection} />
 
         {!section ? (
-          <Text className="text-muted-foreground text-sm">{m('selectPrompt')}</Text>
+          <EmptyState icon={BookOpen} title={m('selectPrompt')} />
         ) : res.isLoading ? (
           <LoadingList />
         ) : res.error ? (
-          <Text className="text-destructive">{res.error.message}</Text>
+          <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : matrix && !matrix.books.length ? (
           <Pressable onPress={() => router.push('/admin/textbooks')}>
             <Text className="text-muted-foreground text-sm">
@@ -153,15 +158,16 @@ export default function TextbookMatrix() {
 
             <Card>
               <CardContent className="gap-2 pt-4">
-                <Text className="font-semibold">{t('app.tb_books')}</Text>
+                <Text className="text-base font-semibold">{t('app.tb_books')}</Text>
                 {matrix.books.map((b, i) => {
                   const flags = matrix.students.map((s) => s.deliveries[b.id]?.is_delivered ?? false);
                   return (
                     <View key={b.id}>
                       {i > 0 ? <Separator /> : null}
                       <View className="flex-row items-center gap-3 py-2">
+                        <IconTile icon={BookOpen} size={36} />
                         <View className="flex-1">
-                          <Text className="text-sm font-medium">{b.title}</Text>
+                          <Text className="text-sm font-semibold">{b.title}</Text>
                           <Text className="text-muted-foreground text-xs">{m('stockLabel', { count: b.stock_quantity })}</Text>
                         </View>
                         <Text className="text-muted-foreground text-xs">{m('allCol')}</Text>
@@ -180,17 +186,16 @@ export default function TextbookMatrix() {
             {matrix.students.map((s) => {
               const flags = matrix.books.map((b) => s.deliveries[b.id]?.is_delivered ?? false);
               return (
-                <Card key={s.id} className={s.has_overdue_payments ? 'border-red-200 dark:border-red-900' : ''}>
+                <Card key={s.id} className={s.has_overdue_payments ? 'border-destructive/30 ' : ''}>
                   <CardContent className="gap-2 pt-4">
-                    <View className="flex-row items-center gap-2">
+                    <View className="flex-row items-center gap-3">
+                      <Initials name={s.name || '?'} />
                       <View className="flex-1">
-                        <Text className="font-medium">{s.name}</Text>
+                        <Text className="text-sm font-semibold">{s.name}</Text>
                         <Text className="text-muted-foreground text-xs">{s.student_number}</Text>
                       </View>
                       {s.has_overdue_payments ? (
-                        <View className="bg-destructive rounded-full px-2 py-0.5">
-                          <Text className="text-xs text-white">{m('overdueBadge')}</Text>
-                        </View>
+                        <StatusChip label={m('overdueBadge')} tone="destructive" />
                       ) : null}
                       <Text className="text-muted-foreground text-xs">{m('allCol')}</Text>
                       <Checkbox
@@ -215,7 +220,7 @@ export default function TextbookMatrix() {
                             <>
                               {blocked && canOverride ? (
                                 <Button size="sm" variant="ghost" onPress={() => toggleCell(s.id, b.id, true, true)}>
-                                  <Text className="text-xs text-amber-700">{m('override')}</Text>
+                                  <Text className="text-xs text-warning">{m('override')}</Text>
                                 </Button>
                               ) : null}
                               <Checkbox checked={delivered} disabled={blocked && !canOverride} onCheckedChange={(v) => toggleCell(s.id, b.id, v)} accessibilityLabel={`${s.name} ${b.title}`} />

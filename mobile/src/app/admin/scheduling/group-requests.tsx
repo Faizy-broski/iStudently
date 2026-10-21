@@ -62,8 +62,8 @@ export default function GroupRequests() {
   }
 
   const prefBlock = (label: string, teacherKey: 'with_teacher_id' | 'not_teacher_id', periodKey: 'with_period_id' | 'not_period_id') => (
-    <View className="border-border gap-2 rounded-md border p-3">
-      <Text className="text-xs font-semibold uppercase">{label}</Text>
+    <View className="border-info-soft dark:border-border gap-2 rounded-xl border p-3">
+      <Text className="text-sm font-semibold">{label}</Text>
       <Text className="text-muted-foreground text-xs">{g('label_teacher')}</Text>
       <Picker value={prefs[teacherKey]} onChange={(v) => setPrefs({ ...prefs, [teacherKey]: v })} options={teacherOpts} />
       <Text className="text-muted-foreground text-xs">{g('label_period')}</Text>

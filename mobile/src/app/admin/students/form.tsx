@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { Student, StudentInput } from '@studently/api-client';
+import type { Parent, Student, StudentInput } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ImagePlus } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -25,8 +25,24 @@ import { CustomFieldInputs, initialCustomValues, mergeCustomValues, missingRequi
 import { ENTITY_TABS } from '@/features/admin/field-tabs';
 import { useRequiredFields } from '@/features/admin/required-fields';
 import { applyPermissionProfile, PermissionsSelect } from '@/features/admin/people-extras';
+import {
+  defaultChallanDue,
+  EMPTY_PARENT,
+  EMPTY_SCHOOL,
+  EmergencyContactsCard,
+  firstFeePeriod,
+  newParentError,
+  ParentLinkCard,
+  PreviousSchoolCard,
+  ServicesCard,
+  type EmergencyContact,
+  type NewParent,
+  type PreviousSchool,
+  type RelationType,
+} from '@/features/admin/student-extras';
+import { useCurrency } from '@/features/admin/use-currency';
 import { useCampus } from '@/features/campus/campus';
-import { adminAcademics, adminCustomFields, adminStudents, media } from '@/lib/api';
+import { adminAcademics, adminCustomFields, adminFees, adminParents, adminServices, adminStudents, media } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { pickImage } from '@/lib/upload';
 import { useAction } from '@/lib/use-action';
@@ -44,6 +60,10 @@ const baseSchema = z.object({
   gender: z.enum(['male', 'female', '']),
   date_of_birth: optionalDate,
   national_id: z.string().trim().max(40, 'app.v_too_long'),
+  nationality: z.string().trim().max(80, 'app.v_too_long'),
+  mother_name: z.string().trim().max(120, 'app.v_too_long'),
+  place_of_birth: z.string().trim().max(120, 'app.v_too_long'),
+  registration_number: z.string().trim().max(40, 'app.v_too_long'),
   email: z.union([z.literal(''), z.string().trim().email(`${V}email_invalid`)]),
   phone: z.string().trim().max(30, 'app.v_too_long'),
   address: z.string().trim().max(300, 'app.v_too_long'),
@@ -107,6 +127,10 @@ function fromStudent(s: Student): FormValues {
     gender: gender === 'male' || gender === 'female' ? gender : '',
     date_of_birth: (personal.date_of_birth ?? s.profile?.date_of_birth ?? '').slice(0, 10),
     national_id: s.profile?.national_id ?? '',
+    nationality: s.nationality ?? '',
+    mother_name: s.mother_name ?? '',
+    place_of_birth: s.place_of_birth ?? '',
+    registration_number: s.registration_number ?? '',
     email: s.profile?.email ?? '',
     phone: s.profile?.phone ?? '',
     address: personal.address ?? '',
@@ -135,7 +159,19 @@ export default function StudentForm() {
   const existing = useApi(editing ? ['admin', 'student', campusId ?? 'school', number] : null, ([, , , n]) => adminStudents.getByNumber(campusId, n as string));
   const grades = useApi(['admin', 'grades', campusId ?? 'school'], () => adminAcademics.grades(campusId));
   const [uploading, setUploading] = useState(false);
-  const [created, setCreated] = useState<{ username?: string; password?: string } | null>(null);
+  const [created, setCreated] = useState<{ username?: string; password?: string; feeId?: string } | null>(null);
+  const { money } = useCurrency();
+  // Web-only sections: parent link / new parent, emergency contacts, previous school, services + first challan.
+  const [linkedParent, setLinkedParent] = useState<Parent | null>(null);
+  const [relation, setRelation] = useState<RelationType>('other');
+  const [creatingParent, setCreatingParent] = useState(false);
+  const [newParent, setNewParent] = useState<NewParent>(EMPTY_PARENT);
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [prevSchool, setPrevSchool] = useState<PreviousSchool>(EMPTY_SCHOOL);
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [challan, setChallan] = useState(false);
+  const [challanDue, setChallanDue] = useState(defaultChallanDue);
+  const services = useApi(editing ? null : ['admin', 'services-active', campusId ?? 'school'], () => adminServices.active(campusId));
   const [permission, setPermission] = useState('default');
   const defs = useApi(['admin', 'custom-fields', 'student', campusId ?? 'school'], () => adminCustomFields.list('student', campusId));
   const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
@@ -151,6 +187,7 @@ export default function StudentForm() {
     resolver: (values, ctx, opts) => zodResolver(buildSchema(rules.current.isRequired, rules.current.gradeHasSections))(values, ctx, opts),
     defaultValues: {
       first_name: '', father_name: '', grandfather_name: '', last_name: '', gender: '', date_of_birth: '', national_id: '',
+      nationality: '', mother_name: '', place_of_birth: '', registration_number: '',
       email: '', phone: '', address: '', student_number: suggestNumber(), grade_level_id: '', section_id: '', admission_date: '',
       blood_group: '', allergies: '', medical_notes: '', username: '', password: '', photo: null,
     },
@@ -158,6 +195,16 @@ export default function StudentForm() {
   useEffect(() => {
     if (existing.data) reset(fromStudent(existing.data));
   }, [existing.data, reset]);
+  // Previous school and emergency contacts of the loaded student (set once per record, during render).
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  if (existing.data && loadedFor !== existing.data.id) {
+    const cf = existing.data.custom_fields ?? {};
+    const ps = (cf.academic?.previous_school ?? {}) as Partial<PreviousSchool>;
+    const ec = (cf.family?.emergency_contacts ?? []) as Partial<EmergencyContact>[];
+    setLoadedFor(existing.data.id);
+    setPrevSchool({ schoolName: ps.schoolName ?? '', transferDate: (ps.transferDate ?? '').slice(0, 10), lastGradeCompleted: ps.lastGradeCompleted ?? '' });
+    setContacts(ec.map((c) => ({ name: c.name ?? '', relationship: c.relationship ?? '', phone: c.phone ?? '', address: c.address ?? '' })));
+  }
 
   const [gradeId, photo, gender] = useWatch({ control, name: ['grade_level_id', 'photo', 'gender'] });
   const sections = useApi(gradeId ? ['admin', 'sections', campusId ?? 'school', gradeId] : null, () => adminAcademics.sections(campusId, gradeId));
@@ -170,7 +217,7 @@ export default function StudentForm() {
   const gradeOptions = useMemo(() => (grades.data ?? []).map((g) => ({ value: g.id, label: g.name })), [grades.data]);
 
   const save = useAction(
-    async (f: FormValues) => {
+    async (f: FormValues, parentLink?: { id: string; relation: string }) => {
       const s = existing.data;
       const grade = grades.data?.find((g) => g.id === f.grade_level_id);
       const allergies = f.allergies.split(',').map((a) => a.trim()).filter(Boolean);
@@ -180,7 +227,12 @@ export default function StudentForm() {
       const custom_fields = {
         ...prev,
         personal: { ...(prev.personal ?? {}), date_of_birth: f.date_of_birth || undefined, gender: f.gender || undefined, address: f.address || undefined, student_photo: f.photo || undefined },
-        academic: { ...(prev.academic ?? {}), admission_date: f.admission_date || undefined },
+        academic: { ...(prev.academic ?? {}), admission_date: f.admission_date || undefined, previous_school: prevSchool },
+        family: {
+          ...(prev.family ?? {}),
+          emergency_contacts: contacts.filter((c) => c.name.trim() || c.phone.trim()),
+          ...(parentLink ? { linked_parent_id: parentLink.id, parent_relation_type: parentLink.relation } : {}),
+        },
       };
       const withCustom = mergeCustomValues(defs.data, customValues, custom_fields, 'nested');
       const body: StudentInput = {
@@ -194,6 +246,11 @@ export default function StudentForm() {
         gender: (f.gender || undefined) as StudentInput['gender'],
         date_of_birth: f.date_of_birth || undefined,
         national_id: f.national_id || undefined,
+        // Report-card fields: on edit an empty value clears them; on create empty ones are skipped.
+        nationality: editing ? f.nationality : f.nationality || undefined,
+        mother_name: editing ? f.mother_name : f.mother_name || undefined,
+        place_of_birth: editing ? f.place_of_birth : f.place_of_birth || undefined,
+        registration_number: editing ? f.registration_number : f.registration_number || undefined,
         grade_level_id: f.grade_level_id,
         grade_level: grade?.name,
         section_id: f.section_id || (editing ? null : undefined),
@@ -224,8 +281,37 @@ export default function StudentForm() {
   const onSubmit = handleSubmit(async (f) => {
     const missing = missingRequired(defs.data, customValues);
     if (missing.length) return toast.error(t('app.cf_missing', { fields: missing.join(', ') }));
-    const res = await save.run(f);
+    // Web: a new parent is created first (names, relationship, CNIC and address required), then linked.
+    let parentLink: { id: string; relation: string } | undefined;
+    if (!editing && creatingParent) {
+      const err = newParentError(newParent);
+      if (err) return toast.error(t(err));
+      const { relationship, ...input } = newParent;
+      const pr = await adminParents.create({ ...input, password: input.password || undefined });
+      if (!pr.success || !pr.data) return toast.error(pr.error || t('common.msg_parent_create_failed'));
+      toast.success(t('common.msg_parent_created'));
+      parentLink = { id: pr.data.id, relation: relationship.toLowerCase() };
+    } else if (!editing && linkedParent) {
+      parentLink = { id: linkedParent.id, relation };
+    }
+    const res = await save.run(f, parentLink);
     if (!res.ok) return;
+    const newId = (res.data as { id?: string } | undefined)?.id;
+    let feeId: string | undefined;
+    if (!editing && newId) {
+      if (serviceIds.length) {
+        const sr = await adminServices.subscribeStudent(newId, serviceIds);
+        if (sr.success) toast.success(t('app.st_services_subscribed'));
+        else toast.error(t('app.st_services_failed'));
+      }
+      if (challan && f.grade_level_id) {
+        const fr = await adminFees.generateFirstFee(campusId, { student_id: newId, grade_id: f.grade_level_id, service_ids: serviceIds, due_date: challanDue, ...firstFeePeriod() });
+        if (fr.success && fr.data?.id) {
+          toast.success(t('app.st_challan_generated'));
+          feeId = fr.data.id;
+        } else toast.error(fr.error || t('app.st_challan_failed'));
+      }
+    }
     mutate((key) => Array.isArray(key) && key[0] === 'admin' && (key[1] === 'student' || key[1] === 'students'));
     mutate((key) => typeof key === 'string' && key.startsWith('admin-students'));
     if (!editing) {
@@ -233,7 +319,8 @@ export default function StudentForm() {
       if (permErr) toast.error(permErr);
     }
     const data = res.data as Student | undefined;
-    if (!editing && data?.generated_username) setCreated({ username: data.generated_username, password: data.generated_password });
+    if (!editing && data?.generated_username) setCreated({ username: data.generated_username, password: data.generated_password, feeId });
+    else if (feeId) router.replace({ pathname: '/admin/billing/fee/[id]', params: { id: feeId } });
     else router.back();
   });
 
@@ -257,7 +344,12 @@ export default function StudentForm() {
               </Text>
             </CardContent>
           </Card>
-          <Button onPress={() => router.back()}>
+          {created.feeId ? (
+            <Button onPress={() => router.replace({ pathname: '/admin/billing/fee/[id]', params: { id: created.feeId as string } })}>
+              <Text>{t('app.st_open_challan')}</Text>
+            </Button>
+          ) : null}
+          <Button variant={created.feeId ? 'outline' : 'default'} onPress={() => router.back()}>
             <Text>{t('app.cs_close')}</Text>
           </Button>
         </Screen>
@@ -297,6 +389,10 @@ export default function StudentForm() {
             />
             <TextField control={control} name="date_of_birth" label={tf('date_of_birth') + req('dateOfBirth')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
             <TextField control={control} name="national_id" label={tf('national_id') + req('nationalId')} />
+            <TextField control={control} name="nationality" label={tf('nationality')} />
+            <TextField control={control} name="mother_name" label={tf('mother_name')} />
+            <TextField control={control} name="place_of_birth" label={tf('place_of_birth')} />
+            <TextField control={control} name="registration_number" label={tf('registration_number')} />
             <TextField control={control} name="email" label={tf('email') + req('email')} hint={editing ? undefined : t('school.students.add_student.help_email_optional')} keyboardType="email-address" autoCapitalize="none" />
             <TextField control={control} name="phone" label={tf('phone_number') + req('phoneNumber')} keyboardType="phone-pad" />
             <TextField control={control} name="address" label={tf('address') + req('address')} multiline />
@@ -321,6 +417,22 @@ export default function StudentForm() {
             <TextField control={control} name="admission_date" label={tf('admission_date') + req('admissionDate')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
           </CardContent>
         </Card>
+
+        <PreviousSchoolCard value={prevSchool} onChange={setPrevSchool} />
+
+        {!editing ? (
+          <ParentLinkCard
+            linked={linkedParent}
+            onLink={setLinkedParent}
+            relation={relation}
+            onRelation={setRelation}
+            creating={creatingParent}
+            onCreating={setCreatingParent}
+            parent={newParent}
+            onParent={setNewParent}
+          />
+        ) : null}
+        <EmergencyContactsCard value={contacts} onChange={setContacts} />
 
         <Card className="gap-3 py-4">
           <CardHeader className="px-4">
@@ -359,6 +471,20 @@ export default function StudentForm() {
             {!editing ? <PermissionsSelect baseRole={'student'} value={permission} onChange={setPermission} /> : null}
           </CardContent>
         </Card>
+
+        {!editing ? (
+          <ServicesCard
+            services={services.data ?? []}
+            gradeId={gradeId}
+            selected={serviceIds}
+            onSelected={setServiceIds}
+            challan={challan}
+            onChallan={setChallan}
+            dueDate={challanDue}
+            onDueDate={setChallanDue}
+            money={money}
+          />
+        ) : null}
 
         <CustomFieldInputs
           defs={defs.data}

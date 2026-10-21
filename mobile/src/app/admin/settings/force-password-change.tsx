@@ -60,15 +60,15 @@ export default function ForcePasswordChange() {
             )}
           </View>
           {count !== null && count > 0 ? (
-            <View className="flex-row items-center gap-2 rounded-md bg-amber-50 p-2 dark:bg-amber-950/30">
-              <Icon as={ShieldAlert} className="size-4 text-amber-700" />
-              <Text className="flex-1 text-sm text-amber-800 dark:text-amber-300">{t('app.ps_fp_will_prompt', { count })}</Text>
+            <View className="flex-row items-center gap-2 rounded-md bg-warning-soft p-2 ">
+              <Icon as={ShieldAlert} className="size-4 text-warning" />
+              <Text className="flex-1 text-sm text-warning ">{t('app.ps_fp_will_prompt', { count })}</Text>
             </View>
           ) : null}
           {count === 0 ? (
-            <View className="flex-row items-center gap-2 rounded-md bg-green-50 p-2 dark:bg-green-950/30">
-              <Icon as={ShieldCheck} className="size-4 text-green-700" />
-              <Text className="flex-1 text-sm text-green-800 dark:text-green-300">{t('app.ps_fp_nobody')}</Text>
+            <View className="flex-row items-center gap-2 rounded-md bg-success-soft p-2 ">
+              <Icon as={ShieldCheck} className="size-4 text-success" />
+              <Text className="flex-1 text-sm text-success ">{t('app.ps_fp_nobody')}</Text>
             </View>
           ) : null}
           <Button variant="outline" size="sm" onPress={() => status.mutate()} disabled={status.isValidating}>

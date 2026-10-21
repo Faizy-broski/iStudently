@@ -87,7 +87,7 @@ export default function HifziCurriculum() {
                   <CardContent className="gap-3 pt-4">
                     <View>
                       <Text className="font-semibold">{g.name}</Text>
-                      {existing ? <Text className="text-xs text-green-600">{existing.unit_label || h('mapped')}</Text> : null}
+                      {existing ? <Text className="text-xs text-success">{existing.unit_label || h('mapped')}</Text> : null}
                     </View>
                     <View className="flex-row gap-2">
                       <View className="w-24 gap-1.5">

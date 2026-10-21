@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { useAcademicYear } from '@/features/admin/use-academic-year';
 import { useCurrency } from '@/features/admin/use-currency';
 import { useCampus } from '@/features/campus/campus';
+import { PrintTableButton } from '@/features/admin/print-table';
 import { adminAccounting } from '@/lib/api';
 import { useApi } from '@/lib/data';
 
@@ -58,7 +59,31 @@ export default function CategoryRollup() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('app.ac_rollup') }} />
+      <Stack.Screen
+        options={{
+          title: t('app.ac_rollup'),
+          headerRight: () => (
+            <PrintTableButton
+              title={t('app.ac_rollup')}
+              subtitle={[ay.name, start || end ? `${start || '…'} – ${end || '…'}` : null].filter(Boolean).join(' · ')}
+              disabled={!data.data}
+              sections={() =>
+                (
+                  [
+                    [t('app.ac_incomes'), data.data?.incomes ?? []],
+                    [t('app.ac_expenses'), data.data?.expenses ?? []],
+                  ] as const
+                ).map(([heading, rows]) => ({
+                  heading,
+                  columns: [t('app.ac_category'), t('common.total', { defaultValue: 'Total' })],
+                  rows: rows.map((r) => [r.category_name || t('app.ac_uncategorised'), money(r.total)]),
+                  footer: ['', money(rows.reduce((x, r) => x + (Number(r.total) || 0), 0))],
+                }))
+              }
+            />
+          ),
+        }}
+      />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
         <Picker value={ay.id} onChange={ay.pick} options={ay.options} />
         <Text className="text-sm font-medium">{t('admin.accounting.reports.period')}</Text>

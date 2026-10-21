@@ -1,9 +1,11 @@
 import type { TemplateContext } from '@studently/api-client';
+import { FileText } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
+import { FormSection } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -61,8 +63,8 @@ export function LetterTemplatePicker({ context, onLoad, getContent }: { context:
   }
 
   return (
-    <View className="border-border gap-2 rounded-md border p-3">
-      <Text className="text-xs font-semibold uppercase">{l('title')}</Text>
+    <FormSection title={l('title')} icon={FileText}>
+      <View className="gap-2">
       <Label>{l('template')}</Label>
       <Picker
         value={selected}
@@ -89,9 +91,9 @@ export function LetterTemplatePicker({ context, onLoad, getContent }: { context:
         <>
           <Label>{l('name')}</Label>
           <Input value={name} onChangeText={setName} placeholder={l('name_placeholder')} />
-          <View className="flex-row items-center gap-3">
+          <View className="bg-muted/50 flex-row items-center gap-3 rounded-xl px-3 py-2.5">
+            <Text className="flex-1 text-sm font-medium">{l('is_global')}</Text>
             <Switch checked={global} onCheckedChange={setGlobal} />
-            <Text className="flex-1 text-sm">{l('is_global')}</Text>
           </View>
         </>
       ) : null}
@@ -100,6 +102,7 @@ export function LetterTemplatePicker({ context, onLoad, getContent }: { context:
           <Text>{action === 'add' ? l('save_new') : action === 'update' ? l('update') : l('delete')}</Text>
         </Button>
       ) : null}
-    </View>
+      </View>
+    </FormSection>
   );
 }

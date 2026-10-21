@@ -19,6 +19,7 @@ import { useCurrency } from '@/features/admin/use-currency';
 import { adminBillingElements } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import { IconTile } from '@/components/app/layout';
 
 /**
  * Billing element categories (title, order, element count; add, rename, delete) and their elements,
@@ -113,7 +114,7 @@ export default function BillingElements() {
                   <Input className="flex-1" value={editing.title} onChangeText={(v) => setEditing({ ...editing, title: v })} />
                   <Input className="w-16" value={editing.order} onChangeText={(v) => setEditing({ ...editing, order: v.replace(/\D/g, '') })} keyboardType="number-pad" accessibilityLabel={e('sort_order')} />
                   <Pressable onPress={saveEdit} accessibilityRole="button" accessibilityLabel={t('common.save')} hitSlop={8}>
-                    <Icon as={Check} className="text-primary size-5" />
+                    <IconTile icon={Check} size={32} />
                   </Pressable>
                   <Pressable onPress={() => setEditing(null)} accessibilityRole="button" accessibilityLabel={t('common.cancel')} hitSlop={8}>
                     <Icon as={X} className="text-muted-foreground size-5" />
@@ -121,15 +122,15 @@ export default function BillingElements() {
                 </View>
               ) : (
                 <Pressable onPress={() => setOpen(expanded ? null : c.id)} className="active:bg-muted flex-row items-center gap-2 p-3">
-                  <Icon as={expanded ? ChevronDown : ChevronRight} className="text-muted-foreground size-4 rtl:rotate-180" />
+                  <Icon flipRtl as={expanded ? ChevronDown : ChevronRight} className="text-muted-foreground size-4" />
                   <View className="flex-1">
-                    <Text className="font-medium">{c.title}</Text>
+                    <Text className="text-sm font-semibold">{c.title}</Text>
                     <Text className="text-muted-foreground text-xs">{`${e('order')}: ${c.sort_order} · ${e('elements_count', { count: c.elements_count ?? items.length })}`}</Text>
                   </View>
-                  <Pressable onPress={() => setEditing({ id: c.id, title: c.title, order: String(c.sort_order) })} accessibilityRole="button" accessibilityLabel={t('common.edit')} hitSlop={8}>
-                    <Icon as={Pencil} className="text-muted-foreground size-4" />
+                  <Pressable onPress={() => setEditing({ id: c.id, title: c.title, order: String(c.sort_order) })} accessibilityRole="button" accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                   </Pressable>
-                  <Pressable onPress={() => removeCategory(c)} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={8}>
+                  <Pressable onPress={() => removeCategory(c)} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </Pressable>
@@ -140,9 +141,9 @@ export default function BillingElements() {
                     <Pressable
                       key={el.id}
                       onPress={() => router.push({ pathname: '/admin/billing/elements/form', params: { id: el.id } })}
-                      className="active:bg-muted border-border flex-row items-start gap-2 rounded-md border p-2.5">
+                      className="active:bg-muted border-info-soft dark:border-border flex-row items-start gap-2 rounded-xl border p-2.5">
                       <View className="flex-1 gap-0.5">
-                        <Text className="font-medium">{el.title}</Text>
+                        <Text className="text-sm font-semibold">{el.title}</Text>
                         <Text className="text-muted-foreground text-xs">
                           {[`${e('grade')}: ${el.grade_name ?? e('dash')}`, el.comment ? `${e('comment')}: ${el.comment}` : null, `${e('order')}: ${el.sort_order}`].filter(Boolean).join(' · ')}
                         </Text>
@@ -155,8 +156,8 @@ export default function BillingElements() {
                           </Badge>
                         ) : null}
                       </View>
-                      <Pressable onPress={() => removeElement(el)} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={8}>
-                        <Icon as={Trash2} className="text-muted-foreground size-4" />
+                      <Pressable onPress={() => removeElement(el)} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                        <Icon as={Trash2} className="text-destructive size-4" />
                       </Pressable>
                     </Pressable>
                   ))}

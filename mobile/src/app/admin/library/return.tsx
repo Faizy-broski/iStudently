@@ -79,13 +79,13 @@ export default function LibraryReturn() {
               </CardContent>
             </Card>
             {od > 0 ? (
-              <View className="flex-row gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 dark:bg-amber-950/30">
-                <Icon as={AlertTriangle} className="size-4 text-amber-600" />
+              <View className="flex-row gap-2 rounded-xl border border-warning/30 bg-warning-soft p-3">
+                <Icon as={AlertTriangle} className="size-4 text-warning" />
                 <View className="flex-1">
-                  <Text className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  <Text className="text-sm font-medium text-warning ">
                     {t('app.lb_overdue_by', { count: od })} · {t('app.lb_fine')}: {money(od * 0.5)}
                   </Text>
-                  <Text className="text-xs text-amber-800 dark:text-amber-300">{t('app.lb_overdue_fine_note')}</Text>
+                  <Text className="text-xs text-warning ">{t('app.lb_overdue_fine_note')}</Text>
                 </View>
               </View>
             ) : null}

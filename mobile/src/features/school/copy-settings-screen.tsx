@@ -1,17 +1,17 @@
 import type { CopySchoolSettingsOptions, CopySchoolSettingsResult } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
+import { CheckCircle2, Copy, ListChecks } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { FormError } from '@/components/app/form';
+import { CheckMark, FormSection, IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { Screen } from '@/components/app/screen';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { platform } from '@/lib/api';
 import { useAction } from '@/lib/use-action';
@@ -63,20 +63,19 @@ export function CopySettingsScreen({ id, name, schools }: { id: string; name?: s
       <>
         <Stack.Screen options={{ title: t('app.cs_title') }} />
         <Screen scroll edges={['bottom']}>
-          <Card className="gap-3 py-4">
-            <CardHeader className="px-4">
-              <CardTitle>{result.errors.length ? t('app.cs_done_errors') : t('app.cs_done')}</CardTitle>
-            </CardHeader>
-            <CardContent className="gap-2 px-4">
-              {counts.length === 0 ? <Text variant="muted">{t('app.cs_nothing')}</Text> : null}
-              {counts.map(([k, n]) => (
-                <View key={k} className="flex-row justify-between gap-4">
-                  <Text>{t(`app.cs_count_${k}`)}</Text>
-                  <Text className="font-semibold">{n}</Text>
-                </View>
-              ))}
-            </CardContent>
-          </Card>
+          <Panel className="gap-3 p-4">
+            <View className="flex-row items-center gap-3">
+              <IconTile icon={CheckCircle2} tone={result.errors.length ? 'warning' : 'success'} size={40} round />
+              <Text className="flex-1 font-semibold">{result.errors.length ? t('app.cs_done_errors') : t('app.cs_done')}</Text>
+            </View>
+            {counts.length === 0 ? <Text variant="muted">{t('app.cs_nothing')}</Text> : null}
+            {counts.map(([k, n]) => (
+              <View key={k} className="flex-row justify-between gap-4">
+                <Text className="text-sm">{t(`app.cs_count_${k}`)}</Text>
+                <Text className="text-sm font-semibold">{n}</Text>
+              </View>
+            ))}
+          </Panel>
           {result.errors.map((e, i) => (
             <FormError key={i} message={e} />
           ))}
@@ -92,28 +91,31 @@ export function CopySettingsScreen({ id, name, schools }: { id: string; name?: s
     <>
       <Stack.Screen options={{ title: t('app.cs_title') }} />
       <Screen scroll edges={['bottom']}>
-        <Text variant="muted">{t('app.cs_intro', { name: name ?? '' })}</Text>
-        <View className="gap-1.5">
-          <Label>{t('app.cs_source')}</Label>
+        <Text variant="muted" className="text-sm">
+          {t('app.cs_intro', { name: name ?? '' })}
+        </Text>
+        <FormSection title={t('app.cs_source')} icon={Copy}>
           <Picker value={source} onChange={setSource} placeholder={t('app.cs_source_placeholder')} options={sources.map((s) => ({ value: s.id, label: s.name }))} />
           {schools.data && sources.length === 0 ? <Text variant="muted">{t('app.cs_no_sources')}</Text> : null}
-        </View>
+        </FormSection>
 
-        <Card className="gap-0 py-2">
+        <FormSection title={t('app.cs_copy')} icon={ListChecks} className="gap-1">
           {CATEGORIES.map((c) => {
             const checked = !!options[c.key];
             const toggle = () => setOptions((o) => ({ ...o, [c.key]: !checked }));
             return (
-              <Pressable key={c.key} onPress={toggle} className="flex-row items-start gap-3 px-4 py-3" accessibilityRole="checkbox" accessibilityState={{ checked }}>
-                <Checkbox checked={checked} onCheckedChange={toggle} className="mt-0.5" />
+              <Pressable key={c.key} onPress={toggle} className="flex-row items-start gap-3 py-2.5 active:opacity-70" accessibilityRole="checkbox" accessibilityState={{ checked }}>
+                <View className="mt-0.5">
+                  <CheckMark on={checked} />
+                </View>
                 <View className="flex-1 gap-0.5">
-                  <Text>{t(`app.cs_cat_${c.key}`)}</Text>
-                  {c.note ? <Text className="text-muted-foreground text-sm">{t('app.cs_marking_note')}</Text> : null}
+                  <Text className="text-sm">{t(`app.cs_cat_${c.key}`)}</Text>
+                  {c.note ? <Text className="text-muted-foreground text-xs">{t('app.cs_marking_note')}</Text> : null}
                 </View>
               </Pressable>
             );
           })}
-        </Card>
+        </FormSection>
 
         <Button onPress={run} disabled={!source || !anySelected || copy.running}>
           <Text>{copy.running ? t('app.cs_copying') : t('app.cs_copy')}</Text>

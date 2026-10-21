@@ -101,7 +101,7 @@ export function ThreadListScreen({ role, detail }: { role: ThreadRole; detail: (
             <Text className="text-muted-foreground text-xs">{role === 'teacher' ? f('pick_student') : f('pick_child')}</Text>
             <View className="flex-row flex-wrap gap-1.5">
               {(wards.data ?? []).map((w) => (
-                <Pressable key={w.id} onPress={() => setWard(w.id)} accessibilityRole="radio" accessibilityState={{ checked: ward === w.id }} className={cn('rounded-full border px-3 py-1', ward === w.id ? 'border-[#022172] bg-[#022172]' : 'border-border')}>
+                <Pressable key={w.id} onPress={() => setWard(w.id)} accessibilityRole="radio" accessibilityState={{ checked: ward === w.id }} className={cn('rounded-full border px-3 py-1', ward === w.id ? 'border-brand bg-brand' : 'border-border')}>
                   <Text className={cn('text-xs', ward === w.id && 'text-white')}>{w.name}</Text>
                 </Pressable>
               ))}
@@ -152,9 +152,9 @@ export function ThreadScreen({ id, canSend }: { id: string; canSend: boolean }) 
   return (
     <KeyboardAvoidingView className="bg-background flex-1" keyboardVerticalOffset={90}>
       <Stack.Screen options={{ title: f('page_title') }} />
-      <View className="flex-row items-center gap-2 bg-amber-50 px-4 py-2 dark:bg-amber-950">
-        <Icon as={Lock} className="size-3.5 text-amber-700 dark:text-amber-300" />
-        <Text className="flex-1 text-xs text-amber-800 dark:text-amber-200">{f('archived_banner')}</Text>
+      <View className="flex-row items-center gap-2 bg-warning-soft px-4 py-2 ">
+        <Icon as={Lock} className="size-3.5 text-warning " />
+        <Text className="flex-1 text-xs text-warning ">{f('archived_banner')}</Text>
       </View>
       <ScrollView contentContainerClassName="gap-2 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
         {res.isLoading ? (
@@ -167,7 +167,7 @@ export function ThreadScreen({ id, canSend }: { id: string; canSend: boolean }) 
                 <Text className={cn('text-muted-foreground text-[11px]', own && 'text-end')}>
                   {personName(m.sender)} · {new Date(m.created_at).toLocaleString(lang)}
                 </Text>
-                <View className={cn('rounded-2xl px-3 py-2', own ? 'bg-[#022172]' : 'bg-muted')}>
+                <View className={cn('rounded-2xl px-3 py-2', own ? 'bg-brand' : 'bg-muted')}>
                   <Text className={cn('text-sm', own && 'text-white')}>{m.body}</Text>
                 </View>
               </View>

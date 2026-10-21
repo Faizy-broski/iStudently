@@ -161,9 +161,9 @@ export default function PortalNotes() {
               <CardContent className="gap-3 pt-4">
                 <View className="flex-row items-center gap-2">
                   {row.id ? (
-                    <Button size="icon" variant="ghost" onPress={() => remove(row)} accessibilityLabel={t('common.delete')}>
+                    <Pressable onPress={() => remove(row)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
-                    </Button>
+                    </Pressable>
                   ) : (
                     <Icon as={Plus} className="text-muted-foreground size-5" />
                   )}
@@ -187,7 +187,7 @@ export default function PortalNotes() {
                     ]}
                   />
                   {preview[row.key] ? (
-                    <View className="border-border min-h-20 rounded-md border p-2">
+                    <View className="border-info-soft dark:border-border min-h-20 rounded-xl border p-2">
                       {row.content ? <Text className="text-sm">{row.content}</Text> : <Text className="text-muted-foreground text-sm italic">{n('placeholder_no_content')}</Text>}
                     </View>
                   ) : (

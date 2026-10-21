@@ -4,6 +4,7 @@ import { authenticate } from '../middlewares/auth.middleware'
 import { requireTeacher } from '../middlewares/role.middleware'
 import { requireBodyRowsInSchoolFamily, requireRequestSchoolsInFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 import { requireOwnStudent } from '../middlewares/student-access.middleware'
+import { requireOwnRow, requireSelfTeacherId } from '../middlewares/own-course-period.middleware'
 
 const router = express.Router()
 
@@ -14,6 +15,8 @@ router.use(authenticate)
 // a student records views only as themselves.
 const querySection = requireRowInSchoolFamily('sections', 'section_id', 'school_id', 'query')
 const resourceRow = requireRowInSchoolFamily('learning_resources')
+// Teachers may only manage their own resources (admins: any of the school family).
+const ownResource = requireOwnRow('learning_resources')
 const teacherInQuery = requireRowInSchoolFamily('staff', 'teacher_id', 'school_id', 'query')
 // A new resource's school / campus, teacher, section and subject come from the body as given.
 const createRefs = [
@@ -33,17 +36,17 @@ const viewRefs = [
 // ============================================================================
 
 // Get resources (by teacher or section)
-router.get('/teacher', requireTeacher, teacherInQuery, learningResourcesController.getTeacherResources)
+router.get('/teacher', requireTeacher, teacherInQuery, requireSelfTeacherId('query'), learningResourcesController.getTeacherResources)
 router.get('/section', querySection, learningResourcesController.getSectionResources)
 
 // CRUD operations
 router.get('/:id', resourceRow, learningResourcesController.getResource)
-router.post('/', requireTeacher, ...createRefs, learningResourcesController.createResource)
-router.put('/:id', requireTeacher, resourceRow, ...createRefs, learningResourcesController.updateResource)
-router.delete('/:id', requireTeacher, resourceRow, learningResourcesController.deleteResource)
+router.post('/', requireTeacher, ...createRefs, requireSelfTeacherId('body'), learningResourcesController.createResource)
+router.put('/:id', requireTeacher, resourceRow, ownResource, ...createRefs, requireSelfTeacherId('body'), learningResourcesController.updateResource)
+router.delete('/:id', requireTeacher, resourceRow, ownResource, learningResourcesController.deleteResource)
 
 // View tracking
 router.post('/view', ...viewRefs, learningResourcesController.recordView)
-router.get('/:id/stats', requireTeacher, resourceRow, learningResourcesController.getViewStats)
+router.get('/:id/stats', requireTeacher, resourceRow, ownResource, learningResourcesController.getViewStats)
 
 export default router

@@ -121,7 +121,7 @@ export function SetupAssistantPanel({
               return (
                 <View key={c.title} className="gap-1.5">
                   <View className="flex-row items-center gap-2">
-                    <Icon as={ICONS[c.icon] ?? Circle} className={cn('size-4', catDone === c.steps.length ? 'text-green-600' : 'text-primary')} />
+                    <Icon as={ICONS[c.icon] ?? Circle} className={cn('size-4', catDone === c.steps.length ? 'text-success' : 'text-primary')} />
                     <Text className="text-sm font-semibold">{t(`app.sa_cat_${slug(c.title)}`, { defaultValue: c.title })}</Text>
                     <Text className="text-muted-foreground text-xs">{`${catDone}/${c.steps.length}`}</Text>
                   </View>
@@ -138,7 +138,7 @@ export function SetupAssistantPanel({
                           accessibilityRole="checkbox"
                           accessibilityState={{ checked: isDone }}
                           accessibilityLabel={isDone ? t('app.sa_completed') : t('app.sa_mark_done')}>
-                          <Icon as={isDone ? CheckCircle2 : Circle} className={cn('size-4', isDone ? 'text-green-600' : 'text-muted-foreground')} />
+                          <Icon as={isDone ? CheckCircle2 : Circle} className={cn('size-4', isDone ? 'text-success' : 'text-muted-foreground')} />
                         </Pressable>
                         <Pressable className="flex-1" onPress={() => onOpen(s.href, text)} accessibilityRole="link">
                           <Text className={cn('text-sm', isDone ? 'text-muted-foreground line-through' : 'text-primary')}>{text}</Text>
@@ -150,7 +150,7 @@ export function SetupAssistantPanel({
               );
             })}
             {allDone ? (
-              <Button className="self-center bg-green-600" onPress={dismiss} disabled={dismissing}>
+              <Button className="self-center bg-success" onPress={dismiss} disabled={dismissing}>
                 <Text className="text-white">{dismissing ? t('app.sa_dismissing') : t('app.sa_done_hide')}</Text>
               </Button>
             ) : null}

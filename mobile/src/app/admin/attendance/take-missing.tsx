@@ -44,11 +44,11 @@ export default function TakeMissingAttendance() {
       <Stack.Screen options={{ title: a('takeMissing') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4">
         <Text variant="muted">{a('takeMissing_subtitle')}</Text>
-        <View className="flex-row gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
-          <Icon as={Info} className="size-5 text-blue-600" />
+        <View className="flex-row gap-3 rounded-xl border border-info-soft bg-info-soft p-4">
+          <Icon as={Info} className="size-5 text-brand dark:text-brand-secondary" />
           <View className="flex-1">
-            <Text className="text-sm font-medium text-blue-800 dark:text-blue-300">{a('takeMissing_howItWorks')}</Text>
-            <Text className="mt-1 text-sm text-blue-800 dark:text-blue-300">{a('takeMissing_explanation')}</Text>
+            <Text className="text-sm font-medium text-brand dark:text-brand-secondary ">{a('takeMissing_howItWorks')}</Text>
+            <Text className="mt-1 text-sm text-brand dark:text-brand-secondary ">{a('takeMissing_explanation')}</Text>
           </View>
         </View>
         <Card>
@@ -67,9 +67,9 @@ export default function TakeMissingAttendance() {
               <Text>{running ? a('takeMissing_processing') : a('takeMissing')}</Text>
             </Button>
             {result ? (
-              <View className="flex-row items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/20">
-                <Icon as={CheckCircle2} className="size-4 text-green-600" />
-                <Text className="flex-1 text-sm text-green-800 dark:text-green-300">{a('takeMissing_generated', { total: result.total, days: result.days })}</Text>
+              <View className="flex-row items-center gap-2 rounded-xl border border-success/30 bg-success-soft p-3">
+                <Icon as={CheckCircle2} className="size-4 text-success" />
+                <Text className="flex-1 text-sm text-success ">{a('takeMissing_generated', { total: result.total, days: result.days })}</Text>
               </View>
             ) : null}
           </CardContent>

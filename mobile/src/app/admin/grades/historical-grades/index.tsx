@@ -6,6 +6,7 @@ import { Pressable, View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
 import { SearchBar } from '@/components/app/search-bar';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { studentFullName, useCampusStudents } from '@/features/admin/scheduling-tools';
 
@@ -43,10 +44,15 @@ export default function HistoricalGradesStudents() {
             onPress={() =>
               router.push({ pathname: '/admin/grades/historical-grades/student', params: { id: s.id, name: studentFullName(s.profile), number: s.student_number, grade: s.grade_level ?? '' } })
             }>
-            <Text className="text-primary font-medium">{studentFullName(s.profile) || '—'}</Text>
-            <Text className="text-muted-foreground text-xs">
-              {h('th_student_id')}: {s.student_number} · {h('th_grade_level')}: {s.grade_level || '—'}
-            </Text>
+            <View className="flex-row items-center gap-3">
+              <Initials name={studentFullName(s.profile) || '?'} />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-sm font-semibold">{studentFullName(s.profile) || '—'}</Text>
+                <Text className="text-muted-foreground text-xs">
+                  {h('th_student_id')}: {s.student_number} · {h('th_grade_level')}: {s.grade_level || '—'}
+                </Text>
+              </View>
+            </View>
           </Pressable>
         )}
       />

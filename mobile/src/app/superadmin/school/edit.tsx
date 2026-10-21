@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { LogoShape } from '@studently/api-client';
 import { v } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ImagePlus } from 'lucide-react-native';
+import { Building2, Frame, ImagePlus, Image as ImageIcon, Phone, UserRound } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -10,15 +10,16 @@ import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 import { z } from 'zod';
 
+import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';
 import { NumberField, SwitchField, TextField } from '@/components/app/form';
+import { FormSection } from '@/components/app/layout';
 import { SchoolLogo } from '@/components/app/school-logo';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { media, platform } from '@/lib/api';
@@ -98,7 +99,7 @@ export default function EditSchool() {
       is_trial: !!school.is_trial,
       trial_ends_at: school.trial_ends_at?.slice(0, 10) ?? '',
       logo_border_width: look?.logo_border_width ?? school.logo_border_width ?? 0,
-      logo_border_color: look?.logo_border_color ?? school.logo_border_color ?? '#000000',
+      logo_border_color: look?.logo_border_color ?? school.logo_border_color ?? colors.black,
       admin_name: adminInfo?.admin_name ?? '',
       admin_username: adminInfo?.admin_username ?? '',
       admin_email: adminInfo?.admin_email ?? '',
@@ -160,8 +161,7 @@ export default function EditSchool() {
     <>
       <Stack.Screen options={{ title: t('app.es_title') }} />
       <Screen scroll edges={['bottom']}>
-        <View className="gap-1.5">
-          <Label>{t('app.ob_logo')}</Label>
+        <FormSection title={t('app.ob_logo')} icon={ImageIcon}>
           <View className="flex-row items-center gap-3">
             <SchoolLogo url={logoUrl} shape={shape} size={56} borderWidth={borderWidth} borderColor={borderColor} />
             <Button variant="outline" size="sm" onPress={chooseLogo} disabled={uploading}>
@@ -169,58 +169,54 @@ export default function EditSchool() {
               <Text>{uploading ? t('app.ob_uploading') : t('app.ob_change_logo')}</Text>
             </Button>
           </View>
-        </View>
-        <TextField control={control} name="name" label={t('app.ob_name')} />
-        <TextField control={control} name="short_name" label={t('app.es_short_name')} />
-        <TextField control={control} name="contact_email" label={t('app.ob_contact_email')} keyboardType="email-address" autoCapitalize="none" />
-        <TextField control={control} name="phone" label={t('app.sa_phone')} keyboardType="phone-pad" />
-        <TextField control={control} name="website" label={t('app.sa_website')} keyboardType="url" autoCapitalize="none" placeholder="https://" />
-        <TextField control={control} name="address" label={t('app.sa_address')} />
-        <TextField control={control} name="city" label={t('app.es_city')} />
-        <TextField control={control} name="state" label={t('app.es_state')} />
-        <TextField control={control} name="zip_code" label={t('app.es_zip')} />
-        <TextField control={control} name="principal_name" label={t('app.sa_principal')} />
-        <TextField control={control} name="school_number" label={t('app.es_school_number')} />
-        <SwitchField control={control} name="is_trial" label={t('app.ob_trial')} />
-        {isTrial ? (
-          <TextField control={control} name="trial_ends_at" label={t('app.ob_trial_ends')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
-        ) : null}
+        </FormSection>
+        <FormSection title={t('app.sa_details')} icon={Building2}>
+          <TextField control={control} name="name" label={t('app.ob_name')} />
+          <TextField control={control} name="short_name" label={t('app.es_short_name')} />
+          <TextField control={control} name="principal_name" label={t('app.sa_principal')} />
+          <TextField control={control} name="school_number" label={t('app.es_school_number')} />
+          <SwitchField control={control} name="is_trial" label={t('app.ob_trial')} />
+          {isTrial ? (
+            <TextField control={control} name="trial_ends_at" label={t('app.ob_trial_ends')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
+          ) : null}
+        </FormSection>
+        <FormSection title={t('app.sa_contact')} icon={Phone}>
+          <TextField control={control} name="contact_email" label={t('app.ob_contact_email')} keyboardType="email-address" autoCapitalize="none" />
+          <TextField control={control} name="phone" label={t('app.sa_phone')} keyboardType="phone-pad" />
+          <TextField control={control} name="website" label={t('app.sa_website')} keyboardType="url" autoCapitalize="none" placeholder="https://" />
+          <TextField control={control} name="address" label={t('app.sa_address')} />
+          <TextField control={control} name="city" label={t('app.es_city')} />
+          <TextField control={control} name="state" label={t('app.es_state')} />
+          <TextField control={control} name="zip_code" label={t('app.es_zip')} />
+        </FormSection>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('app.es_logo_display')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-3">
-            <Label>{t('app.st_logo_shape')}</Label>
-            <FilterChips<LogoShape> value={shape} onChange={setShape} options={SHAPES.map((sh) => ({ value: sh, label: t(`app.st_shape_${sh}`) }))} />
-            <NumberField control={control} name="logo_border_width" label={t('app.st_border_width')} keyboardType="number-pad" />
-            <TextField control={control} name="logo_border_color" label={t('app.st_border_color')} hint={t('app.st_border_color_hint')} autoCapitalize="none" />
-          </CardContent>
-        </Card>
+        <FormSection title={t('app.es_logo_display')} icon={Frame}>
+          <Label>{t('app.st_logo_shape')}</Label>
+          <FilterChips<LogoShape> value={shape} onChange={setShape} options={SHAPES.map((sh) => ({ value: sh, label: t(`app.st_shape_${sh}`) }))} />
+          <NumberField control={control} name="logo_border_width" label={t('app.st_border_width')} keyboardType="number-pad" />
+          <TextField control={control} name="logo_border_color" label={t('app.st_border_color')} hint={t('app.st_border_color_hint')} autoCapitalize="none" />
+        </FormSection>
 
         {isCampus ? (
-          <Text variant="muted">{t('app.es_admin_campus_note')}</Text>
+          <View className="bg-info-soft rounded-2xl p-3.5">
+            <Text className="text-brand dark:text-brand-secondary text-sm">{t('app.es_admin_campus_note')}</Text>
+          </View>
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('app.es_admin_section')}</CardTitle>
-            </CardHeader>
-            <CardContent className="gap-3">
-              <TextField control={control} name="admin_name" label={t('app.es_admin_name')} />
-              <TextField control={control} name="admin_username" label={t('app.es_admin_username')} autoCapitalize="none" />
-              <TextField control={control} name="admin_email" label={t('app.es_admin_email')} keyboardType="email-address" autoCapitalize="none" />
-              <TextField
-                control={control}
-                name="admin_password"
-                label={t('app.es_admin_password')}
-                hint={t('app.es_admin_password_hint')}
-                secureTextEntry
-                autoComplete="new-password"
-                textContentType="newPassword"
-              />
-              <TextField control={control} name="admin_confirm" label={t('app.st_confirm_password')} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
-            </CardContent>
-          </Card>
+          <FormSection title={t('app.es_admin_section')} icon={UserRound}>
+            <TextField control={control} name="admin_name" label={t('app.es_admin_name')} />
+            <TextField control={control} name="admin_username" label={t('app.es_admin_username')} autoCapitalize="none" />
+            <TextField control={control} name="admin_email" label={t('app.es_admin_email')} keyboardType="email-address" autoCapitalize="none" />
+            <TextField
+              control={control}
+              name="admin_password"
+              label={t('app.es_admin_password')}
+              hint={t('app.es_admin_password_hint')}
+              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
+            />
+            <TextField control={control} name="admin_confirm" label={t('app.st_confirm_password')} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
+          </FormSection>
         )}
 
         <Button onPress={onSubmit} disabled={saving || uploading}>

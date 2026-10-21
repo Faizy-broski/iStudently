@@ -3,8 +3,8 @@ import { BarChart3, BookOpen, CalendarCheck, Settings, Users, type LucideIcon } 
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
-import { ListRow } from '@/components/app/list-row';
-import { Card, CardContent } from '@/components/ui/card';
+import { HeroCard, IconTile, RowItem, type Tone } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { isHifziKey, useHifziCircles, useHz } from '@/features/admin/hifzi';
@@ -14,31 +14,34 @@ export default function HifziOverview() {
   const { h } = useHz();
   const { mutate } = useSWRConfig();
   const circles = useHifziCircles();
-  const links: { title: string; href: Href; icon: LucideIcon }[] = [
-    { title: h('circles.title'), href: '/admin/hifzi/circles', icon: BookOpen },
-    { title: h('students.title'), href: '/admin/hifzi/students', icon: Users },
-    { title: h('attendance.title'), href: '/admin/hifzi/attendance', icon: CalendarCheck },
-    { title: h('reports.title'), href: '/admin/hifzi/reports', icon: BarChart3 },
-    { title: h('settings.title'), href: '/admin/hifzi/settings', icon: Settings },
+  const links: { title: string; href: Href; icon: LucideIcon; tone: Tone }[] = [
+    { title: h('circles.title'), href: '/admin/hifzi/circles', icon: BookOpen, tone: 'brand' },
+    { title: h('students.title'), href: '/admin/hifzi/students', icon: Users, tone: 'success' },
+    { title: h('attendance.title'), href: '/admin/hifzi/attendance', icon: CalendarCheck, tone: 'warning' },
+    { title: h('reports.title'), href: '/admin/hifzi/reports', icon: BarChart3, tone: 'brand' },
+    { title: h('settings.title'), href: '/admin/hifzi/settings', icon: Settings, tone: 'muted' },
   ];
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: h('overview.title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => mutate(isHifziKey)} />}>
-        <Text className="text-muted-foreground text-sm">{h('overview.subtitle')}</Text>
-        <Card className="border-0 bg-[#022172]">
-          <CardContent className="gap-1 pt-4">
-            <Text className="text-3xl font-bold text-white">{circles.isLoading ? '…' : (circles.data ?? []).length}</Text>
-            <Text className="text-xs text-white/80">{h('circles.title')}</Text>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-1">
-            {links.map((l) => (
-              <ListRow key={l.title} title={l.title} leading={<Icon as={l.icon} className="text-primary size-5" />} onPress={() => router.push(l.href)} />
-            ))}
-          </CardContent>
-        </Card>
+        <HeroCard>
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1 gap-1">
+              <Text className="text-sm font-semibold text-white/85">{h('circles.title')}</Text>
+              <Text className="text-3xl font-bold text-white">{circles.isLoading ? '…' : (circles.data ?? []).length}</Text>
+            </View>
+            <View className="size-12 items-center justify-center rounded-2xl bg-white/15">
+              <Icon as={BookOpen} className="size-6 text-white" />
+            </View>
+          </View>
+          <Text className="text-xs text-white/80">{h('overview.subtitle')}</Text>
+        </HeroCard>
+        <Panel>
+          {links.map((l, i) => (
+            <RowItem key={l.title} title={l.title} leading={<IconTile icon={l.icon} tone={l.tone} size={40} />} onPress={() => router.push(l.href)} last={i === links.length - 1} />
+          ))}
+        </Panel>
       </ScrollView>
     </View>
   );

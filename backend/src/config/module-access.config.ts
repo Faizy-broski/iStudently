@@ -45,6 +45,8 @@ export const API_AREA_MODULES: Record<string, string[]> = {
   'marking-periods': ['marking-periods', 'settings'],
   'marking-period-groups': ['marking-periods', 'settings'],
   'grading-scales': ['grades'],
+  'jahbadh-grades': ['jahbadh-grades'],
+  'jahbadh-control': ['jahbadh-grades'],
   courses: ['grades', 'teachers'],
   'course-periods': ['grades', 'teachers'],
   gradebook: ['grades'],

@@ -6,11 +6,12 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
+import { Initials, RowItem } from '@/components/app/layout';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { adminParents } from '@/lib/api';
@@ -34,10 +35,14 @@ export default function TeacherAssociatedParents() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        <Text variant="muted">{t('app.te_ap_subtitle')}</Text>
+        <Text variant="muted" className="text-sm">
+          {t('app.te_ap_subtitle')}
+        </Text>
         <SearchBar value={q} onChangeText={setQ} placeholder={k('searchParentPlaceholder')} />
-        <Text className="text-muted-foreground text-xs">{res.isLoading ? k('searchingParents') : list.length ? k('foundParents', { count: list.length }) : k('noParentsFound')}</Text>
-        {res.isLoading ? <LoadingList rows={4} /> : null}
+        <Text variant="muted" className="text-xs">
+          {res.isLoading ? k('searchingParents') : list.length ? k('foundParents', { count: list.length }) : k('noParentsFound')}
+        </Text>
+        {res.isLoading ? <LoadingList rows={4} /> : !list.length ? <EmptyState icon={Users} title={k('noParentsFound')} /> : null}
         {list.map((p) => (
           <ParentCard key={p.id} parent={p} open={open === p.id} onToggle={() => setOpen(open === p.id ? null : p.id)} />
         ))}
@@ -53,42 +58,42 @@ function ParentCard({ parent, open, onToggle }: { parent: Parent; open: boolean;
   const name = `${parent.profile?.first_name ?? ''} ${parent.profile?.last_name ?? ''}`.trim() || 'N/A';
   const children = detail.data?.children ?? parent.children ?? [];
   return (
-    <Card>
-      <CardContent className="gap-2 p-3">
-        <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} className="flex-row items-center gap-3">
-          <PersonAvatar url={parent.profile?.profile_photo_url ?? null} name={name} size={40} />
-          <View className="flex-1">
-            <Text className="font-semibold">{name}</Text>
-            <Text className="text-muted-foreground text-xs">{parent.profile?.email || k('noEmail')}</Text>
-            <Text className="text-muted-foreground text-xs">{parent.profile?.phone || k('noPhone')}</Text>
+    <Panel>
+      <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} className="flex-row items-center gap-3 px-4 py-3 active:opacity-70">
+        <PersonAvatar url={parent.profile?.profile_photo_url ?? null} name={name} size={40} />
+        <View className="flex-1 gap-0.5">
+          <Text className="text-sm font-semibold">{name}</Text>
+          <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+            {parent.profile?.email || k('noEmail')}
+          </Text>
+          <Text variant="muted" className="text-[11px]">
+            {parent.profile?.phone || k('noPhone')}
+          </Text>
+        </View>
+        <StatusChip label={k('existingChildren', { count: parent.children?.length ?? 0 })} tone="info" />
+        <Icon flipRtl as={open ? ChevronDown : ChevronRight} className="text-muted-foreground size-4" />
+      </Pressable>
+      {open ? (
+        detail.isLoading ? (
+          <LoadingList rows={2} />
+        ) : !children.length ? (
+          <View className="border-info-soft dark:border-border items-center border-t py-3">
+            <Icon as={Users} className="text-muted-foreground/40 size-6" />
           </View>
-          <Badge className="bg-blue-100">
-            <Text className="text-xs text-blue-800">{k('existingChildren', { count: parent.children?.length ?? 0 })}</Text>
-          </Badge>
-          <Icon as={open ? ChevronDown : ChevronRight} className="text-muted-foreground size-4 rtl:rotate-180" />
-        </Pressable>
-        {open ? (
-          detail.isLoading ? (
-            <LoadingList rows={2} />
-          ) : !children.length ? (
-            <View className="items-center py-3">
-              <Icon as={Users} className="text-muted-foreground/40 size-6" />
-            </View>
-          ) : (
-            children.map((c) => (
-              <View key={c.id} className="border-border flex-row items-center gap-2 border-t pt-2">
-                <Text className="flex-1 text-sm">{`${c.profile?.first_name ?? ''} ${c.profile?.last_name ?? ''}`.trim() || '—'}</Text>
-                {c.student_number ? <Text className="text-muted-foreground text-xs">{c.student_number}</Text> : null}
-                {c.relationship || c.relation_type ? (
-                  <Badge variant="outline">
-                    <Text className="text-xs">{k(c.relationship ?? c.relation_type ?? '', { defaultValue: c.relationship ?? c.relation_type ?? '' })}</Text>
-                  </Badge>
-                ) : null}
-              </View>
-            ))
-          )
-        ) : null}
-      </CardContent>
-    </Card>
+        ) : (
+          children.map((c) => (
+            <RowItem
+              key={c.id}
+              className="border-info-soft dark:border-border border-t"
+              last
+              leading={<Initials name={`${c.profile?.first_name ?? ''} ${c.profile?.last_name ?? ''}`.trim() || '?'} size={32} />}
+              title={`${c.profile?.first_name ?? ''} ${c.profile?.last_name ?? ''}`.trim() || '—'}
+              meta={c.student_number || null}
+              trailing={c.relationship || c.relation_type ? <StatusChip label={k(c.relationship ?? c.relation_type ?? '', { defaultValue: c.relationship ?? c.relation_type ?? '' })} tone="muted" /> : null}
+            />
+          ))
+        )
+      ) : null}
+    </Panel>
   );
 }

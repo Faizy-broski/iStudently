@@ -23,6 +23,7 @@ import { DOCUMENT_TYPES, isLibraryKey, orderCategoriesForSelect, useLibraryCateg
 import { adminLibrary, media } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { pickDocuments, pickImage, type PickedDocument } from '@/lib/upload';
+import { IconTile } from '@/components/app/layout';
 
 const MAX_FILE = 50 * 1024 * 1024;
 
@@ -147,11 +148,11 @@ export default function LibraryBookForm() {
         <Text className="text-muted-foreground text-sm">{bookId ? t('app.lb_edit_book_desc') : t('app.lb_add_book_desc')}</Text>
         <Card>
           <CardContent className="flex-row items-center gap-4 pt-4">
-            <Pressable onPress={chooseCover} disabled={coverBusy} className="bg-muted border-border h-28 w-20 items-center justify-center overflow-hidden rounded-md border">
+            <Pressable onPress={chooseCover} disabled={coverBusy} className="bg-muted border-info-soft dark:border-border h-28 w-20 items-center justify-center overflow-hidden rounded-xl border">
               {cover ? <Image source={{ uri: cover }} style={{ width: 80, height: 112 }} contentFit="cover" /> : <Icon as={ImageIcon} className="text-muted-foreground size-6" />}
             </Pressable>
             <View className="flex-1 gap-2">
-              <Text className="font-medium">{t('app.lb_cover')}</Text>
+              <Text className="text-sm font-semibold">{t('app.lb_cover')}</Text>
               <Text className="text-muted-foreground text-xs">{t('app.lb_cover_hint')}</Text>
               <View className="flex-row gap-2">
                 <Button size="sm" variant="outline" disabled={coverBusy} onPress={chooseCover}>
@@ -187,7 +188,7 @@ export default function LibraryBookForm() {
 
         <Card>
           <CardContent className="gap-3 pt-4">
-            <Text className="font-medium">
+            <Text className="text-sm font-semibold">
               {t('app.lb_digital_file')} <Text className="text-muted-foreground text-xs">{t('app.lb_digital_file_hint')}</Text>
             </Text>
             <FilterChips
@@ -201,8 +202,8 @@ export default function LibraryBookForm() {
             {fileMode === 'url' ? (
               <Input value={fileUrl} onChangeText={setFileUrl} autoCapitalize="none" keyboardType="url" placeholder="https://example.com/book.pdf" />
             ) : file ? (
-              <View className="border-border flex-row items-center gap-3 rounded-md border p-3">
-                <Icon as={FileText} className="text-primary size-5" />
+              <View className="border-info-soft dark:border-border flex-row items-center gap-3 rounded-xl border p-3">
+                <IconTile icon={FileText} size={32} />
                 <View className="flex-1">
                   <Text className="text-sm font-medium">{file.name}</Text>
                   <Text className="text-muted-foreground text-xs">
@@ -215,9 +216,9 @@ export default function LibraryBookForm() {
                 </Pressable>
               </View>
             ) : existingFile ? (
-              <View className="border-border gap-2 rounded-md border p-3">
+              <View className="border-info-soft dark:border-border gap-2 rounded-xl border p-3">
                 <View className="flex-row items-center gap-2">
-                  <Icon as={FileText} className="text-primary size-5" />
+                  <IconTile icon={FileText} size={32} />
                   <Text className="flex-1 text-sm font-medium">{t('app.lb_file_uploaded')}</Text>
                 </View>
                 <View className="flex-row flex-wrap gap-2">
@@ -237,7 +238,7 @@ export default function LibraryBookForm() {
                 </View>
               </View>
             ) : (
-              <Pressable onPress={chooseFile} className="border-border items-center gap-1 rounded-lg border border-dashed p-5">
+              <Pressable onPress={chooseFile} className="border-info-soft dark:border-border items-center gap-1 rounded-xl border border-dashed p-5">
                 <Icon as={Upload} className="text-muted-foreground size-6" />
                 <Text className="text-muted-foreground text-center text-xs">{t('app.lb_file_drop')}</Text>
               </Pressable>

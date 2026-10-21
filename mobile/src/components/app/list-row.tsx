@@ -28,22 +28,22 @@ export function ListRow({
     <View className={cn('min-h-14 flex-row items-center gap-3 px-4 py-3', className)}>
       {leading}
       <View className="flex-1 gap-0.5">
-        <Text className="font-medium" numberOfLines={1}>
+        <Text className="text-sm font-semibold" numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
-          <Text className="text-muted-foreground text-sm" numberOfLines={2}>
+          <Text className="text-muted-foreground text-xs" numberOfLines={2}>
             {subtitle}
           </Text>
         ) : null}
       </View>
       {trailing}
-      {chevron ? <Icon as={I18nManager.isRTL ? ChevronLeft : ChevronRight} className="text-muted-foreground size-5" /> : null}
+      {chevron ? <Icon as={I18nManager.isRTL ? ChevronLeft : ChevronRight} className="text-muted-foreground size-4" /> : null}
     </View>
   );
   if (!onPress) return content;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" className="active:bg-accent">
+    <Pressable onPress={onPress} accessibilityRole="button" className="active:opacity-70">
       {content}
     </Pressable>
   );

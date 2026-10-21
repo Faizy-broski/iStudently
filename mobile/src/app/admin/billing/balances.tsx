@@ -128,7 +128,7 @@ export default function Balances() {
     return [...fam.values()].sort((a, c) => a.name.localeCompare(c.name)).map((f) => ({ ...f, students: sortRows(f.students) }));
   })();
   // Web colours: nothing paid in red, fully paid in green.
-  const tone = (r: Row) => (r.amount_paid === 0 && r.total_fees > 0 ? 'text-red-600 dark:text-red-400' : r.amount_paid === r.total_fees && r.total_fees > 0 ? 'text-green-600 dark:text-green-400' : '');
+  const tone = (r: Row) => (r.amount_paid === 0 && r.total_fees > 0 ? 'text-destructive ' : r.amount_paid === r.total_fees && r.total_fees > 0 ? 'text-success ' : '');
 
   async function exportCsv() {
     if (!rows.length) return;
@@ -165,7 +165,7 @@ export default function Balances() {
         onPress={() => router.push({ pathname: '/admin/billing/student/[id]', params: { id: r.student_id } })}
         className="active:bg-muted border-border flex-row items-start gap-3 border-b px-4 py-3">
         <View className="flex-1 gap-0.5">
-          <Text className="font-medium">{r.student_name}</Text>
+          <Text className="text-sm font-semibold">{r.student_name}</Text>
           <Text className="text-muted-foreground text-xs">{`${r.student_number} · ${r.grade_level}`}</Text>
           {inFamily && r.relationship ? <Text className="text-muted-foreground text-xs capitalize">{`${b('th_relationship')}: ${r.relationship}`}</Text> : null}
           {view === 'expanded' ? (

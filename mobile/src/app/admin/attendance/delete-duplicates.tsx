@@ -7,6 +7,7 @@ import { Pressable, View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
+import { Initials } from '@/components/app/layout';
 import { formatYmd } from '@/components/app/date-field';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -75,13 +76,14 @@ export default function DeleteDuplicates() {
           emptyTitle={a('delete_noFound')}
           keyExtractor={(d: DuplicateAttendanceRecord) => `${d.student_id}-${d.period_id}-${d.attendance_date}`}
           renderItem={(d: DuplicateAttendanceRecord, i) => (
-            <Pressable onPress={() => toggle(i)} className={cn('flex-row items-center gap-3 px-4 py-3', selected.has(i) && 'bg-primary/10')}>
+            <Pressable onPress={() => toggle(i)} className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', selected.has(i) && 'bg-info-soft/70')}>
               <CheckRow checked={selected.has(i)} onPress={() => toggle(i)} label="" />
+              <Initials name={d.student_name || '?'} tone="warning" size={36} />
               <View className="flex-1 gap-0.5">
-                <Text className="font-medium">
-                  {d.student_name || 'Unknown'} <Text className="text-muted-foreground text-xs">({d.student_id.substring(0, 8)})</Text>
+                <Text className="text-sm font-semibold">
+                  {d.student_name || 'Unknown'} <Text className="text-muted-foreground text-[11px]">({d.student_id.substring(0, 8)})</Text>
                 </Text>
-                <Text className="text-muted-foreground text-xs">
+                <Text variant="muted" className="text-[11px]">
                   {`${a('delete_duplicates_th_period')}: ${d.period_name || 'Unknown'} (${d.period_id.substring(0, 8)}) · ${formatYmd(d.attendance_date, i18n.language)}`}
                 </Text>
               </View>

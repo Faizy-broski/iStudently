@@ -129,12 +129,12 @@ export default function FeeSettingsScreen() {
           </CardHeader>
           <CardContent className="gap-3 px-4">
             {tierList.map((tier, i) => (
-              <View key={i} className="border-border gap-2 rounded-lg border p-3">
+              <View key={i} className="border-info-soft dark:border-border gap-2 rounded-xl border p-3">
                 <View className="flex-row items-center gap-2">
                   <Label className="flex-1">{s('siblings')}</Label>
                   <Input className="w-20" value={String(tier.sibling_count || '')} onChangeText={(x) => setTier(i, { sibling_count: parseInt(x.replace(/\D/g, ''), 10) || 0 })} keyboardType="number-pad" />
-                  <Pressable onPress={() => setTiers(tierList.filter((_, j) => j !== i))} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={8}>
-                    <Icon as={Trash2} className="text-muted-foreground size-4" />
+                  <Pressable onPress={() => setTiers(tierList.filter((_, j) => j !== i))} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>
                 <Label>{s('discountType')}</Label>

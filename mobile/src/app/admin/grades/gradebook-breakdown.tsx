@@ -7,7 +7,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { BarChart, PieChart } from '@/components/app/charts';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -79,7 +79,7 @@ export default function GradebookBreakdown() {
           ) : res.error ? (
             <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
           ) : !rows.length ? (
-            <Text className="text-muted-foreground py-8 text-center text-sm">{g('no_students')}</Text>
+            <EmptyState title={g('no_students')} />
           ) : (
             <Card>
               <CardContent className="gap-3 pt-4">
@@ -112,7 +112,7 @@ export default function GradebookBreakdown() {
                       <View key={r.grade_title}>
                         <Separator />
                         <View className="flex-row py-2">
-                          <Text className="flex-1 font-medium">{r.grade_title}</Text>
+                          <Text className="flex-1 text-sm font-semibold">{r.grade_title}</Text>
                           <Text className="w-20 text-end">{r.gpa_value}</Text>
                           <Text className="w-24 text-end">{r.student_count}</Text>
                         </View>

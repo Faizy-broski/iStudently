@@ -44,7 +44,7 @@ export default function CancelledClasses() {
           keyExtractor={(r) => `${r.absence_id}-${r.course_period_id}`}
           renderItem={(r) => (
             <View className="gap-0.5 px-4 py-3">
-              <Text className="font-medium">{r.staff_name}</Text>
+              <Text className="text-sm font-semibold">{r.staff_name}</Text>
               <Text className="text-sm">
                 {r.course_period_title} <Text className="text-muted-foreground font-mono text-xs">{r.short_name}</Text>
               </Text>

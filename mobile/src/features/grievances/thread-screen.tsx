@@ -1,16 +1,17 @@
 import type { GrievanceAttachment, GrievanceStatus } from '@studently/api-client';
-import { Clock, Paperclip, Send, ShieldAlert, Star, Upload, X } from 'lucide-react-native';
+import { Clock, MessagesSquare, Paperclip, Send, ShieldAlert, Star, Upload, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
+import { FormSection, Initials } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { ErrorState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -38,9 +39,9 @@ function Attachments({ grievanceId, items }: { grievanceId: string; items: Griev
   return (
     <View className="flex-row flex-wrap gap-2">
       {items.map((a) => (
-        <Pressable key={a.id} onPress={() => open(a)} className="bg-muted flex-row items-center gap-1.5 rounded-md px-2.5 py-1.5">
-          <Icon as={Paperclip} className="text-muted-foreground size-3.5" />
-          <Text className="max-w-48 text-xs" numberOfLines={1}>
+        <Pressable key={a.id} onPress={() => open(a)} className="bg-info-soft flex-row items-center gap-1.5 rounded-full px-3 py-1.5 active:opacity-70">
+          <Icon as={Paperclip} className="text-brand dark:text-brand-secondary size-3.5" />
+          <Text className="text-brand dark:text-brand-secondary max-w-48 text-xs font-medium" numberOfLines={1}>
             {a.file_name}
           </Text>
         </Pressable>
@@ -131,26 +132,25 @@ export function GrievanceThreadScreen({ grievanceId }: { grievanceId: string }) 
 
   return (
     <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-      <Card>
-        <CardHeader className="gap-2">
-          <Text className="text-muted-foreground font-mono text-xs">{g.complaint_number}</Text>
-          <CardTitle className="text-xl">{g.title}</CardTitle>
-          <View className="flex-row flex-wrap gap-2">
+      <Panel className="gap-4 p-4">
+        <View className="gap-2">
+          <Text className="text-muted-foreground font-mono text-[11px]">{g.complaint_number}</Text>
+          <Text className="text-brand dark:text-foreground text-xl font-bold">{g.title}</Text>
+          <View className="flex-row flex-wrap gap-1.5">
             <PriorityPill priority={g.priority} />
             {g.is_confidential ? (
-              <View className="border-border flex-row items-center gap-1 rounded-full border px-2 py-0.5">
-                <Icon as={ShieldAlert} className="text-foreground size-3" />
-                <Text className="text-xs">{t('grievances.list.confidential')}</Text>
+              <View className="bg-muted flex-row items-center gap-1 rounded-full px-2.5 py-1">
+                <Icon as={ShieldAlert} className="text-muted-foreground size-3" />
+                <Text className="text-muted-foreground text-[11px] font-semibold">{t('grievances.list.confidential')}</Text>
               </View>
             ) : null}
             {g.is_anonymous ? <OutlinePill label={t('grievances.list.anonymous')} /> : null}
             {isOverdue(g) ? <OverduePill /> : null}
             <StatusPill status={g.status} />
           </View>
-        </CardHeader>
-        <CardContent className="gap-4">
+        </View>
           <Text className="text-sm">{g.description}</Text>
-          <View className="gap-1">
+          <View className="bg-muted/40 gap-1 rounded-xl p-3">
             {g.category?.name ? <Text className="text-muted-foreground text-sm">{th('category_label', { name: g.category.name })}</Text> : null}
             {g.department ? <Text className="text-muted-foreground text-sm">{th('department_label', { name: g.department })}</Text> : null}
             <Text className="text-muted-foreground text-sm">{th('submitted_label', { date: date(g.submitted_at) })}</Text>
@@ -168,7 +168,7 @@ export function GrievanceThreadScreen({ grievanceId }: { grievanceId: string }) 
             </View>
           ) : null}
           {g.can_manage ? (
-            <View className="border-border gap-2 border-t pt-3">
+            <View className="border-info-soft dark:border-border gap-2 border-t pt-3">
               <Picker value={g.status} onChange={(v) => act(complaints.updateStatus(grievanceId, v as GrievanceStatus), 'msg_status_updated', 'err_status_failed')} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`grievances.status.${s}`) }))} />
               <Button variant="outline" size="sm" className="self-start" onPress={() => act(complaints.escalate(grievanceId), 'msg_escalated', 'err_escalate_failed')}>
                 <Text>{th('btn_escalate')}</Text>
@@ -176,7 +176,7 @@ export function GrievanceThreadScreen({ grievanceId }: { grievanceId: string }) 
             </View>
           ) : null}
           {isAdminRole ? (
-            <View className="border-border gap-2 border-t pt-3">
+            <View className="border-info-soft dark:border-border gap-2 border-t pt-3">
               <Text className="text-muted-foreground text-xs">{th('assign_to')}</Text>
               <Picker value={assignee} onChange={setAssignee} placeholder={th('select_staff_placeholder')} options={(staff.data ?? []).map((s) => ({ value: s.profileId, label: s.subtitle ? `${s.name} (${s.subtitle})` : s.name }))} />
               <Text className="text-muted-foreground text-xs">{th('role_label_label')}</Text>
@@ -187,7 +187,7 @@ export function GrievanceThreadScreen({ grievanceId }: { grievanceId: string }) 
             </View>
           ) : null}
           {isOwner && ['resolved', 'closed'].includes(g.status) ? (
-            <View className="border-border gap-2 border-t pt-3">
+            <View className="border-info-soft dark:border-border gap-2 border-t pt-3">
               <Button variant="outline" size="sm" className="self-start" onPress={() => act(complaints.reopen(grievanceId), 'msg_reopened', 'err_reopen_failed')}>
                 <Text>{th('btn_reopen')}</Text>
               </Button>
@@ -195,70 +195,61 @@ export function GrievanceThreadScreen({ grievanceId }: { grievanceId: string }) 
               <View className="flex-row gap-1">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Pressable key={n} onPress={() => feedback(n)} hitSlop={6} accessibilityLabel={String(n)}>
-                    <Icon as={Star} className={cn('size-6', n <= rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
+                    <Icon as={Star} className={cn('size-6', n <= rating ? 'fill-warning text-warning' : 'text-muted-foreground')} />
                   </Pressable>
                 ))}
               </View>
             </View>
           ) : null}
-        </CardContent>
-      </Card>
+      </Panel>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{th('conversation_title')}</CardTitle>
-        </CardHeader>
-        <CardContent className="gap-3">
-          {g.comments.length === 0 ? <Text variant="muted" className="text-sm">{th('no_replies')}</Text> : null}
-          {g.comments.map((c) => {
-            const atts = g.attachments.filter((a) => a.comment_id === c.id);
-            return (
-              <View key={c.id} className={cn('gap-1 rounded-lg p-3', c.is_internal_note ? 'border border-amber-200 bg-amber-50' : 'bg-muted/40')}>
-                <View className="flex-row flex-wrap items-center gap-2">
-                  <Text className="text-xs font-medium">{c.author_profile_id === myId ? th('you') : th('staff')}</Text>
-                  {c.is_internal_note ? (
-                    <Badge variant="outline">
-                      <Text className="text-[10px]">{th('internal_note_badge')}</Text>
-                    </Badge>
-                  ) : null}
-                  <Text className="text-muted-foreground text-xs">{new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(c.created_at))}</Text>
-                </View>
-                <Text className="text-sm">{c.body}</Text>
-                {atts.length ? <Attachments grievanceId={grievanceId} items={atts} /> : null}
+      <FormSection title={th('conversation_title')} icon={MessagesSquare}>
+        {g.comments.length === 0 ? <Text variant="muted" className="text-sm">{th('no_replies')}</Text> : null}
+        {g.comments.map((c) => {
+          const atts = g.attachments.filter((a) => a.comment_id === c.id);
+          return (
+            <View key={c.id} className={cn('gap-1.5 rounded-2xl p-3', c.is_internal_note ? 'bg-warning-soft' : c.author_profile_id === myId ? 'bg-info-soft' : 'bg-muted/40')}>
+              <View className="flex-row flex-wrap items-center gap-2">
+                <Initials name={c.author_profile_id === myId ? th('you') : th('staff')} size={24} tone={c.author_profile_id === myId ? 'brand' : 'muted'} />
+                <Text className="text-xs font-semibold">{c.author_profile_id === myId ? th('you') : th('staff')}</Text>
+                {c.is_internal_note ? <StatusChip label={th('internal_note_badge')} tone="warning" /> : null}
+                <Text className="text-muted-foreground text-xs">{new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(c.created_at))}</Text>
               </View>
-            );
-          })}
-          <Separator />
-          <Textarea value={reply} onChangeText={setReply} placeholder={th('reply_placeholder')} className="min-h-20" />
-          {files.length ? (
-            <View className="flex-row flex-wrap gap-2">
-              {files.map((f, i) => (
-                <View key={`${f.uri}-${i}`} className="bg-muted flex-row items-center gap-1 rounded px-2 py-1">
-                  <Text className="max-w-40 text-xs" numberOfLines={1}>
-                    {f.name}
-                  </Text>
-                  <Pressable onPress={() => setFiles((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
-                    <Icon as={X} className="text-muted-foreground size-3" />
-                  </Pressable>
-                </View>
-              ))}
+              <Text className="text-sm">{c.body}</Text>
+              {atts.length ? <Attachments grievanceId={grievanceId} items={atts} /> : null}
             </View>
-          ) : null}
-          <View className="flex-row flex-wrap items-center justify-between gap-2">
-            <View className="flex-row items-center gap-3">
-              <Button variant="outline" size="sm" onPress={async () => setFiles([...files, ...(await pickDocuments())])}>
-                <Icon as={Upload} className="text-foreground size-3.5" />
-                <Text>{th('btn_attach')}</Text>
-              </Button>
-              {g.can_manage ? <CheckRow checked={internal} onPress={() => setInternal((v) => !v)} label={th('internal_note_checkbox')} /> : null}
-            </View>
-            <Button size="sm" onPress={sendReply} disabled={posting || !reply.trim()}>
-              <Icon as={Send} className="text-primary-foreground size-4" />
-              <Text>{th('btn_send')}</Text>
-            </Button>
+          );
+        })}
+        <Separator />
+        <Textarea value={reply} onChangeText={setReply} placeholder={th('reply_placeholder')} className="min-h-20" />
+        {files.length ? (
+          <View className="flex-row flex-wrap gap-2">
+            {files.map((f, i) => (
+              <View key={`${f.uri}-${i}`} className="bg-info-soft flex-row items-center gap-1 rounded-full px-3 py-1.5">
+                <Text className="max-w-40 text-xs" numberOfLines={1}>
+                  {f.name}
+                </Text>
+                <Pressable onPress={() => setFiles((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
+                  <Icon as={X} className="text-destructive size-3" />
+                </Pressable>
+              </View>
+            ))}
           </View>
-        </CardContent>
-      </Card>
+        ) : null}
+        <View className="flex-row flex-wrap items-center justify-between gap-2">
+          <View className="flex-row items-center gap-3">
+            <Button variant="outline" size="sm" onPress={async () => setFiles([...files, ...(await pickDocuments())])}>
+              <Icon as={Upload} className="text-foreground size-3.5" />
+              <Text>{th('btn_attach')}</Text>
+            </Button>
+            {g.can_manage ? <CheckRow checked={internal} onPress={() => setInternal((v) => !v)} label={th('internal_note_checkbox')} /> : null}
+          </View>
+          <Button size="sm" onPress={sendReply} disabled={posting || !reply.trim()}>
+            <Icon as={Send} className="text-primary-foreground size-4" />
+            <Text>{th('btn_send')}</Text>
+          </Button>
+        </View>
+      </FormSection>
     </ScrollView>
   );
 }

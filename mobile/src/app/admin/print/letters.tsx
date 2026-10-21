@@ -1,20 +1,20 @@
 import type { StudentPrintInfo } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { FileDown, Printer } from 'lucide-react-native';
-import { htmlToText, textToHtml } from '@studently/shared-utils';
-import { useState } from 'react';
+import { htmlToText } from '@studently/shared-utils';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { useToast } from '@/components/app/toast';
+import { RichTextField } from '@/components/app/rich-text-field';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
-import { Textarea } from '@/components/ui/textarea';
 import { fullName } from '@/features/admin/people';
 import { PeoplePicker } from '@/features/admin/people-picker';
 import { usePrintContext } from '@/features/admin/print-context';
@@ -40,6 +40,8 @@ export default function PrintLetters() {
   const ctx = usePrintContext();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [bodyKey, setBodyKey] = useState(0);
+  const insertRef = useRef<(content: string) => void>(() => {});
   const [size, setSize] = useState<Size>('normal');
   const [step, setStep] = useState<'write' | 'students'>('write');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -48,7 +50,7 @@ export default function PrintLetters() {
   const role = useRoleBase();
   const mine = useTeacherStudents(role.isTeacher);
 
-  function fill(text: string, s: StudentPrintInfo) {
+  function fill(text: string, s: StudentPrintInfo, asHtml = false) {
     const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
     const values: Record<string, string> = {
       __FULL_NAME__: fullName(s.profile), __FIRST_NAME__: s.profile.first_name ?? '', __FATHER_NAME__: s.profile.father_name ?? '',
@@ -56,13 +58,10 @@ export default function PrintLetters() {
       __GRADE_LEVEL__: s.academic.grade_level ?? '', __SECTION__: s.academic.section ?? '', __CAMPUS__: campus?.name ?? ctx.school.name,
       __EMAIL__: s.profile.email ?? '', __PHONE__: s.profile.phone ?? '', __DATE__: date,
     };
-    // Escape the admin's text, then put the (escaped) values in, keeping paragraphs.
-    let html = escapeHtml(text);
+    // `text` is the letter's HTML (rich editor, like the web) or a plain title: escape a title, then put the (escaped) values in.
+    let html = asHtml ? text : escapeHtml(text);
     for (const [k, v] of Object.entries(values)) html = html.split(k).join(escapeHtml(v));
-    return html
-      .split(/\n{2,}/)
-      .map((para) => `<p style="margin:0 0 12px">${para.replace(/\n/g, '<br>')}</p>`)
-      .join('');
+    return html;
   }
 
   async function run(mode: 'print' | 'pdf') {
@@ -89,7 +88,7 @@ export default function PrintLetters() {
         list = res.data.students;
       }
       const pages = list.map(
-        (s) => `<div dir="auto" style="font-size:${SIZES[size]}px;line-height:1.7">${title ? `<h2 style="margin:8px 0 16px;font-size:${SIZES[size] + 6}px">${fill(title, s)}</h2>` : ''}${fill(body, s)}</div>`,
+        (s) => `<div dir="auto" style="font-size:${SIZES[size]}px;line-height:1.7">${title ? `<h2 style="margin:8px 0 16px;font-size:${SIZES[size] + 6}px">${fill(title, s)}</h2>` : ''}${fill(body, s, true)}</div>`,
       );
       const html = buildPrintHtml({ title: title || p('title'), pages, school: ctx.school, layout: ctx.layout, withHeader: ctx.withHeader, reportLabel: p('title') });
       if (mode === 'print') await printHtml(html);
@@ -113,12 +112,19 @@ export default function PrintLetters() {
           </View>
           <View className="gap-1.5">
             <Label nativeID="lbody">{p('letter_editor')}</Label>
-            <LetterTemplatePicker context="print_letters" onLoad={(html) => setBody(htmlToText(html))} getContent={() => textToHtml(body)} />
-            <Textarea aria-labelledby="lbody" value={body} onChangeText={setBody} className="min-h-64" placeholder={p('letter_editor_desc')} />
+            <LetterTemplatePicker
+              context="print_letters"
+              onLoad={(html) => {
+                setBody(html);
+                setBodyKey((k) => k + 1);
+              }}
+              getContent={() => body}
+            />
+            <RichTextField key={bodyKey} value={body} onChange={setBody} placeholder={p('letter_editor_desc')} campusId={campus?.id} minHeight={260} insertRef={(fn) => (insertRef.current = fn)} />
             <Text className="text-muted-foreground text-xs">{p('insert_field')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
               {PLACEHOLDERS.map((k) => (
-                <Pressable key={k} onPress={() => setBody((b) => `${b}${k}`)} className="border-border rounded-full border px-3 py-1.5" accessibilityRole="button">
+                <Pressable key={k} onPress={() => insertRef.current(k)} className="border-border rounded-full border px-3 py-1.5" accessibilityRole="button">
                   <Text className="font-mono text-xs">{k}</Text>
                 </Pressable>
               ))}
@@ -128,7 +134,7 @@ export default function PrintLetters() {
             <Label>{p('font_size_placeholder')}</Label>
             <FilterChips<Size> value={size} onChange={setSize} options={(Object.keys(SIZES) as Size[]).map((k) => ({ value: k, label: p(`size_${k}`) }))} />
           </View>
-          <Button onPress={() => (body.trim() ? setStep('students') : toast.error(t('app.pr_write_letter')))}>
+          <Button onPress={() => (htmlToText(body).trim() ? setStep('students') : toast.error(t('app.pr_write_letter')))}>
             <Text>{p('select_students')}</Text>
           </Button>
         </ScrollView>

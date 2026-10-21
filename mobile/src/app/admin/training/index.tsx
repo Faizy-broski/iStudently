@@ -7,12 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
-import { LoadingList } from '@/components/app/states';
-import { StatCard } from '@/components/app/stat-card';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
+import { StatTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { capacityTone, registrationLink, STATUS_TONE } from '@/features/admin/training';
 import { useCampus } from '@/features/campus/campus';
@@ -56,12 +56,12 @@ export default function Training() {
           <Text>{tr('newSessionSpec')}</Text>
         </Button>
         <View className="flex-row gap-2">
-          <StatCard icon={ClipboardList} label={tr('statTotalSessions')} value={String(sessions.length)} />
-          <StatCard icon={BookOpen} label={tr('statOpen')} value={String(sessions.filter((s) => s.status === 'open').length)} />
+          <StatTile icon={ClipboardList} label={tr('statTotalSessions')} value={String(sessions.length)} />
+          <StatTile icon={BookOpen} label={tr('statOpen')} value={String(sessions.filter((s) => s.status === 'open').length)} />
         </View>
         <View className="flex-row gap-2">
-          <StatCard icon={CheckCircle} label={tr('statFull')} value={String(sessions.filter((s) => s.status === 'full').length)} />
-          <StatCard icon={Users} label={tr('statTotalRegistrations')} value={String(sessions.reduce((n, s) => n + s.registered_seats, 0))} />
+          <StatTile icon={CheckCircle} label={tr('statFull')} value={String(sessions.filter((s) => s.status === 'full').length)} />
+          <StatTile icon={Users} label={tr('statTotalRegistrations')} value={String(sessions.reduce((n, s) => n + s.registered_seats, 0))} />
         </View>
 
         {res.isLoading ? (
@@ -71,7 +71,7 @@ export default function Training() {
             <CardContent className="items-center gap-3 py-10">
               <Icon as={ClipboardList} className="text-muted-foreground/40 size-12" />
               <Text className="text-lg font-medium">{tr('noSessionsYet')}</Text>
-              <Text className="text-muted-foreground text-center text-sm">{tr('noSessionsDesc')}</Text>
+              <EmptyState title={tr('noSessionsDesc')} />
               <Button onPress={() => router.push('/admin/training/form')}>
                 <Icon as={Plus} className="text-primary-foreground size-4" />
                 <Text>{tr('createSessionSpec')}</Text>
@@ -96,9 +96,9 @@ export default function Training() {
                         {s.skill_level ? <Pill text={t(`adminTrainingSessions.form.${s.skill_level}`)} /> : null}
                         <Pill text={tr('audienceSuffix', { audience: s.target_audience })} />
                         {s.certificate_settings?.enable_auto_issuance ? (
-                          <View className="flex-row items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 dark:bg-purple-950/30">
-                            <Icon as={Award} className="size-3 text-purple-700" />
-                            <Text className="text-xs text-purple-700">{tr('autoCert')}</Text>
+                          <View className="flex-row items-center gap-1 rounded-full border border-chart-6/30 bg-chart-6/10 px-2 py-0.5 ">
+                            <Icon as={Award} className="size-3 text-chart-6" />
+                            <Text className="text-xs text-chart-6">{tr('autoCert')}</Text>
                           </View>
                         ) : null}
                       </View>

@@ -333,13 +333,13 @@ export default function GenerateFees() {
           </Card>
         )}
 
-        <Card className="border-blue-200 bg-blue-50/60 py-4 dark:border-blue-900 dark:bg-blue-950/20">
+        <Card className="border-info-soft bg-info-soft py-4  ">
           <CardHeader className="px-4">
-            <CardTitle className="text-blue-900 dark:text-blue-200">{`💡 ${g('howItWorks')}`}</CardTitle>
+            <CardTitle className="text-brand dark:text-brand-secondary ">{`💡 ${g('howItWorks')}`}</CardTitle>
           </CardHeader>
           <CardContent className="gap-1 px-4">
             {[1, 2, 3, 4, 5].map((n) => (
-              <Text key={n} className="text-sm text-blue-900 dark:text-blue-200">{`• ${g(`howItWorksDesc${n}`)}`}</Text>
+              <Text key={n} className="text-sm text-brand dark:text-brand-secondary ">{`• ${g(`howItWorksDesc${n}`)}`}</Text>
             ))}
           </CardContent>
         </Card>

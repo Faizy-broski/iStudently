@@ -9,7 +9,7 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -80,7 +80,7 @@ function LessonCard({ lesson, open, onToggle }: { lesson: LessonPlan; open: bool
               <View className="gap-2">
                 <Text className="text-sm font-semibold">{r('h_parts')}</Text>
                 {items.map((it) => (
-                  <View key={it.id} className="border-border gap-2 rounded-md border p-2.5">
+                  <View key={it.id} className="border-info-soft dark:border-border gap-2 rounded-xl border p-2.5">
                     <Text className="text-muted-foreground text-xs">
                       {r('th_time')}: {it.time_minutes ? r('label_min', { count: it.time_minutes }) : '—'}
                     </Text>
@@ -98,7 +98,7 @@ function LessonCard({ lesson, open, onToggle }: { lesson: LessonPlan; open: bool
               <View className="gap-1.5">
                 <Text className="text-sm font-semibold">{r('h_attachments')}</Text>
                 {files.map((f) => (
-                  <Pressable key={f.id} onPress={() => openBrowserAsync(f.file_url)} className="border-border flex-row items-center gap-2 rounded-md border p-2.5">
+                  <Pressable key={f.id} onPress={() => openBrowserAsync(f.file_url)} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border p-2.5">
                     <Icon as={Download} className="text-muted-foreground size-4" />
                     <Text className="text-primary flex-1 text-sm">{f.file_name}</Text>
                     {f.file_size ? <Text className="text-muted-foreground text-xs">{(f.file_size / 1024).toFixed(1)} KB</Text> : null}
@@ -163,7 +163,7 @@ export default function LessonPlanRead() {
         {!cpId ? (
           <View className="items-center gap-2 py-10">
             <Icon as={BookOpen} className="text-muted-foreground size-10 opacity-40" />
-            <Text className="text-muted-foreground text-center text-sm">{r('msg_no_course')}</Text>
+            <EmptyState title={r('msg_no_course')} />
           </View>
         ) : (
           <>
@@ -174,12 +174,12 @@ export default function LessonPlanRead() {
             />
             {mode !== 'all' ? (
               <View className="flex-row items-center gap-2">
-                <Button size="icon" variant="outline" onPress={() => move(-1)} accessibilityLabel="previous">
-                  <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
+                <Button size="icon" variant="outline" onPress={() => move(-1)} accessibilityLabel={t('common.previous')}>
+                  <Icon flipRtl as={ChevronLeft} className="text-foreground size-4" />
                 </Button>
                 <Text className="flex-1 text-center text-sm font-medium">{label}</Text>
-                <Button size="icon" variant="outline" onPress={() => move(1)} accessibilityLabel="next">
-                  <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
+                <Button size="icon" variant="outline" onPress={() => move(1)} accessibilityLabel={t('common.next')}>
+                  <Icon flipRtl as={ChevronRight} className="text-foreground size-4" />
                 </Button>
               </View>
             ) : (

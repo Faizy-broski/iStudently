@@ -1,13 +1,15 @@
 import type { ReadingQuizQuestion, ReadingWordResult } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { CheckCircle2, Headphones, Maximize2, Mic, MicOff, Minimize2, Minus, Pause, Play, Plus, Square } from 'lucide-react-native';
+import { BookOpen, CheckCircle2, Gauge, Headphones, Maximize2, Mic, MicOff, Minimize2, Minus, Pause, Play, Plus, Square, Target, Trophy } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, Easing, Pressable, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
+import { FormSection, HeroCard, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -250,25 +252,21 @@ export default function SpeedReadingSession() {
   }
 
   if (res.isLoading) return <LoadingList rows={4} />;
-  if (!text) return <Text className="text-muted-foreground p-6 text-center">{a('text_not_found')}</Text>;
+  if (!text) return <EmptyState icon={BookOpen} title={a('text_not_found')} />;
 
   if (phase === 'setup') {
     return (
       <>
         <Stack.Screen options={{ title: text.title }} />
-        <ScrollView className="bg-background flex-1" contentContainerClassName="gap-5 p-4 pb-10">
+        <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
           <Text className="text-muted-foreground text-sm">{`${a('words', { count: text.word_count })} · ${text.language === 'ar' ? s('languageAr') : s('languageEn')}`}</Text>
-          <View className="gap-2">
-            <Label>
-              {`${s('wpmLabel')}: `}
-              <Text className="text-primary font-semibold">{String(wpm)}</Text>
-            </Label>
+          <FormSection icon={Gauge} title={s('wpmLabel')} action={<StatusChip label={String(wpm)} tone="info" />}>
             <View className="flex-row items-center gap-3">
               <Button size="icon" variant="outline" onPress={() => setWpm((w) => Math.max(40, w - 5))} accessibilityLabel={a('decrease')}>
                 <Icon as={Minus} className="size-4" />
               </Button>
               <View className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
-                <View className="bg-primary h-full" style={{ width: `${((wpm - 40) / 160) * 100}%` }} />
+                <View className="bg-brand dark:bg-brand-secondary h-full rounded-full" style={{ width: `${((wpm - 40) / 160) * 100}%` }} />
               </View>
               <Button size="icon" variant="outline" onPress={() => setWpm((w) => Math.min(200, w + 5))} accessibilityLabel={a('increase')}>
                 <Icon as={Plus} className="size-4" />
@@ -276,9 +274,8 @@ export default function SpeedReadingSession() {
             </View>
             <Text className="text-muted-foreground text-xs">{s('wpmHint')}</Text>
             <Text className="text-muted-foreground text-xs">{a('duration', { seconds: Math.round(durationMs / 1000) })}</Text>
-          </View>
-          <View className="gap-2">
-            <Label>{s('readingMode')}</Label>
+          </FormSection>
+          <FormSection icon={Mic} title={s('readingMode')}>
             <View className="flex-row flex-wrap gap-2">
               <Button size="sm" variant={mode === 'voice' ? 'default' : 'outline'} disabled={!voiceOk} onPress={() => setMode('voice')}>
                 <Icon as={Mic} className={cn('size-4', mode === 'voice' && 'text-primary-foreground')} />
@@ -289,10 +286,10 @@ export default function SpeedReadingSession() {
                 <Text>{s('manualMode')}</Text>
               </Button>
             </View>
-            {!voiceOk ? <Text className="text-xs text-amber-600">{voiceNote ? a(voiceNote) : s('voiceNotSupported')}</Text> : null}
-            {mode === 'voice' ? <Text className="rounded bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-950/30">{a('record_note')}</Text> : null}
-            {mode === 'manual' ? <Text className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-600 dark:bg-amber-950/30">{a('manual_note')}</Text> : null}
-          </View>
+            {!voiceOk ? <Text className="text-warning text-xs">{voiceNote ? a(voiceNote) : s('voiceNotSupported')}</Text> : null}
+            {mode === 'voice' ? <Text className="bg-info-soft text-brand dark:text-brand-secondary rounded-xl px-3 py-2 text-xs">{a('record_note')}</Text> : null}
+            {mode === 'manual' ? <Text className="bg-warning-soft text-warning rounded-xl px-3 py-2 text-xs">{a('manual_note')}</Text> : null}
+          </FormSection>
           <View className="flex-row flex-wrap gap-2">
             <Button onPress={start}>
               <Icon as={Play} className="text-primary-foreground size-4" />
@@ -314,34 +311,34 @@ export default function SpeedReadingSession() {
   if (phase === 'reading') {
     const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [boxH, -textH] });
     return (
-      <View className="flex-1 bg-neutral-950">
+      <View className="flex-1 bg-black">
         <Stack.Screen options={{ headerShown: !full, title: text.title }} />
-        <View className="flex-row flex-wrap items-center justify-between gap-2 bg-neutral-950/80 px-4 py-3" style={full ? { paddingTop: 48 } : undefined}>
-          <Badge variant="outline" className="border-white/30">
-            <Text className="text-white">{a('wpm', { wpm })}</Text>
-          </Badge>
+        <View className="flex-row flex-wrap items-center justify-between gap-2 bg-black/80 px-4 py-3" style={full ? { paddingTop: 48 } : undefined}>
+          <View className="rounded-full bg-white/15 px-3 py-1">
+            <Text className="text-xs font-semibold text-white">{a('wpm', { wpm })}</Text>
+          </View>
           {listening && !paused ? (
             <View className="flex-row items-center gap-1">
-              <Icon as={Mic} className="size-3 text-green-400" />
-              <Text className="text-xs text-green-400">{s('listeningActive')}</Text>
+              <Icon as={Mic} className="size-3 text-success" />
+              <Text className="text-xs text-success">{s('listeningActive')}</Text>
             </View>
           ) : null}
           {paused ? (
             <View className="flex-row items-center gap-1">
-              <Icon as={Pause} className="size-3 text-yellow-400" />
-              <Text className="text-xs text-yellow-400">{a('paused')}</Text>
+              <Icon as={Pause} className="size-3 text-warning" />
+              <Text className="text-xs text-warning">{a('paused')}</Text>
             </View>
           ) : null}
           <View className="flex-row gap-2">
-            <Pressable onPress={togglePause} className="flex-row items-center gap-1 rounded-md border border-yellow-400 px-3 py-1.5" accessibilityRole="button">
-              <Icon as={paused ? Play : Pause} className="size-4 text-yellow-400" />
-              <Text className="text-sm text-yellow-400">{paused ? a('resume') : a('pause')}</Text>
+            <Pressable onPress={togglePause} className="bg-warning-soft flex-row items-center gap-1 rounded-full px-3 py-1.5 active:opacity-70" accessibilityRole="button">
+              <Icon as={paused ? Play : Pause} className="size-4 text-warning" />
+              <Text className="text-sm text-warning">{paused ? a('resume') : a('pause')}</Text>
             </Pressable>
-            <Pressable onPress={stopEarly} className="flex-row items-center gap-1 rounded-md border border-red-400 px-3 py-1.5" accessibilityRole="button">
-              <Icon as={Square} className="size-4 text-red-400" />
-              <Text className="text-sm text-red-400">{s('stopSession')}</Text>
+            <Pressable onPress={stopEarly} className="bg-destructive-soft flex-row items-center gap-1 rounded-full px-3 py-1.5 active:opacity-70" accessibilityRole="button">
+              <Icon as={Square} className="size-4 text-destructive" />
+              <Text className="text-sm text-destructive">{s('stopSession')}</Text>
             </Pressable>
-            <Pressable onPress={() => setFull((f) => !f)} className="p-1.5" accessibilityRole="button" accessibilityLabel={full ? a('exit_smartboard') : s('smartboardMode')}>
+            <Pressable onPress={() => setFull((f) => !f)} className="size-8 items-center justify-center rounded-full bg-white/15 active:opacity-70" accessibilityRole="button" accessibilityLabel={full ? a('exit_smartboard') : s('smartboardMode')}>
               <Icon as={full ? Minimize2 : Maximize2} className="size-4 text-white" />
             </Pressable>
           </View>
@@ -351,8 +348,8 @@ export default function SpeedReadingSession() {
             <Text className={cn('text-2xl leading-relaxed', rtl && 'text-right')} style={{ writingDirection: rtl ? 'rtl' : 'ltr' }}>
               {words.map((w, i) => {
                 let tone = 'text-white/70';
-                if (mode === 'voice' && i < spoken.length) tone = norm(spoken[i]) === norm(w) ? 'font-semibold text-green-400' : 'text-red-400';
-                else if (mode === 'voice' && i === spoken.length) tone = 'text-yellow-300 underline';
+                if (mode === 'voice' && i < spoken.length) tone = norm(spoken[i]) === norm(w) ? 'font-semibold text-success' : 'text-destructive';
+                else if (mode === 'voice' && i === spoken.length) tone = 'text-warning underline';
                 return (
                   <Text key={i} className={cn('text-2xl', tone)}>
                     {`${w} `}
@@ -368,14 +365,16 @@ export default function SpeedReadingSession() {
 
   if (phase === 'manual-grade') {
     return (
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-6 p-6">
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
         <Stack.Screen options={{ headerShown: true, title: text.title }} />
-        <View className="items-center gap-2">
-          <Text className="text-4xl">✅</Text>
-          <Text className="text-xl font-bold">{a('complete')}</Text>
-          <Text className="text-muted-foreground text-center text-sm">{a('how_many')}</Text>
-        </View>
-        <View className="gap-3">
+        <HeroCard className="items-center">
+          <View className="size-14 items-center justify-center rounded-full bg-white/15">
+            <Icon as={CheckCircle2} className="size-7 text-white" />
+          </View>
+          <Text className="text-xl font-bold text-white">{a('complete')}</Text>
+          <Text className="text-center text-sm text-white/80">{a('how_many')}</Text>
+        </HeroCard>
+        <Panel className="gap-3 p-4">
           <Label>{s('incorrectWords')}</Label>
           <View className="flex-row items-center gap-3">
             <Button size="icon" variant="outline" className="rounded-full" onPress={() => setManualErrors((e) => Math.max(0, e - 1))} accessibilityLabel={a('decrease')}>
@@ -392,7 +391,7 @@ export default function SpeedReadingSession() {
             </Button>
           </View>
           <Text className="text-muted-foreground text-xs">{a('totals', { total: text.word_count, correct: Math.max(0, text.word_count - manualErrors) })}</Text>
-        </View>
+        </Panel>
         <Button onPress={() => (text.quiz_questions?.length ? setPhase('quiz') : finalise(false))}>
           <Text>{a('submit_score')}</Text>
         </Button>
@@ -414,8 +413,13 @@ export default function SpeedReadingSession() {
             ...(q.option_d ? [{ key: 'd', text: q.option_d }] : []),
           ];
           return (
-            <View key={i} className="border-border gap-2 rounded-lg border p-3">
-              <Text className="font-medium">{`${i + 1}. ${q.question}`}</Text>
+            <Panel key={i} className="gap-2 p-4">
+              <View className="flex-row items-start gap-3">
+                <View className="bg-info-soft size-8 items-center justify-center rounded-full">
+                  <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{String(i + 1)}</Text>
+                </View>
+                <Text className="flex-1 text-sm font-semibold">{q.question}</Text>
+              </View>
               {opts.map((o) => {
                 const on = answers[i] === o.key;
                 return (
@@ -424,15 +428,15 @@ export default function SpeedReadingSession() {
                     onPress={() => setAnswers((p) => ({ ...p, [i]: o.key }))}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: on }}
-                    className={cn('rounded-md border px-3 py-2', on ? 'bg-primary border-primary' : 'border-border')}>
-                    <Text className={cn('text-sm', on && 'text-primary-foreground')}>
-                      <Text className={cn('text-sm font-semibold uppercase', on && 'text-primary-foreground')}>{`${o.key}. `}</Text>
+                    className={cn('rounded-xl border px-3 py-2.5 active:opacity-70', on ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border')}>
+                    <Text className={cn('text-sm', on && 'text-brand dark:text-brand-secondary font-medium')}>
+                      <Text className={cn('text-sm font-semibold uppercase', on && 'text-brand dark:text-brand-secondary')}>{`${o.key}. `}</Text>
                       {o.text}
                     </Text>
                   </Pressable>
                 );
               })}
-            </View>
+            </Panel>
           );
         })}
         <Button onPress={() => submitQuiz(qs)} disabled={Object.keys(answers).length < qs.length}>
@@ -445,60 +449,57 @@ export default function SpeedReadingSession() {
   const badge = readingBadge(wpm);
   const counts = { correct: marks.filter((m) => m === 'correct').length, incorrect: marks.filter((m) => m === 'incorrect').length, unread: marks.filter((m) => m === 'unread').length };
   return (
-    <ScrollView className="bg-background flex-1" contentContainerClassName="items-center gap-5 p-4 pb-10">
+    <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
       <Stack.Screen options={{ headerShown: true, title: text.title }} />
-      <Text className="text-5xl">{result?.bonus ? '🎉' : '✅'}</Text>
-      <Text className="text-2xl font-bold">{s('sessionComplete')}</Text>
-      <View className="w-full flex-row flex-wrap gap-3">
-        <ResultTile label={s('pointsEarned')} value={a('pts', { count: result?.points ?? 0 })} highlight />
-        <ResultTile label={s('accuracy')} value={`${result?.accuracy ?? 0}%`} />
-        <ResultTile label={s('wordsReadCorrectly')} value={String(result?.correct ?? 0)} />
-        <ResultTile label="WPM" value={String(wpm)} />
-      </View>
+      <HeroCard className="items-center">
+        <Text className="text-5xl">{result?.bonus ? '🎉' : '✅'}</Text>
+        <Text className="text-xl font-bold text-white">{s('sessionComplete')}</Text>
+        <Text className="text-sm font-semibold text-white/85">{s('pointsEarned')}</Text>
+        <Text className="text-4xl font-bold text-white">{a('pts', { count: result?.points ?? 0 })}</Text>
+        <View className="flex-row items-center gap-2 rounded-full bg-white/15 px-3 py-1">
+          <Text>{badge.emoji}</Text>
+          <Text className="text-xs font-semibold text-white">{a(`badge_${badge.key}`)}</Text>
+        </View>
+      </HeroCard>
+      <StatTiles>
+        <StatTile icon={Target} tone="success" label={s('accuracy')} value={`${result?.accuracy ?? 0}%`} />
+        <StatTile icon={CheckCircle2} label={s('wordsReadCorrectly')} value={String(result?.correct ?? 0)} />
+        <StatTile icon={Gauge} tone="warning" label="WPM" value={String(wpm)} />
+      </StatTiles>
       {result?.bonus ? (
-        <View className="w-full flex-row items-center justify-center gap-2 rounded-lg bg-green-50 p-3 dark:bg-green-950/30">
-          <Icon as={CheckCircle2} className="size-5 text-green-600" />
-          <Text className="font-medium text-green-600">{`${s('comprehensionBonus')} ×2!`}</Text>
+        <View className="bg-success-soft flex-row items-center justify-center gap-2 rounded-2xl p-3">
+          <Icon as={Trophy} className="text-success size-5" />
+          <Text className="text-success font-medium">{`${s('comprehensionBonus')} ×2!`}</Text>
         </View>
       ) : null}
-      <View className="items-center">
-        <Text className="mb-1 text-4xl">{badge.emoji}</Text>
-        <Badge variant="outline">
-          <Text>{a(`badge_${badge.key}`)}</Text>
-        </Badge>
-      </View>
-      {saveFailed ? <Text className="text-sm text-red-600">{a('save_failed')}</Text> : null}
+      {saveFailed ? <Text className="text-destructive text-center text-sm">{a('save_failed')}</Text> : null}
       {audioUri && audioPlayerFactory() ? (
-        <View className="bg-muted/40 border-border w-full gap-2 rounded-lg border p-4">
-          <View className="flex-row items-center gap-2">
-            <Icon as={Headphones} className="text-primary size-4" />
-            <Text className="text-sm font-semibold">{a('listen')}</Text>
-          </View>
+        <FormSection icon={Headphones} title={a('listen')}>
           <Button variant="outline" size="sm" className="self-start" onPress={togglePlay}>
             <Icon as={playing ? Pause : Play} className="size-4" />
             <Text>{playing ? a('stop') : a('play')}</Text>
           </Button>
-        </View>
+        </FormSection>
       ) : null}
       {mode === 'voice' && marks.length ? (
-        <View className="bg-muted/40 border-border w-full gap-3 rounded-lg border p-4">
+        <Panel className="gap-3 p-4">
           <Text className="text-sm font-semibold">{a('word_review')}</Text>
           <Text className={cn('text-sm leading-loose', rtl && 'text-right')} style={{ writingDirection: rtl ? 'rtl' : 'ltr' }}>
             {words.map((w, i) => {
               const m = marks[i] ?? 'unread';
               return (
-                <Text key={i} className={cn('text-sm', m === 'correct' ? 'font-medium text-green-600' : m === 'incorrect' ? 'font-medium text-red-500' : 'text-muted-foreground')}>
+                <Text key={i} className={cn('text-sm', m === 'correct' ? 'font-medium text-success' : m === 'incorrect' ? 'font-medium text-destructive' : 'text-muted-foreground')}>
                   {`${w} `}
                 </Text>
               );
             })}
           </Text>
           <View className="flex-row flex-wrap gap-4">
-            <Legend tone="bg-green-500" label={a('correct_n', { count: counts.correct })} />
-            <Legend tone="bg-red-500" label={a('incorrect_n', { count: counts.incorrect })} />
-            <Legend tone="bg-gray-400" label={a('unread_n', { count: counts.unread })} />
+            <Legend tone="bg-success" label={a('correct_n', { count: counts.correct })} />
+            <Legend tone="bg-destructive" label={a('incorrect_n', { count: counts.incorrect })} />
+            <Legend tone="bg-muted-foreground/40" label={a('unread_n', { count: counts.unread })} />
           </View>
-        </View>
+        </Panel>
       ) : null}
       <View className="flex-row flex-wrap justify-center gap-3">
         <Button onPress={() => router.replace('/student/speed-reading')}>
@@ -509,15 +510,6 @@ export default function SpeedReadingSession() {
         </Button>
       </View>
     </ScrollView>
-  );
-}
-
-function ResultTile({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <View className={cn('min-w-[45%] flex-1 items-center rounded-lg p-4', highlight ? 'bg-primary/10 border-primary/20 border' : 'bg-muted/50')}>
-      <Text className={cn('text-2xl font-bold', highlight && 'text-primary')}>{value}</Text>
-      <Text className="text-muted-foreground mt-1 text-center text-xs">{label}</Text>
-    </View>
   );
 }
 

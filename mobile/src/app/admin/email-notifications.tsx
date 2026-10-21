@@ -69,7 +69,7 @@ export default function EmailNotifications() {
         />
         <View className="flex-row items-center justify-between gap-4">
           <View className="flex-1">
-            <Text className="font-medium">{e(`${ALERT[tab]}_alert_title`)}</Text>
+            <Text className="text-sm font-semibold">{e(`${ALERT[tab]}_alert_title`)}</Text>
             <Text className="text-muted-foreground text-sm">{e(`${ALERT[tab]}_alert_desc`)}</Text>
           </View>
           <Switch checked={!!current.is_active} onCheckedChange={(v) => set('is_active', v)} />

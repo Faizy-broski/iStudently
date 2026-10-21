@@ -44,8 +44,8 @@ export default function AssignmentMaxPoints() {
 
   const rules: [string, string, string][] = [
     ['bg-primary', t('app.ps_mp_rule1'), t('app.ps_mp_rule1_body')],
-    ['bg-sky-500', t('app.ps_mp_rule2'), t('app.ps_mp_rule2_body')],
-    ['bg-green-500', t('app.ps_mp_rule3'), t('app.ps_mp_rule3_body')],
+    ['bg-brand', t('app.ps_mp_rule2'), t('app.ps_mp_rule2_body')],
+    ['bg-success', t('app.ps_mp_rule3'), t('app.ps_mp_rule3_body')],
   ];
 
   return (

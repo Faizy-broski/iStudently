@@ -162,7 +162,7 @@ export default function MassAssign() {
             <Pressable onPress={() => toggle(s)} accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(s.id) }} className="active:bg-muted border-border flex-row items-center gap-3 border-b px-4 py-3">
               <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s)} />
               <View className="flex-1">
-                <Text className="font-medium">{s.name}</Text>
+                <Text className="text-sm font-semibold">{s.name}</Text>
                 <Text className="text-muted-foreground text-xs">{[`${m('admission_no')}: ${s.admission_number || '—'}`, s.grade_level, s.section_name].filter(Boolean).join(' · ')}</Text>
               </View>
             </Pressable>

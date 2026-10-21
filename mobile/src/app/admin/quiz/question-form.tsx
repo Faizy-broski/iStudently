@@ -123,7 +123,7 @@ function Form({ question, defaultCategoryId }: { question: AdminQuizQuestion | n
           <Label>{q('answerInput.correctAnswer')}</Label>
           <Text className="text-muted-foreground text-xs">{q('anatomyOnWeb', { defaultValue: 'Pick the correct marker on the 3D model below (website view), then save there.' })}</Text>
           {question ? (
-            <View className="border-border h-[480px] overflow-hidden rounded-md border">
+            <View className="border-info-soft dark:border-border h-[480px] overflow-hidden rounded-xl border">
               <WebSessionView path="/admin/quiz/questions" campusId={campusId} />
             </View>
           ) : null}

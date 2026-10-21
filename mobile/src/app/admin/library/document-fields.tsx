@@ -17,6 +17,9 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
+import { IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Text } from '@/components/ui/text';
 import { CheckRow } from '@/features/admin/attendance';
 import { useLibraryCategories } from '@/features/admin/library';
@@ -125,7 +128,7 @@ export default function LibraryDocumentFields() {
         ) : !list.length ? (
           <EmptyState icon={Sliders} title={d('no_fields')} body={d('no_fields_desc')} />
         ) : (
-          <Card className="py-0">
+          <Panel>
             {list.map((f, i) => {
               const ti = FIELD_TYPES.find((x) => x.value === f.field_type);
               const opts = (f.options ?? []) as string[];
@@ -133,43 +136,35 @@ export default function LibraryDocumentFields() {
                 <View key={f.id}>
                   {i > 0 ? <Separator /> : null}
                   <Pressable onPress={() => openForm(f)} className="active:bg-muted flex-row items-start gap-3 px-4 py-3">
-                    <Text className="text-muted-foreground w-5 text-xs">{i + 1}</Text>
+                    <IconTile icon={ti?.icon ?? Type} size={40} />
                     <View className="flex-1 gap-1">
-                      <Text className="font-medium">{f.field_name}</Text>
+                      <Text className="text-sm font-semibold">{f.field_name}</Text>
                       <View className="flex-row items-center gap-1.5">
                         <Icon as={ti?.icon ?? Type} className="text-muted-foreground size-3.5" />
                         <Text className="text-muted-foreground text-xs">{ti ? d(`field_types.${f.field_type}.label`) : f.field_type}</Text>
                       </View>
                       <View className="flex-row flex-wrap items-center gap-1">
-                        <View className="bg-secondary rounded px-1.5">
-                          <Text className="text-xs">{catName(f.category_id) ?? d('all_categories')}</Text>
-                        </View>
-                        <View className={cn('rounded px-1.5', f.is_required ? 'bg-primary' : 'border-border border')}>
-                          <Text className={cn('text-xs', f.is_required && 'text-primary-foreground')}>{f.is_required ? d('required') : t('common.optional', { defaultValue: 'Optional' })}</Text>
-                        </View>
+                        <StatusChip label={String(catName(f.category_id) ?? d('all_categories'))} tone="muted" className="px-2 py-0.5" />
+                        <StatusChip label={f.is_required ? d('required') : t('common.optional', { defaultValue: 'Optional' })} tone={f.is_required ? 'destructive' : 'muted'} className="px-2 py-0.5" />
                         {opts.slice(0, 3).map((o) => (
-                          <View key={o} className="border-border rounded border px-1.5">
-                            <Text className="text-xs">{o}</Text>
-                          </View>
+                          <StatusChip key={o} label={o} tone="info" className="px-2 py-0.5" />
                         ))}
                         {opts.length > 3 ? (
-                          <View className="border-border rounded border px-1.5">
-                            <Text className="text-xs">+{opts.length - 3}</Text>
-                          </View>
+                          <StatusChip label={`+${opts.length - 3}`} tone="muted" className="px-2 py-0.5" />
                         ) : null}
                       </View>
                     </View>
-                    <Button size="icon" variant="ghost" onPress={() => openForm(f)} accessibilityLabel={t('common.edit')}>
-                      <Icon as={Pencil} className="text-foreground size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onPress={() => remove(f)} accessibilityLabel={t('common.delete')}>
+                    <Pressable onPress={() => openForm(f)} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                      <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                    </Pressable>
+                    <Pressable onPress={() => remove(f)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
-                    </Button>
+                    </Pressable>
                   </Pressable>
                 </View>
               );
             })}
-          </Card>
+          </Panel>
         )}
       </ScrollView>
 
@@ -191,7 +186,7 @@ export default function LibraryDocumentFields() {
                   {FIELD_TYPES.map((ft) => {
                     const on = type === ft.value;
                     return (
-                      <Pressable key={ft.value} onPress={() => setType(ft.value)} className={cn('min-w-[46%] flex-1 flex-row items-center gap-2 rounded-lg border p-2.5', on ? 'border-primary bg-primary/5' : 'border-border')}>
+                      <Pressable key={ft.value} onPress={() => setType(ft.value)} className={cn('min-w-[46%] flex-1 flex-row items-center gap-2 rounded-lg border p-2.5', on ? 'border-brand-secondary bg-info-soft' : 'border-border')}>
                         <View className={cn('size-8 items-center justify-center rounded-md', on ? 'bg-primary' : 'bg-muted')}>
                           <Icon as={ft.icon} className={cn('size-4', on ? 'text-primary-foreground' : 'text-muted-foreground')} />
                         </View>
@@ -237,7 +232,7 @@ export default function LibraryDocumentFields() {
                   <Input value={sort} onChangeText={setSort} keyboardType="number-pad" />
                 </View>
               </View>
-              <View className="border-border gap-1 rounded-lg border p-3">
+              <View className="border-info-soft dark:border-border gap-1 rounded-xl border p-3">
                 <CheckRow checked={required} onPress={() => setRequired((v) => !v)} label={d('required_field')} />
                 <Text className="text-muted-foreground text-xs">{d('required_field_desc')}</Text>
               </View>

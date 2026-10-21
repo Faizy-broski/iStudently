@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "يستخدم Studently الكاميرا لمسح رموز QR والتقاط الصور للملفات الشخصية والمرفقات وأدلة الزيارات الإشرافية.",
+    "NSPhotoLibraryUsageDescription": "يحتاج Studently إلى الوصول إلى صورك لرفع الصور مثل صور الملف الشخصي والمرفقات وأدلة الزيارات الإشرافية.",
+    "NSMicrophoneUsageDescription": "يستخدم Studently الميكروفون لتسجيل قراءتك في القراءة السريعة والملاحظات الصوتية أثناء الزيارات الإشرافية.",
+    "NSSpeechRecognitionUsageDescription": "يتحقق Studently من الكلمات التي تقرؤها بصوت عالٍ في القراءة السريعة.",
+    "NSLocationWhenInUseUsageDescription": "يستخدم Studently موقعك لتحديد منطقة تسجيل الحضور في المدرسة والتأكد من الحضور في الموقع.",
+    "NSFaceIDUsageDescription": "يستخدم Studently بصمة الوجه لفتح التطبيق وحماية المعلومات الحساسة."
+  }
+}

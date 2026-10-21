@@ -1,15 +1,16 @@
 import { router, Stack } from 'expo-router';
+import { ClipboardList, UserRound } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
+import { FormSection, StickyActions } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
@@ -46,54 +47,53 @@ export default function TeacherAddReferral() {
 
   const list = students.data ?? [];
   return (
-    <>
+    <View className="bg-background flex-1">
       <Stack.Screen options={{ title: k('pageTitle') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        <Text variant="muted">{k('pageDescription')}</Text>
-        <Card>
-          <CardContent className="gap-4 pt-5">
-            <View className="gap-1.5">
-              <Label>{`${k('selectStudent')} *`}</Label>
-              {students.isLoading ? (
-                <Text className="text-muted-foreground text-sm">{k('fetchingStudents')}</Text>
-              ) : !list.length ? (
-                <Text className="text-muted-foreground text-sm">{k('noEnrolledStudents')}</Text>
-              ) : (
-                <Picker
-                  value={studentId}
-                  onChange={setStudentId}
-                  placeholder={k('selectStudentPlaceholder')}
-                  options={list.map((s) => ({ value: s.id, label: `${s.profile?.last_name || k('unknown')}, ${s.profile?.first_name || k('nameFallback')} (${s.student_number})` }))}
-                />
-              )}
-              <Text className="text-muted-foreground text-xs">{k('listRestrictedNote')}</Text>
-            </View>
-            <DateField label={k('incidentDate')} value={date} onChange={setDate} />
-            <LibraryRelatedSwitch value={library} onChange={setLibrary} />
-            {fields.isLoading ? (
-              <LoadingList rows={2} />
-            ) : !(fields.data ?? []).length ? (
-              <Text className="text-muted-foreground text-sm">{`${k('noFieldsConfigured')} ${k('contactAdminHint')}`}</Text>
+      <ScrollView className="flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
+        <Text className="text-muted-foreground text-sm">{k('pageDescription')}</Text>
+        <FormSection title={`${k('selectStudent')} *`} icon={UserRound}>
+          <View className="gap-1.5">
+            {students.isLoading ? (
+              <Text className="text-muted-foreground text-sm">{k('fetchingStudents')}</Text>
+            ) : !list.length ? (
+              <Text className="text-muted-foreground text-sm">{k('noEnrolledStudents')}</Text>
             ) : (
-              (fields.data ?? []).map((f, i) => (
-                <View key={f.id} className="gap-1.5">
-                  {i > 0 ? <Separator className="mb-2" /> : null}
-                  <Label>{f.name}</Label>
-                  <DisciplineFieldInput field={f} value={values[f.id]} onChange={(v) => setValues((x) => ({ ...x, [f.id]: v }))} />
-                </View>
-              ))
+              <Picker
+                value={studentId}
+                onChange={setStudentId}
+                placeholder={k('selectStudentPlaceholder')}
+                options={list.map((s) => ({ value: s.id, label: `${s.profile?.last_name || k('unknown')}, ${s.profile?.first_name || k('nameFallback')} (${s.student_number})` }))}
+              />
             )}
-            <View className="flex-row justify-end gap-2">
-              <Button variant="outline" onPress={() => router.back()} disabled={busy}>
-                <Text>{k('cancel')}</Text>
-              </Button>
-              <Button onPress={submit} disabled={busy || !studentId}>
-                <Text>{busy ? k('submitting') : k('submitReferral')}</Text>
-              </Button>
-            </View>
-          </CardContent>
-        </Card>
+            <Text className="text-muted-foreground text-xs">{k('listRestrictedNote')}</Text>
+          </View>
+          <DateField label={k('incidentDate')} value={date} onChange={setDate} />
+          <LibraryRelatedSwitch value={library} onChange={setLibrary} />
+        </FormSection>
+        <FormSection title={k('pageTitle')} icon={ClipboardList}>
+          {fields.isLoading ? (
+            <LoadingList rows={2} />
+          ) : !(fields.data ?? []).length ? (
+            <Text className="text-muted-foreground text-sm">{`${k('noFieldsConfigured')} ${k('contactAdminHint')}`}</Text>
+          ) : (
+            (fields.data ?? []).map((f, i) => (
+              <View key={f.id} className="gap-1.5">
+                {i > 0 ? <Separator className="mb-2" /> : null}
+                <Label>{f.name}</Label>
+                <DisciplineFieldInput field={f} value={values[f.id]} onChange={(v) => setValues((x) => ({ ...x, [f.id]: v }))} />
+              </View>
+            ))
+          )}
+        </FormSection>
       </ScrollView>
-    </>
+      <StickyActions>
+        <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={busy}>
+          <Text>{k('cancel')}</Text>
+        </Button>
+        <Button className="flex-1" onPress={submit} disabled={busy || !studentId}>
+          <Text>{busy ? k('submitting') : k('submitReferral')}</Text>
+        </Button>
+      </StickyActions>
+    </View>
   );
 }

@@ -1,13 +1,15 @@
 import { router, Stack } from 'expo-router';
-import { AlertTriangle, CalendarClock, RefreshCw, Video, XCircle } from 'lucide-react-native';
+import { CalendarClock, Video, XCircle } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { adminOnlineClasses } from '@/lib/api';
@@ -34,59 +36,52 @@ export default function StudentEnrolledClasses() {
   return (
     <>
       <Stack.Screen options={{ title: k('my_enrolled_classes') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => list.mutate()} />}>
-        <Text variant="muted">{k('enrolled_subtitle')}</Text>
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => list.mutate()} />}>
+        <Text className="text-muted-foreground text-sm">{k('enrolled_subtitle')}</Text>
         {list.isLoading ? (
           <LoadingList rows={4} />
         ) : list.error ? (
-          <Card>
-            <CardContent className="items-center py-10">
-              <Icon as={AlertTriangle} className="text-destructive mb-3 size-10" />
-              <Text className="text-destructive font-medium">{k('network_error')}</Text>
-              <Button variant="outline" size="sm" className="mt-4" onPress={() => list.mutate()}>
-                <Icon as={RefreshCw} className="size-3.5" />
-                <Text>{k('retry')}</Text>
-              </Button>
-            </CardContent>
-          </Card>
+          <ErrorState message={k('network_error')} onRetry={() => list.mutate()} />
         ) : !(list.data ?? []).length ? (
-          <Card>
-            <CardContent className="items-center py-10">
-              <Icon as={Video} className="text-muted-foreground mb-3 size-10" />
-              <Text className="text-muted-foreground">{k('no_enrollments_yet')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={Video} title={k('no_enrollments_yet')} />
         ) : (
-          (list.data ?? []).map((c) => (
-            <Card key={c.id}>
-              <CardHeader>
-                <CardTitle className="text-base">{c.title}</CardTitle>
-                {c.description ? <CardDescription>{c.description}</CardDescription> : null}
-              </CardHeader>
-              <CardContent className="gap-3">
+          (list.data ?? []).map((c) => {
+            const live = c.status === 'active' && !!c.jitsi_room_id;
+            return (
+              <Panel key={c.id} className="gap-3 p-4">
+                <View className="flex-row items-start gap-3">
+                  <IconTile icon={Video} tone={live ? 'success' : 'brand'} size={40} />
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-sm font-semibold">{c.title}</Text>
+                    {c.description ? <Text className="text-muted-foreground text-xs">{c.description}</Text> : null}
+                  </View>
+                  {live ? <StatusChip label={k('join_class')} tone="success" /> : null}
+                </View>
                 {c.scheduled_days ? (
-                  <View className="flex-row items-center gap-1">
+                  <View className="flex-row items-center gap-1.5">
                     <Icon as={CalendarClock} className="text-muted-foreground size-3.5" />
-                    <Text className="text-muted-foreground text-sm">{`${c.scheduled_days} ${c.session_start_time || ''}${c.session_end_time ? `–${c.session_end_time}` : ''}`}</Text>
+                    <Text className="text-muted-foreground text-xs">{`${c.scheduled_days} ${c.session_start_time || ''}${c.session_end_time ? `–${c.session_end_time}` : ''}`}</Text>
                   </View>
                 ) : null}
-                <View className="flex-row gap-2">
-                  {c.status === 'active' && c.jitsi_room_id ? (
-                    <Button size="sm" onPress={() => router.push({ pathname: '/student/jitsi-meet/rooms/[id]', params: { id: c.jitsi_room_id as string } })}>
-                      <Icon as={Video} className="text-primary-foreground size-4" />
-                      <Text>{k('join_class')}</Text>
-                    </Button>
-                  ) : null}
-                  {c.class_type === 'external_open' ? (
-                    <Button size="sm" variant="ghost" disabled={busy === c.id} onPress={() => withdraw(c.id)}>
-                      <Icon as={XCircle} className="text-destructive size-4" />
-                      <Text className="text-destructive">{k('withdraw')}</Text>
-                    </Button>
-                  ) : null}
-                </View>
-              </CardContent>
-            </Card>
-          ))
+                {live || c.class_type === 'external_open' ? (
+                  <View className="flex-row gap-2">
+                    {live ? (
+                      <Button size="sm" onPress={() => router.push({ pathname: '/student/jitsi-meet/rooms/[id]', params: { id: c.jitsi_room_id as string } })}>
+                        <Icon as={Video} className="text-primary-foreground size-4" />
+                        <Text>{k('join_class')}</Text>
+                      </Button>
+                    ) : null}
+                    {c.class_type === 'external_open' ? (
+                      <Button size="sm" variant="ghost" className="bg-destructive-soft" disabled={busy === c.id} onPress={() => withdraw(c.id)}>
+                        <Icon as={XCircle} className="text-destructive size-4" />
+                        <Text className="text-destructive">{k('withdraw')}</Text>
+                      </Button>
+                    ) : null}
+                  </View>
+                ) : null}
+              </Panel>
+            );
+          })
         )}
       </ScrollView>
     </>

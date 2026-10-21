@@ -22,6 +22,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import type { PickedStudent } from '@/features/admin/student-search';
 import { useCampus } from '@/features/campus/campus';
@@ -147,8 +148,13 @@ export default function StudentCharges() {
                   <View key={x.id}>
                     {i > 0 ? <Separator /> : null}
                     <Pressable onPress={() => setStudent({ id: x.id, name: x.name, number: x.admission_number, gradeId: x.grade_level_id })} className="active:bg-muted px-4 py-3">
-                      <Text className="text-primary font-medium">{x.name}</Text>
-                      <Text className="text-muted-foreground text-xs">{[`${e('admission_no')}: ${x.admission_number || e('dash')}`, `${e('grade_level')}: ${x.grade_level || e('dash')}`, x.section_name].filter(Boolean).join(' · ')}</Text>
+                      <View className="flex-row items-center gap-3">
+                        <Initials name={x.name || '?'} />
+                        <View className="flex-1 gap-0.5">
+                          <Text className="text-sm font-semibold">{x.name}</Text>
+                          <Text className="text-muted-foreground text-xs">{[`${e('admission_no')}: ${x.admission_number || e('dash')}`, `${e('grade_level')}: ${x.grade_level || e('dash')}`, x.section_name].filter(Boolean).join(' · ')}</Text>
+                        </View>
+                      </View>
                     </Pressable>
                   </View>
                 ))}
@@ -159,7 +165,7 @@ export default function StudentCharges() {
         {student ? (
           <>
             <Button variant="ghost" size="sm" className="self-start" onPress={() => setStudent(null)}>
-              <Icon as={ArrowLeft} className="size-4 rtl:rotate-180" />
+              <Icon flipRtl as={ArrowLeft} className="size-4" />
               <Text>{t('common.back')}</Text>
             </Button>
             <Text className="text-lg font-semibold">{`${student.name}${student.number ? ` · ${student.number}` : ''}`}</Text>
@@ -180,7 +186,7 @@ export default function StudentCharges() {
                     {i > 0 ? <Separator /> : null}
                     <View className="gap-1 px-4 py-3">
                       <View className="flex-row items-center justify-between gap-3">
-                        <Text className="flex-1 font-medium">{c.element_title}</Text>
+                        <Text className="flex-1 text-sm font-semibold">{c.element_title}</Text>
                         <Badge variant={VARIANT[c.status]}>
                           <Text>{t(`fees.${STATUS_KEY[c.status]}`)}</Text>
                         </Badge>
@@ -191,29 +197,28 @@ export default function StudentCharges() {
                       {c.comment ? <Text className="text-muted-foreground text-xs">{`${e('comment')}: ${c.comment}`}</Text> : null}
                       <View className="flex-row gap-4 pt-1">
                         {c.balance > 0 ? (
-                          <Pressable
+                          <Pressable className="bg-info-soft rounded-full px-3 py-1.5 active:opacity-70"
                             hitSlop={8}
                             onPress={() => {
                               setPayAmount(String(c.balance));
                               setPaying(c);
                             }}>
-                            <Text className="text-primary text-sm">{t('app.be_take_payment')}</Text>
+                            <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{t('app.be_take_payment')}</Text>
                           </Pressable>
                         ) : null}
-                        <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.edit')} onPress={() => openCharge(c)}>
-                          <Icon as={Pencil} className="text-muted-foreground size-4" />
+                        <Pressable accessibilityRole="button" accessibilityLabel={t('common.edit')} onPress={() => openCharge(c)} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                          <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                         </Pressable>
                         {isAdmin ? (
                           <Pressable
-                            hitSlop={8}
                             accessibilityLabel={t('app.bl_delete')}
                             onPress={async () => {
                               if (!(await confirm({ title: e('confirm.remove_element'), body: c.element_title, destructive: true, confirmLabel: t('app.bl_delete') }))) return;
                               const res = await adminBillingElements.deleteStudentElement(c.id);
                               if (!res.success) return toast.error(res.error || t('app.error_title'));
                               charges.mutate();
-                            }}>
-                            <Icon as={Trash2} className="text-muted-foreground size-4" />
+                            }} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                            <Icon as={Trash2} className="text-destructive size-4" />
                           </Pressable>
                         ) : null}
                       </View>

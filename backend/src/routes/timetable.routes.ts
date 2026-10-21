@@ -6,6 +6,7 @@ import * as generationController from '../controllers/timetable-generation.contr
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
+import { requireOwnClass, timetableEntryOfAttendance } from '../middlewares/own-course-period.middleware'
 
 const router = Router()
 
@@ -96,11 +97,13 @@ router.get('/next-class', requireTeacher, timetableController.getNextClass)
 // ============================================================================
 
 router.post('/attendance/generate', requireAdmin, timetableController.generateDailyAttendance)
-router.get('/attendance/class', requireTeacher, timetableController.getAttendanceForClass)
-router.get('/attendance/section-date', requireTeacher, timetableController.getAttendanceForSectionDate)
-router.put('/attendance/:id', requireTeacher, timetableController.updateAttendanceRecord)
-router.post('/attendance/bulk-update', requireTeacher, timetableController.bulkUpdateAttendance)
-router.get('/attendance/stats', requireTeacher, timetableController.getAttendanceStats)
+// Class attendance: the class must be in the caller's school family, and teachers may only use their own classes.
+const queryEntry = [requireRowInSchoolFamily('timetable_entries', 'timetable_entry_id', 'school_id', 'query'), requireOwnClass('entry', (req) => req.query.timetable_entry_id)]
+router.get('/attendance/class', requireTeacher, ...queryEntry, timetableController.getAttendanceForClass)
+router.get('/attendance/section-date', requireTeacher, requireRowInSchoolFamily('sections', 'section_id', 'school_id', 'query'), requireOwnClass('section', (req) => req.query.section_id), timetableController.getAttendanceForSectionDate)
+router.put('/attendance/:id', requireTeacher, requireRowInSchoolFamily('attendance_records'), requireOwnClass('entry', (req) => timetableEntryOfAttendance(req.params.id)), timetableController.updateAttendanceRecord)
+router.post('/attendance/bulk-update', requireTeacher, requireRowInSchoolFamily('timetable_entries', 'timetable_entry_id', 'school_id', 'body'), requireOwnClass('entry', (req) => req.body?.timetable_entry_id), timetableController.bulkUpdateAttendance)
+router.get('/attendance/stats', requireTeacher, ...queryEntry, timetableController.getAttendanceStats)
 router.get('/attendance/student-history', requireTeacher, timetableController.getStudentAttendanceHistory)
 router.get('/attendance/class-summary', requireTeacher, timetableController.getClassAttendanceSummary)
 router.get('/attendance/teacher-overview', requireTeacher, timetableController.getTeacherAttendanceOverview)

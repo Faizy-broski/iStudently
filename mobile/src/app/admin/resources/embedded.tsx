@@ -1,7 +1,7 @@
 import type { EmbeddedResourceCategory, EmbeddedResourceInput } from '@studently/api-client';
 import { openBrowserAsync } from 'expo-web-browser';
 import { Stack } from 'expo-router';
-import { ExternalLink, Globe, Pencil, Plus, Save, Tags, Trash2, X } from 'lucide-react-native';
+import { ExternalLink, Globe, MonitorPlay, Pencil, Plus, Save, Tags, Trash2, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -9,7 +9,7 @@ import { Pressable, View } from 'react-native';
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,6 +17,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { StatusChip } from '@/components/app/status-chip';
+import { FilterChips } from '@/components/app/filter-chips';
+import { IconTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { LinkAudienceEditor, type LinkAudience } from '@/features/admin/link-audience';
 import { useCampus } from '@/features/campus/campus';
@@ -187,8 +190,8 @@ export default function EmbeddedResources() {
           <Icon as={Globe} className="text-primary mt-0.5 size-5" />
           <Text className="text-muted-foreground flex-1 text-sm">{e('subtitle')}</Text>
         </View>
-        <View className="rounded-md bg-blue-50 p-3 dark:bg-blue-950/30">
-          <Text className="text-xs text-blue-800 dark:text-blue-300">{e('note_audience_banner')}</Text>
+        <View className="rounded-md bg-info-soft p-3 ">
+          <Text className="text-xs text-brand dark:text-brand-secondary ">{e('note_audience_banner')}</Text>
         </View>
         <View className="flex-row flex-wrap gap-2">
           <Button size="sm" variant="outline" onPress={() => setCatsOpen(true)}>
@@ -200,10 +203,8 @@ export default function EmbeddedResources() {
             <Text>{e('btn_add_row')}</Text>
           </Button>
         </View>
+        <FilterChips value={catFilter} onChange={setCatFilter} options={[{ value: 'all', label: e('all_categories') }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
         <View className="flex-row gap-2">
-          <View className="flex-1">
-            <Picker value={catFilter} onChange={setCatFilter} options={[{ value: 'all', label: e('all_categories') }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
-          </View>
           <View className="flex-1">
             <Picker
               value={sort}
@@ -222,30 +223,31 @@ export default function EmbeddedResources() {
         {server.isLoading ? (
           <LoadingList />
         ) : !shown.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{e('no_resources_empty')}</Text>
+          <EmptyState icon={MonitorPlay} title={e('no_resources_empty')} />
         ) : (
           shown.map((r) => (
-            <Card key={r.id} className={r.dirty ? 'border-amber-300 dark:border-amber-700' : ''}>
+            <Card key={r.id} className={r.dirty ? 'border-warning ' : ''}>
               <CardContent className="gap-2 pt-4">
-                <View className="flex-row items-start gap-2">
+                <View className="flex-row items-center gap-3">
+                  <IconTile icon={MonitorPlay} tone={r.dirty ? 'warning' : 'brand'} size={40} />
                   <View className="flex-1">
-                    <Text className="font-medium">{r.title || e('resource_title_placeholder')}</Text>
+                    <Text className="text-sm font-semibold">{r.title || e('resource_title_placeholder')}</Text>
                     <Text className="text-muted-foreground text-xs" numberOfLines={1}>
                       {r.url || e('url_placeholder')}
                     </Text>
                   </View>
                   <Text className="text-muted-foreground text-xs">#{r.sort_order}</Text>
                   {r.url && r.id !== 'new' ? (
-                    <Button size="icon" variant="ghost" onPress={() => openBrowserAsync(r.url)} accessibilityLabel={e('link_label')}>
+                    <Pressable onPress={() => openBrowserAsync(r.url)} accessibilityLabel={e('link_label')} hitSlop={4} className="bg-muted size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={ExternalLink} className="text-foreground size-4" />
-                    </Button>
+                    </Pressable>
                   ) : null}
-                  <Button size="icon" variant="ghost" onPress={() => setEditing(r.id)} accessibilityLabel={t('common.edit')}>
-                    <Icon as={Pencil} className="text-foreground size-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onPress={() => remove(r)} accessibilityLabel={e('btn_delete')}>
+                  <Pressable onPress={() => setEditing(r.id)} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                  </Pressable>
+                  <Pressable onPress={() => remove(r)} accessibilityLabel={e('btn_delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
-                  </Button>
+                  </Pressable>
                 </View>
                 <View className="flex-row flex-wrap gap-1">
                   {r.category_id ? (
@@ -260,9 +262,7 @@ export default function EmbeddedResources() {
                       </View>
                     ))
                   ) : (
-                    <View className="bg-muted rounded px-1.5">
-                      <Text className="text-[11px]">{e('all_roles')}</Text>
-                    </View>
+                    <StatusChip label={String(e('all_roles'))} tone="muted" className="px-2 py-0.5" />
                   )}
                 </View>
               </CardContent>
@@ -343,10 +343,10 @@ export default function EmbeddedResources() {
               ) : (
                 <>
                   <Text className="flex-1">{c.name}</Text>
-                  <Pressable onPress={() => setRenaming({ id: c.id, name: c.name })} hitSlop={8} className="p-1" accessibilityLabel={t('common.edit')}>
-                    <Icon as={Pencil} className="text-muted-foreground size-4" />
+                  <Pressable onPress={() => setRenaming({ id: c.id, name: c.name })} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                   </Pressable>
-                  <Pressable onPress={() => deleteCategory(c.id)} hitSlop={8} className="p-1" accessibilityLabel={t('common.delete')}>
+                  <Pressable onPress={() => deleteCategory(c.id)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </>

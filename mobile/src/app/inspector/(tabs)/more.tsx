@@ -1,22 +1,28 @@
 import { router } from 'expo-router';
-import { BookOpenCheck, FileText, Settings as SettingsIcon } from 'lucide-react-native';
+import { BookOpenCheck, FileText, LogOut, Settings } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native';
 
-import { ListRow } from '@/components/app/list-row';
-import { Icon } from '@/components/ui/icon';
-import { Separator } from '@/components/ui/separator';
+import { Tile, TileGrid } from '@/components/app/tile-grid';
+import { useSession } from '@/features/auth/session';
+import { MoreFrame, MoreHeader, OpenWebsiteCard } from '@/features/menu/more-layout';
 
-/** The rest of the inspector sidebar (reports, Hifzi compliance) and the app settings. */
+/** The rest of the inspector sidebar (reports, Hifzi compliance) and the app settings (Figma "More Menu"). */
 export default function InspectorMore() {
   const { t } = useTranslation();
+  const { signOut } = useSession();
   return (
-    <ScrollView className="bg-background flex-1">
-      <ListRow title={t('sidebar.reports')} leading={<Icon as={FileText} className="text-muted-foreground size-5" />} onPress={() => router.push('/inspector/reports')} />
-      <Separator />
-      <ListRow title={t('sidebar.hifzi_compliance')} leading={<Icon as={BookOpenCheck} className="text-muted-foreground size-5" />} onPress={() => router.push('/inspector/hifzi-compliance')} />
-      <Separator />
-      <ListRow title={t('app.set_title')} leading={<Icon as={SettingsIcon} className="text-muted-foreground size-5" />} onPress={() => router.push('/settings')} />
-    </ScrollView>
+    <MoreFrame>
+      <ScrollView contentContainerClassName="px-4 pb-8">
+        <MoreHeader />
+        <TileGrid>
+          <Tile icon={FileText} label={t('sidebar.reports')} onPress={() => router.push('/inspector/reports')} />
+          <Tile icon={BookOpenCheck} label={t('sidebar.hifzi_compliance')} onPress={() => router.push('/inspector/hifzi-compliance')} />
+          <Tile icon={Settings} label={t('app.set_title')} onPress={() => router.push('/settings')} />
+          <Tile icon={LogOut} label={t('app.sign_out')} tone="destructive" onPress={signOut} />
+        </TileGrid>
+        <OpenWebsiteCard />
+      </ScrollView>
+    </MoreFrame>
   );
 }

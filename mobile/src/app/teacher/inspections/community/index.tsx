@@ -2,13 +2,14 @@ import { router, Stack } from 'expo-router';
 import { Megaphone, MessageSquare, Pin, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
-import { LoadingList } from '@/components/app/states';
+import { IconTile, RowItem, RowPill, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,6 @@ import { useSession } from '@/features/auth/session';
 import { teacherInspections } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDateTime } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
 /** Inspector broadcasts to the school and the inspection forum; start a thread (web: /teacher/inspections/community). */
 export default function TeacherInspectionCommunity() {
@@ -30,6 +30,8 @@ export default function TeacherInspectionCommunity() {
   const schoolId = me.status === 'ready' ? (me.me.profile.school_id ?? null) : null;
   const res = useApi(schoolId ? ['teacher', 'inspection-community', schoolId] : null, async ([, , s]) => {
     const [b, th] = await Promise.all([teacherInspections.broadcastsForSchool(s as string), teacherInspections.threadsForSchool(s as string)]);
+    if (!b.success) return { ...b, data: undefined };
+    if (!th.success) return { ...th, data: undefined };
     return { success: true as const, data: { broadcasts: b.data ?? [], threads: th.data ?? [] } };
   });
   const [form, setForm] = useState<{ title: string; body: string } | null>(null);
@@ -52,62 +54,54 @@ export default function TeacherInspectionCommunity() {
     <>
       <Stack.Screen options={{ title: k('page_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        <Text variant="muted">{k('teacher_subtitle')}</Text>
-        <Card>
-          <CardHeader>
-            <View className="flex-row items-center gap-2">
-              <Icon as={Megaphone} className="size-4 text-[#022172] dark:text-blue-300" />
-              <CardTitle className="text-base">{k('broadcasts_title')}</CardTitle>
-            </View>
-          </CardHeader>
-          <CardContent className="gap-2">
-            {res.isLoading ? (
-              <LoadingList rows={2} />
-            ) : !broadcasts.length ? (
-              <Text className="text-muted-foreground text-sm">{k('no_broadcasts')}</Text>
-            ) : (
-              broadcasts.map((b) => (
-                <View key={b.id} className="border-border rounded-md border p-2.5">
-                  <Text className="text-sm font-medium">{b.title}</Text>
-                  <Text className="text-muted-foreground text-xs">{b.body}</Text>
-                  <Text className="text-muted-foreground mt-1 text-[11px]">{`${b.inspector ? `${b.inspector.first_name} ${b.inspector.last_name} · ` : ''}${formatDateTime(b.created_at)}`}</Text>
-                </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-row items-center gap-2">
-                <Icon as={MessageSquare} className="size-4 text-[#022172] dark:text-blue-300" />
-                <CardTitle className="text-base">{k('forum_title')}</CardTitle>
-              </View>
-              <Button size="sm" variant="outline" onPress={() => setForm({ title: '', body: '' })}>
-                <Icon as={Plus} className="size-3.5" />
-                <Text>{k('btn_new_thread')}</Text>
-              </Button>
-            </View>
-          </CardHeader>
-          <CardContent className="p-0">
-            {res.isLoading ? null : !threads.length ? (
-              <Text className="text-muted-foreground px-4 pb-4 text-sm">{k('no_threads')}</Text>
-            ) : (
-              threads.map((th, i) => (
-                <Pressable
+        <Text variant="muted" className="text-sm">
+          {k('teacher_subtitle')}
+        </Text>
+        <Section title={k('broadcasts_title')}>
+          {res.isLoading ? (
+            <LoadingList rows={2} />
+          ) : res.error ? (
+            <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
+          ) : !broadcasts.length ? (
+            <EmptyState icon={Megaphone} title={k('no_broadcasts')} />
+          ) : (
+            <Panel>
+              {broadcasts.map((b, i) => (
+                <RowItem
+                  key={b.id}
+                  leading={<IconTile icon={Megaphone} tone="warning" size={40} round />}
+                  title={b.title}
+                  meta={`${b.inspector ? `${b.inspector.first_name} ${b.inspector.last_name} · ` : ''}${formatDateTime(b.created_at)}`}
+                  last={i === broadcasts.length - 1}>
+                  <Text variant="muted" className="text-xs">
+                    {b.body}
+                  </Text>
+                </RowItem>
+              ))}
+            </Panel>
+          )}
+        </Section>
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between gap-2">
+            <Text className="flex-1 text-base font-semibold">{k('forum_title')}</Text>
+            <RowPill icon={Plus} label={k('btn_new_thread')} onPress={() => setForm({ title: '', body: '' })} />
+          </View>
+          {res.isLoading || res.error ? null : !threads.length ? (
+            <EmptyState icon={MessageSquare} title={k('no_threads')} />
+          ) : (
+            <Panel>
+              {threads.map((th, i) => (
+                <RowItem
                   key={th.id}
                   onPress={() => router.push({ pathname: '/teacher/inspections/community/[threadId]', params: { threadId: th.id } })}
-                  accessibilityRole="button"
-                  className={cn('flex-row items-center gap-2 px-4 py-3', i > 0 && 'border-border border-t')}>
-                  {th.is_pinned ? <Icon as={Pin} className="size-3.5 text-amber-500" /> : null}
-                  <Text className="flex-1 text-sm" numberOfLines={1}>
-                    {th.title}
-                  </Text>
-                </Pressable>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                  leading={<IconTile icon={th.is_pinned ? Pin : MessageSquare} tone={th.is_pinned ? 'warning' : 'brand'} size={40} round />}
+                  title={th.title}
+                  last={i === threads.length - 1}
+                />
+              ))}
+            </Panel>
+          )}
+        </View>
       </ScrollView>
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
         <DialogContent className="w-[92vw] max-w-md">

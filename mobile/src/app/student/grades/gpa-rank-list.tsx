@@ -3,9 +3,9 @@ import { Award, TrendingUp, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HeroCard, Section, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { PortalError } from '@/features/portal/ui';
@@ -40,72 +40,45 @@ export default function StudentGpaRank() {
   return (
     <>
       <Stack.Screen options={{ title: k('title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
-        <Text variant="muted">{k('subtitle')}</Text>
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
+        <Text className="text-muted-foreground text-sm">{k('subtitle')}</Text>
         {noData ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Icon as={TrendingUp} className="text-muted-foreground mb-3 size-12" />
-              <Text className="text-muted-foreground text-center">{k('empty')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={TrendingUp} title={k('empty')} />
         ) : (
           <>
-            <Card>
-              <CardContent className="items-center p-5">
-                <Icon as={Award} className="text-primary mb-2 size-12" />
-                <Text className="text-muted-foreground mb-1 text-sm">{k('cumulative')}</Text>
-                <Text className="text-primary text-6xl font-bold">{g?.gpa?.toFixed(2)}</Text>
-                <Text className="text-muted-foreground mt-1 text-sm">{k('out_of')}</Text>
-                {g?.grade ? (
-                  <Badge className="mt-3 px-4 py-1">
-                    <Text className="text-base">{g.grade}</Text>
-                  </Badge>
-                ) : null}
-              </CardContent>
-            </Card>
-            <View className="flex-row gap-3">
-              <Card className="flex-1">
-                <CardContent className="items-center p-4">
-                  <Icon as={Users} className="mb-2 size-8 text-blue-500" />
-                  <Text className="text-muted-foreground mb-1 text-sm">{k('rank')}</Text>
-                  {g?.rank ? (
-                    <>
-                      <Text className="text-4xl font-bold">{`#${g.rank}`}</Text>
-                      <Text className="text-muted-foreground mt-1 text-xs">{k('of', { count: g.total_students ?? 0 })}</Text>
-                    </>
-                  ) : (
-                    <Text className="text-muted-foreground">{k('na')}</Text>
-                  )}
-                </CardContent>
-              </Card>
-              <Card className="flex-1">
-                <CardContent className="items-center p-4">
-                  <Icon as={TrendingUp} className="mb-2 size-8 text-green-500" />
-                  <Text className="text-muted-foreground mb-1 text-sm">{k('overall')}</Text>
-                  <Text className="text-4xl font-bold">{`${g?.percentage ?? 0}%`}</Text>
-                </CardContent>
-              </Card>
-            </View>
+            <HeroCard className="items-center">
+              <View className="size-12 items-center justify-center rounded-full bg-white/15">
+                <Icon as={Award} className="size-6 text-white" />
+              </View>
+              <Text className="text-sm font-semibold text-white/85">{k('cumulative')}</Text>
+              <Text className="text-6xl font-bold text-white">{g?.gpa?.toFixed(2)}</Text>
+              <Text className="text-xs text-white/80">{k('out_of')}</Text>
+              {g?.grade ? (
+                <View className="rounded-full bg-white/15 px-4 py-1">
+                  <Text className="text-base font-bold text-white">{g.grade}</Text>
+                </View>
+              ) : null}
+            </HeroCard>
+            <StatTiles>
+              <StatTile icon={Users} label={k('rank')} value={g?.rank ? `#${g.rank}` : k('na')} note={g?.rank ? k('of', { count: g.total_students ?? 0 }) : undefined} />
+              <StatTile icon={TrendingUp} tone="success" label={k('overall')} value={`${g?.percentage ?? 0}%`} />
+            </StatTiles>
           </>
         )}
         {!noData && g?.percentage != null ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>{k('scale')}</CardTitle>
-            </CardHeader>
-            <CardContent className="gap-1">
+          <Section title={k('scale')}>
+            <Panel className="gap-1 p-2">
               {SCALE.map((row) => {
                 const on = pct >= row.min && (row.min === 0 || pct < row.min + 10);
                 return (
-                  <View key={row.label} className={cn('flex-row items-center justify-between rounded p-2', on && 'bg-primary/10')}>
-                    <Text className={cn('text-sm', on && 'font-semibold')}>{row.label}</Text>
+                  <View key={row.label} className={cn('flex-row items-center justify-between rounded-xl px-3 py-2', on && 'bg-info-soft')}>
+                    <Text className={cn('text-sm', on && 'text-brand dark:text-brand-secondary font-semibold')}>{row.label}</Text>
                     <Text className="text-muted-foreground text-sm">{k('row', { gpa: row.gpa })}</Text>
                   </View>
                 );
               })}
-            </CardContent>
-          </Card>
+            </Panel>
+          </Section>
         ) : null}
       </ScrollView>
     </>

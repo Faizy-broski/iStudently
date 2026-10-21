@@ -105,7 +105,7 @@ export default function UserProfilesList() {
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-1.5">
                 <Icon as={Layers} className="text-muted-foreground size-3.5" />
-                <Text className="text-muted-foreground text-xs font-semibold uppercase">{p('roles_panel')}</Text>
+                <Text className="text-muted-foreground text-sm font-semibold">{p('roles_panel')}</Text>
               </View>
               <Button size="sm" variant="outline" onPress={() => setShowForm((v) => !v)}>
                 <Icon as={Plus} className="text-foreground size-3.5" />
@@ -113,7 +113,7 @@ export default function UserProfilesList() {
               </Button>
             </View>
             {showForm ? (
-              <View className="border-border bg-muted/30 gap-2 rounded-lg border p-3">
+              <View className="border-info-soft dark:border-border bg-muted/30 gap-2 rounded-xl border p-3">
                 <Label>{p('profile_name')}</Label>
                 <Input value={name} onChangeText={setName} placeholder={p('profile_name_placeholder')} autoFocus onSubmitEditing={create} />
                 <Label>{p('applies_to')}</Label>
@@ -157,11 +157,11 @@ export default function UserProfilesList() {
                       )}
                     </View>
                     {!item.is_system ? (
-                      <Button size="icon" variant="ghost" onPress={() => remove(item)} accessibilityLabel={t('common.delete')}>
+                      <Pressable onPress={() => remove(item)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                         <Icon as={Trash2} className="text-destructive size-4" />
-                      </Button>
+                      </Pressable>
                     ) : null}
-                    <Icon as={ChevronRight} className="text-muted-foreground size-4 rtl:rotate-180" />
+                    <Icon flipRtl as={ChevronRight} className="text-muted-foreground size-4" />
                   </Pressable>
                 </View>
               ))

@@ -701,6 +701,60 @@
       ]
     },
     {
+      "title": "jahbadh_grades",
+      "href": "/admin/jahbadh-grades",
+      "items": [
+        {
+          "title": "jahbadh_class_home",
+          "href": "/admin/jahbadh-grades"
+        },
+        {
+          "title": "jahbadh_report_cards",
+          "href": "/admin/jahbadh-grades/report-cards"
+        },
+        {
+          "title": "jahbadh_activities",
+          "href": "/admin/jahbadh-grades/activities"
+        },
+        {
+          "title": "jahbadh_dashboard",
+          "href": "/admin/jahbadh-grades/dashboard"
+        },
+        {
+          "title": "jahbadh_early_warning",
+          "href": "/admin/jahbadh-grades/early-warning"
+        },
+        {
+          "title": "jahbadh_test_analysis",
+          "href": "/admin/jahbadh-grades/test-analysis"
+        },
+        {
+          "title": "jahbadh_rubrics",
+          "href": "/admin/jahbadh-grades/rubrics"
+        },
+        {
+          "title": "jahbadh_ideas",
+          "href": "/admin/jahbadh-grades/ideas"
+        },
+        {
+          "title": "jahbadh_exam_control",
+          "href": "/admin/exam-control"
+        },
+        {
+          "title": "jahbadh_exam_timer",
+          "href": "/admin/exam-timer"
+        },
+        {
+          "title": "jahbadh_distribution",
+          "href": "/admin/jahbadh-grades/distribution"
+        },
+        {
+          "title": "jahbadh_setup",
+          "href": "/admin/jahbadh-grades/setup"
+        }
+      ]
+    },
+    {
       "title": "student_billing",
       "href": "/admin/fees",
       "items": [
@@ -2107,6 +2161,60 @@
       ]
     },
     {
+      "title": "jahbadh_grades",
+      "href": "/admin/jahbadh-grades",
+      "items": [
+        {
+          "title": "jahbadh_class_home",
+          "href": "/admin/jahbadh-grades"
+        },
+        {
+          "title": "jahbadh_report_cards",
+          "href": "/admin/jahbadh-grades/report-cards"
+        },
+        {
+          "title": "jahbadh_activities",
+          "href": "/admin/jahbadh-grades/activities"
+        },
+        {
+          "title": "jahbadh_dashboard",
+          "href": "/admin/jahbadh-grades/dashboard"
+        },
+        {
+          "title": "jahbadh_early_warning",
+          "href": "/admin/jahbadh-grades/early-warning"
+        },
+        {
+          "title": "jahbadh_test_analysis",
+          "href": "/admin/jahbadh-grades/test-analysis"
+        },
+        {
+          "title": "jahbadh_rubrics",
+          "href": "/admin/jahbadh-grades/rubrics"
+        },
+        {
+          "title": "jahbadh_ideas",
+          "href": "/admin/jahbadh-grades/ideas"
+        },
+        {
+          "title": "jahbadh_exam_control",
+          "href": "/admin/exam-control"
+        },
+        {
+          "title": "jahbadh_exam_timer",
+          "href": "/admin/exam-timer"
+        },
+        {
+          "title": "jahbadh_distribution",
+          "href": "/admin/jahbadh-grades/distribution"
+        },
+        {
+          "title": "jahbadh_setup",
+          "href": "/admin/jahbadh-grades/setup"
+        }
+      ]
+    },
+    {
       "title": "student_billing",
       "href": "/admin/fees",
       "items": [
@@ -2943,6 +3051,50 @@
           "href": "/teacher/grades/gradebook"
         },
         {
+          "title": "jahbadh_class_home",
+          "href": "/teacher/jahbadh-grades"
+        },
+        {
+          "title": "jahbadh_report_cards",
+          "href": "/teacher/jahbadh-grades/report-cards"
+        },
+        {
+          "title": "jahbadh_activities",
+          "href": "/teacher/jahbadh-grades/activities"
+        },
+        {
+          "title": "jahbadh_dashboard",
+          "href": "/teacher/jahbadh-grades/dashboard"
+        },
+        {
+          "title": "jahbadh_early_warning",
+          "href": "/teacher/jahbadh-grades/early-warning"
+        },
+        {
+          "title": "jahbadh_test_analysis",
+          "href": "/teacher/jahbadh-grades/test-analysis"
+        },
+        {
+          "title": "jahbadh_rubrics",
+          "href": "/teacher/jahbadh-grades/rubrics"
+        },
+        {
+          "title": "jahbadh_ideas",
+          "href": "/teacher/jahbadh-grades/ideas"
+        },
+        {
+          "title": "jahbadh_distribution",
+          "href": "/teacher/jahbadh-grades/distribution"
+        },
+        {
+          "title": "jahbadh_exam_control",
+          "href": "/teacher/exam-control"
+        },
+        {
+          "title": "jahbadh_exam_timer",
+          "href": "/teacher/exam-timer"
+        },
+        {
           "title": "assignments",
           "href": "/teacher/grades/assignments"
         },
@@ -3541,6 +3693,10 @@
           "href": "/student/grades/final-grades"
         },
         {
+          "title": "jahbadh_report_cards",
+          "href": "/student/jahbadh-report-cards"
+        },
+        {
           "title": "report_cards",
           "href": "/student/grades/report-cards"
         },
@@ -3967,6 +4123,10 @@
         {
           "title": "report_cards",
           "href": "/parent/grades/report-cards"
+        },
+        {
+          "title": "jahbadh_report_cards",
+          "href": "/parent/jahbadh-report-cards"
         },
         {
           "title": "progress_reports",

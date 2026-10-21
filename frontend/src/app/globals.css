@@ -64,6 +64,9 @@
   --card-teal: #39D2BE;
   --card-orange: #EEA831;
   --card-red: #F75E77;
+  /* Status tones (Jahbadh grades: pass / second round / fail chips and highlights) */
+  --success: oklch(0.55 0.14 150);
+  --warning: oklch(0.62 0.16 60);
 
   /* Gradient colors */
   --gradient-red: linear-gradient(to right, #F6183D, #F76E85);
@@ -89,6 +92,8 @@
 }
 
 @theme inline {
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -132,6 +137,8 @@
 }
 
 .dark {
+  --success: oklch(0.72 0.15 150);
+  --warning: oklch(0.78 0.15 70);
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.21 0.006 285.885);

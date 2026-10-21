@@ -1,7 +1,7 @@
 import { coursePeriodTeacherName, type LessonPlan, type LessonPlanItemInput } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
-import { ArrowDown, ArrowUp, Download, Pencil, Plus, Save, Trash2, Upload, X } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, Download, Plus, Save, Trash2, Upload, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -12,7 +12,7 @@ import { useConfirm } from '@/components/app/confirm';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { RowActions } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAcademicYears } from '@/features/admin/grades';
 import { lessonDate } from '@/features/admin/lesson-plans';
@@ -86,7 +87,7 @@ function LessonForm({ initial, parts: initialParts, editing, saving, onSave, onC
           </Button>
         </View>
         {parts.map((p, i) => (
-          <View key={p.uid} className="border-border gap-2 rounded-md border p-3">
+          <View key={p.uid} className="border-info-soft dark:border-border gap-2 rounded-xl border p-3">
             <View className="flex-row items-center gap-1">
               <Text className="flex-1 text-sm font-semibold">{a('part_label', { num: i + 1 })}</Text>
               <Text className="text-muted-foreground text-xs">{a('time_min')}:</Text>
@@ -97,7 +98,7 @@ function LessonForm({ initial, parts: initialParts, editing, saving, onSave, onC
               <Pressable onPress={() => move(i, 1)} disabled={i === parts.length - 1} hitSlop={6} className="p-1">
                 <Icon as={ArrowDown} className="text-muted-foreground size-4" />
               </Pressable>
-              <Pressable onPress={() => remove(i)} hitSlop={6} className="p-1">
+              <Pressable onPress={() => remove(i)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                 <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </View>
@@ -289,37 +290,34 @@ export default function LessonPlanAdd() {
                 {lessons.isLoading ? (
                   <LoadingList rows={2} />
                 ) : !(lessons.data ?? []).length ? (
-                  <Text className="text-muted-foreground py-4 text-center text-sm">{a('no_lessons_yet')}</Text>
+                  <EmptyState title={a('no_lessons_yet')} />
                 ) : (
                   (lessons.data ?? []).map((x) => (
                     <View key={x.id}>
                       <Separator />
-                      <View className="gap-1 py-2">
-                        <View className="flex-row items-center gap-1">
+                      <View className="gap-2 py-2.5">
+                        <View className="flex-row items-center gap-3">
+                          <View className="bg-info-soft size-10 items-center justify-center rounded-xl">
+                            <Text className="text-brand dark:text-brand-secondary text-sm font-bold">{`#${x.lesson_number}`}</Text>
+                          </View>
                           <View className="flex-1">
-                            <Text className="text-sm font-medium">
-                              #{x.lesson_number} {x.title}
-                            </Text>
-                            <Text className="text-muted-foreground text-xs">
+                            <Text className="text-sm font-semibold">{x.title}</Text>
+                            <Text variant="muted" className="text-[11px]">
                               {lessonDate(x.on_date, i18n.language)}
                               {x.length_minutes ? ` · ${x.length_minutes} min` : ''}
                             </Text>
                           </View>
-                          <Pressable onPress={() => upload(x)} disabled={!!busy} hitSlop={6} className="p-1.5" accessibilityLabel={t('common.upload')}>
-                            <Icon as={Upload} className="text-muted-foreground size-4" />
-                          </Pressable>
-                          <Pressable onPress={() => openEdit(x)} hitSlop={6} className="p-1.5" accessibilityLabel={t('common.edit')}>
-                            <Icon as={Pencil} className="text-muted-foreground size-4" />
-                          </Pressable>
-                          <Pressable onPress={() => remove(x)} disabled={busy === x.id} hitSlop={6} className="p-1.5" accessibilityLabel={t('common.delete')}>
-                            <Icon as={Trash2} className="text-destructive size-4" />
-                          </Pressable>
                         </View>
+                        <RowActions onEdit={() => openEdit(x)} onDelete={busy === x.id ? undefined : () => remove(x)}>
+                          <Pressable onPress={() => upload(x)} disabled={!!busy} hitSlop={4} className="bg-success-soft size-9 items-center justify-center rounded-full active:opacity-70" accessibilityLabel={t('common.upload')}>
+                            <Icon as={Upload} className="text-success size-4" />
+                          </Pressable>
+                        </RowActions>
                         {(x.files ?? []).map((f) => (
-                          <View key={f.id} className="ms-3 flex-row items-center gap-1.5">
-                            <Pressable onPress={() => openBrowserAsync(f.file_url)} className="flex-1 flex-row items-center gap-1">
-                              <Icon as={Download} className="text-primary size-3.5" />
-                              <Text className="text-primary text-xs">
+                          <View key={f.id} className="bg-info-soft/60 flex-row items-center gap-2 rounded-xl px-3 py-2">
+                            <Pressable onPress={() => openBrowserAsync(f.file_url)} className="flex-1 flex-row items-center gap-1.5">
+                              <Icon as={Download} className="text-brand dark:text-brand-secondary size-3.5" />
+                              <Text className="text-brand dark:text-brand-secondary text-xs font-medium">
                                 {f.file_name}
                                 {f.file_size ? ` (${(f.file_size / 1024).toFixed(1)} KB)` : ''}
                               </Text>

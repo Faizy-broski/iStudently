@@ -1,17 +1,18 @@
 import type { QuizQuestionMap } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { AlertCircle, CheckCircle2, CheckSquare, Circle, CircleDot, Clock, ExternalLink, Square, XCircle } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, Circle, CircleDot, Clock, ExternalLink, XCircle } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { CheckMark, FormSection, StickyActions } from '@/components/app/layout';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
+import { Panel } from '@/components/app/panel';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
@@ -49,16 +50,16 @@ function Matching({ pairs, value, onChange, disabled, showCorrect }: { pairs: { 
         const verdict = disabled && showCorrect && a !== undefined ? (a === i ? 'ok' : 'bad') : null;
         return (
           <View key={i} className="gap-1">
-            <Text className="bg-muted/40 border-border rounded-md border p-2 text-sm">{p.left}</Text>
-            <View className={cn('flex-row items-center gap-2 rounded-md', verdict === 'ok' && 'bg-green-50', verdict === 'bad' && 'bg-red-50')}>
+            <Text className="bg-muted/50 rounded-xl p-2.5 text-sm">{p.left}</Text>
+            <View className={cn('flex-row items-center gap-2 rounded-xl', verdict === 'ok' && 'bg-success-soft', verdict === 'bad' && 'bg-destructive-soft')}>
               <View className="flex-1">
                 {disabled ? (
-                  <Text className="border-border rounded-md border border-dashed p-2 text-sm">{a !== undefined ? (pairs[a]?.right ?? '') : '—'}</Text>
+                  <Text className="border-info-soft dark:border-border rounded-xl border border-dashed p-2.5 text-sm">{a !== undefined ? (pairs[a]?.right ?? '') : '—'}</Text>
                 ) : (
                   <Picker value={a !== undefined ? String(a) : null} onChange={(v) => set(i, Number(v))} options={pairs.map((x, j) => ({ value: String(j), label: x.right }))} placeholder={t('app.st_qz_drop_here')} />
                 )}
               </View>
-              {verdict === 'ok' ? <Icon as={CheckCircle2} className="size-4 text-green-600" /> : verdict === 'bad' ? <Icon as={XCircle} className="size-4 text-red-600" /> : null}
+              {verdict === 'ok' ? <Icon as={CheckCircle2} className="size-4 text-success" /> : verdict === 'bad' ? <Icon as={XCircle} className="size-4 text-destructive" /> : null}
             </View>
           </View>
         );
@@ -100,7 +101,7 @@ export default function StudentQuizTaker() {
   }, [maps, shuffle, seed]);
 
   if (list.isLoading || form.isLoading) return <LoadingList rows={6} />;
-  if (!quiz) return <Text className="text-muted-foreground p-6 text-sm">{k('not_found')}</Text>;
+  if (!quiz) return <EmptyState icon={AlertCircle} title={k('not_found')} />;
 
   const done = !!quiz.submitted;
   const showCorrect = !!quiz.show_correct_answers;
@@ -125,52 +126,40 @@ export default function StudentQuizTaker() {
   }
 
   const err = form.error?.message ?? '';
+  const canSubmit = !done && !form.error && ordered.length > 0 && !hasAnatomy;
   return (
     <>
       <Stack.Screen options={{ title: quiz.title }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        {quiz.description ? <Text variant="muted">{quiz.description}</Text> : null}
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
+        {quiz.description ? <Text className="text-muted-foreground text-sm">{quiz.description}</Text> : null}
         {form.error ? (
-          <Card className={/locked/i.test(err) ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}>
-            <CardContent className="items-center p-6">
-              {/locked/i.test(err) ? (
-                <>
-                  <Icon as={XCircle} className="mb-2 size-10 text-red-600" />
-                  <Text className="font-semibold text-red-700">{k('missed')}</Text>
-                  <Text className="mt-1 text-center text-sm text-red-600">{k('missed_body')}</Text>
-                </>
-              ) : /unlock/i.test(err) ? (
-                <>
-                  <Icon as={Clock} className="mb-2 size-10 text-amber-600" />
-                  <Text className="font-semibold text-amber-700">{k('not_yet')}</Text>
-                  <Text className="mt-1 text-center text-sm text-amber-600">{k('not_yet_body')}</Text>
-                </>
-              ) : (
-                <>
-                  <Icon as={AlertCircle} className="text-muted-foreground mb-2 size-10" />
-                  <Text className="text-muted-foreground text-center">{err}</Text>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          /locked/i.test(err) ? (
+            <Panel className="border-destructive/30 bg-destructive-soft items-center gap-1 p-6">
+              <Icon as={XCircle} className="text-destructive mb-1 size-10" />
+              <Text className="text-destructive font-semibold">{k('missed')}</Text>
+              <Text className="text-destructive text-center text-sm">{k('missed_body')}</Text>
+            </Panel>
+          ) : /unlock/i.test(err) ? (
+            <Panel className="border-warning/30 bg-warning-soft items-center gap-1 p-6">
+              <Icon as={Clock} className="text-warning mb-1 size-10" />
+              <Text className="text-warning font-semibold">{k('not_yet')}</Text>
+              <Text className="text-warning text-center text-sm">{k('not_yet_body')}</Text>
+            </Panel>
+          ) : (
+            <Panel className="border-warning/30 bg-warning-soft items-center gap-1 p-6">
+              <Icon as={AlertCircle} className="text-muted-foreground mb-1 size-10" />
+              <Text className="text-muted-foreground text-center">{err}</Text>
+            </Panel>
+          )
         ) : !ordered.length ? (
-          <Card>
-            <CardContent className="items-center p-8">
-              <Icon as={AlertCircle} className="text-muted-foreground mb-2 size-10" />
-              <Text className="text-muted-foreground">{k('no_questions')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={AlertCircle} title={k('no_questions')} />
         ) : hasAnatomy && !done ? (
-          <Card>
-            <CardContent className="gap-3 p-5">
-              <Text className="font-semibold">{k('anatomy')}</Text>
-              <Text className="text-muted-foreground text-sm">{k('anatomy_body')}</Text>
-              <Button onPress={() => router.push({ pathname: '/student/web', params: { path: '/student/quizzes', title: 'quizzes' } })}>
-                <Icon as={ExternalLink} className="text-primary-foreground size-4" />
-                <Text>{k('open_web')}</Text>
-              </Button>
-            </CardContent>
-          </Card>
+          <FormSection icon={ExternalLink} title={k('anatomy')} description={k('anatomy_body')}>
+            <Button onPress={() => router.push({ pathname: '/student/web', params: { path: '/student/quizzes', title: 'quizzes' } })}>
+              <Icon as={ExternalLink} className="text-primary-foreground size-4" />
+              <Text>{k('open_web')}</Text>
+            </Button>
+          </FormSection>
         ) : (
           <>
             {ordered.map((m, idx) => {
@@ -181,18 +170,18 @@ export default function StudentQuizTaker() {
               const scored = answerMap[m.id]?.points;
               const ca = q.correct_answer as { organId?: string; hotspotId?: string } | null;
               return (
-                <View key={m.id} className="border-border bg-card gap-3 rounded-lg border p-4">
-                  <View className="flex-row items-start gap-2">
-                    <Text className="text-primary font-semibold">{`${idx + 1}.`}</Text>
-                    <View className="flex-1">
-                      <Text className="font-medium">{q.title}</Text>
-                      {q.description ? <Text className="text-muted-foreground mt-1 text-sm">{q.description}</Text> : null}
-                      <Badge variant="outline" className="mt-1 self-start">
-                        <Text className="text-xs">{k('pts', { count: m.points })}</Text>
-                      </Badge>
+                <Panel key={m.id} className="gap-3 p-4">
+                  <View className="flex-row items-start gap-3">
+                    <View className="bg-info-soft size-8 items-center justify-center rounded-full">
+                      <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{String(idx + 1)}</Text>
+                    </View>
+                    <View className="flex-1 gap-1">
+                      <Text className="text-sm font-semibold">{q.title}</Text>
+                      {q.description ? <Text className="text-muted-foreground text-xs">{q.description}</Text> : null}
+                      <StatusChip label={k('pts', { count: m.points })} tone="muted" className="self-start px-2 py-0.5" />
                     </View>
                   </View>
-                  <View className="gap-2 ps-5">
+                  <View className="gap-2">
                     {q.type === 'select'
                       ? options.map((opt, i) => {
                           const sel = parseInt(v, 10) === i;
@@ -204,10 +193,10 @@ export default function StudentQuizTaker() {
                               onPress={() => set(m.id, String(i))}
                               accessibilityRole="radio"
                               accessibilityState={{ checked: sel, disabled: done }}
-                              className={cn('flex-row items-center gap-2 rounded p-2', sel && 'bg-primary/10 border-primary/30 border', correct && 'border border-green-300 bg-green-50')}>
-                              <Icon as={sel ? CircleDot : Circle} className={cn('size-4', sel ? 'text-primary' : 'text-muted-foreground')} />
+                              className={cn('border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border p-3', sel && 'border-brand-secondary bg-info-soft', correct && 'border-success/30 bg-success-soft')}>
+                              <Icon as={sel ? CircleDot : Circle} className={cn('size-4', sel ? 'text-brand dark:text-brand-secondary' : 'text-muted-foreground')} />
                               <Text className="flex-1 text-sm">{opt.replace(/^\*/, '')}</Text>
-                              {correct ? <Icon as={CheckCircle2} className="size-3.5 text-green-600" /> : null}
+                              {correct ? <Icon as={CheckCircle2} className="size-3.5 text-success" /> : null}
                             </Pressable>
                           );
                         })
@@ -223,8 +212,8 @@ export default function StudentQuizTaker() {
                               onPress={() => set(m.id, (on ? chosen.filter((x) => x !== i) : [...chosen, i]).join('||'))}
                               accessibilityRole="checkbox"
                               accessibilityState={{ checked: on, disabled: done }}
-                              className={cn('flex-row items-center gap-2 rounded p-2', on && 'bg-primary/10 border-primary/30 border')}>
-                              <Icon as={on ? CheckSquare : Square} className={cn('size-4', on ? 'text-primary' : 'text-muted-foreground')} />
+                              className={cn('border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border p-3', on && 'border-brand-secondary bg-info-soft')}>
+                              <CheckMark on={on} size={18} />
                               <Text className="flex-1 text-sm">{opt.replace(/^\*/, '')}</Text>
                             </Pressable>
                           );
@@ -247,30 +236,27 @@ export default function StudentQuizTaker() {
                         <Text className="text-muted-foreground text-xs">{`${k('picked', { value: v })}${done && showCorrect && ca.hotspotId ? k('correct_is', { value: ca.hotspotId }) : ''}`}</Text>
                       ) : null
                     ) : null}
-                    {scored !== null && scored !== undefined ? (
-                      <View className="self-start rounded-full bg-green-100 px-2 py-0.5">
-                        <Text className="text-xs text-green-700">{k('score', { points: scored, max: m.points })}</Text>
-                      </View>
-                    ) : null}
+                    {scored !== null && scored !== undefined ? <StatusChip label={k('score', { points: scored, max: m.points })} tone="success" className="self-start" /> : null}
                   </View>
-                </View>
+                </Panel>
               );
             })}
-            {!done ? (
-              <Button size="lg" onPress={submit} disabled={submitting}>
-                <Text>{k('submit')}</Text>
-              </Button>
-            ) : (
-              <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
-                <CardContent className="flex-row items-center gap-2 p-3">
-                  <Icon as={CheckCircle2} className="size-5 text-green-600" />
-                  <Text className="flex-1 text-sm font-medium text-green-800 dark:text-green-300">{k('already')}</Text>
-                </CardContent>
-              </Card>
-            )}
+            {done ? (
+              <View className="border-success/30 bg-success-soft flex-row items-center gap-2 rounded-2xl border p-3">
+                <Icon as={CheckCircle2} className="text-success size-5" />
+                <Text className="text-success flex-1 text-sm font-medium">{k('already')}</Text>
+              </View>
+            ) : null}
           </>
         )}
       </ScrollView>
+      {canSubmit ? (
+        <StickyActions>
+          <Button size="lg" className="flex-1" onPress={submit} disabled={submitting}>
+            <Text>{k('submit')}</Text>
+          </Button>
+        </StickyActions>
+      ) : null}
     </>
   );
 }

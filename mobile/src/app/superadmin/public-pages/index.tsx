@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
-import { ListRow } from '@/components/app/list-row';
-import { Badge } from '@/components/ui/badge';
+import { CARD_LIST_PROPS, ListCard } from '@/components/app/panel';
+import { StatusChip } from '@/components/app/status-chip';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
@@ -38,7 +38,7 @@ export default function PublicPagesList() {
     <>
       <Stack.Screen
         options={{
-          title: t('app.pp_title'),
+          title: t('app.sa_public_pages'),
           headerRight: () => (
             <Button size="sm" variant="ghost" onPress={() => router.push('/superadmin/public-pages/form')} accessibilityLabel={t('app.pp_new')}>
               <Icon as={Plus} className="size-5" />
@@ -48,6 +48,8 @@ export default function PublicPagesList() {
       />
       <View className="bg-background flex-1">
         <DataList
+          {...CARD_LIST_PROPS}
+          contentContainerClassName="flex-grow px-4 pb-6 pt-4"
           items={pages.data ? sorted : undefined}
           error={pages.error}
           isLoading={pages.isLoading}
@@ -56,36 +58,34 @@ export default function PublicPagesList() {
           emptyTitle={t('app.pp_none')}
           emptyBody={t('app.pp_none_body')}
           keyExtractor={(p) => p.id}
-          renderItem={(p, i) => (
-            <ListRow
-              title={p.title}
-              subtitle={[
-                t(`app.pp_type_${p.page_type}`),
-                p.visible_to_roles?.length ? p.visible_to_roles.map((r) => t(`app.pp_role_${r}`)).join(', ') : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-              leading={<Icon as={TYPE_ICON[p.page_type] ?? FileText} className="text-muted-foreground size-5" />}
-              trailing={
-                <View className="flex-row items-center gap-3">
-                  {p.is_template ? (
-                    <Badge variant="outline">
-                      <Text>{t('app.pp_status_draft')}</Text>
-                    </Badge>
-                  ) : null}
-                  <Switch checked={p.isActive} onCheckedChange={() => toggle.run(p)} accessibilityLabel={t('app.pp_active')} />
-                  <Pressable onPress={() => move(p, -1)} disabled={i === 0} hitSlop={8} accessibilityLabel={t('app.ib_move_up')}>
-                    <Icon as={ArrowUp} className={i === 0 ? 'text-muted size-5' : 'text-muted-foreground size-5'} />
+          renderItem={(p, i) => {
+            const TypeIcon = TYPE_ICON[p.page_type] ?? FileText;
+            return (
+              <ListCard onPress={() => router.push({ pathname: '/superadmin/public-pages/form', params: { id: p.id } })}>
+                <View className="bg-info-soft size-9 items-center justify-center rounded-full">
+                  <Icon as={TypeIcon} className="text-brand dark:text-brand-secondary size-4" />
+                </View>
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold" numberOfLines={1}>
+                    {p.title}
+                  </Text>
+                  <Text variant="muted" className="text-[11px]" numberOfLines={2}>
+                    {[t(`app.pp_type_${p.page_type}`), p.visible_to_roles?.length ? p.visible_to_roles.map((r) => t(`app.pp_role_${r}`)).join(', ') : t('app.pp_everyone')].join(' · ')}
+                  </Text>
+                  {p.is_template ? <StatusChip label={t('app.pp_status_draft')} tone="muted" className="mt-1 self-start px-2 py-0.5" /> : null}
+                </View>
+                <Switch checked={p.isActive} onCheckedChange={() => toggle.run(p)} accessibilityLabel={t('app.pp_active')} />
+                <View className="gap-1">
+                  <Pressable onPress={() => move(p, -1)} disabled={i === 0} hitSlop={6} className="bg-info-soft size-7 items-center justify-center rounded-full" accessibilityLabel={t('app.ib_move_up')}>
+                    <Icon as={ArrowUp} className={i === 0 ? 'text-muted-foreground/40 size-4' : 'text-brand dark:text-brand-secondary size-4'} />
                   </Pressable>
-                  <Pressable onPress={() => move(p, 1)} disabled={i === sorted.length - 1} hitSlop={8} accessibilityLabel={t('app.ib_move_down')}>
-                    <Icon as={ArrowDown} className={i === sorted.length - 1 ? 'text-muted size-5' : 'text-muted-foreground size-5'} />
+                  <Pressable onPress={() => move(p, 1)} disabled={i === sorted.length - 1} hitSlop={6} className="bg-info-soft size-7 items-center justify-center rounded-full" accessibilityLabel={t('app.ib_move_down')}>
+                    <Icon as={ArrowDown} className={i === sorted.length - 1 ? 'text-muted-foreground/40 size-4' : 'text-brand dark:text-brand-secondary size-4'} />
                   </Pressable>
                 </View>
-              }
-              chevron={false}
-              onPress={() => router.push({ pathname: '/superadmin/public-pages/form', params: { id: p.id } })}
-            />
-          )}
+              </ListCard>
+            );
+          }}
         />
       </View>
     </>

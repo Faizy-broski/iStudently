@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from 'lucide-react-native';
+import { ChevronDown } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, View } from 'react-native';
@@ -7,6 +7,7 @@ import { SearchBar } from '@/components/app/search-bar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
+import { CheckMark } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
@@ -78,9 +79,7 @@ export function MultiSelect({
               const on = selected.has(o.id);
               return (
                 <Pressable onPress={() => toggle(o.id)} className={cn('flex-row items-center gap-3 rounded-md px-2 py-2.5', on && 'bg-accent')} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
-                  <View className={cn('size-5 items-center justify-center rounded border', on ? 'border-primary bg-primary' : 'border-input')}>
-                    {on ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}
-                  </View>
+                  <CheckMark on={on} />
                   <View className="flex-1">
                     <Text>{o.label}</Text>
                     {o.hint ? <Text className="text-muted-foreground text-xs">{o.hint}</Text> : null}

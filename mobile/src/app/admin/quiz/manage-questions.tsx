@@ -9,7 +9,7 @@ import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -109,7 +109,7 @@ export default function ManageQuizQuestions() {
             mapped.isLoading ? (
               <LoadingList rows={3} />
             ) : !(mapped.data ?? []).length ? (
-              <Text className="text-muted-foreground py-8 text-center text-sm">{q('noQuestionsYetAddFromBank')}</Text>
+              <EmptyState title={q('noQuestionsYetAddFromBank')} />
             ) : (
               (mapped.data ?? []).map((m, i) => (
                 <Card key={m.id}>
@@ -132,7 +132,7 @@ export default function ManageQuizQuestions() {
                       accessibilityLabel={q('pointsForQuestion')}
                     />
                     <Text className="text-muted-foreground text-xs">{q('pointsSuffix')}</Text>
-                    <Pressable onPress={() => remove(m)} disabled={busy === m.id} hitSlop={8} className="p-1" accessibilityLabel={q('removeFromQuiz')}>
+                    <Pressable onPress={() => remove(m)} disabled={busy === m.id} accessibilityLabel={q('removeFromQuiz')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
                     </Pressable>
                   </CardContent>
@@ -146,7 +146,7 @@ export default function ManageQuizQuestions() {
               {bank.isLoading || quiz.isLoading ? (
                 <LoadingList rows={4} />
               ) : !(bank.data ?? []).length ? (
-                <Text className="text-muted-foreground py-8 text-center text-sm">{q('noQuestions')}</Text>
+                <EmptyState title={q('noQuestions')} />
               ) : (
                 (bank.data ?? []).map((x) => {
                   const added = inQuiz.has(x.id);

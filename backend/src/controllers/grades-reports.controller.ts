@@ -84,7 +84,14 @@ export const getGpaRankList = async (req: Request, res: Response) => {
     if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
     const { marking_period_id, grade_level_id, campus_id, search } = req.query as Record<string, string | undefined>
     if (!marking_period_id) return res.status(400).json({ success: false, error: 'marking_period_id is required' })
+    const profile = (req as AuthRequest).profile
     const data = await gradesReportsService.getGpaRankList(schoolId, marking_period_id, { campus_id, grade_level_id, search })
+    if (profile?.role === 'teacher') {
+      // Teachers: only students currently enrolled in a class they teach (main or secondary teacher).
+      const staffId = (profile as { staff_id?: string | null }).staff_id
+      const mine = staffId ? await gradesReportsService.studentsOfTeacher(staffId) : new Set<string>()
+      return res.json({ success: true, data: data.filter((r) => mine.has(r.student_id)) })
+    }
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in getGpaRankList:', error)

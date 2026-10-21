@@ -55,7 +55,7 @@ export default function HostelSettings() {
             </View>
             <View className="flex-row items-center gap-3">
               <View className="flex-1">
-                <Text className="font-medium">{s('label_auto_remove')}</Text>
+                <Text className="text-sm font-semibold">{s('label_auto_remove')}</Text>
                 <Text className="text-muted-foreground text-sm">{s('label_auto_remove_desc')}</Text>
               </View>
               <Switch checked={autoRemove} onCheckedChange={setAutoRemove} />

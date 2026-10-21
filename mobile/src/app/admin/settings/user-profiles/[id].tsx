@@ -130,7 +130,7 @@ export default function UserProfilePermissions() {
         <Card>
           <CardContent className="gap-3 pt-4">
             <View>
-              <Text className="text-muted-foreground text-xs font-semibold uppercase">{p('permissions_panel')}</Text>
+              <Text className="text-muted-foreground text-sm font-semibold">{p('permissions_panel')}</Text>
               <Text className="text-base font-semibold">{profile.name}</Text>
             </View>
             <Text className="text-muted-foreground text-xs">{p('applies_to')}</Text>
@@ -150,10 +150,10 @@ export default function UserProfilePermissions() {
           </CardContent>
         </Card>
 
-        <View className="border-border bg-muted flex-row items-center rounded-md border px-3 py-2">
-          <Text className="text-muted-foreground flex-1 text-xs font-semibold uppercase">{t('app.up_module')}</Text>
-          <Text className="text-muted-foreground w-16 text-center text-xs font-semibold uppercase">{p('can_use')}</Text>
-          <Text className="text-muted-foreground w-16 text-center text-xs font-semibold uppercase">{p('can_edit')}</Text>
+        <View className="border-info-soft dark:border-border bg-muted flex-row items-center rounded-xl border px-3 py-2">
+          <Text className="text-muted-foreground flex-1 text-sm font-semibold">{t('app.up_module')}</Text>
+          <Text className="text-muted-foreground w-16 text-center text-xs font-semibold">{p('can_use')}</Text>
+          <Text className="text-muted-foreground w-16 text-center text-xs font-semibold">{p('can_edit')}</Text>
         </View>
 
         {perms.isLoading ? (
@@ -171,7 +171,7 @@ export default function UserProfilePermissions() {
               <Card key={`${g.href}-${gi}`}>
                 <CardContent className="px-0 pt-0">
                   <View className="bg-muted/40 border-border flex-row items-center border-b px-3 py-2">
-                    <Text className="text-muted-foreground flex-1 text-xs font-semibold uppercase">{label(g.title)}</Text>
+                    <Text className="text-muted-foreground flex-1 text-sm font-semibold">{label(g.title)}</Text>
                     <View className="w-16 items-center gap-0.5">
                       <Checkbox checked={all('can_use')} onCheckedChange={(v) => setMany(hrefs, 'can_use', v)} />
                       <Text className="text-muted-foreground text-[10px]">{p('check_all')}</Text>

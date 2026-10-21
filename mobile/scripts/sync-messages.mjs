@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const NAMESPACES = [
+  'library_settings',
   'common', 'login', 'auth', 'twoFa', 'changePassword', 'agreement', 'pushNotifications',
   'studentPortal', 'parentPortal', 'teacherPortal', 'librarianPortal',
   'attendance', 'grievances', 'quiz', 'miqat', 'online_classes', 'hifzi',
@@ -27,6 +28,10 @@ const NAMESPACES = [
   'live_class', 'activities',
   // student app
   'dashboard',
+  // Jahbadh grades plugin
+  'grades',
+  // Jahbadh exam control
+  'examControl', 'examTimer',
 ]
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')

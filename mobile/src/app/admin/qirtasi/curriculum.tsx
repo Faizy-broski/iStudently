@@ -125,15 +125,15 @@ function Column({
           (res.data ?? []).map((n, i) => (
             <View key={n.id}>
               {i > 0 ? <Separator /> : null}
-              <Pressable onPress={() => onSelect(n)} className={cn('flex-row items-center gap-1 rounded px-2 py-2', selectedId === n.id && 'bg-blue-100 dark:bg-blue-900')}>
+              <Pressable onPress={() => onSelect(n)} className={cn('flex-row items-center gap-1 rounded px-2 py-2', selectedId === n.id && 'bg-info-soft ')}>
                 <Text className="flex-1 text-sm">{nodeLabel(n)}</Text>
-                <Pressable onPress={() => start(n)} hitSlop={6} className="p-1" accessibilityLabel={tt('Edit', 'تعديل')}>
-                  <Icon as={Pencil} className="text-muted-foreground size-3.5" />
+                <Pressable onPress={() => start(n)} accessibilityLabel={tt('Edit', 'تعديل')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                  <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                 </Pressable>
-                <Pressable onPress={() => remove(n)} hitSlop={6} className="p-1" accessibilityLabel={tt('Delete', 'حذف')}>
-                  <Icon as={Trash2} className="text-destructive size-3.5" />
+                <Pressable onPress={() => remove(n)} accessibilityLabel={tt('Delete', 'حذف')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                  <Icon as={Trash2} className="text-destructive size-4" />
                 </Pressable>
-                <Icon as={ChevronRight} className="text-muted-foreground size-3.5 rtl:rotate-180" />
+                <Icon flipRtl as={ChevronRight} className="text-muted-foreground size-3.5" />
               </Pressable>
             </View>
           ))

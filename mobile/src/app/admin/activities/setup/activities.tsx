@@ -8,13 +8,14 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { useAc } from '@/features/admin/activities';
 import { useCampus } from '@/features/campus/campus';
@@ -133,18 +134,16 @@ export default function ActivitiesSetup() {
           ) : res.error ? (
             <ErrorState message={res.error.message || a('failedToLoadActivities')} onRetry={() => res.mutate()} />
           ) : !list.length ? (
-            <Text className="text-muted-foreground py-8 text-center text-sm">{a('noActivitiesConfigured')}</Text>
+            <EmptyState title={a('noActivitiesConfigured')} />
           ) : (
             list.map((x) => (
               <Card key={x.id} className={cn(!x.is_active && 'opacity-60')}>
                 <CardContent className="flex-row items-center gap-2 py-3">
                   <View className="flex-1 gap-0.5">
                     <View className="flex-row flex-wrap items-center gap-2">
-                      <Text className="font-medium">{x.title}</Text>
+                      <Text className="text-sm font-semibold">{x.title}</Text>
                       {!x.is_active ? (
-                        <View className="bg-muted rounded-full px-2 py-0.5">
-                          <Text className="text-muted-foreground text-xs">{t('common.inactive')}</Text>
-                        </View>
+                        <StatusChip label={t('common.inactive')} tone="muted" />
                       ) : null}
                     </View>
                     {x.start_date || x.end_date ? (
@@ -161,10 +160,10 @@ export default function ActivitiesSetup() {
                   <Button size="sm" variant="ghost" onPress={() => toggle(x)}>
                     <Text className="text-xs">{x.is_active ? a('disable') : a('enable')}</Text>
                   </Button>
-                  <Pressable onPress={() => setMode(x)} hitSlop={8} className="p-1.5" accessibilityLabel={a('editActivityDialogTitle')}>
-                    <Icon as={Pencil} className="text-muted-foreground size-4" />
+                  <Pressable onPress={() => setMode(x)} accessibilityLabel={a('editActivityDialogTitle')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                   </Pressable>
-                  <Pressable onPress={() => remove(x)} hitSlop={8} className="p-1.5" accessibilityLabel={t('common.delete')}>
+                  <Pressable onPress={() => remove(x)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </CardContent>

@@ -7,7 +7,8 @@ import { Pressable, View } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -62,7 +63,9 @@ function ScaleCodes({ scale, onSaved }: { scale: RcCodeScale; onSaved: () => voi
     <Card>
       <CardContent className="gap-3 pt-4">
         <View className="flex-row items-center gap-2">
-          <Text className="text-muted-foreground flex-1 text-sm">{a('cc_codes_in', { count: visible.length, scale: scale.title })}</Text>
+          <View className="flex-1 flex-row">
+            <StatusChip label={a('cc_codes_in', { count: visible.length, scale: scale.title })} tone="info" className="px-2.5 py-1" />
+          </View>
           <Button size="sm" onPress={save} disabled={saving || !dirty}>
             <Icon as={Save} className="text-primary-foreground size-4" />
             <Text>{a('cc_save')}</Text>
@@ -199,15 +202,7 @@ export default function CommentCodes() {
             <>
               <FilterChips value={active} onChange={setTab} options={[...scales.map((s) => ({ value: s.id, label: s.title })), { value: 'scales', label: t('app.cc_scales_tab') }]} />
               {!scales.length && active !== 'scales' ? (
-                <Card>
-                  <CardContent className="items-center gap-3 pt-6 pb-6">
-                    <Text className="text-muted-foreground">{t('app.cc_no_scales')}</Text>
-                    <Button variant="outline" onPress={() => setTab('scales')}>
-                      <Icon as={Settings2} className="text-foreground size-4" />
-                      <Text>{t('app.cc_manage_scales')}</Text>
-                    </Button>
-                  </CardContent>
-                </Card>
+                <EmptyState icon={Settings2} title={t('app.cc_no_scales')} actionLabel={t('app.cc_manage_scales')} onAction={() => setTab('scales')} />
               ) : active === 'scales' ? (
                 <ScalesEditor key={`scales-${version}`} scales={scales} onSaved={saved} />
               ) : scale ? (

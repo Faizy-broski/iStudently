@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { BarChart2, ChevronLeft, Pencil, Play, Plus, Save, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { View, Pressable } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { CheckRow } from '@/features/admin/attendance';
 import { ResultView } from '@/features/admin/calculations';
@@ -98,9 +99,7 @@ export default function CalculationReports() {
     </View>
   );
   const campusBadge = campus ? (
-    <View className="bg-secondary self-start rounded-full px-2 py-0.5">
-      <Text className="text-xs">{campus.name}</Text>
-    </View>
+    <StatusChip label={campus.name} tone="muted" />
   ) : null;
 
   if (mode === 'results' && results) {
@@ -109,7 +108,7 @@ export default function CalculationReports() {
         <Stack.Screen options={{ title: `${title} — ${r('results')}` }} />
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10">
           <Button size="sm" variant="outline" className="self-start" onPress={() => setMode('edit')}>
-            <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
+            <Icon flipRtl as={ChevronLeft} className="text-foreground size-4" />
             <Text>{r('back_to_builder')}</Text>
           </Button>
           {campusBadge}
@@ -146,7 +145,7 @@ export default function CalculationReports() {
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <View className="flex-row flex-wrap items-center gap-2">
             <Button size="sm" variant="outline" onPress={() => setMode('list')}>
-              <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
+              <Icon flipRtl as={ChevronLeft} className="text-foreground size-4" />
               <Text>{t('common.back')}</Text>
             </Button>
             {campusBadge}
@@ -175,7 +174,7 @@ export default function CalculationReports() {
                   </Button>
                 </View>
                 {row.map((cell, ci) => (
-                  <View key={ci} className="border-border gap-2 rounded-md border p-3">
+                  <View key={ci} className="border-info-soft dark:border-border gap-2 rounded-xl border p-3">
                     <View className="flex-row items-center justify-between">
                       <Text className="text-muted-foreground text-xs">{t('app.cr_column', { n: ci + 1 })}</Text>
                       {ri === 0 ? (
@@ -234,7 +233,7 @@ export default function CalculationReports() {
               <View key={rep.id}>
                 {i > 0 ? <Separator /> : null}
                 <View className="gap-1 px-4 py-3">
-                  <Text className="font-medium">{rep.title}</Text>
+                  <Text className="text-sm font-semibold">{rep.title}</Text>
                   <Text className="text-muted-foreground text-xs">
                     {r('cells_summary', { rows: rep.cells.length, cols: rep.cells[0]?.length || 0, calcs: rep.cells.reduce((s, row) => s + row.filter((c) => c.calculation_id).length, 0) })} · {new Date(rep.created_at).toLocaleDateString(i18n.language)}
                   </Text>
@@ -247,12 +246,12 @@ export default function CalculationReports() {
                     }} accessibilityLabel={r('run_report')}>
                       <Icon as={Play} className="text-foreground size-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" onPress={() => open(rep)} accessibilityLabel={t('common.edit')}>
-                      <Icon as={Pencil} className="text-foreground size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onPress={() => remove(rep)} accessibilityLabel={t('common.delete')}>
+                    <Pressable onPress={() => open(rep)} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                      <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                    </Pressable>
+                    <Pressable onPress={() => remove(rep)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
-                    </Button>
+                    </Pressable>
                   </View>
                 </View>
               </View>

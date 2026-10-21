@@ -1,8 +1,8 @@
 import type { MessageTemplate, RecipientType, UploadedAttachment } from '@studently/api-client';
-import { htmlToText, textToHtml } from '@studently/shared-utils';
+import { htmlToText } from '@studently/shared-utils';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, ChevronRight, Paperclip, Pencil, Save, Send, Trash2, Users, X } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
@@ -12,8 +12,9 @@ import { FilterChips } from '@/components/app/filter-chips';
 import { MultiSelect } from '@/components/app/multi-select';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
+import { RichTextField } from '@/components/app/rich-text-field';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,8 +22,8 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
-import { Textarea } from '@/components/ui/textarea';
 import { CheckRow } from '@/features/admin/attendance';
 import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
@@ -56,8 +57,10 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
   const params = useLocalSearchParams<{ reply_to?: string; reply_name?: string; reply_to_message_id?: string; subject?: string }>();
 
   const [subject, setSubject] = useState(params.subject ?? '');
+  // Rich-text body (HTML), like the web's MessageCompose RichTextEditor.
   const [body, setBody] = useState('');
-  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [bodyKey, setBodyKey] = useState(0);
+  const insertRef = useRef<(content: string) => void>(() => {});
   const [tabState, setTab] = useState<RecipientType>(isTeacher ? 'students' : 'teachers');
   // Teachers can't message teachers or parents here: fall back to students.
   const tab: RecipientType = isTeacher && (tabState === 'teachers' || tabState === 'parents') ? 'students' : tabState;
@@ -115,14 +118,15 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
   const toggleAll = () =>
     setSelected((prev) => {
       const next = new Set(prev);
-      for (const o of options) (allSelected ? next.delete(o.profileId) : next.add(o.profileId));
+      for (const o of options) {
+        if (allSelected) next.delete(o.profileId);
+        else next.add(o.profileId);
+      }
       return next;
     });
 
   function insertToken(token: string) {
-    const at = selection?.start ?? body.length;
-    const end = selection?.end ?? at;
-    setBody(body.slice(0, at) + token + body.slice(end));
+    insertRef.current(token);
   }
 
   function applyTemplate(id: string) {
@@ -135,17 +139,18 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
     const tpl = tplList.find((x) => x.id === id);
     if (tpl) {
       setSubject(tpl.subject || '');
-      setBody(htmlToText(tpl.body || ''));
+      setBody(tpl.body || '');
+      setBodyKey((k) => k + 1);
       setTemplateTitle(tpl.title);
     }
   }
 
   async function saveTemplate() {
     if (!templateTitle.trim()) return toast.error(w('enterTemplateTitleFirst'));
-    if (!subject.trim() && !body.trim()) return toast.error(w('writeSubjectOrMessageBeforeSaving'));
+    if (!subject.trim() && !htmlToText(body).trim()) return toast.error(w('writeSubjectOrMessageBeforeSaving'));
     setSavingTpl(true);
     try {
-      const r = await messaging.saveTemplate({ title: templateTitle.trim(), subject, body: textToHtml(body), campus_id: campusId });
+      const r = await messaging.saveTemplate({ title: templateTitle.trim(), subject, body, campus_id: campusId });
       if (!r.success) return toast.error(r.error || w('failedToSaveTemplate'));
       toast.success(w('templateSaved'));
       templates.mutate();
@@ -159,7 +164,7 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
     if (!current) return;
     setSavingTpl(true);
     try {
-      const r = await messaging.updateTemplate(templateId, { title: templateTitle.trim() || current.title, subject, body: textToHtml(body) });
+      const r = await messaging.updateTemplate(templateId, { title: templateTitle.trim() || current.title, subject, body });
       if (!r.success) return toast.error(r.error || w('failedToUpdateTemplate'));
       toast.success(w('templateUpdated'));
       templates.mutate();
@@ -185,7 +190,7 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
 
   async function send() {
     if (!subject.trim()) return toast.error(w('subjectRequired'));
-    if (!body.trim()) return toast.error(w('messageRequired'));
+    if (!htmlToText(body).trim()) return toast.error(w('messageRequired'));
     if (!selected.size) return toast.error(w('selectAtLeastOneRecipient'));
     if (uploading > 0) return toast.error(w('waitForAttachmentsToFinish'));
     setSending(true);
@@ -193,7 +198,7 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
       const r = await messaging.sendMessage({
         recipient_ids: [...selected],
         subject: subject.trim(),
-        body: textToHtml(body),
+        body,
         campus_id: campusId,
         reply_to_message_id: params.reply_to_message_id,
         attachments: attachments.map((a) => ({ url: a.url, name: a.name, mime_type: a.mime_type, size: a.size, path: a.path })),
@@ -234,7 +239,7 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
             <Label>
               {w('message')} <Text className="text-destructive">*</Text>
             </Label>
-            <Textarea value={body} onChangeText={setBody} onSelectionChange={(e) => setSelection(e.nativeEvent.selection)} className="min-h-40" />
+            <RichTextField key={bodyKey} value={body} onChange={setBody} campusId={campusId} minHeight={180} insertRef={(fn) => (insertRef.current = fn)} />
           </View>
           <View className="gap-1.5">
             <Text className="text-muted-foreground text-xs">{t('app.msg_tokens_hint')}</Text>
@@ -300,9 +305,7 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
             <Icon as={Users} className="text-foreground size-5" />
             <Text className="font-semibold">{w('recipients')}</Text>
             {selected.size ? (
-              <View className="bg-primary rounded-full px-2 py-0.5">
-                <Text className="text-primary-foreground text-xs">{w('selectedCount', { count: selected.size })}</Text>
-              </View>
+              <StatusChip label={String(w('selectedCount', { count: selected.size }))} tone="info" />
             ) : null}
             <View className="flex-1" />
             {selected.size ? (
@@ -323,7 +326,7 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
           {recipients.isLoading ? (
             <LoadingList rows={4} />
           ) : !options.length ? (
-            <Text className="text-muted-foreground py-6 text-center text-sm">{w('noResultsFound')}</Text>
+            <EmptyState title={w('noResultsFound')} />
           ) : (
             <View>
               <CheckRow checked={allSelected} onPress={toggleAll} label={w('selectAllResults', { count: options.length })} />
@@ -339,14 +342,14 @@ export function MessagingComposeScreen({ inboxHref }: { inboxHref: Href }) {
               ))}
               {totalPages > 1 ? (
                 <View className="flex-row items-center justify-end gap-2 pt-2">
-                  <Button size="icon" variant="outline" disabled={page === 1} onPress={() => setPage(page - 1)}>
-                    <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
+                  <Button size="icon" variant="outline" disabled={page === 1} onPress={() => setPage(page - 1)} accessibilityLabel={t('common.previous')}>
+                    <Icon flipRtl as={ChevronLeft} className="text-foreground size-4" />
                   </Button>
                   <Text className="text-xs">
                     {page} / {totalPages}
                   </Text>
-                  <Button size="icon" variant="outline" disabled={page === totalPages} onPress={() => setPage(page + 1)}>
-                    <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
+                  <Button size="icon" variant="outline" disabled={page === totalPages} onPress={() => setPage(page + 1)} accessibilityLabel={t('common.next')}>
+                    <Icon flipRtl as={ChevronRight} className="text-foreground size-4" />
                   </Button>
                 </View>
               ) : null}
@@ -407,7 +410,7 @@ function ManageTemplates({
     if (!form.title.trim()) return toast.error(w('templateTitle'));
     setBusy(true);
     try {
-      const r = await messaging.updateTemplate(editing.id, { title: form.title.trim(), subject: form.subject, body: textToHtml(form.body) });
+      const r = await messaging.updateTemplate(editing.id, { title: form.title.trim(), subject: form.subject, body: form.body });
       if (!r.success) return toast.error(r.error || w('failedToUpdateTemplate'));
       toast.success(w('templateUpdated'));
       setEditing(null);
@@ -440,14 +443,14 @@ function ManageTemplates({
               <Label>{w('subject')}</Label>
               <Input value={form.subject} onChangeText={(v) => setForm((f) => ({ ...f, subject: v }))} />
               <Label>{w('message')}</Label>
-              <Textarea value={form.body} onChangeText={(v) => setForm((f) => ({ ...f, body: v }))} className="min-h-32" />
+              <RichTextField key={editing?.id ?? 'tpl'} value={form.body} onChange={(v) => setForm((f) => ({ ...f, body: v }))} minHeight={140} />
             </>
           ) : !templates.length ? (
-            <Text className="text-muted-foreground py-4 text-center text-sm">{w('noTemplatesSaved')}</Text>
+            <EmptyState title={w('noTemplatesSaved')} />
           ) : (
             templates.map((tpl) => (
-              <View key={tpl.id} className="border-border gap-1 rounded-md border p-3">
-                <Text className="font-medium">{tpl.title}</Text>
+              <View key={tpl.id} className="border-info-soft dark:border-border gap-1 rounded-xl border p-3">
+                <Text className="text-sm font-semibold">{tpl.title}</Text>
                 <Text className="text-muted-foreground text-xs" numberOfLines={1}>
                   {w('subject')}: {tpl.subject}
                 </Text>
@@ -460,7 +463,7 @@ function ManageTemplates({
                     variant="ghost"
                     onPress={() => {
                       setEditing(tpl);
-                      setForm({ title: tpl.title, subject: tpl.subject, body: htmlToText(tpl.body) });
+                      setForm({ title: tpl.title, subject: tpl.subject, body: tpl.body || '' });
                     }}
                     accessibilityLabel={w('editTemplate')}>
                     <Icon as={Pencil} className="text-foreground size-4" />

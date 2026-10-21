@@ -3,62 +3,124 @@
 @tailwind utilities;
 
 /*
- * Design tokens. Same names as the web's shadcn theme (frontend/src/app/globals.css, oklch converted
- * to HSL for React Native). Primary is the Studently brand blue; navy for headers/splash.
+ * The app's colours. This file is the ONLY place a colour value is written.
+ * - Components use the Tailwind classes (bg-brand, text-primary, border-chart-3 …, see tailwind.config.js).
+ * - Code that needs a raw value (SVG, icon props, charts, PDF/print HTML) uses `colors` / `useColors()`
+ *   from `@/lib/colors`, which reads these variables at runtime.
+ * Never write a hex/rgb/hsl colour anywhere else.
  */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 11% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 11% 4%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 11% 4%;
-    --primary: 223 100% 42%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 3.5% 95.8%;
-    --secondary-foreground: 240 6% 10%;
-    --muted: 240 3.5% 95.8%;
-    --muted-foreground: 240 4.4% 46.3%;
-    --accent: 240 3.5% 95.8%;
-    --accent-foreground: 240 6% 10%;
-    --destructive: 357 100% 45%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 152 72% 36%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 45%;
-    --warning-foreground: 0 0% 100%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 223 100% 42%;
-    --brand-navy: 224 97% 23%;
+    /* Brand */
+    --brand: #103B95; /* primary */
+    --brand-secondary: #5D88E2; /* secondary-1 */
+    --brand-accent: #DE8C10; /* secondary-2 */
+
+    /* Linear gradient 1: #5697F8 0% → #103B95 56% → #041951 100% */
+    --gradient-1-start: #5697F8;
+    --gradient-1-mid: var(--brand);
+    --gradient-1-end: #041951;
+    /* Radial gradient 2: #F5E1A6 0% → #FDAF3A 100% */
+    --gradient-2-start: #F5E1A6;
+    --gradient-2-end: #FDAF3A;
+
+    /* Theme (light) */
+    --background: var(--white);
+    --foreground: #09090B;
+    --card: var(--white);
+    --card-foreground: #09090B;
+    --popover: var(--white);
+    --popover-foreground: #09090B;
+    --primary: var(--brand);
+    --primary-foreground: var(--white);
+    --secondary: #F4F4F5;
+    --secondary-foreground: #18181B;
+    --muted: #F4F4F5;
+    --muted-foreground: #71717B;
+    --accent: #F4F4F5;
+    --accent-foreground: #18181B;
+    --destructive: #E6000B;
+    --destructive-foreground: var(--white);
+    --success: #1A9E60;
+    --success-foreground: var(--white);
+    --warning: #DC8F09;
+    --warning-foreground: var(--white);
+    --border: #E4E4E7;
+    --input: #E4E4E7;
+    --ring: var(--brand);
+    --info: var(--brand-secondary);
+    --info-foreground: var(--white);
+
+    /* Soft status backgrounds (badges, highlighted rows) */
+    --success-soft: #DCFCE7;
+    --warning-soft: #FEF3C7;
+    --destructive-soft: #FEE2E2;
+    --info-soft: #E0EAFB;
+
+    /* Chart / category palette (brand first) */
+    --chart-1: var(--brand);
+    --chart-2: var(--brand-secondary);
+    --chart-3: var(--brand-accent);
+    --chart-4: var(--success);
+    --chart-5: var(--destructive);
+    --chart-6: #8B5CF6;
+    --chart-7: #14B8A6;
+    --chart-8: #EC4899;
+
+    /* Print / PDF (paper is always light, same in dark mode) */
+    --print-text: #111827;
+    --print-muted: #6B7280;
+    --print-border: #E5E7EB;
+    --print-surface: #F9FAFB;
+
+    /* Web sidebar colour presets (values saved to the school's sidebar config; same in dark mode) */
+    --sidebar-preset-default-blue: #022172;
+    --sidebar-preset-deep-navy: #0f172a;
+    --sidebar-preset-forest-green: #14532d;
+    --sidebar-preset-burgundy: #6b1e1e;
+    --sidebar-preset-charcoal: #374151;
+    --sidebar-preset-dark-teal: #134e4a;
+    --sidebar-preset-royal-purple: #3b0764;
+    --sidebar-preset-slate: #1e293b;
+
+    --white: #FFFFFF;
+    --black: #000000;
+    /* Translucent white on brand surfaces (ID cards) */
+    --overlay-light: rgba(255, 255, 255, 0.2);
+    --overlay-light-strong: rgba(255, 255, 255, 0.3);
+
     --radius: 10px;
   }
 
   .dark:root {
-    --background: 240 11% 4%;
-    --foreground: 0 0% 98%;
-    --card: 240 6% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 6% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 222 100% 68%;
-    --primary-foreground: 240 11% 4%;
-    --secondary: 240 4% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 15.9%;
-    --muted-foreground: 240 5.7% 64.3%;
-    --accent: 240 4% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 359 100% 70%;
-    --destructive-foreground: 240 11% 4%;
-    --success: 152 60% 50%;
-    --success-foreground: 240 11% 4%;
-    --warning: 38 92% 58%;
-    --warning-foreground: 240 11% 4%;
-    --border: 240 4% 18%;
-    --input: 240 4% 22%;
-    --ring: 222 100% 68%;
-    --brand-navy: 224 70% 35%;
+    /* Theme (dark). The brand blue is too dark on a dark background, so primary uses secondary-1. */
+    --background: #09090B;
+    --foreground: #FAFAFA;
+    --card: #18181B;
+    --card-foreground: #FAFAFA;
+    --popover: #18181B;
+    --popover-foreground: #FAFAFA;
+    --primary: var(--brand-secondary);
+    --primary-foreground: #09090B;
+    --secondary: #27272A;
+    --secondary-foreground: #FAFAFA;
+    --muted: #27272A;
+    --muted-foreground: #9F9FA9;
+    --accent: #27272A;
+    --accent-foreground: #FAFAFA;
+    --destructive: #FF6669;
+    --destructive-foreground: #09090B;
+    --success: #33CC85;
+    --success-foreground: #09090B;
+    --warning: #F6AE31;
+    --warning-foreground: #09090B;
+    --border: #2C2C30;
+    --input: #36363A;
+    --ring: var(--brand-secondary);
+    --info-foreground: var(--background);
+    --success-soft: #14532D;
+    --warning-soft: #78350F;
+    --destructive-soft: #7F1D1D;
+    --info-soft: #1E3A8A;
   }
 }

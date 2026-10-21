@@ -6,13 +6,15 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
+import { Segmented } from '@/components/app/segmented';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -24,8 +26,8 @@ import { buildPrintHtml, escapeHtml, printHtml, sharePdf } from '@/lib/print';
 
 type TitleOf = 'subject' | 'course' | 'course_period';
 
-const STYLES = `.schedule-page{padding:8px 0}.page-title{font-size:20px;font-style:italic;color:#333;margin:8px 0}.rh{display:flex;justify-content:space-between;font-weight:600}.sub{display:flex;justify-content:space-between;color:#555;font-size:12px}.count{font-size:12px;color:#b45309;margin:6px 0}
-table{width:100%;border-collapse:collapse;font-size:12px}th{background:#3b1f5e;color:#fff;padding:6px 8px;text-align:start;font-size:11px}td{padding:6px 8px;border:1px solid #e2e8f0;vertical-align:top}.period-cell{font-weight:600;color:#7c2d12;background:#fef3c7}.course{color:#7c2d12;font-weight:500}.teacher,.room{font-size:11px;color:#555}`;
+const STYLES = `.schedule-page{padding:8px 0}.page-title{font-size:20px;font-style:italic;color:${colors.printText};margin:8px 0}.rh{display:flex;justify-content:space-between;font-weight:600}.sub{display:flex;justify-content:space-between;color:${colors.printMuted};font-size:12px}.count{font-size:12px;color:${colors.warning};margin:6px 0}
+table{width:100%;border-collapse:collapse;font-size:12px}th{background:${colors.chart6};color:${colors.white};padding:6px 8px;text-align:start;font-size:11px}td{padding:6px 8px;border:1px solid ${colors.printBorder};vertical-align:top}.period-cell{font-weight:600;color:${colors.warning};background:${colors.warningSoft}}.course{color:${colors.warning};font-weight:500}.teacher,.room{font-size:11px;color:${colors.printMuted}}`;
 
 function titleOf(s: StudentScheduleEntry, mode: TitleOf) {
   if (mode === 'subject') return s.course?.subject?.name || s.course?.title || '—';
@@ -138,39 +140,37 @@ export function PrintSchedulesView({ ctx, campusId, yearId, chosen: pick, list }
       <Stack.Screen options={{ title: p('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         {actions}
-        <Card>
-          <CardContent className="gap-4 pt-4">
-            <View className="gap-1.5">
-              <Label>{p('label_marking_period')}</Label>
-              <Picker value={mp} onChange={setMp} options={[{ value: 'na', label: 'N/A' }, ...(mps.data ?? []).map((m) => ({ value: m.id, label: m.title }))]} />
-            </View>
-            <DateField label={p('label_active_as_of')} value={asOf} onChange={setAsOf} />
+        <Panel className="gap-4 p-4">
+          <View className="gap-1.5">
+            <Label>{p('label_marking_period')}</Label>
+            <Picker value={mp} onChange={setMp} options={[{ value: 'na', label: 'N/A' }, ...(mps.data ?? []).map((m) => ({ value: m.id, label: m.title }))]} />
+          </View>
+          <DateField label={p('label_active_as_of')} value={asOf} onChange={setAsOf} />
+          <Segmented
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'table', label: p('view_table') },
+              { value: 'list', label: p('view_list') },
+            ]}
+          />
+          <View className="flex-row items-center gap-3">
+            <Text className="flex-1 text-sm font-medium">{p('label_horizontal')}</Text>
+            <Switch checked={horizontal} onCheckedChange={setHorizontal} />
+          </View>
+          <View className="gap-1.5">
+            <Label>{p('label_display_title')}</Label>
             <FilterChips
-              value={view}
-              onChange={setView}
+              value={titleMode}
+              onChange={setTitleMode}
               options={[
-                { value: 'table', label: p('view_table') },
-                { value: 'list', label: p('view_list') },
+                { value: 'subject', label: p('opt_subject') },
+                { value: 'course', label: p('opt_course') },
+                { value: 'course_period', label: p('opt_course_period') },
               ]}
             />
-            <View className="flex-row items-center gap-3">
-              <Switch checked={horizontal} onCheckedChange={setHorizontal} />
-              <Text className="flex-1 text-sm">{p('label_horizontal')}</Text>
-            </View>
-            <View className="gap-1.5">
-              <Label>{p('label_display_title')}</Label>
-              <FilterChips
-                value={titleMode}
-                onChange={setTitleMode}
-                options={[
-                  { value: 'subject', label: p('opt_subject') },
-                  { value: 'course', label: p('opt_course') },
-                  { value: 'course_period', label: p('opt_course_period') },
-                ]}
-              />
-            </View>
-          </CardContent>
-        </Card>
+          </View>
+        </Panel>
         {list}
         {actions}
       </ScrollView>

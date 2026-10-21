@@ -1,14 +1,23 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
+import { campusIdsAllowed } from '../utils/campus-validation'
 import { speedReadingService, WordResult } from '../services/speed-reading.service'
+
+/** A `school_id` from the query must be the caller's school or one of its campuses (super admins: any). */
+async function schoolInFamily(req: AuthRequest, schoolId: string): Promise<boolean> {
+  if (req.profile?.role === 'super_admin' || schoolId === req.profile?.school_id) return true
+  return campusIdsAllowed(req.profile?.school_id, [schoolId])
+}
 
 class SpeedReadingController {
   async getTexts(req: AuthRequest, res: Response) {
     try {
       const schoolId = (req.query.school_id as string) || req.profile?.school_id
       if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+      if (!(await schoolInFamily(req, schoolId))) return res.status(403).json({ success: false, error: 'Access denied' })
       const gradeLevelId = req.query.grade_level_id as string | undefined
       const campusId = req.query.campus_id as string | undefined
+      if (campusId && !(await schoolInFamily(req, campusId))) return res.status(403).json({ success: false, error: 'Access denied' })
       const data = await speedReadingService.getTexts(schoolId, gradeLevelId, campusId)
       return res.json({ success: true, data })
     } catch (error: any) {
@@ -161,6 +170,7 @@ class SpeedReadingController {
     try {
       const schoolId = (req.query.school_id as string) || req.profile?.school_id
       if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+      if (!(await schoolInFamily(req, schoolId))) return res.status(403).json({ success: false, error: 'Access denied' })
       const limit = Number(req.query.limit ?? 20)
       const data = await speedReadingService.getLeaderboard(schoolId, limit)
       return res.json({ success: true, data })
@@ -187,6 +197,7 @@ class SpeedReadingController {
     try {
       const schoolId = (req.query.school_id as string) || req.profile?.school_id
       if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+      if (!(await schoolInFamily(req, schoolId))) return res.status(403).json({ success: false, error: 'Access denied' })
       const data = await speedReadingService.getDashboardStats(schoolId)
       return res.json({ success: true, data })
     } catch (error: any) {

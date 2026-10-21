@@ -2,25 +2,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { ApiResponse, LogoShape } from '@studently/api-client';
 import { DATE_FORMAT_OPTIONS, DEFAULT_DATE_FORMAT, formatDatePattern, passwordPair, v } from '@studently/shared-utils';
 import { Stack } from 'expo-router';
-import { ImagePlus } from 'lucide-react-native';
+import { CalendarDays, ImagePlus, KeyRound, Settings2, UserRound } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { z } from 'zod';
 
+import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';
 import { NumberField, TextField } from '@/components/app/form';
+import { FormSection } from '@/components/app/layout';
 import { Picker, SelectField } from '@/components/app/picker';
 import { SchoolLogo } from '@/components/app/school-logo';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
+import { verifyCurrentPassword } from '@/features/auth/reauth';
 import { useSession } from '@/features/auth/session';
 import { loadDateFormat, saveDateFormat } from '@/features/superadmin/date-format';
 import { auth, media, messaging, platform } from '@/lib/api';
@@ -45,7 +47,8 @@ const brandingSchema = z.object({
 });
 type Branding = z.infer<typeof brandingSchema>;
 
-const passwordSchema = passwordPair();
+// `current` is checked by signing in again (verifyCurrentPassword), not by the schema.
+const passwordSchema = passwordPair().and(z.object({ current: z.string() }));
 type Password = z.infer<typeof passwordSchema>;
 
 function GeneralCard() {
@@ -77,26 +80,21 @@ function GeneralCard() {
 
   if (settings.isLoading || msg.isLoading) return <LoadingList rows={2} />;
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="px-4">
-        <CardTitle>{t('app.st_general')}</CardTitle>
-      </CardHeader>
-      <CardContent className="gap-3 px-4">
-        <TextField control={control} name="support_email" label={t('app.st_support_email')} keyboardType="email-address" autoCapitalize="none" />
-        <NumberField control={control} name="max_schools" label={t('app.st_max_schools')} keyboardType="number-pad" />
-        <SelectField control={control} name="currency" label={t('app.st_currency')} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
-        <NumberField
-          control={control}
-          name="delete_window_minutes"
-          label={t('app.st_delete_window')}
-          hint={t('app.st_delete_window_hint')}
-          keyboardType="number-pad"
-        />
-        <Button onPress={handleSubmit((f) => save.run(f))} disabled={save.running}>
-          <Text>{t('app.bl_save')}</Text>
-        </Button>
-      </CardContent>
-    </Card>
+    <FormSection title={t('app.st_general')} icon={Settings2}>
+      <TextField control={control} name="support_email" label={t('app.st_support_email')} keyboardType="email-address" autoCapitalize="none" />
+      <NumberField control={control} name="max_schools" label={t('app.st_max_schools')} keyboardType="number-pad" />
+      <SelectField control={control} name="currency" label={t('app.st_currency')} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
+      <NumberField
+        control={control}
+        name="delete_window_minutes"
+        label={t('app.st_delete_window')}
+        hint={t('app.st_delete_window_hint')}
+        keyboardType="number-pad"
+      />
+      <Button onPress={handleSubmit((f) => save.run(f))} disabled={save.running}>
+        <Text>{t('app.bl_save')}</Text>
+      </Button>
+    </FormSection>
   );
 }
 
@@ -110,7 +108,7 @@ function AccountCard() {
   const [uploading, setUploading] = useState(false);
   const { control, handleSubmit, reset } = useForm<Branding>({
     resolver: zodResolver(brandingSchema),
-    defaultValues: { logo_border_width: 0, logo_border_color: '#000000' },
+    defaultValues: { logo_border_width: 0, logo_border_color: colors.black },
   });
   useEffect(() => {
     if (branding.data) {
@@ -146,27 +144,22 @@ function AccountCard() {
 
   const photo = profile?.profile_photo_url || profile?.avatar_url;
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="px-4">
-        <CardTitle>{t('app.st_account')}</CardTitle>
-      </CardHeader>
-      <CardContent className="gap-3 px-4">
-        <View className="flex-row items-center gap-3">
-          <SchoolLogo url={photo} shape={shape} size={64} borderWidth={branding.data?.logo_border_width} borderColor={branding.data?.logo_border_color} />
-          <Button variant="outline" size="sm" onPress={changePhoto} disabled={uploading}>
-            <Icon as={ImagePlus} className="size-4" />
-            <Text>{uploading ? t('app.ob_uploading') : t('app.st_change_photo')}</Text>
-          </Button>
-        </View>
-        <Label>{t('app.st_logo_shape')}</Label>
-        <FilterChips<LogoShape> value={shape} onChange={setShape} options={SHAPES.map((s) => ({ value: s, label: t(`app.st_shape_${s}`) }))} />
-        <NumberField control={control} name="logo_border_width" label={t('app.st_border_width')} keyboardType="number-pad" />
-        <TextField control={control} name="logo_border_color" label={t('app.st_border_color')} hint={t('app.st_border_color_hint')} autoCapitalize="none" />
-        <Button onPress={handleSubmit((f) => save.run(f))} disabled={save.running}>
-          <Text>{t('app.bl_save')}</Text>
+    <FormSection title={t('app.st_account')} icon={UserRound}>
+      <View className="flex-row items-center gap-3">
+        <SchoolLogo url={photo} shape={shape} size={64} borderWidth={branding.data?.logo_border_width} borderColor={branding.data?.logo_border_color} />
+        <Button variant="outline" size="sm" onPress={changePhoto} disabled={uploading}>
+          <Icon as={ImagePlus} className="size-4" />
+          <Text>{uploading ? t('app.ob_uploading') : t('app.st_change_photo')}</Text>
         </Button>
-      </CardContent>
-    </Card>
+      </View>
+      <Label>{t('app.st_logo_shape')}</Label>
+      <FilterChips<LogoShape> value={shape} onChange={setShape} options={SHAPES.map((s) => ({ value: s, label: t(`app.st_shape_${s}`) }))} />
+      <NumberField control={control} name="logo_border_width" label={t('app.st_border_width')} keyboardType="number-pad" />
+      <TextField control={control} name="logo_border_color" label={t('app.st_border_color')} hint={t('app.st_border_color_hint')} autoCapitalize="none" />
+      <Button onPress={handleSubmit((f) => save.run(f))} disabled={save.running}>
+        <Text>{t('app.bl_save')}</Text>
+      </Button>
+    </FormSection>
   );
 }
 
@@ -188,39 +181,41 @@ function DateFormatCard() {
     }
   }
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="px-4">
-        <CardTitle>{t('app.st_date_format')}</CardTitle>
-      </CardHeader>
-      <CardContent className="gap-3 px-4">
-        <Text variant="muted">{t('app.st_date_format_hint')}</Text>
-        <Picker value={pattern} onChange={setPattern} options={DATE_FORMAT_OPTIONS.map((p) => ({ value: p, label: formatDatePattern(today, p) }))} />
-        <Text className="text-sm">{t('app.st_date_format_preview', { date: formatDatePattern(today, pattern) })}</Text>
-        <Button onPress={save}>
-          <Text>{t('app.st_date_format_save')}</Text>
-        </Button>
-      </CardContent>
-    </Card>
+    <FormSection title={t('app.st_date_format')} icon={CalendarDays}>
+      <Text variant="muted" className="text-xs">
+        {t('app.st_date_format_hint')}
+      </Text>
+      <Picker value={pattern} onChange={setPattern} options={DATE_FORMAT_OPTIONS.map((p) => ({ value: p, label: formatDatePattern(today, p) }))} />
+      <View className="bg-info-soft rounded-xl px-3 py-2.5">
+        <Text className="text-brand dark:text-brand-secondary text-sm font-medium">{t('app.st_date_format_preview', { date: formatDatePattern(today, pattern) })}</Text>
+      </View>
+      <Button onPress={save}>
+        <Text>{t('app.st_date_format_save')}</Text>
+      </Button>
+    </FormSection>
   );
 }
 
 function PasswordCard() {
   const { t } = useTranslation();
-  const { control, handleSubmit, reset } = useForm<Password>({ resolver: zodResolver(passwordSchema), defaultValues: { password: '', confirm: '' } });
+  const toast = useToast();
+  const { control, handleSubmit, reset } = useForm<Password & { current: string }>({ resolver: zodResolver(passwordSchema), defaultValues: { password: '', confirm: '', current: '' } });
   const change = useAction((f: Password) => auth.changePassword(f.password), { success: t('app.st_password_changed'), onSuccess: () => reset() });
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="px-4">
-        <CardTitle>{t('app.st_password')}</CardTitle>
-      </CardHeader>
-      <CardContent className="gap-3 px-4">
-        <TextField control={control} name="password" label={t('app.st_new_password')} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
-        <TextField control={control} name="confirm" label={t('app.st_confirm_password')} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
-        <Button variant="outline" onPress={handleSubmit((f) => change.run(f))} disabled={change.running}>
-          <Text>{t('app.st_password')}</Text>
-        </Button>
-      </CardContent>
-    </Card>
+    <FormSection title={t('app.st_password')} icon={KeyRound}>
+      <TextField control={control} name="current" label={t('app.st_current_password')} secureTextEntry autoComplete="current-password" textContentType="password" />
+      <TextField control={control} name="password" label={t('app.st_new_password')} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
+      <TextField control={control} name="confirm" label={t('app.st_confirm_password')} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
+      <Button
+        variant="outline"
+        onPress={handleSubmit(async (f) => {
+          if (!(await verifyCurrentPassword(f.current))) return toast.error(t('app.st_current_password_wrong'));
+          await change.run(f);
+        })}
+        disabled={change.running}>
+        <Text>{t('app.st_password')}</Text>
+      </Button>
+    </FormSection>
   );
 }
 

@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RowPill, Initials } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { CheckRow, useAttendanceScope } from '@/features/admin/attendance';
 import { PersonPicker, useCheckpoints, type PickedPerson } from '@/features/admin/entry-exit';
@@ -132,35 +134,32 @@ export default function EveningLeaves() {
           renderItem={(l) =>
             tab === 'leaves' ? (
               <View className="gap-1.5 px-4 py-3">
-                <View className="flex-row items-start gap-2">
-                  <Text className="flex-1 font-medium">{l.student_name || l.student_id.slice(0, 8)}</Text>
-                  <View className={cn('rounded-full px-2 py-0.5', l.is_active ? 'bg-emerald-100' : 'bg-gray-100')}>
-                    <Text className={cn('text-xs', l.is_active ? 'text-emerald-700' : 'text-gray-500')}>{l.is_active ? t('app.ee_active') : t('app.ee_inactive')}</Text>
-                  </View>
+                <View className="flex-row items-center gap-3">
+                  <Initials name={l.student_name || '?'} />
+                  <Text className="flex-1 text-sm font-semibold">{l.student_name || l.student_id.slice(0, 8)}</Text>
+                  <StatusChip label={l.is_active ? t('app.ee_active') : t('app.ee_inactive')} tone={l.is_active ? 'success' : 'muted'} />
                 </View>
                 <Text className="text-sm">{`${formatYmd(l.start_date, i18n.language)} – ${formatYmd(l.end_date, i18n.language)}`}</Text>
                 <Text className="text-muted-foreground text-xs">{`${fmtDays(l.days_of_week)} · ${t('app.ee_return_by', { time: l.authorized_return_time })}`}</Text>
-                <View className="flex-row justify-end gap-4">
-                  <Pressable onPress={() => toggle(l)} hitSlop={8}>
-                    <Text className="text-primary text-sm">{l.is_active ? t('app.ee_deactivate') : t('app.ee_activate')}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => remove(l)} hitSlop={8}>
+                <View className="flex-row items-center justify-end gap-2">
+                  <RowPill label={l.is_active ? t('app.ee_deactivate') : t('app.ee_activate')} onPress={() => toggle(l)} />
+                  <Pressable onPress={() => remove(l)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>
               </View>
             ) : (
               <View className="flex-row items-center gap-3 px-4 py-3">
-                <View className={cn('rounded-full p-2', l.has_returned ? 'bg-emerald-100' : 'bg-amber-100')}>
-                  <Icon as={l.has_returned ? CheckCircle2 : AlertTriangle} className={cn('size-4', l.has_returned ? 'text-emerald-600' : 'text-amber-600')} />
+                <View className={cn('rounded-full p-2', l.has_returned ? 'bg-success-soft' : 'bg-warning-soft')}>
+                  <Icon as={l.has_returned ? CheckCircle2 : AlertTriangle} className={cn('size-4', l.has_returned ? 'text-success' : 'text-warning')} />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-medium">{l.student_name || l.student_id.slice(0, 8)}</Text>
                   <Text className="text-muted-foreground text-xs">{`${t('app.ee_return_by', { time: l.authorized_return_time })}${l.reason ? ` · ${l.reason}` : ''}`}</Text>
                 </View>
                 <View className="items-end gap-1">
-                  <View className={cn('rounded-full px-2 py-0.5', l.has_returned && !l.is_late ? 'bg-emerald-100' : 'bg-amber-100')}>
-                    <Text className={cn('text-xs', l.has_returned && !l.is_late ? 'text-emerald-700' : 'text-amber-700')}>
+                  <View className={cn('rounded-full px-2 py-0.5', l.has_returned && !l.is_late ? 'bg-success-soft' : 'bg-warning-soft')}>
+                    <Text className={cn('text-xs', l.has_returned && !l.is_late ? 'text-success' : 'text-warning')}>
                       {l.has_returned ? (l.is_late ? t('app.ee_returned_late') : t('app.ee_returned')) : t('app.ee_not_back')}
                     </Text>
                   </View>

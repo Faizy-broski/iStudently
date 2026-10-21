@@ -127,7 +127,7 @@ export default function TwoFactor() {
 
   if (mode === 'recovery') {
     return (
-      <Screen scroll contentContainerClassName="gap-5 p-6">
+      <Screen auth scroll contentContainerClassName="gap-5 p-6">
         {header(t('twoFa.recovery_title'), t('twoFa.recovery_desc'))}
         <Text className="text-warning text-center text-sm">{t('twoFa.recovery_warning')}</Text>
         <View className="gap-1.5">
@@ -154,7 +154,7 @@ export default function TwoFactor() {
 
   if (mode === 'verify') {
     return (
-      <Screen scroll contentContainerClassName="gap-5 p-6">
+      <Screen auth scroll contentContainerClassName="gap-5 p-6">
         {header(t('twoFa.verify_title'), t('twoFa.verify_desc'))}
         <CodeInput value={code} onChange={setCode} onComplete={verify} />
         <FormError message={error} />
@@ -180,7 +180,7 @@ export default function TwoFactor() {
   // Setup
   if (!setup) {
     return (
-      <Screen contentContainerClassName="gap-4 p-6">
+      <Screen auth contentContainerClassName="gap-4 p-6">
         {error ? <FormError message={error} /> : <LoadingList rows={3} />}
         {footer}
       </Screen>
@@ -188,7 +188,7 @@ export default function TwoFactor() {
   }
 
   return (
-    <Screen scroll contentContainerClassName="gap-5 p-6">
+    <Screen auth scroll contentContainerClassName="gap-5 p-6">
       {header(t('twoFa.setup_title'), t(`twoFa.setup_step${setupStep}_label`))}
 
       {setupStep === 1 ? (

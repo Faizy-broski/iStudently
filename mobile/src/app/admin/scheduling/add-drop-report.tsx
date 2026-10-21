@@ -4,15 +4,15 @@ import { Stack } from 'expo-router';
 import { Download } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
+import { Initials, RoundIcon } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAcademicYears } from '@/features/admin/grades';
 import { useCampus } from '@/features/campus/campus';
@@ -77,31 +77,33 @@ export default function AddDropReport() {
               <Text>{t('common.go')}</Text>
             </Button>
             <View className="flex-row items-center gap-2">
-              <Text className="text-muted-foreground flex-1 text-sm">{r('found_records', { count: rows.length })}</Text>
-              <Pressable onPress={download} hitSlop={8} className="p-1" accessibilityLabel={t('common.download')}>
-                <Icon as={Download} className="text-muted-foreground size-4" />
-              </Pressable>
+              <View className="flex-1 flex-row">
+                <StatusChip label={r('found_records', { count: rows.length })} tone="info" className="px-2.5 py-1" />
+              </View>
+              <RoundIcon icon={Download} label={t('common.download')} onPress={download} />
             </View>
             <SearchBar value={search} onChangeText={setSearch} placeholder={t('common.search')} />
           </View>
         }
         renderItem={(x: AddDropRecord) => (
-          <View className="flex-row items-start gap-3 px-4 py-3">
+          <View className="flex-row items-center gap-3 px-4 py-3">
+            <Initials name={x.student_name || '?'} tone={x.action === 'add' ? 'success' : 'destructive'} size={40} />
             <View className="flex-1 gap-0.5">
-              <Text className="font-medium">{x.student_name || x.student_id}</Text>
-              <Text className="text-muted-foreground text-xs">
-                {t('common.student_id')}: {x.student_number || '—'}
+              <Text className="text-sm font-semibold" numberOfLines={1}>
+                {x.student_name || x.student_id}
               </Text>
-              <Text className="text-sm">{x.course_title}</Text>
-              <Text className="text-muted-foreground text-xs">
-                {r('th_course_period')}: {x.course_period_title || '—'}
+              <Text className="text-xs" numberOfLines={1}>
+                {x.course_title}
+              </Text>
+              <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                {[x.student_number, x.course_period_title].filter(Boolean).join(' · ')}
               </Text>
             </View>
             <View className="items-end gap-1">
-              <Badge variant={x.action === 'add' ? 'default' : 'destructive'}>
-                <Text className="text-xs">{x.action === 'add' ? r('th_enrolled') : r('th_dropped')}</Text>
-              </Badge>
-              <Text className="text-muted-foreground text-xs">{fmt(x.date)}</Text>
+              <StatusChip label={x.action === 'add' ? r('th_enrolled') : r('th_dropped')} tone={x.action === 'add' ? 'success' : 'destructive'} className="px-2 py-0.5" />
+              <Text variant="muted" className="text-[11px]">
+                {fmt(x.date)}
+              </Text>
             </View>
           </View>
         )}

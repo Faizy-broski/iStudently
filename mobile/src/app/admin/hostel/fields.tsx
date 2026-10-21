@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import { Plus, Save, Trash2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { View, Pressable } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { CheckRow } from '@/features/admin/attendance';
@@ -178,7 +178,7 @@ export default function HostelFields() {
         {defs.isLoading ? (
           <LoadingList rows={3} />
         ) : !rows.length ? (
-          <View className="border-border items-center gap-1 rounded-lg border border-dashed py-8">
+          <View className="border-info-soft dark:border-border items-center gap-1 rounded-xl border border-dashed py-8">
             <Text className="text-muted-foreground">{f('msg_no_fields', { entity: entityLabel.toLowerCase() })}</Text>
             <Text className="text-muted-foreground text-center text-xs">{f('msg_no_fields_desc')}</Text>
           </View>
@@ -188,9 +188,9 @@ export default function HostelFields() {
               <CardContent className="gap-3 pt-4">
                 <View className="flex-row items-center gap-2">
                   <Input className="flex-1" value={r.label} onChangeText={(v) => update(r.id, { label: v })} placeholder={f('label_field_name')} />
-                  <Button size="icon" variant="ghost" onPress={() => setRows((p) => p.filter((x) => x.id !== r.id))} accessibilityLabel={t('common.delete')}>
+                  <Pressable onPress={() => setRows((p) => p.filter((x) => x.id !== r.id))} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
-                  </Button>
+                  </Pressable>
                 </View>
                 <View className="flex-row gap-2">
                   <View className="flex-1">

@@ -10,6 +10,7 @@ import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminMiqat } from '@/lib/api';
@@ -52,7 +53,10 @@ export default function MiqatPermissions() {
           keyExtractor={(r) => r.id}
           renderItem={(r) => (
             <View className="gap-2 px-4 py-3">
-              <Text className="font-medium">{r.profiles ? `${r.profiles.first_name} ${r.profiles.last_name}` : r.person_id}</Text>
+              <View className="flex-row items-center gap-3">
+                <Initials name={(r.profiles ? `${r.profiles.first_name} ${r.profiles.last_name}` : r.person_id) || '?'} />
+                <Text className="flex-1 text-sm font-semibold">{r.profiles ? `${r.profiles.first_name} ${r.profiles.last_name}` : r.person_id}</Text>
+              </View>
               <View className="flex-row flex-wrap items-center gap-2">
                 <Badge variant="outline">
                   <Text>{p(TYPE_LABEL[r.type])}</Text>

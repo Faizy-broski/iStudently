@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { View, type ScrollViewProps } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
+import { AuthBackground } from '@/components/app/auth-background';
 import { ScrollView } from '@/components/app/keyboard';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +15,7 @@ export function Screen({
   className,
   contentContainerClassName,
   scrollProps,
+  auth,
 }: {
   children: ReactNode;
   scroll?: boolean;
@@ -22,9 +24,11 @@ export function Screen({
   className?: string;
   contentContainerClassName?: string;
   scrollProps?: ScrollViewProps;
+  /** Sign-in style screens: light background with the logo shape (Figma). */
+  auth?: boolean;
 }) {
-  return (
-    <SafeAreaView edges={edges} className={cn('flex-1 bg-background', className)}>
+  const page = (
+    <SafeAreaView edges={edges} className={cn('flex-1', auth ? 'bg-transparent' : 'bg-background', className)}>
       {scroll ? (
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -37,4 +41,5 @@ export function Screen({
       )}
     </SafeAreaView>
   );
+  return auth ? <AuthBackground>{page}</AuthBackground> : page;
 }

@@ -57,14 +57,14 @@ export default function StudentGrades() {
         {student && grades.data && rows.length === 0 ? <EmptyState title={s('no_grades')} /> : null}
         {[...groups.values()].map((group) => (
           <View key={group.title} className="gap-2">
-            <Text className="text-muted-foreground text-xs font-semibold uppercase">{group.title}</Text>
+            <Text className="text-muted-foreground text-sm font-semibold">{group.title}</Text>
             <Card className="gap-0 py-0">
               {group.rows.map((g, i) => (
                 <View key={g.id}>
                   {i > 0 ? <Separator /> : null}
                   <View className="gap-1 px-4 py-3">
                     <View className="flex-row items-center justify-between gap-3">
-                      <Text className="flex-1 font-medium">{courseTitle(g)}</Text>
+                      <Text className="flex-1 text-sm font-semibold">{courseTitle(g)}</Text>
                       <Text className="text-lg font-semibold">{g.letter_grade || '—'}</Text>
                     </View>
                     <Text className="text-muted-foreground text-xs">

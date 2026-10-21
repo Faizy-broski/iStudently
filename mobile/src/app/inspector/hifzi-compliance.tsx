@@ -1,11 +1,11 @@
 import { Stack } from 'expo-router';
-import { Building2, TrendingUp, Users, type LucideIcon } from 'lucide-react-native';
+import { Building2, ShieldCheck, TrendingUp, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { StatTile, StatTiles } from '@/components/app/layout';
+import { Panel, PanelTitle } from '@/components/app/panel';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { CompletionBars } from '@/features/admin/hifzi';
 import { adminAcademics, inspector } from '@/lib/api';
@@ -23,43 +23,31 @@ export default function InspectorHifziCompliance() {
     <>
       <Stack.Screen options={{ title: h('inspectorTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        <Text variant="muted">{h('inspectorSubtitle')}</Text>
+        <Text variant="muted" className="text-sm">
+          {h('inspectorSubtitle')}
+        </Text>
         {year.isLoading || res.isLoading ? (
           <LoadingList rows={3} />
         ) : !yearId ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{h('noAcademicYear')}</Text>
+          <EmptyState icon={ShieldCheck} title={h('noAcademicYear')} />
         ) : res.error || !s ? (
-          <Text className="py-8 text-center text-sm text-red-600">{res.error?.message || h('loadError')}</Text>
+          <ErrorState message={res.error?.message || h('loadError')} onRetry={() => res.mutate()} />
         ) : (
           <>
-            <View className="flex-row flex-wrap gap-2">
-              <Stat icon={Users} label={h('studentsTracked')} value={String(s.studentsTracked)} />
-              <Stat icon={TrendingUp} label={h('avgCompletion')} value={s.avgCompletionPercent !== null ? `${s.avgCompletionPercent.toFixed(1)}%` : '—'} />
-              <Stat icon={Building2} label={h('schoolsCovered')} value={String(s.heatmap.length)} />
-            </View>
-            <Card>
-              <CardContent className="gap-3 pt-4">
-                <Text className="font-semibold">{h('completionBySchool')}</Text>
+            <StatTiles>
+              <StatTile icon={Users} label={h('studentsTracked')} value={String(s.studentsTracked)} />
+              <StatTile icon={TrendingUp} tone="success" label={h('avgCompletion')} value={s.avgCompletionPercent !== null ? `${s.avgCompletionPercent.toFixed(1)}%` : '—'} />
+              <StatTile icon={Building2} tone="warning" label={h('schoolsCovered')} value={String(s.heatmap.length)} />
+            </StatTiles>
+            <Panel className="pb-4">
+              <PanelTitle title={h('completionBySchool')} />
+              <View className="px-4 pt-2">
                 <CompletionBars rows={s.heatmap} emptyLabel={h('noData')} />
-              </CardContent>
-            </Card>
+              </View>
+            </Panel>
           </>
         )}
       </ScrollView>
     </>
-  );
-}
-
-function Stat({ icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-  return (
-    <Card className="min-w-[30%] flex-1">
-      <CardContent className="gap-1 pt-4">
-        <View className="flex-row items-center gap-1.5">
-          <Icon as={icon} className="text-muted-foreground size-4" />
-          <Text className="text-muted-foreground flex-1 text-xs">{label}</Text>
-        </View>
-        <Text className="text-2xl font-bold">{value}</Text>
-      </CardContent>
-    </Card>
   );
 }

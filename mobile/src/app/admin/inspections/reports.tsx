@@ -6,6 +6,7 @@ import { Pressable, View } from 'react-native';
 import { DataList } from '@/components/app/data-list';
 import { Badge } from '@/components/ui/badge';
 import { Icon } from '@/components/ui/icon';
+import { IconTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminInspections } from '@/lib/api';
@@ -31,9 +32,7 @@ export default function InspectionReports() {
           keyExtractor={(x) => x.id}
           renderItem={(x) => (
             <Pressable onPress={() => router.push({ pathname: '/admin/inspections/report/[id]', params: { id: x.id } })} className="flex-row items-center gap-3 px-4 py-3">
-              <View className="size-9 items-center justify-center rounded-full bg-[#022172]/10">
-                <Icon as={UserCog} className="size-4 text-[#022172]" />
-              </View>
+              <IconTile icon={UserCog} round />
               <View className="flex-1">
                 <Text className="text-sm font-medium">{`${x.teacher.first_name} ${x.teacher.last_name}`}</Text>
                 <Text className="text-muted-foreground text-xs">{`${r('inspector_prefix')} ${x.inspector.first_name} ${x.inspector.last_name}`}</Text>

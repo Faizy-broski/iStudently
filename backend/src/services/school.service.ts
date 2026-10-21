@@ -6,6 +6,14 @@ import { encryptSecret } from '../utils/crypto'
 import { attachLogoAppearance } from './logo-appearance.service'
 import { generatePlaceholderEmail } from '../utils/email.util'
 
+export interface LibrarySettings {
+  fine_per_day: number;
+  max_books_per_student: number;
+  loan_duration_days: number;
+}
+/** Same fallbacks as library.service.ts uses when a school has no library settings. */
+const LIBRARY_DEFAULTS: LibrarySettings = { fine_per_day: 0.5, max_books_per_student: 3, loan_duration_days: 14 };
+
 export class SchoolService {
   /**
    * Onboard a new school with admin user (Super Admin only)
@@ -702,6 +710,18 @@ export class SchoolService {
         loan_duration_days: 14
       }
     };
+  }
+
+  /** The school's library policies, with the defaults the library uses when unset. */
+  async getLibrarySettings(schoolId: string): Promise<LibrarySettings> {
+    const settings = await this.getSchoolSettings(schoolId);
+    return { ...LIBRARY_DEFAULTS, ...(settings?.library ?? {}) };
+  }
+
+  /** Saves only the library policies; every other school setting is left as it is. */
+  async updateLibrarySettings(schoolId: string, library: LibrarySettings): Promise<LibrarySettings> {
+    const updated = await this.updateSchoolSettings(schoolId, { library });
+    return { ...LIBRARY_DEFAULTS, ...(updated?.library ?? {}) };
   }
 
   /**

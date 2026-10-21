@@ -81,6 +81,11 @@ const STANDARD_FIELDS = [
   { id: 'email', label: 'email', type: 'email', category: 'personal', sort_order: 9, required: false, width: 'half' },
   { id: 'phoneNumber', label: 'phone_number', type: 'tel', category: 'personal', sort_order: 10, required: false, width: 'half' },
   { id: 'nationalId', label: 'national_id', type: 'text', category: 'personal', sort_order: 11, required: false, width: 'half' },
+  // Printed on official report cards (Jahbadh grades)
+  { id: 'nationality', label: 'nationality', type: 'text', category: 'personal', sort_order: 12, required: false, width: 'half' },
+  { id: 'motherName', label: 'mother_name', type: 'text', category: 'personal', sort_order: 13, required: false, width: 'half' },
+  { id: 'placeOfBirth', label: 'place_of_birth', type: 'text', category: 'personal', sort_order: 14, required: false, width: 'half' },
+  { id: 'registrationNumber', label: 'registration_number', type: 'text', category: 'personal', sort_order: 15, required: false, width: 'half' },
 
   // ACADEMIC INFORMATION (Category: academic)
   { id: 'grade_level_id', label: 'grade_level', type: 'grade_select', category: 'academic', sort_order: 1, required: true, width: 'half' },
@@ -464,6 +469,10 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     dateOfBirth: null,
     gender: null,
     nationalId: "",
+    nationality: "",
+    motherName: "",
+    placeOfBirth: "",
+    registrationNumber: "",
     studentPhoto: "",
     address: "",
     email: "",
@@ -671,6 +680,10 @@ customFields.forEach((field) => {
         gender: formData.gender || undefined,
         date_of_birth: formData.dateOfBirth?.toISOString(),
         national_id: formData.nationalId || undefined,
+        nationality: formData.nationality || undefined,
+        mother_name: formData.motherName || undefined,
+        place_of_birth: formData.placeOfBirth || undefined,
+        registration_number: formData.registrationNumber || undefined,
         medical_info: medicalInfo,
         custom_fields: {
           ...customFieldsData,

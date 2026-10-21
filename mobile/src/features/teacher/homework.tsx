@@ -17,7 +17,7 @@ const MAX = 10 * 1024 * 1024;
 /** Days until the due date and its colour (web: getDaysUntilDue / getDueDateColor). */
 export function dueInfo(due: string) {
   const days = Math.ceil((new Date(due).getTime() - Date.now()) / 86400000);
-  const tone = days < 0 ? 'text-red-600' : days <= 2 ? 'text-orange-600' : days <= 7 ? 'text-yellow-600' : 'text-green-600';
+  const tone = days < 0 ? 'text-destructive' : days <= 2 ? 'text-warning' : days <= 7 ? 'text-warning' : 'text-success';
   return { days, tone };
 }
 
@@ -33,38 +33,38 @@ export function AttachmentField({ existing, picked, onPick, onRemove, onRemoveEx
   return (
     <View className="gap-2">
       {(existing ?? []).map((a, i) => (
-        <View key={`e${i}`} className="flex-row items-center gap-2">
-          <Icon as={FileText} className="size-4 text-[#4A90E2]" />
-          <Pressable onPress={() => WebBrowser.openBrowserAsync(attachmentUrl(a))} accessibilityRole="link" className="flex-1">
-            <Text className="text-sm text-[#4A90E2]" numberOfLines={1}>
+        <View key={`e${i}`} className="bg-info-soft flex-row items-center gap-2 rounded-xl px-3 py-2">
+          <Icon as={FileText} className="text-brand dark:text-brand-secondary size-4" />
+          <Pressable onPress={() => WebBrowser.openBrowserAsync(attachmentUrl(a))} accessibilityRole="link" className="flex-1 active:opacity-70">
+            <Text className="text-brand dark:text-brand-secondary text-sm font-medium" numberOfLines={1}>
               {attachmentName(a, i)}
             </Text>
           </Pressable>
           {onRemoveExisting ? (
-            <Pressable onPress={() => onRemoveExisting(i)} hitSlop={8} accessibilityLabel={t('common.delete')}>
-              <Icon as={X} className="size-4 text-red-500" />
+            <Pressable onPress={() => onRemoveExisting(i)} hitSlop={8} accessibilityLabel={t('common.delete')} className="bg-destructive-soft size-7 items-center justify-center rounded-full active:opacity-70">
+              <Icon as={X} className="text-destructive size-3.5" />
             </Pressable>
           ) : null}
         </View>
       ))}
       {picked.map((f, i) => (
-        <View key={`p${i}`} className="flex-row items-center gap-2">
+        <View key={`p${i}`} className="bg-muted/40 flex-row items-center gap-2 rounded-xl px-3 py-2">
           <Icon as={Paperclip} className="text-muted-foreground size-4" />
           <Text className="flex-1 text-sm" numberOfLines={1}>
             {f.name}
           </Text>
-          <Pressable onPress={() => onRemove(i)} hitSlop={8} accessibilityLabel={t('common.delete')}>
-            <Icon as={X} className="size-4 text-red-500" />
+          <Pressable onPress={() => onRemove(i)} hitSlop={8} accessibilityLabel={t('common.delete')} className="bg-destructive-soft size-7 items-center justify-center rounded-full active:opacity-70">
+            <Icon as={X} className="text-destructive size-3.5" />
           </Pressable>
         </View>
       ))}
       {readOnly ? null : (
         <>
-      <Button variant="outline" size="sm" className="self-start" onPress={choose}>
-        <Icon as={Paperclip} className="size-4" />
-        <Text>{k('clickToUpload')}</Text>
-      </Button>
-      <Text className="text-muted-foreground text-xs">{k('fileTypesHint')}</Text>
+          <Button variant="outline" size="sm" className="self-start" onPress={choose}>
+            <Icon as={Paperclip} className="size-4" />
+            <Text>{k('clickToUpload')}</Text>
+          </Button>
+          <Text className="text-muted-foreground text-xs">{k('fileTypesHint')}</Text>
         </>
       )}
     </View>

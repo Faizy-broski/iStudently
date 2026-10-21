@@ -1,15 +1,14 @@
 import type { AccountingEntry, EntryKind } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Plus } from 'lucide-react-native';
+import { ArrowDownLeft, ArrowUpRight, Plus, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
-import { ListRow } from '@/components/app/list-row';
+import { HeroCard, IconTile, RowItem, StatTile } from '@/components/app/layout';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
-import { StatCard } from '@/components/app/stat-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
@@ -19,8 +18,8 @@ import { useCurrency } from '@/features/admin/use-currency';
 import { useCampus } from '@/features/campus/campus';
 import { adminAccounting } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
-import { ArrowDownLeft, ArrowUpRight, Users } from 'lucide-react-native';
 
 const KINDS: EntryKind[] = ['incomes', 'expenses', 'staff-payments'];
 
@@ -75,10 +74,38 @@ export default function AccountingEntries() {
             <View className="gap-3 p-4">
               <Picker value={ay.id} onChange={ay.pick} options={ay.options} />
               {tt ? (
-                <View className="flex-row gap-3">
-                  <StatCard icon={ArrowDownLeft} label={t('app.ac_in')} value={money(tt.total_incomes + tt.total_student_payments)} detail={t('app.ac_incl_fees', { amount: money(tt.total_student_payments) })} />
-                  <StatCard icon={ArrowUpRight} label={t('app.ac_out')} value={money(tt.total_expenses + tt.total_staff_payments)} detail={t('app.ac_balance', { amount: money(tt.balance) })} tone={tt.balance < 0 ? 'destructive' : undefined} />
-                </View>
+                <HeroCard>
+                  <Text className="text-white text-xs opacity-80">{a('totals.general_balance')}</Text>
+                  <Text className={cn('text-3xl font-bold', tt.general_balance < 0 ? 'text-brand-accent' : 'text-white')} numberOfLines={1} adjustsFontSizeToFit>
+                    {money(tt.general_balance)}
+                  </Text>
+                  <View className="flex-row gap-2">
+                    <View className="flex-1 gap-0.5 rounded-2xl bg-white/10 p-2.5">
+                      <View className="flex-row items-center gap-1">
+                        <Icon as={ArrowDownLeft} className="text-white size-3.5" />
+                        <Text className="text-white text-[11px] opacity-80">{t('app.ac_in')}</Text>
+                      </View>
+                      <Text className="text-white text-sm font-bold" numberOfLines={1} adjustsFontSizeToFit>
+                        {money(tt.total_incomes + tt.total_student_payments)}
+                      </Text>
+                      <Text className="text-white text-[10px] opacity-70" numberOfLines={1}>
+                        {t('app.ac_incl_fees', { amount: money(tt.total_student_payments) })}
+                      </Text>
+                    </View>
+                    <View className="flex-1 gap-0.5 rounded-2xl bg-white/10 p-2.5">
+                      <View className="flex-row items-center gap-1">
+                        <Icon as={ArrowUpRight} className="text-white size-3.5" />
+                        <Text className="text-white text-[11px] opacity-80">{t('app.ac_out')}</Text>
+                      </View>
+                      <Text className="text-white text-sm font-bold" numberOfLines={1} adjustsFontSizeToFit>
+                        {money(tt.total_expenses + tt.total_staff_payments)}
+                      </Text>
+                      <Text className="text-white text-[10px] opacity-70" numberOfLines={1}>
+                        {t('app.ac_balance', { amount: money(tt.balance) })}
+                      </Text>
+                    </View>
+                  </View>
+                </HeroCard>
               ) : null}
               <View className="gap-1">
                 <Text className="text-sm font-medium">{a('period')}</Text>
@@ -115,13 +142,16 @@ export default function AccountingEntries() {
                   </CardContent>
                 </Card>
               ) : null}
-              {list.data ? <StatCard icon={kind === 'staff-payments' ? Users : kind === 'incomes' ? ArrowDownLeft : ArrowUpRight} label={t(`app.ac_${kind}`)} value={money(sum)} detail={t('app.fe_count', { count: list.data.length })} /> : null}
+              {list.data ? <StatTile icon={kind === 'staff-payments' ? Users : kind === 'incomes' ? ArrowDownLeft : ArrowUpRight} label={t(`app.ac_${kind}`)} value={money(sum)} note={t('app.fe_count', { count: list.data.length })} /> : null}
             </View>
           }
           renderItem={(e) => (
-            <ListRow
-              title={`${e.title} · ${money(e.amount)}`}
-              subtitle={[date(e) ? formatDate(date(e)!) : null, e.category?.name, e.staff ? `${e.staff.profiles.first_name} ${e.staff.profiles.last_name}` : null, e.payment_method, e.comments, e.file_attached ? '📎' : null].filter(Boolean).join(' · ')}
+            <RowItem
+              last
+              title={e.title}
+              meta={[date(e) ? formatDate(date(e)!) : null, e.category?.name, e.staff ? `${e.staff.profiles.first_name} ${e.staff.profiles.last_name}` : null, e.payment_method, e.comments, e.file_attached ? '📎' : null].filter(Boolean).join(' · ')}
+              leading={<IconTile icon={kind === 'staff-payments' ? Users : kind === 'incomes' ? ArrowDownLeft : ArrowUpRight} tone={kind === 'incomes' ? 'success' : 'warning'} />}
+              trailing={<Text className={cn('text-sm font-bold', kind === 'incomes' ? 'text-success' : 'text-foreground')}>{money(e.amount)}</Text>}
               onPress={() => router.push({ pathname: '/admin/accounting/entry-form', params: { kind, year: e.academic_year, id: e.id } })}
             />
           )}

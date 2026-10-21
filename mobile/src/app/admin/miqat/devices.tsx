@@ -83,7 +83,7 @@ export default function MiqatDevices() {
                   />
                   {role === 'teacher' ? (
                     teacher ? (
-                      <View className="border-border flex-row items-center justify-between rounded-md border p-2">
+                      <View className="border-info-soft dark:border-border flex-row items-center justify-between rounded-xl border p-2">
                         <Text className="text-sm">{teacher.name}</Text>
                         <Pressable onPress={() => setTeacher(null)} hitSlop={8} accessibilityLabel={d('change')}>
                           <Icon as={X} className="text-muted-foreground size-4" />
@@ -108,7 +108,7 @@ export default function MiqatDevices() {
                     <Text>{d('generateCode')}</Text>
                   </Button>
                   {code ? (
-                    <View className="border-border bg-muted/40 flex-row items-center justify-between rounded-lg border p-4">
+                    <View className="border-info-soft dark:border-border bg-muted/40 flex-row items-center justify-between rounded-xl border p-4">
                       <View>
                         <Text className="font-mono text-2xl tracking-widest">{code.code}</Text>
                         <Text className="text-muted-foreground text-xs">{`${d('expiresAt')}: ${new Intl.DateTimeFormat(i18n.language, { timeStyle: 'short' }).format(new Date(code.expires_at))}`}</Text>
@@ -138,7 +138,7 @@ export default function MiqatDevices() {
           renderItem={(x) => (
             <View className="flex-row items-center gap-3 px-4 py-3">
               <View className="flex-1 gap-0.5">
-                <Text className="font-medium">{x.label || x.id.slice(0, 8)}</Text>
+                <Text className="text-sm font-semibold">{x.label || x.id.slice(0, 8)}</Text>
                 <Text className="text-muted-foreground text-xs">{`${d('colRole')}: ${x.role} · ${d('colLastSeen')}: ${x.last_seen_at ? fmt(x.last_seen_at) : d('never')}`}</Text>
               </View>
               <Badge variant={x.status === 'active' ? 'default' : 'destructive'}>

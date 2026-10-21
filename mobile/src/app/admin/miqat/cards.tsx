@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { colors } from '@/lib/colors';
 import { ScrollView } from '@/components/app/keyboard';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -63,7 +64,7 @@ export default function MiqatCards() {
 
   const cardHtml = (x: Issued) => {
     const rtl = i18n.language === 'ar';
-    return `<!doctype html><html dir="${rtl ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;text-align:center;padding:24px}.qr{width:260px;height:260px;margin:16px auto}.qr svg{width:100%;height:100%}h1{font-size:20px;margin:0}p{color:#555;font-size:13px}</style></head><body><h1>${escapeHtml(x.name)}</h1><div class="qr">${qrSvg(x.qrPayload)}</div><p>${escapeHtml(c('revisionLabel'))}: ${x.revision}</p></body></html>`;
+    return `<!doctype html><html dir="${rtl ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;text-align:center;padding:24px}.qr{width:260px;height:260px;margin:16px auto}.qr svg{width:100%;height:100%}h1{font-size:20px;margin:0}p{color:${colors.printMuted};font-size:13px}</style></head><body><h1>${escapeHtml(x.name)}</h1><div class="qr">${qrSvg(x.qrPayload)}</div><p>${escapeHtml(c('revisionLabel'))}: ${x.revision}</p></body></html>`;
   };
 
   async function run(fn: () => Promise<void>, errorKey: string) {
@@ -82,7 +83,7 @@ export default function MiqatCards() {
           <CardContent className="gap-3 pt-4">
             <View className="flex-row gap-2">
               <Input className="flex-1" value={query} onChangeText={setQuery} onSubmitEditing={search} returnKeyType="search" placeholder={c('searchPlaceholder')} />
-              <Button onPress={search} disabled={searching}>
+              <Button onPress={search} disabled={searching} accessibilityLabel={t('common.search')}>
                 <Icon as={Search} className="text-primary-foreground size-4" />
               </Button>
             </View>
@@ -116,8 +117,8 @@ export default function MiqatCards() {
             <CardContent className="items-center gap-4 pt-6">
               <Text className="text-lg font-semibold">{issued.name}</Text>
               <Text variant="muted" className="text-sm">{`${c('revisionLabel')}: ${issued.revision}`}</Text>
-              <View className="border-border rounded-lg border bg-white p-4">
-                <QRCode value={issued.qrPayload} size={200} bgColor="#FFFFFF" fgColor="#000000" />
+              <View className="border-info-soft dark:border-border rounded-xl border bg-white p-4">
+                <QRCode value={issued.qrPayload} size={200} bgColor={colors.white} fgColor={colors.black} />
               </View>
               <View className="flex-row gap-2">
                 <Button variant="outline" onPress={() => run(() => printHtml(cardHtml(issued)), 'printError')}>

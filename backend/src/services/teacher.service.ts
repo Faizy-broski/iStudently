@@ -14,6 +14,7 @@ import {
   ApiResponse
 } from '../types'
 import { getMainSchoolId } from '../utils/campus.util'
+import { SAFE_PROFILE_COLUMNS } from '../utils/profile-columns'
 import { generatePlaceholderEmail, withRedactedEmail } from '../utils/email.util'
 import { generateCredentials, applyCredentialUpdate } from './username.service'
 
@@ -48,7 +49,7 @@ export const getAllTeachers = async (
       .from('staff')
       .select(`
         *,
-        profile:profiles!staff_profile_id_fkey(*),
+        profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS}),
         grade_level:grade_levels(id, name),
         section:sections(id, name, capacity),
         assigned_subjects:teacher_subject_assignments!teacher_id(
@@ -182,7 +183,7 @@ export const getTeacherById = async (teacherId: string, schoolId?: string): Prom
         .from('staff')
         .select(`
           *,
-          profile:profiles!staff_profile_id_fkey(*),
+          profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS}),
           grade_level:grade_levels(id, name),
           section:sections(id, name, capacity)
         `)
@@ -358,7 +359,7 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
       })
       .select(`
         *,
-        profile:profiles!staff_profile_id_fkey(*)
+        profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS})
       `)
       .single()
 
@@ -525,7 +526,7 @@ export const updateTeacher = async (
       .from('staff')
       .select(`
         *,
-        profile:profiles!staff_profile_id_fkey(*),
+        profile:profiles!staff_profile_id_fkey(${SAFE_PROFILE_COLUMNS}),
         grade_level:grade_levels(id, name),
         section:sections(id, name, capacity)
       `)

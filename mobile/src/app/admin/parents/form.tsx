@@ -3,16 +3,19 @@ import type { Parent, ParentInput } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { ImagePlus } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 import { z } from 'zod';
 
 import { FormError, TextField } from '@/components/app/form';
+import { PersonAvatar } from '@/components/app/person-avatar';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/app/toast';
@@ -21,7 +24,8 @@ import { ENTITY_TABS } from '@/features/admin/field-tabs';
 import { useRequiredFields } from '@/features/admin/required-fields';
 import { applyPermissionProfile, PermissionsSelect } from '@/features/admin/people-extras';
 import { useCampus } from '@/features/campus/campus';
-import { adminCustomFields, adminParents } from '@/lib/api';
+import { adminCustomFields, adminParents, media } from '@/lib/api';
+import { pickImage } from '@/lib/upload';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { useAction } from '@/lib/use-action';
@@ -90,6 +94,22 @@ export default function ParentForm() {
     isRequired.current = required.isRequired;
   });
   const [created, setCreated] = useState<{ username?: string; password?: string } | null>(null);
+  // Profile photo (web AddParentForm: profile_photo_url); undefined = not changed.
+  const [photo, setPhoto] = useState<string | null | undefined>(undefined);
+  const [uploading, setUploading] = useState(false);
+  const shownPhoto = photo === undefined ? ((existing.data as { profile?: { profile_photo_url?: string | null } } | undefined)?.profile?.profile_photo_url ?? null) : photo;
+  async function uploadPhoto() {
+    const picked = await pickImage({ maxDimension: 800 });
+    if (!picked.ok) {
+      if (picked.reason === 'permission') toast.error(t('app.ob_photo_permission'));
+      return;
+    }
+    setUploading(true);
+    const res = await media.uploadImage(picked.file);
+    setUploading(false);
+    if (res.success && res.data) setPhoto(res.data.url);
+    else toast.error(res.error || t('app.error_title'));
+  }
   const [permission, setPermission] = useState('default');
   // Relationship type and the second parent / guardian, sent as metadata like the web (AddParentForm).
   type Rel = 'mother' | 'father' | 'both' | 'guardian';
@@ -121,6 +141,7 @@ export default function ParentForm() {
     (v: FormValues) => {
       const body: ParentInput = Object.fromEntries(Object.entries(v).filter(([, x]) => x !== '')) as unknown as ParentInput;
       body.custom_fields = mergeCustomValues(defs.data, customValues, loadedRecord?.custom_fields, 'flat');
+      if (photo !== undefined) body.profile_photo_url = photo ?? undefined;
       if (relValue) (body as ParentInput & { metadata?: unknown }).metadata = { secondary_parent: showSecond ? secondValue : null, relationship_type: relValue, guardian_relationship: guardianValue };
       return editing ? adminParents.update(id!, body) : adminParents.create(body);
     },
@@ -179,6 +200,13 @@ export default function ParentForm() {
     <>
       <Stack.Screen options={{ title: editing ? t('parents.editParentTitle') : t('parents.addNewParentTitle') }} />
       <Screen scroll edges={['bottom']}>
+        <View className="items-center gap-2">
+          <PersonAvatar url={shownPhoto} name="" size={80} />
+          <Button variant="outline" size="sm" onPress={uploadPhoto} disabled={uploading}>
+            <Icon as={ImagePlus} className="size-4" />
+            <Text>{uploading ? t('app.ob_uploading') : t('app.pa_profile_photo')}</Text>
+          </Button>
+        </View>
         <Card className="gap-3 py-4">
           <CardHeader className="px-4">
             <CardTitle>{t('parents.relationshipTypeLabel')}{editing ? '' : ' *'}</CardTitle>
@@ -192,8 +220,8 @@ export default function ParentForm() {
                 ['guardian', 'guardianOther'],
               ] as const
             ).map(([v, k]) => (
-              <Pressable key={v} onPress={() => setRel(v)} className={cn('rounded-md border p-3', relValue === v ? 'border-primary bg-primary/10' : 'border-border')}>
-                <Text className="font-medium">{t(`parents.relationshipTypes.${k}`)}</Text>
+              <Pressable key={v} onPress={() => setRel(v)} className={cn('rounded-md border p-3', relValue === v ? 'border-brand-secondary bg-info-soft' : 'border-border')}>
+                <Text className="text-sm font-semibold">{t(`parents.relationshipTypes.${k}`)}</Text>
                 <Text className="text-muted-foreground text-xs">{t(`parents.relationshipTypes.${k}Sub`)}</Text>
               </Pressable>
             ))}

@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { CampusScope, CustomFieldType } from '@studently/shared-types';
 import { v } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Trash2 } from 'lucide-react-native';
+import { Building2, ListPlus, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -11,13 +11,12 @@ import { z } from 'zod';
 
 import { useConfirm } from '@/components/app/confirm';
 import { FormError, SwitchField, TextField } from '@/components/app/form';
+import { CheckMark, FormSection } from '@/components/app/layout';
 import { Picker, SelectField } from '@/components/app/picker';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Icon } from '@/components/ui/icon';
-import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { DEFAULT_TAB, FIELD_SCOPES, FIELD_TYPES, OPTION_TYPES, fieldTabs, tabIdFor } from '@/features/superadmin/fields';
 import { platform } from '@/lib/api';
@@ -121,50 +120,56 @@ export default function SchoolFieldForm() {
     <>
       <Stack.Screen options={{ title: editing ? (field?.label ?? '') : t('app.cf_new') }} />
       <Screen scroll edges={['bottom']}>
-        <SelectField
-          control={control}
-          name="tab"
-          label={t('app.cf_tab')}
-          options={[...tabs.map((x) => ({ value: x.id, label: x.name })), { value: NEW_TAB, label: t('app.cf_new_tab') }]}
-        />
-        {tabValue === NEW_TAB ? <TextField control={control} name="new_tab_name" label={t('app.cf_new_tab_name')} /> : null}
-        <TextField control={control} name="label" label={t('app.cf_label')} />
-        <SelectField control={control} name="type" label={t('app.cf_type')} options={FIELD_TYPES.map((x) => ({ value: x, label: t(`app.cf_type_${x}`) }))} />
-        {OPTION_TYPES.includes(type) ? (
-          <TextField control={control} name="options" label={t('app.cf_options')} hint={t('app.cf_options_hint')} multiline numberOfLines={5} className="min-h-28" />
-        ) : null}
-        <SwitchField control={control} name="required" label={t('app.cf_required')} />
-
-        <View className="gap-1.5">
-          <Label>{t('app.cf_scope')}</Label>
-          <Picker
-            value={scope}
-            onChange={(x) => setValue('campus_scope', x as CampusScope, { shouldDirty: true })}
-            options={FIELD_SCOPES.map((x) => ({ value: x, label: t(`app.cf_scope_long_${x}`) }))}
-          />
-        </View>
-        {scope === 'selected_campuses' ? (
-          <Controller
+        <FormSection title={t('app.sa_details')} icon={ListPlus}>
+          <SelectField
             control={control}
-            name="applicable_school_ids"
-            render={({ field: f }) => (
-              <View className="border-border gap-1 rounded-md border p-2">
-                {(schools.data ?? []).map((s) => {
-                  const checked = f.value.includes(s.id);
-                  const toggle = () => f.onChange(checked ? f.value.filter((x) => x !== s.id) : [...f.value, s.id]);
-                  return (
-                    <Pressable key={s.id} onPress={toggle} className="flex-row items-center gap-3 px-1 py-2" accessibilityRole="checkbox" accessibilityState={{ checked }}>
-                      <Checkbox checked={checked} onCheckedChange={toggle} />
-                      <Text className="flex-1">{s.name}</Text>
-                    </Pressable>
-                  );
-                })}
-                {schools.isLoading ? <LoadingList rows={2} /> : null}
-              </View>
-            )}
+            name="tab"
+            label={t('app.cf_tab')}
+            options={[...tabs.map((x) => ({ value: x.id, label: x.name })), { value: NEW_TAB, label: t('app.cf_new_tab') }]}
           />
-        ) : null}
-        <FormError message={formState.errors.applicable_school_ids?.message} />
+          {tabValue === NEW_TAB ? <TextField control={control} name="new_tab_name" label={t('app.cf_new_tab_name')} /> : null}
+          <TextField control={control} name="label" label={t('app.cf_label')} />
+          <SelectField control={control} name="type" label={t('app.cf_type')} options={FIELD_TYPES.map((x) => ({ value: x, label: t(`app.cf_type_${x}`) }))} />
+          {OPTION_TYPES.includes(type) ? (
+            <TextField control={control} name="options" label={t('app.cf_options')} hint={t('app.cf_options_hint')} multiline numberOfLines={5} className="min-h-28" />
+          ) : null}
+          <SwitchField control={control} name="required" label={t('app.cf_required')} />
+        </FormSection>
+
+        <FormSection title={t('app.cf_scope')} icon={Building2}>
+            <Picker
+              value={scope}
+              onChange={(x) => setValue('campus_scope', x as CampusScope, { shouldDirty: true })}
+              options={FIELD_SCOPES.map((x) => ({ value: x, label: t(`app.cf_scope_long_${x}`) }))}
+            />
+          {scope === 'selected_campuses' ? (
+            <Controller
+              control={control}
+              name="applicable_school_ids"
+              render={({ field: f }) => (
+                <View className="gap-1.5">
+                  {(schools.data ?? []).map((s) => {
+                    const checked = f.value.includes(s.id);
+                    const toggle = () => f.onChange(checked ? f.value.filter((x) => x !== s.id) : [...f.value, s.id]);
+                    return (
+                      <Pressable
+                        key={s.id}
+                        onPress={toggle}
+                        className={checked ? 'border-brand-secondary bg-info-soft flex-row items-center gap-3 rounded-xl border px-3 py-2.5 active:opacity-70' : 'border-info-soft dark:border-border flex-row items-center gap-3 rounded-xl border px-3 py-2.5 active:opacity-70'}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked }}>
+                        <CheckMark on={checked} />
+                        <Text className="flex-1 text-sm">{s.name}</Text>
+                      </Pressable>
+                    );
+                  })}
+                  {schools.isLoading ? <LoadingList rows={2} /> : null}
+                </View>
+              )}
+            />
+          ) : null}
+          <FormError message={formState.errors.applicable_school_ids?.message} />
+        </FormSection>
 
         <Button onPress={onSubmit} disabled={save.running}>
           <Text>{t('app.bl_save')}</Text>
@@ -172,6 +177,7 @@ export default function SchoolFieldForm() {
         {editing && field ? (
           <Button
             variant="ghost"
+            className="bg-destructive-soft rounded-full"
             onPress={async () => {
               const ok = await confirm({ title: t('app.cf_delete_title', { label: field.label }), body: t('app.cf_delete_body'), destructive: true, confirmLabel: t('app.bl_delete') });
               if (ok && (await remove.run()).ok) router.back();

@@ -1,15 +1,16 @@
 import { coursePeriodTeacherName, type CoursePeriod, type Student } from '@studently/api-client';
 import { toCsv } from '@studently/shared-utils';
-import { Check, Download } from 'lucide-react-native';
+import { Download } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { CheckMark, Initials, RoundIcon } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
-import { Card, CardContent } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
@@ -40,9 +41,7 @@ export function useCampusStudents() {
   return isTeacher ? mine : all;
 }
 
-function Check3({ on }: { on: boolean }) {
-  return <View className={cn('size-5 items-center justify-center rounded border', on ? 'border-primary bg-primary' : 'border-border')}>{on ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>;
-}
+const Check3 = CheckMark;
 
 /** Searchable student list with check boxes, select-all and CSV download (web: the scheduling pages' student tables). */
 export function StudentChecklist({ students, loading, selected, onChange, countKey }: { students: Student[]; loading: boolean; selected: Set<string>; onChange: (s: Set<string>) => void; countKey: string }) {
@@ -72,38 +71,44 @@ export function StudentChecklist({ students, loading, selected, onChange, countK
   return (
     <View className="gap-2">
       <View className="flex-row items-center gap-2">
-        <Text className="text-muted-foreground flex-1 text-sm">{t(countKey, { count: shown.length })}</Text>
-        <Pressable onPress={download} hitSlop={8} className="p-1" accessibilityLabel={t('common.download')}>
-          <Icon as={Download} className="text-muted-foreground size-4" />
-        </Pressable>
+        <View className="flex-1 flex-row">
+          <StatusChip label={t(countKey, { count: shown.length })} tone="info" className="px-2.5 py-1" />
+        </View>
+        <RoundIcon icon={Download} label={t('common.download')} onPress={download} />
       </View>
       <SearchBar value={q} onChangeText={setQ} placeholder={t('common.search')} />
       {loading ? (
         <LoadingList rows={5} />
       ) : (
-        <Card>
-          <CardContent className="py-1">
-            <Pressable onPress={() => onChange(all ? new Set() : new Set([...selected, ...shown.map((s) => s.id)]))} className="flex-row items-center gap-3 py-2.5">
-              <Check3 on={all} />
-              <Text className="text-sm font-semibold">{t('app.sc_select_all', { count: selected.size })}</Text>
-            </Pressable>
-            {!shown.length ? <Text className="text-muted-foreground py-4 text-center text-sm">{t('school.scheduling.group_schedule.no_students_found')}</Text> : null}
-            {shown.map((s) => (
-              <View key={s.id}>
-                <Separator />
-                <Pressable onPress={() => toggle(s.id)} className="flex-row items-center gap-3 py-2.5" accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(s.id) }}>
-                  <Check3 on={selected.has(s.id)} />
-                  <View className="flex-1">
-                    <Text className="text-sm">{studentFullName(s.profile) || '—'}</Text>
-                    <Text className="text-muted-foreground text-xs">
-                      {s.student_number} · {s.grade_level || '—'}
-                    </Text>
-                  </View>
-                </Pressable>
-              </View>
-            ))}
-          </CardContent>
-        </Card>
+        <Panel>
+          <Pressable onPress={() => onChange(all ? new Set() : new Set([...selected, ...shown.map((s) => s.id)]))} className="bg-info-soft/60 flex-row items-center gap-3 rounded-t-2xl px-4 py-3 active:opacity-70">
+            <Check3 on={all} />
+            <Text className="text-brand dark:text-brand-secondary text-sm font-semibold">{t('app.sc_select_all', { count: selected.size })}</Text>
+          </Pressable>
+          {!shown.length ? <EmptyState title={t('school.scheduling.group_schedule.no_students_found')} /> : null}
+          {shown.map((s) => {
+            const name = studentFullName(s.profile) || '—';
+            return (
+              <Pressable
+                key={s.id}
+                onPress={() => toggle(s.id)}
+                className="border-info-soft dark:border-border flex-row items-center gap-3 border-t px-4 py-2.5 active:opacity-70"
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: selected.has(s.id) }}>
+                <Check3 on={selected.has(s.id)} />
+                <Initials name={name} size={32} />
+                <View className="flex-1">
+                  <Text className="text-sm font-medium" numberOfLines={1}>
+                    {name}
+                  </Text>
+                  <Text variant="muted" className="text-[11px]">
+                    {s.student_number} · {s.grade_level || '—'}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </Panel>
       )}
     </View>
   );
@@ -134,14 +139,14 @@ export function CoursePeriodPicker({ value, onSelect }: { value: PickedCoursePer
   const course = (courses.data ?? []).find((c) => c.id === courseId);
 
   const row = (label: string, on: boolean, onPress: () => void, trailing?: string) => (
-    <Pressable key={label + String(on)} onPress={onPress} className={cn('flex-row items-center gap-2 rounded-md px-2 py-2', on && 'bg-primary/10')}>
-      <Text className={cn('text-primary flex-1 text-sm', on && 'font-semibold')}>{label}</Text>
+    <Pressable key={label + String(on)} onPress={onPress} className={cn('flex-row items-center gap-2 rounded-xl px-3 py-2.5 active:opacity-70', on && 'bg-info-soft')}>
+      <Text className={cn('flex-1 text-sm', on ? 'text-brand dark:text-brand-secondary font-semibold' : 'text-foreground')}>{label}</Text>
       {trailing ? <Text className="text-muted-foreground text-xs">{trailing}</Text> : null}
     </Pressable>
   );
 
   return (
-    <View className="border-border gap-3 rounded-lg border p-3">
+    <Panel className="gap-3 p-3">
       <Text className="font-semibold">{d('title')}</Text>
       <Text className="text-muted-foreground text-xs">{d('found_subjects', { count: (subjects.data ?? []).length })}</Text>
       {subjects.isLoading ? <LoadingList rows={2} /> : !(subjects.data ?? []).length ? <Text className="text-muted-foreground text-sm">{d('no_subjects_found')}</Text> : null}
@@ -183,7 +188,7 @@ export function CoursePeriodPicker({ value, onSelect }: { value: PickedCoursePer
           })}
         </View>
       )}
-    </View>
+    </Panel>
   );
 }
 
@@ -195,7 +200,7 @@ export function CoursePanel({ title, value, onChange, chooseLabel, changeLabel }
       <Text className="font-semibold">{title}</Text>
       {value ? (
         <View className="bg-muted/50 rounded-md p-2">
-          <Text className="font-medium">{value.courseTitle}</Text>
+          <Text className="text-sm font-semibold">{value.courseTitle}</Text>
           <Text className="text-muted-foreground text-xs">{value.periodLabel}</Text>
         </View>
       ) : null}

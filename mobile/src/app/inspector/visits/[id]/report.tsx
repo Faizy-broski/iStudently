@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { PillPicker } from '@/features/inspector/ui';
@@ -41,18 +41,14 @@ export default function VisitReport() {
 
   if (visit.isLoading || evals.isLoading) return <LoadingList rows={3} />;
   const v = visit.data;
-  if (!v) return <Text className="text-muted-foreground p-6 text-center">{k('visit_not_found')}</Text>;
+  if (!v) return <ErrorState message={k('visit_not_found')} onRetry={() => visit.mutate()} />;
   return (
     <>
       <Stack.Screen options={{ title: k('page_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => report.mutate()} />}>
-        <Text variant="muted">{`${v.school?.name ?? ''} · ${v.scheduled_date}`}</Text>
+        <Text variant="muted" className="text-sm">{`${v.school?.name ?? ''} · ${v.scheduled_date}`}</Text>
         {!submitted.length ? (
-          <Card>
-            <CardContent className="py-10">
-              <Text className="text-muted-foreground text-center text-sm">{k('no_evaluations')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={FileText} title={k('no_evaluations')} />
         ) : (
           <>
             {submitted.length > 1 ? <PillPicker items={submitted.map((e) => ({ value: e.id, label: `${e.teacher.first_name} ${e.teacher.last_name}` }))} value={evalId} onChange={setPicked} /> : null}
@@ -64,15 +60,13 @@ export default function VisitReport() {
                 <Text>{t('app.in_open_report')}</Text>
               </Button>
             ) : (
-              <Card>
-                <CardContent className="items-center gap-3 py-10">
+              <Panel className="items-center gap-3 px-4 py-10">
                   <Text className="text-muted-foreground text-sm">{k('no_report_yet')}</Text>
                   <Button onPress={create} disabled={busy}>
                     <Icon as={FileText} className="text-primary-foreground size-4" />
                     <Text>{k('btn_create_report')}</Text>
                   </Button>
-                </CardContent>
-              </Card>
+              </Panel>
             )}
           </>
         )}

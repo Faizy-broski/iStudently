@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { BarChart, PieChart } from '@/components/app/charts';
-import { FilterChips } from '@/components/app/filter-chips';
+import { Segmented } from '@/components/app/segmented';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
 /** Recharts palette used by the web report pages. */
-export const REPORT_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ff7c7c', '#a4de6c', '#d0ed57', '#83a6ed', '#8dd1e1', '#a4262c'];
+export const REPORT_COLORS = [colors.brandSecondary, colors.success, colors.brandAccent, colors.warning, colors.brandSecondary, colors.success, colors.chart8, colors.success, colors.success, colors.brandSecondary, colors.chart7, colors.destructive];
 
 export const monthKey = (d: string) => d.slice(0, 7);
 /** School year starts in September (same as the web reports). */
@@ -55,7 +56,7 @@ export function CountsBreakdown({
   const total = data.reduce((s, d) => s + d.value, 0);
   return (
     <View className="gap-4">
-      <FilterChips<View3>
+      <Segmented<View3>
         value={tab}
         onChange={setTab}
         options={[
@@ -69,20 +70,20 @@ export function CountsBreakdown({
       ) : tab === 'pie' ? (
         <PieChart data={data.map((d, i) => ({ ...d, color: REPORT_COLORS[i % REPORT_COLORS.length] }))} />
       ) : (
-        <View>
-          <View className="border-border flex-row border-b py-2">
-            <Text className="flex-1 font-medium">{nameHeader}</Text>
-            <Text className="font-medium">{valueHeader}</Text>
+        <View className="border-info-soft dark:border-border overflow-hidden rounded-2xl border">
+          <View className="bg-muted/60 flex-row px-3 py-2.5">
+            <Text className="text-muted-foreground flex-1 text-xs font-semibold">{nameHeader}</Text>
+            <Text className="text-muted-foreground text-xs font-semibold">{valueHeader}</Text>
           </View>
           {data.map((d) => (
-            <View key={d.name} className="border-border flex-row border-b py-2">
-              <Text className="flex-1">{d.name}</Text>
-              <Text className="font-medium">{d.value}</Text>
+            <View key={d.name} className="border-info-soft dark:border-border flex-row border-t px-3 py-2.5">
+              <Text className="flex-1 text-sm">{d.name}</Text>
+              <Text className="text-sm font-semibold">{d.value}</Text>
             </View>
           ))}
-          <View className="border-foreground flex-row border-t-2 py-2">
-            <Text className="flex-1 font-semibold">{labels.total}</Text>
-            <Text className="font-semibold">{total}</Text>
+          <View className="bg-info-soft flex-row px-3 py-2.5">
+            <Text className="text-brand dark:text-brand-secondary flex-1 text-sm font-bold">{labels.total}</Text>
+            <Text className="text-brand dark:text-brand-secondary text-sm font-bold">{total}</Text>
           </View>
         </View>
       )}
@@ -107,7 +108,7 @@ export function TimeSeriesBreakdown({
   const [tab, setTab] = useState<'column' | 'list'>('column');
   return (
     <View className="gap-4">
-      <FilterChips<'column' | 'list'>
+      <Segmented<'column' | 'list'>
         value={tab}
         onChange={setTab}
         options={[
@@ -123,22 +124,22 @@ export function TimeSeriesBreakdown({
         />
       ) : (
         <ScrollView horizontal>
-          <View>
-            <View className="border-border flex-row border-b">
-              <Text className="w-36 py-2 font-medium">{optionHeader}</Text>
+          <View className="border-info-soft dark:border-border overflow-hidden rounded-2xl border">
+            <View className="bg-muted/60 flex-row">
+              <Text className="text-muted-foreground w-36 px-3 py-2.5 text-xs font-semibold">{optionHeader}</Text>
               {periods.map((p) => (
-                <Text key={p.key} className="w-16 py-2 text-center text-xs font-medium">
+                <Text key={p.key} className="text-muted-foreground w-16 py-2.5 text-center text-xs font-semibold">
                   {p.label}
                 </Text>
               ))}
             </View>
             {options.map((o, i) => (
-              <View key={o} className={cn('border-border flex-row border-b', i % 2 === 1 && 'bg-muted/30')}>
-                <Text className="w-36 py-2 font-medium" numberOfLines={2}>
+              <View key={o} className={cn('border-info-soft dark:border-border flex-row border-t', i % 2 === 1 && 'bg-muted/30')}>
+                <Text className="w-36 px-3 py-2.5 text-sm font-medium" numberOfLines={2}>
                   {o}
                 </Text>
                 {periods.map((p) => (
-                  <Text key={p.key} className="w-16 py-2 text-center">
+                  <Text key={p.key} className="w-16 py-2.5 text-center text-sm">
                     {counts[p.key]?.[o] ?? 0}
                   </Text>
                 ))}

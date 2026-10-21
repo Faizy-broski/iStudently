@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { MultiChips } from '@/components/app/filter-chips';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,7 @@ export default function PrintStudentInfo() {
 
   function row(label: string, value: unknown) {
     const v = value === null || value === undefined || value === '' ? '—' : String(value);
-    return `<tr><td style="color:#555;padding:3px 8px 3px 0;width:38%">${escapeHtml(label)}</td><td style="padding:3px 0">${escapeHtml(v)}</td></tr>`;
+    return `<tr><td style="color:${colors.printMuted};padding:3px 8px 3px 0;width:38%">${escapeHtml(label)}</td><td style="padding:3px 0">${escapeHtml(v)}</td></tr>`;
   }
   function section(title: string, rows: string) {
     return `<div style="margin-top:12px"><div class="record-subheader">${escapeHtml(title)}</div><table style="width:100%;border-collapse:collapse">${rows}</table></div>`;

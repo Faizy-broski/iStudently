@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { FilterChips } from '@/components/app/filter-chips';
 import { FormError, NumberField, TextField } from '@/components/app/form';
 import { PersonAvatar } from '@/components/app/person-avatar';
+import { SelectField } from '@/components/app/picker';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -25,8 +26,9 @@ import { ENTITY_TABS } from '@/features/admin/field-tabs';
 import { useRequiredFields } from '@/features/admin/required-fields';
 import { applyPermissionProfile, PermissionsSelect } from '@/features/admin/people-extras';
 import { useCampus } from '@/features/campus/campus';
-import { adminCustomFields, adminEmployees, media } from '@/lib/api';
+import { adminCustomFields, adminDesignations, adminEmployees, media } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { generatePassword } from '@/lib/password';
 import { pickImage } from '@/lib/upload';
 import { useAction } from '@/lib/use-action';
 
@@ -146,7 +148,19 @@ export default function EmployeeForm() {
   useEffect(() => {
     if (existing.data) reset(fromEmployee(existing.data));
   }, [existing.data, reset]);
-  const [photo, payment] = useWatch({ control, name: ['photo', 'payment_type'] });
+  const [photo, payment, jobTitle, password] = useWatch({ control, name: ['photo', 'payment_type', 'title', 'password'] });
+  // Web add-staff: the school's designations (plus Librarian), or its default list when none are set up.
+  const designationsQ = useApi(kind === 'staff' ? ['admin', 'designations', campusId ?? 'school'] : null, () => adminDesignations.list(campusId));
+  const designationNames = (designationsQ.data ?? []).map((d) => d.name);
+  const designations = designationNames.length
+    ? [...designationNames, ...(designationNames.some((n) => n.toLowerCase() === 'librarian') ? [] : ['Librarian'])]
+    : ['Librarian', 'Accountant', 'Clerk', 'Driver', 'Security Guard', 'Nurse', 'Receptionist'];
+  if (jobTitle && !designations.includes(jobTitle)) designations.push(jobTitle);
+  const isLibrarian = kind === 'staff' && jobTitle?.toLowerCase() === 'librarian';
+  // A librarian must be able to log in: generate a password when none is set (web behaviour).
+  useEffect(() => {
+    if (isLibrarian && !editing && !password) setValue('password', generatePassword());
+  }, [isLibrarian, editing, password, setValue]);
   const req = (key: string) => (required.isRequired(key) ? ' *' : '');
 
   const save = useAction(
@@ -193,6 +207,7 @@ export default function EmployeeForm() {
   const onSubmit = handleSubmit(async (v) => {
     const missing = missingRequired(defs.data, customValues);
     if (missing.length) return toast.error(t('app.cf_missing', { fields: missing.join(', ') }));
+    if (!editing && kind === 'staff' && v.title.toLowerCase() === 'librarian' && !v.password) return toast.error(t('staff.errors.passwordRequiredForLibrarian'));
     const res = await save.run(v);
     if (!res.ok) return;
     mutate((key) => Array.isArray(key) && key[0] === 'admin' && key[1] === 'employee');
@@ -288,7 +303,16 @@ export default function EmployeeForm() {
             <CardTitle>{t('teachers.tabs.professionalDetails')}</CardTitle>
           </CardHeader>
           <CardContent className="gap-3 px-4">
-            <TextField control={control} name="title" label={f('title') + req('title')} hint={kind === 'staff' ? t('app.ppl_librarian_hint') : undefined} />
+            {kind === 'staff' ? (
+              <View className="gap-1">
+                <SelectField control={control} name="title" label={f('title') + req('title')} options={designations.map((d) => ({ value: d, label: d }))} placeholder={f('title')} />
+                <Text variant="muted" className="text-xs">
+                  {t('app.ppl_librarian_hint')}
+                </Text>
+              </View>
+            ) : (
+              <TextField control={control} name="title" label={f('title') + req('title')} />
+            )}
             <TextField control={control} name="department" label={f('department') + req('department')} />
             <Controller
               control={control}

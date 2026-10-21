@@ -8,23 +8,26 @@ import { RefreshControl, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
-import { StatCard } from '@/components/app/stat-card';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Initials, StatTile, StatTiles } from '@/components/app/layout';
+import { FilterChips } from '@/components/app/filter-chips';
+import { Panel } from '@/components/app/panel';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
-import { FEE_STATUS_TONE, scopeKey, useHostelScope } from '@/features/admin/hostel';
+import { scopeKey, useHostelScope } from '@/features/admin/hostel';
 import { useCurrency } from '@/features/admin/use-currency';
 import { adminHostel } from '@/lib/api';
 import { useApi } from '@/lib/data';
 
 const STATUSES = ['pending', 'partial', 'paid', 'waived'] as const;
+const FEE_CHIP = { pending: 'warning', partial: 'info', paid: 'success', waived: 'muted' } as const;
 
 /** Room rental fees: generate for a period, record payments, filter by status (web: /admin/hostel/fees). */
 export default function HostelFees() {
@@ -107,37 +110,27 @@ export default function HostelFees() {
             <Text>{f('btn_generate')}</Text>
           </Button>
         </View>
-        <View className="flex-row flex-wrap gap-3">
-          <View className="min-w-[46%] flex-1">
-            <StatCard icon={DollarSign} label={f('stat_collected')} value={money(collected)} />
-          </View>
-          <View className="min-w-[46%] flex-1">
-            <StatCard icon={CreditCard} label={f('stat_outstanding')} value={money(outstanding)} tone={outstanding > 0 ? 'warning' : undefined} />
-          </View>
-          <View className="min-w-[46%] flex-1">
-            <StatCard icon={Hash} label={f('stat_total')} value={String(list.length)} />
-          </View>
-        </View>
-        <View className="gap-1.5">
-          <Label>{f('filter_status')}</Label>
-          <Picker value={status || 'ALL'} onChange={(x) => setStatus(x === 'ALL' ? '' : x)} options={[{ value: 'ALL', label: f('filter_all') }, ...STATUSES.map((s) => ({ value: s, label: f(`filter_${s}`) }))]} />
-        </View>
+        <StatTiles>
+          <StatTile icon={DollarSign} tone="success" label={f('stat_collected')} value={money(collected)} />
+          <StatTile icon={CreditCard} tone={outstanding > 0 ? 'warning' : 'muted'} label={f('stat_outstanding')} value={money(outstanding)} />
+          <StatTile icon={Hash} label={f('stat_total')} value={String(list.length)} />
+        </StatTiles>
+        <FilterChips value={status || 'ALL'} onChange={(x) => setStatus(x === 'ALL' ? '' : x)} options={[{ value: 'ALL', label: f('filter_all') }, ...STATUSES.map((s) => ({ value: s, label: f(`filter_${s}`) }))]} />
         {fees.isLoading || !scope ? (
           <LoadingList />
         ) : !list.length ? (
           <EmptyState icon={DollarSign} title={f('msg_no_data')} body={f('msg_no_data_desc')} />
         ) : (
-          <Card className="py-0">
+          <Panel>
             {list.map((x, i) => (
               <View key={x.id}>
                 {i > 0 ? <Separator /> : null}
-                <View className="flex-row items-center gap-2 px-4 py-3">
+                <View className="flex-row items-center gap-3 px-4 py-3">
+                  <Initials name={x.student_name || '?'} />
                   <View className="flex-1 gap-1">
                     <View className="flex-row flex-wrap items-center gap-2">
-                      <Text className="font-medium">{x.student_name || x.student_id}</Text>
-                      <View className={`rounded-full px-2 py-0.5 ${FEE_STATUS_TONE[x.status] ?? 'bg-muted'}`}>
-                        <Text className="text-xs">{f(`filter_${x.status}`)}</Text>
-                      </View>
+                      <Text className="text-sm font-semibold">{x.student_name || x.student_id}</Text>
+                      <StatusChip label={f(`filter_${x.status}`)} tone={FEE_CHIP[x.status as keyof typeof FEE_CHIP] ?? 'muted'} />
                     </View>
                     <Text className="text-muted-foreground text-sm">
                       {[x.room_number ? `${f('th_room')} ${x.room_number}` : null, `${date(x.period_start)} — ${date(x.period_end)}`].filter(Boolean).join(' · ')}
@@ -155,7 +148,7 @@ export default function HostelFees() {
                 </View>
               </View>
             ))}
-          </Card>
+          </Panel>
         )}
       </ScrollView>
 
@@ -178,8 +171,8 @@ export default function HostelFees() {
             <Picker value={genBuilding || 'ALL'} onChange={(x) => setGenBuilding(x === 'ALL' ? '' : x)} options={[{ value: 'ALL', label: f('option_all_buildings') }, ...(buildings.data ?? []).map((b) => ({ value: b.id, label: b.name }))]} />
           </View>
           {genResult ? (
-            <View className="rounded-md bg-emerald-50 p-3 dark:bg-emerald-950/30">
-              <Text className="text-sm text-emerald-800 dark:text-emerald-300">✅ {f('msg_generate_success_count', { count: genResult.fees_created, amount: money(genResult.total_amount) })}</Text>
+            <View className="rounded-md bg-success-soft p-3 ">
+              <Text className="text-sm text-success ">✅ {f('msg_generate_success_count', { count: genResult.fees_created, amount: money(genResult.total_amount) })}</Text>
             </View>
           ) : null}
           <Button onPress={generate} disabled={generating || !start || !end}>

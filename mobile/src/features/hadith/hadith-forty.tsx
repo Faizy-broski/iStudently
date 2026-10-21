@@ -5,11 +5,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -195,7 +196,7 @@ function Sheet({
               <View className="flex-row items-center gap-2">
                 <DialogTitle className="flex-1">{hadith ? `${hadith.number}. ${hadith.title}` : '…'}</DialogTitle>
                 <Pressable onPress={() => run(() => hadithForty.flags({ hadithNumber: number, isFavorite: !progress.isFavorite }, campusId))} hitSlop={8} className="p-1" accessibilityLabel={h('filters.favorites')}>
-                  <Icon as={Star} className={cn('size-5', progress.isFavorite ? 'text-yellow-500' : 'text-muted-foreground')} fill={progress.isFavorite ? '#eab308' : 'none'} />
+                  <Icon as={Star} className={cn('size-5', progress.isFavorite ? 'text-warning' : 'text-muted-foreground')} fill={progress.isFavorite ? colors.warning : 'none'} />
                 </Pressable>
               </View>
             </DialogHeader>
@@ -204,9 +205,9 @@ function Sheet({
             ) : phase === 'active' ? (
               questions.map((q, i) => (
                 <View key={i} className="gap-2">
-                  <Text className="font-medium">{q.body}</Text>
+                  <Text className="text-sm font-semibold">{q.body}</Text>
                   {q.options.map((opt, oi) => (
-                    <Pressable key={oi} onPress={() => setAnswers((p) => p.map((x, j) => (j === i ? oi : x)))} className={cn('rounded-lg border p-2', answers[i] === oi ? 'border-primary bg-primary/10' : 'border-border')}>
+                    <Pressable key={oi} onPress={() => setAnswers((p) => p.map((x, j) => (j === i ? oi : x)))} className={cn('rounded-lg border p-2', answers[i] === oi ? 'border-brand-secondary bg-info-soft' : 'border-border')}>
                       <Text className="text-sm">{opt}</Text>
                     </Pressable>
                   ))}
@@ -217,7 +218,7 @@ function Sheet({
                 <Text className="text-3xl font-bold">
                   {grade.score} / {grade.total}
                 </Text>
-                <Text className={grade.passed ? 'text-green-600' : 'text-destructive'}>{grade.passed ? h('quiz.passed') : h('quiz.failed')}</Text>
+                <Text className={grade.passed ? 'text-success' : 'text-destructive'}>{grade.passed ? h('quiz.passed') : h('quiz.failed')}</Text>
               </View>
             ) : (
               <>
@@ -228,7 +229,7 @@ function Sheet({
                   {hadith.text}
                 </Text>
                 <View className="bg-muted/50 gap-1 rounded-md p-3">
-                  {narrator?.name ? <Text className="font-medium">{narrator.name}</Text> : null}
+                  {narrator?.name ? <Text className="text-sm font-semibold">{narrator.name}</Text> : null}
                   {narrator?.bio ? <Text className="text-muted-foreground text-xs">{narrator.bio}</Text> : null}
                   <Text className="text-muted-foreground text-xs">{hadith.source}</Text>
                 </View>
@@ -388,7 +389,7 @@ export function HadithFortyScreen() {
         <Picker value={category} onChange={(v) => setCategory(v as HadithCategory | 'all')} options={[{ value: 'all', label: h('filters.allCategories') }, ...content.categories.map((c) => ({ value: c, label: h(`categories.${c}`) }))]} />
         <FilterChips value={filter} onChange={setFilter} options={(['all', 'due', 'learning', 'mastered', 'favorites'] as const).map((k) => ({ value: k, label: h(`filters.${k}`) }))} />
         {!visible.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{h('filters.empty')}</Text>
+          <EmptyState title={h('filters.empty')} />
         ) : (
           visible.map((x) => {
             const p = progressOf(x.number);
@@ -399,14 +400,14 @@ export function HadithFortyScreen() {
                 </View>
                 <View className="flex-1 gap-1">
                   <View className="flex-row items-center gap-1">
-                    <Text className="flex-1 font-medium" numberOfLines={1}>
+                    <Text className="flex-1 text-sm font-semibold" numberOfLines={1}>
                       {x.title}
                     </Text>
-                    {p.isFavorite ? <Icon as={Star} className="size-3.5 text-yellow-500" fill="#eab308" /> : null}
+                    {p.isFavorite ? <Icon as={Star} className="size-3.5 text-warning" fill={colors.warning} /> : null}
                   </View>
                   <View className="flex-row flex-wrap items-center gap-2">
                     <Text className="text-muted-foreground text-xs">{h('card.repetitionCount', { count: p.repetitions })}</Text>
-                    {isDue(p, state.today) ? <Text className="text-xs font-semibold text-amber-600">{h('card.dueBadge')}</Text> : null}
+                    {isDue(p, state.today) ? <Text className="text-xs font-semibold text-warning">{h('card.dueBadge')}</Text> : null}
                     <Text className="text-muted-foreground text-xs">{h(`card.state.${p.state}`)}</Text>
                   </View>
                 </View>

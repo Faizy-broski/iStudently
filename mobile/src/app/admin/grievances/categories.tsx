@@ -75,7 +75,7 @@ export default function GrievanceCategories() {
                   <Text className="text-[10px]">{c('default_badge')}</Text>
                 </Badge>
               ) : (
-                <Pressable onPress={() => remove(x.id)} hitSlop={8}>
+                <Pressable onPress={() => remove(x.id)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                   <Icon as={Trash2} className="text-destructive size-4" />
                 </Pressable>
               )}

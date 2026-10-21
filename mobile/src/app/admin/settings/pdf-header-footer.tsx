@@ -8,7 +8,7 @@ import { Image as RNImage, View } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { CheckRow } from '@/features/admin/attendance';
-import { HtmlEditorField } from '@/components/app/html-editor-field';
+import { RichOrSourceField } from '@/components/app/rich-text-field';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -218,7 +218,9 @@ export default function PdfHeaderFooterSettings() {
     setLoadedKey((k) => k + 1); // remount the editors with the loaded HTML
   }, [res.data, res.isLoading]);
 
-  const payload = (): PdfHeaderFooter => ({ ...form, pdf_margin_top: parseInt(top, 10) || 20, pdf_margin_bottom: parseInt(bottom, 10) || 18 });
+  // Web limits: 0–80 mm (an empty or invalid value falls back to the default).
+  const margin = (v: string, d: number) => Math.min(80, Math.max(0, parseInt(v, 10) || d));
+  const payload = (): PdfHeaderFooter => ({ ...form, pdf_margin_top: margin(top, 20), pdf_margin_bottom: margin(bottom, 18) });
 
   async function save() {
     setSaving(true);
@@ -246,7 +248,7 @@ export default function PdfHeaderFooterSettings() {
   const saveBtn = (
     <Button onPress={save} disabled={saving}>
       <Icon as={Save} className="text-primary-foreground size-4" />
-      <Text className="uppercase">{saving ? t('app.pdf_saving') : t('common.save')}</Text>
+      <Text className="">{saving ? t('app.pdf_saving') : t('common.save')}</Text>
     </Button>
   );
 
@@ -261,7 +263,7 @@ export default function PdfHeaderFooterSettings() {
         <Card>
           <CardContent className="gap-4 pt-4">
             <Text className="text-muted-foreground text-sm font-medium">{t('app.pdf_header')}</Text>
-            <HtmlEditorField key={`h-${loadedKey}`} value={form.pdf_header_html} onChange={(v) => setForm((f) => ({ ...f, pdf_header_html: v }))} insertRef={(fn) => (insertHeader.current = fn)} insertHtmlRef={(fn) => (insertHeaderHtml.current = fn)} />
+            <RichOrSourceField key={`h-${loadedKey}`} campusId={campusId ?? undefined} value={form.pdf_header_html} onChange={(v) => setForm((f) => ({ ...f, pdf_header_html: v }))} insertRef={(fn) => (insertHeader.current = fn)} insertHtmlRef={(fn) => (insertHeaderHtml.current = fn)} />
             <InsertMedia onInsert={(html) => insertHeaderHtml.current(html)} />
             <Substitutions onInsert={(tok) => insertHeader.current(tok)} logoUrl={logoUrl} />
             <View className="gap-1.5">
@@ -270,7 +272,7 @@ export default function PdfHeaderFooterSettings() {
             </View>
             <Separator />
             <Text className="text-muted-foreground text-sm font-medium">{t('app.pdf_footer')}</Text>
-            <HtmlEditorField key={`f-${loadedKey}`} value={form.pdf_footer_html} onChange={(v) => setForm((f) => ({ ...f, pdf_footer_html: v }))} insertRef={(fn) => (insertFooter.current = fn)} insertHtmlRef={(fn) => (insertFooterHtml.current = fn)} />
+            <RichOrSourceField key={`f-${loadedKey}`} campusId={campusId ?? undefined} value={form.pdf_footer_html} onChange={(v) => setForm((f) => ({ ...f, pdf_footer_html: v }))} insertRef={(fn) => (insertFooter.current = fn)} insertHtmlRef={(fn) => (insertFooterHtml.current = fn)} />
             <InsertMedia onInsert={(html) => insertFooterHtml.current(html)} />
             <Substitutions onInsert={(tok) => insertFooter.current(tok)} logoUrl={logoUrl} />
             <View className="gap-1.5">

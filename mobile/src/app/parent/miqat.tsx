@@ -5,11 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
-import { LoadingList } from '@/components/app/states';
+import { FormSection, HeroCard, IconTile, RowItem, type Tone } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip, type ChipTone } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,12 +19,12 @@ import { adminMiqat } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate } from '@/lib/format';
 
-const STATUS: Record<string, [LucideIcon, string]> = {
-  present: [CheckCircle2, 'text-green-600'],
-  late: [Clock, 'text-amber-600'],
-  absent: [XCircle, 'text-red-600'],
-  excused: [CheckCircle2, 'text-blue-600'],
-  unclosed: [AlertTriangle, 'text-amber-600'],
+const STATUS: Record<string, [LucideIcon, Tone, ChipTone]> = {
+  present: [CheckCircle2, 'success', 'success'],
+  late: [Clock, 'warning', 'warning'],
+  absent: [XCircle, 'destructive', 'destructive'],
+  excused: [CheckCircle2, 'brand', 'info'],
+  unclosed: [AlertTriangle, 'warning', 'warning'],
 };
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -60,7 +61,7 @@ export default function ParentMiqat() {
   }
 
   if (kids.isLoading) return <LoadingList rows={4} />;
-  if (!kid) return <Text className="text-muted-foreground p-6">{g('noChildren')}</Text>;
+  if (!kid) return <EmptyState title={g('noChildren')} />;
   const list = days.data ?? [];
   const lateness = list.reduce((s, d) => s + (d.lateness_minutes || 0), 0);
 
@@ -72,47 +73,49 @@ export default function ParentMiqat() {
         contentContainerClassName="gap-3 p-4 pb-10"
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([kids.mutate(), days.mutate()])} />}>
-        <Text variant="muted">{`${kid.firstName} ${kid.lastName}`}</Text>
-        <Card>
-          <CardContent className="p-4">
-            <Text className="text-muted-foreground text-sm">{g('accumulatedLateness')}</Text>
-            <Text className="text-2xl font-bold">{`${lateness} ${g('minutes')}`}</Text>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="px-0 py-0">
-            {days.isLoading ? (
-              <LoadingList rows={3} />
-            ) : !list.length ? (
-              <Text className="text-muted-foreground p-4 text-sm">{g('noRecords')}</Text>
-            ) : (
-              list.map((d) => {
-                const [icon, tone] = STATUS[d.status] ?? [Clock, 'text-muted-foreground'];
-                return (
-                  <View key={d.id} className="border-border flex-row items-center justify-between gap-2 border-b p-3 last:border-b-0">
-                    <Text className="text-sm">{formatDate(d.date)}</Text>
-                    <View className="flex-row items-center gap-2">
-                      <Icon as={icon} className={`size-4 ${tone}`} />
-                      <Badge variant="outline">
-                        <Text className="text-xs">{g(`status.${d.status}`, { defaultValue: d.status })}</Text>
-                      </Badge>
-                    </View>
-                  </View>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="gap-3 p-4">
-            <Text className="font-medium">{g('submitExcuse')}</Text>
-            <Textarea value={reason} onChangeText={setReason} placeholder={g('reasonPlaceholder')} />
-            <Button className="self-start" onPress={submit} disabled={busy || !reason.trim()}>
-              <Icon as={Send} className="text-primary-foreground size-4" />
-              <Text>{g('submit')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
+        <HeroCard>
+          <View className="flex-row items-center gap-3">
+            <View className="size-12 items-center justify-center rounded-full bg-white/15">
+              <Icon as={Clock} className="size-6 text-white" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-white/85">{g('accumulatedLateness')}</Text>
+              <Text className="text-2xl font-bold text-white">{`${lateness} ${g('minutes')}`}</Text>
+            </View>
+          </View>
+          <View className="flex-row">
+            <View className="rounded-full bg-white/15 px-3 py-1">
+              <Text className="text-xs font-semibold text-white">{`${kid.firstName} ${kid.lastName}`}</Text>
+            </View>
+          </View>
+        </HeroCard>
+        {days.isLoading ? (
+          <LoadingList rows={3} />
+        ) : !list.length ? (
+          <EmptyState title={g('noRecords')} />
+        ) : (
+          <Panel>
+            {list.map((d, i) => {
+              const [icon, tone, chip] = STATUS[d.status] ?? [Clock, 'muted', 'muted'];
+              return (
+                <RowItem
+                  key={d.id}
+                  leading={<IconTile icon={icon} tone={tone} size={40} />}
+                  title={formatDate(d.date)}
+                  trailing={<StatusChip label={g(`status.${d.status}`, { defaultValue: d.status })} tone={chip} />}
+                  last={i === list.length - 1}
+                />
+              );
+            })}
+          </Panel>
+        )}
+        <FormSection title={g('submitExcuse')} icon={Send}>
+          <Textarea value={reason} onChangeText={setReason} placeholder={g('reasonPlaceholder')} />
+          <Button onPress={submit} disabled={busy || !reason.trim()}>
+            <Icon as={Send} className="text-primary-foreground size-4" />
+            <Text>{g('submit')}</Text>
+          </Button>
+        </FormSection>
       </ScrollView>
     </>
   );

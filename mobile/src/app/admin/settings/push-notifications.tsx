@@ -52,15 +52,15 @@ export default function PushNotificationsSettings() {
           <CardContent className="gap-2 pt-4">
             <Text className="font-semibold">{n('card_status_title')}</Text>
             {stats.isConfigured ? (
-              <View className="flex-row items-center gap-1.5 self-start rounded-full border border-green-300 px-2 py-0.5 dark:border-green-800">
-                <Icon as={CheckCircle2} className="size-3.5 text-green-700 dark:text-green-400" />
-                <Text className="text-xs text-green-700 dark:text-green-400">{n('status_configured')}</Text>
+              <View className="flex-row items-center gap-1.5 self-start rounded-full border border-success px-2 py-0.5 ">
+                <Icon as={CheckCircle2} className="size-3.5 text-success " />
+                <Text className="text-xs text-success ">{n('status_configured')}</Text>
               </View>
             ) : (
               <>
-                <View className="flex-row items-center gap-1.5 self-start rounded-full border border-red-300 px-2 py-0.5 dark:border-red-800">
-                  <Icon as={XCircle} className="size-3.5 text-red-700 dark:text-red-400" />
-                  <Text className="text-xs text-red-700 dark:text-red-400">{n('status_not_configured')}</Text>
+                <View className="flex-row items-center gap-1.5 self-start rounded-full border border-destructive px-2 py-0.5 ">
+                  <Icon as={XCircle} className="size-3.5 text-destructive " />
+                  <Text className="text-xs text-destructive ">{n('status_not_configured')}</Text>
                 </View>
                 <Text className="text-muted-foreground text-xs">{n('status_not_configured_hint')}</Text>
               </>
@@ -106,9 +106,9 @@ export default function PushNotificationsSettings() {
               <Text className="font-semibold">{n('card_test_title')}</Text>
             </View>
             <Text className="text-muted-foreground text-sm">{n('card_test_subtitle')}</Text>
-            <View className="flex-row gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
-              <Icon as={Info} className="size-4 text-blue-600" />
-              <Text className="flex-1 text-xs text-blue-800 dark:text-blue-200">{t('app.push_test_browser_note')}</Text>
+            <View className="flex-row gap-2 rounded-xl border border-info-soft bg-info-soft p-3">
+              <Icon as={Info} className="size-4 text-brand dark:text-brand-secondary" />
+              <Text className="flex-1 text-xs text-brand dark:text-brand-secondary ">{t('app.push_test_browser_note')}</Text>
             </View>
             <Button variant="outline" className="self-start" onPress={test} disabled={testing || !stats.isConfigured}>
               <Text>{testing ? n('btn_testing') : n('btn_send_test')}</Text>

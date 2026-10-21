@@ -87,7 +87,7 @@ export default function TeacherHoursDetail() {
                     {i > 0 ? <Separator /> : null}
                     <View className="flex-row items-center gap-3 py-2">
                       <View className="flex-1">
-                        <Text className="font-medium">{e.subject_name}</Text>
+                        <Text className="text-sm font-semibold">{e.subject_name}</Text>
                         <Text className="text-muted-foreground text-xs">{`${e.period_name} · ${e.total_hours} h`}</Text>
                       </View>
                       <Input

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { AdminQuizCategory, AdminQuizQuestion } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { FileText, FolderOpen, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react-native';
@@ -75,6 +76,7 @@ function CategoryDialog({ category, onClose, onSaved }: { category: AdminQuizCat
 /** Question bank: categories, search, add/edit/delete questions (web: /admin/quiz/questions). */
 export default function Questions() {
   const q = useQz();
+  const { t } = useTranslation();
   const confirm = useConfirm();
   const toast = useToast();
   const { campusId } = useCampus();
@@ -135,7 +137,7 @@ export default function Questions() {
               </Button>
               <Button size="sm" variant="outline" className="flex-1" onPress={() => router.push('/admin/quiz/exam-builder')}>
                 <Icon as={FileText} className="text-foreground size-4" />
-                <Text>Exam Builder</Text>
+                <Text>{t('sidebar.exam_builder')}</Text>
               </Button>
             </View>
             <Card>
@@ -193,7 +195,7 @@ export default function Questions() {
                 ) : null}
               </View>
             </View>
-            <Pressable onPress={() => deleteQuestion(x)} hitSlop={8} className="p-1.5" accessibilityLabel={q('delete')}>
+            <Pressable onPress={() => deleteQuestion(x)} accessibilityLabel={q('delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
               <Icon as={Trash2} className="text-destructive size-4" />
             </Pressable>
           </Pressable>

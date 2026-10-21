@@ -1,7 +1,8 @@
 import { isPlaceholderEmail } from '@studently/shared-utils';
 import * as Linking from 'expo-linking';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ArrowLeft, MailCheck, ShieldQuestion } from 'lucide-react-native';
+import { ArrowLeft, Mail, MailCheck, ShieldQuestion } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -57,7 +58,7 @@ export default function ForgotPassword() {
 
   if (outcome) {
     return (
-      <Screen contentContainerClassName="flex-1 items-center justify-center gap-4 p-6">
+      <Screen auth contentContainerClassName="flex-1 items-center justify-center gap-4 p-6">
         <Icon as={outcome === 'sent' ? MailCheck : ShieldQuestion} className="text-primary size-12" />
         <Text variant="h3" className="text-center">
           {t(outcome === 'sent' ? 'app.fp_sent_title' : 'app.fp_admin_title')}
@@ -73,18 +74,22 @@ export default function ForgotPassword() {
   }
 
   return (
-    <Screen scroll contentContainerClassName="gap-6 p-6">
+    <Screen auth scroll contentContainerClassName="gap-6 p-6">
       <Button variant="ghost" size="sm" className="self-start" onPress={() => router.back()} accessibilityLabel={t('app.fp_back')}>
-        <Icon as={ArrowLeft} className="size-4 rtl:rotate-180" />
+        <Icon flipRtl as={ArrowLeft} className="size-4" />
         <Text>{t('app.fp_back')}</Text>
       </Button>
-      <View className="gap-2">
-        <Text variant="h3">{t('app.fp_title')}</Text>
-        <Text variant="muted">{t('app.fp_body')}</Text>
+      <View className="items-center gap-2">
+        <Image source={require('@/assets/images/forgot-password.png')} style={{ width: 160, height: 160 }} contentFit="contain" accessibilityIgnoresInvertColors />
+        <Text className="text-center text-2xl font-bold">{t('app.fp_title')}</Text>
+        <Text variant="muted" className="text-center">
+          {t('app.fp_body')}
+        </Text>
       </View>
       <View className="gap-1.5">
         <Label nativeID="fp-identifier">{t('login.label_email_or_username')}</Label>
         <Input
+          icon={Mail}
           aria-labelledby="fp-identifier"
           value={identifier}
           onChangeText={setIdentifier}

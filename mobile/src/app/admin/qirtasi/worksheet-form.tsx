@@ -30,7 +30,7 @@ function FileSlot({ label, hint, file, onPick, onClear }: { label: string; hint:
   return (
     <View className="gap-1.5">
       <Label>{label}</Label>
-      <Pressable onPress={onPick} className="border-border flex-row items-center gap-2 rounded-md border border-dashed p-3">
+      <Pressable onPress={onPick} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border border-dashed p-3">
         <Icon as={file ? FileText : UploadCloud} className={cn('size-4', file ? 'text-primary' : 'text-muted-foreground')} />
         <Text className={cn('flex-1 text-sm', !file && 'text-muted-foreground')} numberOfLines={1}>
           {file ? file.name : hint}
@@ -158,7 +158,7 @@ export default function WorksheetForm() {
           <CardContent className="gap-3 pt-4">
             <Text className="font-semibold">{tt('Curriculum placement', 'التصنيف المنهجي')}</Text>
             {!grades.isLoading && !(grades.data ?? []).length ? (
-              <Text className="text-xs text-amber-700 dark:text-amber-400">
+              <Text className="text-xs text-warning ">
                 {tt(
                   'No curriculum data exists yet. Ask an admin to add at least one grade and subject in Curriculum Manager before uploading.',
                   'لا توجد بيانات منهج حتى الآن. اطلب من المسؤول إضافة صف ومادة واحدة على الأقل في إدارة المنهج قبل الرفع.',

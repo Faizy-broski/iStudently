@@ -5,10 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
+import { Initials, RowPill } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,6 +22,7 @@ import { PortalError } from '@/features/portal/ui';
 import { useTeacherExams } from '@/features/teacher/exams';
 import { exams } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { cn } from '@/lib/utils';
 
 /** Every student's result for one exam; mark or edit marks, absence and remarks (web: /teacher/exams, grading dialog). */
 export default function TeacherExamGrading() {
@@ -62,26 +65,25 @@ export default function TeacherExamGrading() {
         {exam ? <Text className="text-muted-foreground text-sm">{`${exam.section?.name ?? ''} - ${exam.subject?.name ?? ''} • ${k('maxPassLabel', { max: exam.max_marks, pass: exam.passing_marks })}`}</Text> : null}
         {res.isLoading ? (
           <LoadingList rows={5} />
-        ) : (
-          (res.data ?? []).map((r) => (
-            <Card key={r.id}>
-              <CardContent className="flex-row items-center gap-3 p-4">
+        ) : !(res.data ?? []).length ? null : (
+          <Panel>
+            {(res.data ?? []).map((r, i, arr) => (
+              <View key={r.id} className={cn('flex-row items-center gap-3 px-4 py-3', i < arr.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                <Initials name={nameOf(r) || '?'} tone={r.is_absent ? 'destructive' : r.marks_obtained != null ? 'success' : 'brand'} size={40} />
                 <View className="flex-1 gap-1">
-                  <Text className="font-semibold">{nameOf(r) || '—'}</Text>
+                  <Text className="text-sm font-semibold">{nameOf(r) || '—'}</Text>
                   {r.is_absent ? (
-                    <Text className="text-sm font-medium text-red-600">{k('absent')}</Text>
+                    <StatusChip label={k('absent')} tone="destructive" className="self-start" />
                   ) : r.marks_obtained != null ? (
-                    <Text className="text-sm">{[k('marksLabel', { marks: r.marks_obtained, max: exam?.max_marks ?? '' }), k('gradeLabel', { grade: r.grade ?? '' }), k('percentageLabel', { percentage: r.percentage?.toFixed(2) ?? '' })].join('  ')}</Text>
+                    <Text className="text-muted-foreground text-xs">{[k('marksLabel', { marks: r.marks_obtained, max: exam?.max_marks ?? '' }), k('gradeLabel', { grade: r.grade ?? '' }), k('percentageLabel', { percentage: r.percentage?.toFixed(2) ?? '' })].join('  ')}</Text>
                   ) : (
-                    <Text className="text-muted-foreground text-sm">{k('notGradedYet')}</Text>
+                    <Text className="text-muted-foreground text-xs">{k('notGradedYet')}</Text>
                   )}
                 </View>
-                <Button size="sm" onPress={() => open(r)}>
-                  <Text>{r.marks_obtained != null || r.is_absent ? k('edit') : k('mark')}</Text>
-                </Button>
-              </CardContent>
-            </Card>
-          ))
+                <RowPill label={r.marks_obtained != null || r.is_absent ? k('edit') : k('mark')} onPress={() => open(r)} />
+              </View>
+            ))}
+          </Panel>
         )}
       </ScrollView>
       <Dialog open={!!marking} onOpenChange={(o) => !o && setMarking(null)}>

@@ -83,8 +83,8 @@ export default function LibraryAddCopies() {
               <Label>{t('app.lb_condition_notes')}</Label>
               <Textarea value={notes} onChangeText={setNotes} placeholder={t('app.lb_condition_notes_ph')} />
             </View>
-            <View className="rounded-md bg-blue-50 p-3 dark:bg-blue-950/30">
-              <Text className="text-sm text-blue-800 dark:text-blue-300">{t('app.lb_accession_note')}</Text>
+            <View className="rounded-md bg-info-soft p-3 ">
+              <Text className="text-sm text-brand dark:text-brand-secondary ">{t('app.lb_accession_note')}</Text>
             </View>
           </CardContent>
         </Card>

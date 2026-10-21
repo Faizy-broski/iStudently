@@ -94,7 +94,8 @@ export default function AccountingEntryForm() {
   const pickedStaff = (staff.data ?? []).find((e) => e.id === staffId);
   const titleValue = title || (kind === 'staff-payments' && pickedStaff ? `Payment to ${shortName(pickedStaff.profile)}` : '');
 
-  async function save() {
+  // `another`: keep the form open for the next entry (the web adds several rows and saves them together).
+  async function save(another = false) {
     const amt = parseFloat(amount);
     if (!titleValue.trim() || !(amt > 0) || !DATE.test(date) || (kind === 'staff-payments' && !staffId)) return toast.error(t('fees.structures.fillRequired'));
     const input = {
@@ -113,6 +114,14 @@ export default function AccountingEntryForm() {
     if (!res.success) return toast.error(res.error || t('app.error_title'));
     toast.success(t('app.saved'));
     refresh();
+    if (another && !editing) {
+      setTitle('');
+      setAmount('');
+      setComments('');
+      setReceipt('');
+      setFile(null);
+      return;
+    }
     router.back();
   }
 
@@ -183,9 +192,14 @@ export default function AccountingEntryForm() {
             <Text>{uploading ? t('common.loading') : file ? t('fees.payments.replaceFile') : t('fees.payments.attachFile')}</Text>
           </Button>
         </View>
-        <Button onPress={save} disabled={busy || !scopeId}>
+        <Button onPress={() => save()} disabled={busy || !scopeId}>
           <Text>{t('app.bl_save')}</Text>
         </Button>
+        {editing ? null : (
+          <Button variant="outline" onPress={() => save(true)} disabled={busy || !scopeId}>
+            <Text>{t('app.ac_save_add_another')}</Text>
+          </Button>
+        )}
         {editing ? (
           <Button
             variant="ghost"

@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { REPORT_ENTITY, REPORT_FIELDS } from '@/features/admin/advanced-report';
 import { ConfidentialBadge } from '@/features/admin/people-extras';
@@ -73,7 +74,7 @@ export default function AdvancedReport() {
     const c = d.category_name || d.category_id;
     return { ...acc, [c]: [...(acc[c] ?? []), d] };
   }, {});
-  const standard = REPORT_FIELDS[role].map((id) => ({ id, label: r(`fields.${id}`) }));
+  const standard = REPORT_FIELDS[role].map((id) => ({ id, label: id === 'username' ? t('common.username') : id === 'password' ? t('app.sl_password') : r(`fields.${id}`) }));
 
   function changeRole(next: ReportRole) {
     setRole(next);
@@ -234,14 +235,14 @@ export default function AdvancedReport() {
 
             <View className="flex-row items-center gap-3">
               <View className="bg-border h-px flex-1" />
-              <Text className="text-muted-foreground text-xs uppercase">{r('or_target_person')}</Text>
+              <Text className="text-muted-foreground text-xs">{r('or_target_person')}</Text>
               <View className="bg-border h-px flex-1" />
             </View>
 
             <View className="gap-1.5">
               <Label>{r('specific_person')}</Label>
               {person ? (
-                <View className="border-primary/30 bg-primary/5 flex-row items-center gap-2 rounded-md border px-3 py-2">
+                <View className="border-primary/30 bg-primary/5 flex-row items-center gap-2 rounded-xl border px-3 py-2">
                   <Text className="text-primary flex-1 text-sm font-medium">{person.label}</Text>
                   <ConfidentialBadge status={person.confidential_family_status} />
                   <Pressable onPress={() => setPerson(null)} accessibilityRole="button" accessibilityLabel={r('clear_all')} hitSlop={8}>
@@ -253,10 +254,10 @@ export default function AdvancedReport() {
                   <SearchBar value={query} onChangeText={setQuery} placeholder={r('search_by_name', { role: roleLabel.toLowerCase() })} />
                   {people.isLoading ? <ActivityIndicator className="py-2" /> : null}
                   {query.trim() && people.data && people.data.length === 0 ? (
-                    <Text className="text-muted-foreground py-2 text-center text-sm">{r('no_found', { role: roleLabel.toLowerCase() })}</Text>
+                    <EmptyState title={r('no_found', { role: roleLabel.toLowerCase() })} />
                   ) : null}
                   {query.trim() && (people.data?.length ?? 0) > 0 ? (
-                    <View className="border-border max-h-60 rounded-md border">
+                    <View className="border-info-soft dark:border-border max-h-60 rounded-xl border">
                       <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
                         {(people.data ?? []).map((p) => (
                           <Pressable

@@ -1,11 +1,14 @@
 import type { LearningResourceType } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Book, FileText, HeartPulse, Link2, PenLine, Tag, Video, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
+import { FilterChips } from '@/components/app/filter-chips';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
+import { FormSection, StickyActions } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -32,6 +35,14 @@ const TYPES: [LearningResourceType, string][] = [
 ];
 /** 3D models the web viewer has (frontend lib/anatomy/anatomy-data organStructures). */
 const ORGANS = ['heart', 'brain', 'lungs', 'liver', 'kidneys', 'eyeball', 'intestine', 'pancreas', 'skin'];
+const TYPE_ICON: Record<LearningResourceType, LucideIcon> = {
+  link: Link2,
+  book: Book,
+  post: PenLine,
+  file: FileText,
+  video: Video,
+  anatomy: HeartPulse,
+};
 const NONE = '__all__';
 const MAX = 25 * 1024 * 1024;
 
@@ -51,7 +62,22 @@ type Form = {
   published: boolean;
   files: string[];
 };
-const EMPTY: Form = { type: 'link', title: '', description: '', section: '', subject: '', url: '', content: '', bookTitle: '', bookAuthor: '', bookIsbn: '', tags: '', pinned: false, published: true, files: [] };
+const EMPTY: Form = {
+  type: 'link',
+  title: '',
+  description: '',
+  section: '',
+  subject: '',
+  url: '',
+  content: '',
+  bookTitle: '',
+  bookAuthor: '',
+  bookIsbn: '',
+  tags: '',
+  pinned: false,
+  published: true,
+  files: [],
+};
 
 /** Share a new learning resource or edit one (`?id=`): type, section / subject, per-type fields, tags, pin, publish (web: /teacher/learning-resources dialog). */
 export default function TeacherLearningResourceForm() {
@@ -150,110 +176,142 @@ export default function TeacherLearningResourceForm() {
       <Stack.Screen options={{ title: id ? k('editResource') : k('shareNewResource') }} />
       <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-          <Text variant="muted">{id ? k('updateResourceDescription') : k('shareResourceDescription')}</Text>
-          <View className="gap-1.5">
-            <Label>{k('resourceType')}</Label>
-            <View className="flex-row flex-wrap gap-2">
-              {TYPES.map(([type, key]) => (
-                <Button key={type} size="sm" variant={form.type === type ? 'default' : 'outline'} onPress={() => set({ type })}>
-                  <Text>{k(key)}</Text>
-                </Button>
-              ))}
-            </View>
-          </View>
-          <View className="gap-1.5">
-            <Label>{k('titleField')}</Label>
-            <Input value={form.title} onChangeText={(v) => set({ title: v })} placeholder={k('titlePlaceholder')} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{k('description')}</Label>
-            <Textarea value={form.description} onChangeText={(v) => set({ description: v })} placeholder={k('descriptionPlaceholder')} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{k('sectionField')}</Label>
-            <Picker value={form.section || null} onChange={(v) => set({ section: v })} placeholder={k('selectSectionPlaceholder')} options={sections.map(([sid, name]) => ({ value: sid, label: name }))} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{k('subjectFieldOptional')}</Label>
-            <Picker value={form.subject || NONE} onChange={(v) => set({ subject: v === NONE ? '' : v })} options={[{ value: NONE, label: k('allSubjects') }, ...subjectList.map(([sid, name]) => ({ value: sid, label: name }))]} />
-          </View>
-          {form.type === 'link' || form.type === 'video' ? (
+          <FormSection title={id ? k('editResource') : k('shareNewResource')} description={id ? k('updateResourceDescription') : k('shareResourceDescription')} icon={TYPE_ICON[form.type]}>
             <View className="gap-1.5">
-              <Label>{k('urlField')}</Label>
-              <Input value={form.url} onChangeText={(v) => set({ url: v })} placeholder={form.type === 'video' ? 'https://youtube.com/...' : 'https://...'} autoCapitalize="none" keyboardType="url" />
-            </View>
-          ) : null}
-          {form.type === 'book' ? (
-            <>
-              <View className="gap-1.5">
-                <Label>{k('bookTitle')}</Label>
-                <Input value={form.bookTitle} onChangeText={(v) => set({ bookTitle: v })} placeholder={k('bookTitle')} />
-              </View>
-              <View className="flex-row gap-2">
-                <View className="flex-1 gap-1.5">
-                  <Label>{k('author')}</Label>
-                  <Input value={form.bookAuthor} onChangeText={(v) => set({ bookAuthor: v })} placeholder={k('authorNamePlaceholder')} />
-                </View>
-                <View className="flex-1 gap-1.5">
-                  <Label>{k('isbnOptional')}</Label>
-                  <Input value={form.bookIsbn} onChangeText={(v) => set({ bookIsbn: v })} placeholder={k('isbn')} />
-                </View>
-              </View>
-              <View className="gap-1.5">
-                <Label>{k('purchaseLinkOptional')}</Label>
-                <Input value={form.url} onChangeText={(v) => set({ url: v })} placeholder="https://..." autoCapitalize="none" keyboardType="url" />
-              </View>
-            </>
-          ) : null}
-          {form.type === 'post' ? (
-            <View className="gap-1.5">
-              <Label>{k('content')}</Label>
-              <HtmlEditorField value={form.content} onChange={(v) => set({ content: v })} />
-            </View>
-          ) : null}
-          {form.type === 'file' ? (
-            <View className="gap-1.5">
-              <Label>{k('files')}</Label>
-              {form.files.length ? <Text className="text-muted-foreground text-sm font-medium">{k('existingFiles')}</Text> : null}
-              <AttachmentField
-                existing={form.files}
-                onRemoveExisting={(i) => set({ files: form.files.filter((_, j) => j !== i) })}
-                picked={picked}
-                onPick={(docs) => setPicked((x) => [...x, ...docs])}
-                onTooLarge={(name) => toast.error(k('fileTooLargeError', { fileName: name }))}
-                onRemove={(i) => setPicked((x) => x.filter((_, j) => j !== i))}
-                maxBytes={MAX}
+              <Label>{k('resourceType')}</Label>
+              <FilterChips
+                value={form.type}
+                onChange={(type) => set({ type })}
+                options={TYPES.map(([type, key]) => ({
+                  value: type,
+                  label: k(key),
+                }))}
               />
             </View>
-          ) : null}
-          {form.type === 'anatomy' ? (
             <View className="gap-1.5">
-              <Label>{k('anatomyOrganField')}</Label>
-              <Picker value={form.content || null} onChange={(v) => set({ content: v })} placeholder={k('selectAnatomyOrganPlaceholder')} options={ORGANS.map((o) => ({ value: o, label: t(`app.te_lr_organ_${o}`) }))} />
-              <Text className="text-muted-foreground text-xs">{k('anatomyOrganHint')}</Text>
+              <Label>{k('titleField')}</Label>
+              <Input value={form.title} onChangeText={(v) => set({ title: v })} placeholder={k('titlePlaceholder')} />
             </View>
-          ) : null}
-          <View className="gap-1.5">
-            <Label>{k('tagsField')}</Label>
-            <Input value={form.tags} onChangeText={(v) => set({ tags: v })} placeholder={k('tagsPlaceholder')} />
-          </View>
-          <View className="flex-row items-center gap-3">
-            <Switch checked={form.pinned} onCheckedChange={(v) => set({ pinned: v })} />
-            <Text className="flex-1 text-sm">{k('pinToTop')}</Text>
-          </View>
-          <View className="flex-row items-center gap-3">
-            <Switch checked={form.published} onCheckedChange={(v) => set({ published: v })} />
-            <Text className="flex-1 text-sm">{k('publishImmediately')}</Text>
-          </View>
-          <View className="flex-row gap-2">
-            <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={!!busy}>
-              <Text>{k('cancel')}</Text>
-            </Button>
-            <Button className="flex-1" onPress={save} disabled={!!busy}>
-              <Text>{busy === 'uploading' ? k('uploading') : busy === 'saving' ? k('saving') : id ? k('updateResource') : k('shareResource')}</Text>
-            </Button>
-          </View>
+            <View className="gap-1.5">
+              <Label>{k('description')}</Label>
+              <Textarea value={form.description} onChangeText={(v) => set({ description: v })} placeholder={k('descriptionPlaceholder')} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{k('sectionField')}</Label>
+              <Picker
+                value={form.section || null}
+                onChange={(v) => set({ section: v })}
+                placeholder={k('selectSectionPlaceholder')}
+                options={sections.map(([sid, name]) => ({
+                  value: sid,
+                  label: name,
+                }))}
+              />
+            </View>
+            <View className="gap-1.5">
+              <Label>{k('subjectFieldOptional')}</Label>
+              <Picker
+                value={form.subject || NONE}
+                onChange={(v) => set({ subject: v === NONE ? '' : v })}
+                options={[
+                  { value: NONE, label: k('allSubjects') },
+                  ...subjectList.map(([sid, name]) => ({
+                    value: sid,
+                    label: name,
+                  })),
+                ]}
+              />
+            </View>
+          </FormSection>
+          <FormSection title={k(TYPES.find(([ty]) => ty === form.type)?.[1] ?? 'resourceType')} icon={TYPE_ICON[form.type]}>
+            {form.type === 'link' || form.type === 'video' ? (
+              <View className="gap-1.5">
+                <Label>{k('urlField')}</Label>
+                <Input value={form.url} onChangeText={(v) => set({ url: v })} placeholder={form.type === 'video' ? 'https://youtube.com/...' : 'https://...'} autoCapitalize="none" keyboardType="url" />
+              </View>
+            ) : null}
+            {form.type === 'book' ? (
+              <>
+                <View className="gap-1.5">
+                  <Label>{k('bookTitle')}</Label>
+                  <Input value={form.bookTitle} onChangeText={(v) => set({ bookTitle: v })} placeholder={k('bookTitle')} />
+                </View>
+                <View className="flex-row gap-2">
+                  <View className="flex-1 gap-1.5">
+                    <Label>{k('author')}</Label>
+                    <Input value={form.bookAuthor} onChangeText={(v) => set({ bookAuthor: v })} placeholder={k('authorNamePlaceholder')} />
+                  </View>
+                  <View className="flex-1 gap-1.5">
+                    <Label>{k('isbnOptional')}</Label>
+                    <Input value={form.bookIsbn} onChangeText={(v) => set({ bookIsbn: v })} placeholder={k('isbn')} />
+                  </View>
+                </View>
+                <View className="gap-1.5">
+                  <Label>{k('purchaseLinkOptional')}</Label>
+                  <Input value={form.url} onChangeText={(v) => set({ url: v })} placeholder="https://..." autoCapitalize="none" keyboardType="url" />
+                </View>
+              </>
+            ) : null}
+            {form.type === 'post' ? (
+              <View className="gap-1.5">
+                <Label>{k('content')}</Label>
+                <HtmlEditorField value={form.content} onChange={(v) => set({ content: v })} />
+              </View>
+            ) : null}
+            {form.type === 'file' ? (
+              <View className="gap-1.5">
+                <Label>{k('files')}</Label>
+                {form.files.length ? <Text className="text-muted-foreground text-sm font-medium">{k('existingFiles')}</Text> : null}
+                <AttachmentField
+                  existing={form.files}
+                  onRemoveExisting={(i) => set({ files: form.files.filter((_, j) => j !== i) })}
+                  picked={picked}
+                  onPick={(docs) => setPicked((x) => [...x, ...docs])}
+                  onTooLarge={(name) => toast.error(k('fileTooLargeError', { fileName: name }))}
+                  onRemove={(i) => setPicked((x) => x.filter((_, j) => j !== i))}
+                  maxBytes={MAX}
+                />
+              </View>
+            ) : null}
+            {form.type === 'anatomy' ? (
+              <View className="gap-1.5">
+                <Label>{k('anatomyOrganField')}</Label>
+                <Picker
+                  value={form.content || null}
+                  onChange={(v) => set({ content: v })}
+                  placeholder={k('selectAnatomyOrganPlaceholder')}
+                  options={ORGANS.map((o) => ({
+                    value: o,
+                    label: t(`app.te_lr_organ_${o}`),
+                  }))}
+                />
+                <Text className="text-muted-foreground text-xs">{k('anatomyOrganHint')}</Text>
+              </View>
+            ) : null}
+          </FormSection>
+          <FormSection title={k('tagsField')} icon={Tag}>
+            <View className="gap-1.5">
+              <Label>{k('tagsField')}</Label>
+              <Input value={form.tags} onChangeText={(v) => set({ tags: v })} placeholder={k('tagsPlaceholder')} />
+            </View>
+            <View className="flex-row items-center gap-3">
+              <Switch checked={form.pinned} onCheckedChange={(v) => set({ pinned: v })} />
+              <Text className="flex-1 text-sm">{k('pinToTop')}</Text>
+            </View>
+            <View className="flex-row items-center gap-3">
+              <Switch checked={form.published} onCheckedChange={(v) => set({ published: v })} />
+              <Text className="flex-1 text-sm">{k('publishImmediately')}</Text>
+            </View>
+          </FormSection>
         </ScrollView>
+        <StickyActions>
+          <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={!!busy}>
+            <Text>{k('cancel')}</Text>
+          </Button>
+          <Button className="flex-1" onPress={save} disabled={!!busy}>
+            <Text>{busy === 'uploading' ? k('uploading') : busy === 'saving' ? k('saving') : id ? k('updateResource') : k('shareResource')}</Text>
+          </Button>
+        </StickyActions>
       </KeyboardAvoidingView>
     </>
   );

@@ -31,9 +31,9 @@ export default function SidebarTheme() {
         save={(input) => adminSchool.updateSidebarConfig(schoolId, campusId, input)}
         reset={() => adminSchool.resetSidebarConfig(schoolId, campusId)}
         header={
-          <View className="flex-row gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 dark:bg-blue-950/30">
-            <Icon as={Info} className="size-4 text-blue-600" />
-            <Text className="flex-1 text-sm text-blue-800 dark:text-blue-200">{campusId ? t('app.cmp_theme_campus', { name: campusName ?? '' }) : t('app.cmp_theme_school')}</Text>
+          <View className="flex-row gap-2 rounded-xl border border-info-soft bg-info-soft p-3">
+            <Icon as={Info} className="size-4 text-brand dark:text-brand-secondary" />
+            <Text className="flex-1 text-sm text-brand dark:text-brand-secondary ">{campusId ? t('app.cmp_theme_campus', { name: campusName ?? '' }) : t('app.cmp_theme_school')}</Text>
           </View>
         }
       />

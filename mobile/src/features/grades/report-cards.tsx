@@ -1,14 +1,14 @@
 import type { ReportCardOptions } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { FileDown, Printer } from 'lucide-react-native';
+import { CalendarRange, FileDown, ListChecks, Printer } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
+import { FormSection } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
@@ -78,7 +78,7 @@ export function ReportCardsView({ ctx, campusId, chosen, list, subtitle }: { ctx
   const actions = (
     <View className="flex-row gap-2">
       <Button className="flex-1" variant="outline" onPress={() => generate('pdf')} disabled={!!busy || !ctx.ready}>
-        <Icon as={FileDown} className="text-foreground size-4" />
+        <Icon as={FileDown} className="text-brand dark:text-brand-secondary size-4" />
         <Text>PDF</Text>
       </Button>
       <Button className="flex-[2]" onPress={() => generate('print')} disabled={!!busy || !ctx.ready}>
@@ -94,9 +94,8 @@ export function ReportCardsView({ ctx, campusId, chosen, list, subtitle }: { ctx
       <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{subtitle ?? s('subtitle')}</Text>
         {actions}
-        <Card>
-          <CardContent className="gap-1 pt-4">
-            <Text className="pb-1 text-xs font-semibold uppercase">{s('include_section')}</Text>
+        <FormSection title={s('include_section')} icon={ListChecks}>
+          <View className="gap-1">
             <CheckRow label={s('student_photo')} value={o.include_student_photo} onChange={set('include_student_photo')} />
             <CheckRow label={c('teacher')} value={o.include_teacher} onChange={set('include_teacher')} />
             <CheckRow label={c('comments')} value={o.include_comments} onChange={set('include_comments')} />
@@ -115,23 +114,25 @@ export function ReportCardsView({ ctx, campusId, chosen, list, subtitle }: { ctx
             {o.include_other_attendance_mp ? <Picker value={o.other_attendance_mp_type} onChange={(v) => setO({ ...o, other_attendance_mp_type: v })} options={attOpts} /> : null}
             <CheckRow label={c('period_absences')} value={o.include_period_absences} onChange={set('include_period_absences')} />
             <Separator className="my-1" />
-            <Text className="text-muted-foreground text-xs">{c('last_row')}</Text>
+            <Text className="text-muted-foreground pt-1 text-xs font-semibold">{c('last_row')}</Text>
             <CheckRow label={c('total')} value={o.last_row_total} onChange={set('last_row_total')} />
             <CheckRow label={c('gpa')} value={o.last_row_gpa} onChange={set('last_row_gpa')} />
             <CheckRow label={c('class_average')} value={o.last_row_class_average} onChange={set('last_row_class_average')} />
             <CheckRow label={c('class_rank')} value={o.last_row_class_rank} onChange={set('last_row_class_rank')} />
             <Separator className="my-1" />
             <CheckRow label={s('free_text')} value={o.include_free_text} onChange={set('include_free_text')} />
-            <Separator className="my-1" />
-            <Text className="text-xs font-semibold uppercase">{c('marking_periods')}</Text>
+          </View>
+        </FormSection>
+        <FormSection title={c('marking_periods')} icon={CalendarRange}>
+          <View className="gap-1">
             <MarkingPeriodChecks list={mps.list} value={mpIds} onChange={setMpIds} />
             <Separator className="my-1" />
             <CheckRow label={c('mailing_labels')} value={o.include_mailing_labels} onChange={set('include_mailing_labels')} />
-            <Separator className="my-1" />
-            <Text className="text-xs font-semibold uppercase">{s('pdf_layout')}</Text>
-            <CheckRow label={s('two_copies_landscape')} hint={s('two_copies_landscape_desc')} value={twoCopies} onChange={setTwoCopies} />
-          </CardContent>
-        </Card>
+          </View>
+        </FormSection>
+        <FormSection title={s('pdf_layout')} icon={FileDown}>
+          <CheckRow label={s('two_copies_landscape')} hint={s('two_copies_landscape_desc')} value={twoCopies} onChange={setTwoCopies} />
+        </FormSection>
         {list}
         {actions}
       </ScrollView>

@@ -1,6 +1,6 @@
-import type { RcCode, RcCodeScale, RcComment, RcCommentCategory } from '@studently/api-client';
+import type { RcCode, RcCodeScale, RcCommentCategory } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Plus, Trash2 } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, FolderOpen, ListOrdered, MessageSquare, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -8,6 +8,9 @@ import { Pressable, View } from 'react-native';
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
 import { FilterChips } from '@/components/app/filter-chips';
+import { HeaderButton, IconTile, RowActions } from '@/components/app/layout';
+import { Segmented } from '@/components/app/segmented';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -137,17 +140,31 @@ export default function ReportCardComments() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('school.grades_module.report_card_comments.title') }} />
+      <Stack.Screen
+        options={{
+          title: t('school.grades_module.report_card_comments.title'),
+          headerRight: () =>
+            tab === 'categories' ? (
+              <HeaderButton icon={Plus} label={rc('new_category')} onPress={() => setCatForm({ title: '', sort_order: String((categories.data?.length ?? 0) + 1) })} />
+            ) : tab === 'comments' ? (
+              <HeaderButton icon={Plus} label={rc('new_comment')} onPress={() => setCommentForm({ title: '', category_id: '', sort_order: String((comments.data?.length ?? 0) + 1) })} />
+            ) : (
+              <HeaderButton icon={Plus} label={rc('new_scale')} onPress={() => setCodeScaleForm({ title: '' })} />
+            ),
+        }}
+      />
       <View className="bg-background flex-1">
-        <FilterChips<Tab>
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'categories', label: rc('cat_tab') },
-            { value: 'comments', label: rc('comments_tab') },
-            { value: 'codes', label: rc('codes_tab') },
-          ]}
-        />
+        <View className="px-4 pt-3">
+          <Segmented<Tab>
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'categories', label: rc('cat_tab') },
+              { value: 'comments', label: rc('comments_tab') },
+              { value: 'codes', label: rc('codes_tab') },
+            ]}
+          />
+        </View>
 
         {/* ── Categories tab ── */}
         {tab === 'categories' ? (
@@ -159,21 +176,16 @@ export default function ReportCardComments() {
             onRefresh={() => categories.mutate()}
             emptyTitle={rc('no_categories')}
             keyExtractor={(x) => x.id}
-            header={
-              <View className="items-end px-2 pt-2">
-                <Button size="sm" variant="ghost" onPress={() => setCatForm({ title: '', sort_order: String((categories.data?.length ?? 0) + 1) })} accessibilityLabel={rc('new_category')}>
-                  <Icon as={Plus} className="size-5" />
-                </Button>
-              </View>
-            }
+            header={<View className="h-3" />}
             renderItem={(x) => (
-              <Pressable className="flex-row items-center gap-2 px-4 py-3" onPress={() => setCatForm({ id: x.id, title: x.title, sort_order: String(x.sort_order ?? 0) })}>
-                {x.color ? <View className="size-3 rounded-full" style={{ backgroundColor: x.color }} /> : null}
-                <Text className="flex-1 font-medium">{x.title}</Text>
-                <Text className="text-muted-foreground text-xs">{x.comment_count ?? 0}</Text>
-                <Pressable hitSlop={8} onPress={() => deleteCat(x)} accessibilityLabel={t('app.bl_delete')}>
-                  <Icon as={Trash2} className="text-muted-foreground size-4" />
-                </Pressable>
+              <Pressable className="flex-row items-center gap-3 px-4 py-3 active:opacity-70" onPress={() => setCatForm({ id: x.id, title: x.title, sort_order: String(x.sort_order ?? 0) })}>
+                <View className="relative">
+                  <IconTile icon={FolderOpen} />
+                  {x.color ? <View className="border-card absolute -end-0.5 -top-0.5 size-3 rounded-full border-2" style={{ backgroundColor: x.color }} /> : null}
+                </View>
+                <Text className="flex-1 text-sm font-semibold">{x.title}</Text>
+                <StatusChip label={String(x.comment_count ?? 0)} tone="info" className="px-2 py-0.5" />
+                <RowActions onDelete={() => deleteCat(x)} deleteLabel={t('app.bl_delete')} />
               </Pressable>
             )}
           />
@@ -189,27 +201,27 @@ export default function ReportCardComments() {
             onRefresh={() => comments.mutate()}
             emptyTitle={rc('no_comments')}
             keyExtractor={(x) => x.id}
-            header={
-              <View className="items-end px-2 pt-2">
-                <Button size="sm" variant="ghost" onPress={() => setCommentForm({ title: '', category_id: '', sort_order: String((comments.data?.length ?? 0) + 1) })} accessibilityLabel={rc('new_comment')}>
-                  <Icon as={Plus} className="size-5" />
-                </Button>
-              </View>
-            }
+            header={<View className="h-3" />}
             renderItem={(x) => (
-              <Pressable className="flex-row items-center gap-2 px-4 py-3" onPress={() => setCommentForm({ id: x.id, title: x.title, category_id: x.category_id ?? '', sort_order: String(x.sort_order ?? 0) })}>
-                <View className="flex-1">
-                  <Text className="font-medium">{x.title}</Text>
-                  {x.scale_title ? <Text className="text-muted-foreground text-xs">{x.scale_title}</Text> : null}
+              <Pressable className="flex-row items-center gap-3 px-4 py-3 active:opacity-70" onPress={() => setCommentForm({ id: x.id, title: x.title, category_id: x.category_id ?? '', sort_order: String(x.sort_order ?? 0) })}>
+                <IconTile icon={MessageSquare} tone="success" />
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold">{x.title}</Text>
+                  {x.scale_title ? (
+                    <Text variant="muted" className="text-[11px]">
+                      {x.scale_title}
+                    </Text>
+                  ) : null}
                 </View>
-                <Pressable hitSlop={8} onPress={async () => {
-                  if (!(await confirm({ title: t('app.bl_delete'), body: x.title, destructive: true, confirmLabel: t('app.bl_delete') }))) return;
-                  const res = await adminGrades.deleteRcComment(x.id);
-                  if (!res.success) return toast.error(res.error || t('app.bl_delete'));
-                  comments.mutate();
-                }} accessibilityLabel={t('app.bl_delete')}>
-                  <Icon as={Trash2} className="text-muted-foreground size-4" />
-                </Pressable>
+                <RowActions
+                  deleteLabel={t('app.bl_delete')}
+                  onDelete={async () => {
+                    if (!(await confirm({ title: t('app.bl_delete'), body: x.title, destructive: true, confirmLabel: t('app.bl_delete') }))) return;
+                    const res = await adminGrades.deleteRcComment(x.id);
+                    if (!res.success) return toast.error(res.error || t('app.bl_delete'));
+                    comments.mutate();
+                  }}
+                />
               </Pressable>
             )}
           />
@@ -225,23 +237,17 @@ export default function ReportCardComments() {
             onRefresh={() => codeScales.mutate()}
             emptyTitle={rc('no_codes')}
             keyExtractor={(x) => x.id}
-            header={
-              <View className="items-end px-2 pt-2">
-                <Button size="sm" variant="ghost" onPress={() => setCodeScaleForm({ title: '' })} accessibilityLabel={rc('new_scale')}>
-                  <Icon as={Plus} className="size-5" />
-                </Button>
-              </View>
-            }
+            header={<View className="h-3" />}
             renderItem={(x) => (
               <View>
-                <Pressable className="flex-row items-center gap-2 px-4 py-3" onPress={() => setSelectedScaleId(selectedScaleId === x.id ? null : x.id)}>
-                  <Text className="flex-1 font-medium">{x.title}</Text>
-                  <Pressable hitSlop={8} onPress={() => deleteCodeScale(x)} accessibilityLabel={t('app.bl_delete')}>
-                    <Icon as={Trash2} className="text-muted-foreground size-4" />
-                  </Pressable>
+                <Pressable className="flex-row items-center gap-3 px-4 py-3 active:opacity-70" onPress={() => setSelectedScaleId(selectedScaleId === x.id ? null : x.id)}>
+                  <IconTile icon={ListOrdered} tone="warning" />
+                  <Text className="flex-1 text-sm font-semibold">{x.title}</Text>
+                  <Icon as={selectedScaleId === x.id ? ChevronUp : ChevronDown} className="text-muted-foreground size-4" />
+                  <RowActions onDelete={() => deleteCodeScale(x)} deleteLabel={t('app.bl_delete')} />
                 </Pressable>
                 {selectedScaleId === x.id ? (
-                  <View className="border-border mx-4 mb-3 rounded-lg border">
+                  <View className="bg-info-soft/40 border-info-soft dark:border-border mx-4 mb-3 rounded-2xl border">
                     <View className="flex-row items-center justify-between px-3 py-2">
                       <Text className="text-sm font-semibold">{t('app.rc_codes_count', { count: selectedScaleCodes.length })}</Text>
                       <Button size="sm" variant="ghost" onPress={() => setCodeForm({ title: '', short_name: '', comment: '', sort_order: String(selectedScaleCodes.length + 1) })} accessibilityLabel={rc('new_code')}>
@@ -252,7 +258,9 @@ export default function ReportCardComments() {
                       <View key={code.id}>
                         {i > 0 ? <Separator /> : null}
                         <Pressable className="flex-row items-center gap-2 px-3 py-2" onPress={() => setCodeForm({ id: code.id, title: code.title, short_name: code.short_name ?? '', comment: code.comment ?? '', sort_order: String(code.sort_order ?? 0) })}>
-                          <Text className="w-12 font-bold text-sm">{code.short_name || code.title}</Text>
+                          <View className="bg-card min-w-12 items-center rounded-lg px-2 py-1">
+                            <Text className="text-brand dark:text-brand-secondary text-sm font-bold">{code.short_name || code.title}</Text>
+                          </View>
                           <Text className="flex-1 text-sm">{code.title}</Text>
                           <Pressable hitSlop={8} onPress={() => deleteCode(code)} accessibilityLabel={t('app.bl_delete')}>
                             <Icon as={Trash2} className="text-muted-foreground size-3" />

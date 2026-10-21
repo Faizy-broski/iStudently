@@ -1,13 +1,13 @@
 import type { TeacherSubjectAssignment } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
-import { BookOpen, Layers, Star } from 'lucide-react-native';
+import { BookOpen, FileText, Layers, NotebookPen, Star, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { IconTile, RowPill, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { PortalError } from '@/features/portal/ui';
 import { teacher } from '@/lib/api';
@@ -32,80 +32,63 @@ export default function TeacherSubjects() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        <Text variant="muted">{k('pageSubtitle')}</Text>
-        <View className="flex-row gap-2">
-          <Stat icon={BookOpen} tone="bg-blue-100 text-blue-600" label={k('totalSubjects')} value={groups.size} />
-          <Stat icon={Layers} tone="bg-green-100 text-green-600" label={k('totalSections')} value={list.length} />
-          <Stat icon={Star} tone="bg-purple-100 text-purple-600" label={k('activeAssignments')} value={list.filter((a) => a.is_primary).length} />
-        </View>
+        <Text variant="muted" className="text-sm">
+          {k('pageSubtitle')}
+        </Text>
+        <StatTiles>
+          <StatTile icon={BookOpen} label={k('totalSubjects')} value={String(groups.size)} />
+          <StatTile icon={Layers} tone="success" label={k('totalSections')} value={String(list.length)} />
+          <StatTile icon={Star} tone="warning" label={k('activeAssignments')} value={String(list.filter((a) => a.is_primary).length)} />
+        </StatTiles>
         {!groups.size ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Text className="mb-2 text-xl font-semibold">{k('noSubjectsTitle')}</Text>
-              <Text className="text-muted-foreground text-center">{k('noSubjectsDescription')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={BookOpen} title={k('noSubjectsTitle')} body={k('noSubjectsDescription')} />
         ) : (
           [...groups.entries()].map(([id, sections]) => {
             const subject = sections[0]?.subject;
             return (
-              <Card key={id} className="overflow-hidden py-0">
-                <View className="border-border gap-2 border-b bg-blue-50 p-4 dark:bg-blue-950/20">
-                  <Text className="text-lg font-bold text-[#022172] dark:text-white">{subject?.name || k('unknownSubject')}</Text>
-                  {subject?.code ? <Text className="text-muted-foreground text-sm">{k('codeLabel', { code: subject.code })}</Text> : null}
-                  <View className="flex-row gap-2">
-                    <Button variant="outline" size="sm" onPress={() => router.push('/teacher/lesson-plan-read')}>
-                      <Text>{k('syllabus')}</Text>
-                    </Button>
-                    <Button variant="outline" size="sm" onPress={() => router.push('/teacher/resources')}>
-                      <Text>{k('resources')}</Text>
-                    </Button>
+              <Panel key={id} className="overflow-hidden">
+                <View className="border-info-soft dark:border-border gap-3 border-b p-4">
+                  <View className="flex-row items-center gap-3">
+                    <IconTile icon={BookOpen} size={44} />
+                    <View className="flex-1 gap-0.5">
+                      <Text className="text-brand dark:text-foreground text-base font-bold">{subject?.name || k('unknownSubject')}</Text>
+                      {subject?.code ? (
+                        <Text variant="muted" className="text-xs">
+                          {k('codeLabel', { code: subject.code })}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  <View className="flex-row flex-wrap gap-2">
+                    <RowPill icon={NotebookPen} label={k('syllabus')} onPress={() => router.push('/teacher/lesson-plan-read')} />
+                    <RowPill icon={FileText} label={k('resources')} onPress={() => router.push('/teacher/resources')} />
                   </View>
                 </View>
-                <CardContent className="gap-3 p-4">
-                  <Text className="font-semibold">{k('teachingSections', { count: sections.length })}</Text>
+                <View className="gap-2 p-4">
+                  <Text className="text-sm font-semibold">{k('teachingSections', { count: sections.length })}</Text>
                   {sections.map((a) => (
-                    <View key={a.id} className={cn('gap-2 rounded-lg border-2 p-3', a.is_primary ? 'border-blue-500' : 'border-border')}>
-                      <View className="flex-row items-center justify-between">
-                        <Text className="font-semibold">{a.section?.name || k('unknownSection')}</Text>
-                        {a.is_primary ? (
-                          <View className="rounded-full bg-blue-100 px-2 py-0.5">
-                            <Text className="text-xs font-medium text-blue-700">{k('primary')}</Text>
-                          </View>
-                        ) : null}
+                    <View key={a.id} className={cn('gap-2 rounded-xl border p-3', a.is_primary ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border')}>
+                      <View className="flex-row items-center gap-2">
+                        <View className="flex-1">
+                          <Text className="text-sm font-semibold">{a.section?.name || k('unknownSection')}</Text>
+                          <Text variant="muted" className="text-[11px]">
+                            {a.section?.grade_level?.name || k('unknownGrade')}
+                          </Text>
+                        </View>
+                        {a.is_primary ? <StatusChip label={k('primary')} tone="info" className="bg-card" /> : null}
                       </View>
-                      <Text className="text-muted-foreground text-sm">{a.section?.grade_level?.name || k('unknownGrade')}</Text>
-                      <View className="flex-row gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onPress={() => router.push('/teacher/lesson-plans')}>
-                          <Text>{k('lessonPlan')}</Text>
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1" onPress={() => router.push('/teacher/students')}>
-                          <Text>{k('students')}</Text>
-                        </Button>
+                      <View className="flex-row flex-wrap gap-2">
+                        <RowPill icon={NotebookPen} label={k('lessonPlan')} onPress={() => router.push('/teacher/lesson-plans')} />
+                        <RowPill icon={Users} label={k('students')} onPress={() => router.push('/teacher/students')} />
                       </View>
                     </View>
                   ))}
-                </CardContent>
-              </Card>
+                </View>
+              </Panel>
             );
           })
         )}
       </ScrollView>
     </>
-  );
-}
-
-function Stat({ icon, tone, label, value }: { icon: typeof BookOpen; tone: string; label: string; value: number }) {
-  const [bg, fg] = tone.split(' ');
-  return (
-    <Card className="flex-1">
-      <CardContent className="items-center gap-1 p-3">
-        <View className={cn('rounded-lg p-2', bg)}>
-          <Icon as={icon} className={cn('size-5', fg)} />
-        </View>
-        <Text className="text-xl font-bold">{String(value)}</Text>
-        <Text className="text-muted-foreground text-center text-[10px]">{label}</Text>
-      </CardContent>
-    </Card>
   );
 }

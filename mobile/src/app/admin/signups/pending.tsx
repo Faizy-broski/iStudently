@@ -9,10 +9,11 @@ import { useSWRConfig } from 'swr';
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
 import { FilterChips } from '@/components/app/filter-chips';
+import { StatTile, StatTiles } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { Picker } from '@/components/app/picker';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { SearchBar } from '@/components/app/search-bar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -73,6 +74,13 @@ export default function PendingApprovals() {
       <Stack.Screen options={{ title: p('pageTitle') }} />
       <View className="bg-background flex-1">
         <View className="gap-3 px-4 pt-3 pb-2">
+          {counts.data ? (
+            <StatTiles>
+              <StatTile label={p('tabPending')} value={String(counts.data.pending)} tone="warning" onPress={() => setStatus('pending')} />
+              <StatTile label={p('tabApproved')} value={String(counts.data.approved)} tone="success" onPress={() => setStatus('approved')} />
+              <StatTile label={p('tabRejected')} value={String(counts.data.rejected)} tone="destructive" onPress={() => setStatus('rejected')} />
+            </StatTiles>
+          ) : null}
           <SearchBar value={search} onChangeText={setSearch} placeholder={p('searchPlaceholder')} />
           <FilterChips<PendingStatus | 'all'>
             value={status}
@@ -126,9 +134,11 @@ export default function PendingApprovals() {
                       <Text className="text-muted-foreground text-xs">{[role, s.campus_name, formatDate(s.created_at)].filter(Boolean).join(' · ')}</Text>
                     </View>
                     {s.status !== 'pending' || status === 'all' ? (
-                      <Badge variant={s.status === 'approved' ? 'default' : s.status === 'pending' ? 'outline' : 'secondary'}>
-                        <Text>{p(s.status === 'approved' ? 'statusApproved' : s.status === 'pending' ? 'statusPending' : 'statusRejected')}</Text>
-                      </Badge>
+                      <StatusChip
+                        label={p(s.status === 'approved' ? 'statusApproved' : s.status === 'pending' ? 'statusPending' : 'statusRejected')}
+                        tone={s.status === 'approved' ? 'success' : s.status === 'pending' ? 'warning' : 'destructive'}
+                        className="px-2 py-0.5"
+                      />
                     ) : null}
                   </View>
                   <View className="gap-1">

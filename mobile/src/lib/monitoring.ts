@@ -31,7 +31,7 @@ async function send(body: Record<string, unknown>) {
 }
 
 /** Report an error. `context` names where it happened (e.g. "error-boundary", "global"). */
-export function reportError(error: unknown, opts: { fatal?: boolean; context?: string; route?: string } = {}) {
+export function reportError(error: unknown, opts: { fatal?: boolean; context?: string; route?: string; ref?: string } = {}) {
   const d = describe(error)
   if (__DEV__) {
     console.warn(`[monitoring] ${opts.context ?? 'error'}:`, d.message)
@@ -47,6 +47,7 @@ export function reportError(error: unknown, opts: { fatal?: boolean; context?: s
     fatal: !!opts.fatal,
     context: opts.context,
     route: opts.route,
+    ref: opts.ref,
     app_version: Constants.expoConfig?.version,
     build: String(Platform.OS === 'ios' ? (Constants.expoConfig?.ios?.buildNumber ?? '') : (Constants.expoConfig?.android?.versionCode ?? '')),
     platform: Platform.OS,
@@ -68,4 +69,11 @@ export function installGlobalErrorHandler() {
     reportError(e, { fatal, context: 'global' })
     previous(e, fatal)
   })
+
+  // Rejected promises nobody handled (a failed await outside try/catch) never reach the global
+  // handler. Release builds report them through Hermes; development keeps React Native's own warnings.
+  const hermes = (globalThis as unknown as { HermesInternal?: { enablePromiseRejectionTracker?: (o: { allRejections: boolean; onUnhandled: (id: number, rejection: unknown) => void }) => void } }).HermesInternal
+  if (!__DEV__ && hermes?.enablePromiseRejectionTracker) {
+    hermes.enablePromiseRejectionTracker({ allRejections: true, onUnhandled: (_id, rejection) => reportError(rejection, { context: 'unhandled-rejection' }) })
+  }
 }

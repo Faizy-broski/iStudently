@@ -13,12 +13,14 @@ import { FilterChips } from '@/components/app/filter-chips';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Initials } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { scopeKey, useHostelScope } from '@/features/admin/hostel';
 import { StudentSearchSelect, type PickedStudent } from '@/features/admin/student-search';
@@ -126,17 +128,16 @@ export default function HostelVisits() {
         ) : !data.length ? (
           <EmptyState icon={Eye} title={v('msg_no_data')} body={v('msg_no_data_desc')} />
         ) : (
-          <Card className="py-0">
+          <Panel>
             {data.map((x, i) => (
               <View key={x.id}>
                 {i > 0 ? <Separator /> : null}
-                <View className="flex-row items-center gap-2 px-4 py-3">
+                <View className="flex-row items-center gap-3 px-4 py-3">
+                  <Initials name={x.visitor_name || '?'} />
                   <View className="flex-1 gap-1">
                     <View className="flex-row flex-wrap items-center gap-2">
-                      <Text className="font-medium">{x.visitor_name}</Text>
-                      <View className={`rounded-full px-2 py-0.5 ${x.check_out ? 'bg-secondary' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
-                        <Text className={`text-xs ${x.check_out ? '' : 'text-emerald-700 dark:text-emerald-400'}`}>{x.check_out ? v('status_checked_out') : v('status_active')}</Text>
-                      </View>
+                      <Text className="text-sm font-semibold">{x.visitor_name}</Text>
+                      <StatusChip label={x.check_out ? v('status_checked_out') : v('status_active')} tone={x.check_out ? 'muted' : 'success'} />
                     </View>
                     <Text className="text-muted-foreground text-sm">
                       {[`${v('th_student')}: ${x.student_name || x.student_id}`, x.room_number ? `${v('th_room')} ${x.room_number}` : null, x.visitor_relation].filter(Boolean).join(' · ')}
@@ -154,7 +155,7 @@ export default function HostelVisits() {
                 </View>
               </View>
             ))}
-          </Card>
+          </Panel>
         )}
       </ScrollView>
       <Dialog

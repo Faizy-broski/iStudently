@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { CategoryBadge } from '@/features/admin/events';
 import { useHijriOffset } from '@/features/admin/use-hijri-offset';
@@ -118,9 +119,7 @@ export function EventDetailsScreen({ canEdit }: { canEdit: boolean }) {
               d('visible_to'),
               <View className="flex-row flex-wrap gap-2">
                 {ev.visible_to_roles.map((r) => (
-                  <View key={r} className="bg-muted rounded-full px-2 py-0.5">
-                    <Text className="text-xs capitalize">{r.replace('_', ' ')}</Text>
-                  </View>
+                  <StatusChip key={r} label={String(r.replace('_', ' '))} tone="muted" />
                 ))}
               </View>,
             )}

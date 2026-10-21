@@ -7,8 +7,8 @@ import { Pressable, RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
-import { Button } from '@/components/ui/button';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useLibraryCategories } from '@/features/admin/library';
@@ -53,8 +53,13 @@ export function ELibraryList({ readerPath }: { readerPath: '/admin/library/e-lib
     setSub(null);
   };
   const pill = (label: string, on: boolean, onPress: () => void, small = false) => (
-    <Pressable key={label} onPress={onPress} className={cn('rounded-full border', small ? 'px-3 py-1' : 'px-4 py-1.5', on ? 'border-primary/30 bg-primary/10' : 'border-border')}>
-      <Text className={cn(small ? 'text-xs' : 'text-sm', on ? 'text-primary font-medium' : 'text-muted-foreground')}>{label}</Text>
+    <Pressable
+      key={label}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      className={cn('rounded-full border active:opacity-70', small ? 'px-3 py-1' : 'px-3.5 py-1.5', on ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
+      <Text className={cn('font-semibold', small ? 'text-xs' : 'text-[13px]', on ? 'text-white' : 'text-muted-foreground')}>{label}</Text>
     </Pressable>
   );
 
@@ -83,21 +88,19 @@ export function ELibraryList({ readerPath }: { readerPath: '/admin/library/e-lib
         {books.isLoading ? (
           <LoadingList />
         ) : !list.length ? (
-          <View className="items-center gap-3 py-16">
-            <Icon as={BookText} className="text-muted-foreground size-10" />
-            <Text className="text-muted-foreground text-center">{q || active ? t('app.lb_no_match') : t('app.lb_no_digital')}</Text>
-            {q || active ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={() => {
-                  setQuery('');
-                  pick(null);
-                }}>
-                <Text>{t('app.lb_clear_filters')}</Text>
-              </Button>
-            ) : null}
-          </View>
+          <EmptyState
+            icon={BookText}
+            title={q || active ? t('app.lb_no_match') : t('app.lb_no_digital')}
+            actionLabel={q || active ? t('app.lb_clear_filters') : undefined}
+            onAction={
+              q || active
+                ? () => {
+                    setQuery('');
+                    pick(null);
+                  }
+                : undefined
+            }
+          />
         ) : (
           <View className="flex-row flex-wrap gap-3">
             {list.map((b) => {
@@ -107,23 +110,23 @@ export function ELibraryList({ readerPath }: { readerPath: '/admin/library/e-lib
                 .map((w) => w[0]?.toUpperCase() ?? '')
                 .join('');
               return (
-                <Pressable key={b.id} onPress={() => router.push({ pathname: readerPath, params: { bookId: b.id as string } })} className="w-[47%] gap-1.5">
-                  <View className="bg-muted aspect-[3/4] items-center justify-center overflow-hidden rounded-lg">
+                <Pressable key={b.id} onPress={() => router.push({ pathname: readerPath, params: { bookId: b.id as string } })} className="w-[47%] gap-1.5 active:opacity-80">
+                  <View className="bg-info-soft border-info-soft dark:border-border aspect-[3/4] items-center justify-center overflow-hidden rounded-2xl border">
                     {b.cover_image_url ? (
                       <Image source={{ uri: b.cover_image_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                     ) : (
                       <>
-                        <Text className="text-muted-foreground text-2xl font-bold">{initials}</Text>
-                        <Icon as={BookOpen} className="text-muted-foreground mt-1 size-5" />
+                        <Text className="text-brand dark:text-brand-secondary text-2xl font-bold">{initials}</Text>
+                        <Icon as={BookOpen} className="text-brand dark:text-brand-secondary mt-1 size-5" />
                       </>
                     )}
                     {b.document_type && b.document_type !== 'book' ? (
-                      <View className="bg-primary absolute end-2 top-2 rounded px-1.5">
-                        <Text className="text-primary-foreground text-[10px]">{b.document_type}</Text>
+                      <View className="absolute end-2 top-2">
+                        <StatusChip label={b.document_type} tone="info" />
                       </View>
                     ) : null}
                   </View>
-                  <Text className="text-sm font-medium" numberOfLines={2}>
+                  <Text className="text-sm font-semibold" numberOfLines={2}>
                     {b.title}
                   </Text>
                   <Text className="text-muted-foreground text-xs" numberOfLines={1}>

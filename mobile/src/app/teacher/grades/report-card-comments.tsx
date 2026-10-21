@@ -1,11 +1,13 @@
 import { Stack } from 'expo-router';
-import { MessageSquare } from 'lucide-react-native';
+import { Check, MessageSquare } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
@@ -28,47 +30,46 @@ export default function TeacherReportCardComments() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([cats.mutate(), comments.mutate()])} />}>
-        <Text variant="muted">{k('readOnlySubtitle')}</Text>
-        <Card>
-          <CardHeader>
-            <CardTitle>{k('categories')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-1">
-            {cats.isLoading ? (
-              <LoadingList rows={3} />
-            ) : (
-              [{ id: 'general', title: k('general') }, ...categories].map((c) => (
-                <Pressable
-                  key={c.id}
-                  onPress={() => setCatId(c.id)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: catId === c.id }}
-                  className={cn('flex-row items-center justify-between rounded-md px-3 py-2', catId === c.id && 'bg-primary/10')}>
-                  <Text className={cn('text-sm', catId === c.id && 'font-semibold')}>{c.title}</Text>
-                  <Text className="text-muted-foreground text-xs">{k('commentCount', { count: countFor(c.id === 'general' ? null : c.id) })}</Text>
-                </Pressable>
-              ))
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="gap-2 pt-4">
-            {comments.isLoading ? (
-              <LoadingList rows={3} />
-            ) : !shown.length ? (
-              <View className="items-center py-6">
-                <Icon as={MessageSquare} className="text-muted-foreground/40 size-8" />
-              </View>
-            ) : (
-              shown.map((c) => (
-                <View key={c.id} className="border-border flex-row items-center gap-3 border-b py-2 last:border-b-0">
-                  <Text className="text-muted-foreground w-8 text-xs">{String(c.sort_order ?? '')}</Text>
-                  <Text className="flex-1 text-sm">{c.title}</Text>
+        <Text className="text-muted-foreground text-sm">{k('readOnlySubtitle')}</Text>
+        <Section title={k('categories')}>
+          {cats.isLoading ? (
+            <LoadingList rows={3} />
+          ) : (
+            <Panel>
+              {[{ id: 'general', title: k('general') }, ...categories].map((c, i, arr) => {
+                const on = catId === c.id;
+                return (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => setCatId(c.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < arr.length - 1 && 'border-info-soft dark:border-border border-b', on && 'bg-info-soft', i === 0 && 'rounded-t-2xl', i === arr.length - 1 && 'rounded-b-2xl')}>
+                    <Text className={cn('flex-1 text-sm', on ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')}>{c.title}</Text>
+                    <StatusChip label={k('commentCount', { count: countFor(c.id === 'general' ? null : c.id) })} tone={on ? 'info' : 'muted'} />
+                    {on ? <Icon as={Check} className="text-brand dark:text-brand-secondary size-4" /> : null}
+                  </Pressable>
+                );
+              })}
+            </Panel>
+          )}
+        </Section>
+        {comments.isLoading ? (
+          <LoadingList rows={3} />
+        ) : !shown.length ? (
+          <EmptyState icon={MessageSquare} title={k('commentCount', { count: 0 })} />
+        ) : (
+          <Panel>
+            {shown.map((c, i) => (
+              <View key={c.id} className={cn('flex-row items-center gap-3 px-4 py-3', i < shown.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                <View className="bg-info-soft size-8 items-center justify-center rounded-full">
+                  <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{String(c.sort_order ?? '')}</Text>
                 </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                <Text className="flex-1 text-sm">{c.title}</Text>
+              </View>
+            ))}
+          </Panel>
+        )}
       </ScrollView>
     </>
   );

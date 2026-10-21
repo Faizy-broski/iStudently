@@ -21,7 +21,7 @@ export default function AdminLayout() {
     <CampusProvider>
       <CampusAcademic>
         <View style={{ flex: 1 }}>
-          <Stack>
+          <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="module" options={{ title: '' }} />
             <Stack.Screen name="students/index" options={{ title: '' }} />

@@ -55,7 +55,7 @@ export default function EmailLog() {
           renderItem={(e) => (
             <Pressable onPress={() => setOpen(open === e.id ? null : e.id)} className="gap-1 px-4 py-3" accessibilityRole="button">
               <View className="flex-row items-center justify-between gap-3">
-                <Text className="flex-1 font-medium" numberOfLines={1}>
+                <Text className="flex-1 text-sm font-semibold" numberOfLines={1}>
                   {e.subject}
                 </Text>
                 {e.is_test ? (
@@ -94,10 +94,10 @@ export default function EmailLog() {
                     {htmlToText(e.body)}
                   </Text>
                   {e.errors?.length ? (
-                    <View className="gap-0.5 rounded-md bg-red-50 p-2 dark:bg-red-950/40">
-                      <Text className="text-xs font-semibold text-red-700">{t('email.detail_failed_deliveries')}</Text>
+                    <View className="gap-0.5 rounded-md bg-destructive-soft p-2 ">
+                      <Text className="text-xs font-semibold text-destructive">{t('email.detail_failed_deliveries')}</Text>
                       {e.errors.map((x, i) => (
-                        <Text key={i} className="text-xs text-red-700">{`${x.name} <${x.email}>: ${x.error}`}</Text>
+                        <Text key={i} className="text-xs text-destructive">{`${x.name} <${x.email}>: ${x.error}`}</Text>
                       ))}
                     </View>
                   ) : null}

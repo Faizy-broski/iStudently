@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { locale } from '@/i18n';
 import { AdjustmentRow, FeeStatusBadge } from '@/features/admin/fee-records';
 import { usePrintContext } from '@/features/admin/print-context';
 import { useCurrency } from '@/features/admin/use-currency';
@@ -72,15 +74,15 @@ export default function FeeChallan() {
     const rows = lines
       .map(
         (l) =>
-          `<tr style="${l.tone === 'total' ? 'font-weight:bold;background:#f9f9f9' : l.tone === 'due' ? 'font-weight:bold;background:#ecfdf5' : ''}"><td style="border:1px solid #ddd;padding:8px">${escapeHtml(l.label)}${l.note ? ` <span style="color:#666;font-size:11px">${escapeHtml(l.note)}</span>` : ''}</td><td style="border:1px solid #ddd;padding:8px;text-align:end">${escapeHtml(l.amount)}</td></tr>`,
+          `<tr style="${l.tone === 'total' ? `font-weight:bold;background:${colors.printSurface}` : l.tone === 'due' ? `font-weight:bold;background:${colors.successSoft}` : ''}"><td style="border:1px solid ${colors.printBorder};padding:8px">${escapeHtml(l.label)}${l.note ? ` <span style="color:${colors.printMuted};font-size:11px">${escapeHtml(l.note)}</span>` : ''}</td><td style="border:1px solid ${colors.printBorder};padding:8px;text-align:end">${escapeHtml(l.amount)}</td></tr>`,
       )
       .join('');
-    const body = `<div style="text-align:center;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:16px"><h1 style="margin:0">${escapeHtml(title.toUpperCase())}</h1><p style="margin:4px 0;color:#666">${escapeHtml(t('app.fr_academic_year', { year: d.academic_year }))}</p></div>
-      <table style="width:100%;margin-bottom:16px"><tr><td><div style="color:#666;font-size:12px">${escapeHtml(t('common.student'))}</div><div style="font-weight:bold">${escapeHtml(studentName)}</div><div>${escapeHtml(number)}</div></td>
-      <td style="text-align:end"><div style="color:#666;font-size:12px">${escapeHtml(t('admin.fees.page.table.due_date'))}</div><div style="font-weight:bold">${escapeHtml(d.due_date ? formatDate(d.due_date) : '—')}</div><div>${escapeHtml(d.status.toUpperCase())}</div></td></tr></table>
-      <table style="width:100%;border-collapse:collapse"><tr><th style="border:1px solid #ddd;padding:8px;text-align:start;background:#f5f5f5">${escapeHtml(t('app.fr_description'))}</th><th style="border:1px solid #ddd;padding:8px;text-align:end;background:#f5f5f5">${escapeHtml(t('common.amount'))}</th></tr>${rows}</table>
-      ${d.notes ? `<p style="margin-top:12px;padding:10px;background:#fefce8;border:1px solid #fde68a"><strong>${escapeHtml(t('app.fr_note'))}:</strong> ${escapeHtml(d.notes)}</p>` : ''}
-      <p style="margin-top:32px;text-align:center;font-size:11px;color:#666">${escapeHtml(t('app.fr_generated', { date: formatDate(new Date().toISOString()), time: new Date().toLocaleTimeString() }))}<br/>${escapeHtml(t('app.fr_computer_generated'))}</p>`;
+    const body = `<div style="text-align:center;border-bottom:2px solid ${colors.printText};padding-bottom:12px;margin-bottom:16px"><h1 style="margin:0">${escapeHtml(title.toUpperCase())}</h1><p style="margin:4px 0;color:${colors.printMuted}">${escapeHtml(t('app.fr_academic_year', { year: d.academic_year }))}</p></div>
+      <table style="width:100%;margin-bottom:16px"><tr><td><div style="color:${colors.printMuted};font-size:12px">${escapeHtml(t('common.student'))}</div><div style="font-weight:bold">${escapeHtml(studentName)}</div><div>${escapeHtml(number)}</div></td>
+      <td style="text-align:end"><div style="color:${colors.printMuted};font-size:12px">${escapeHtml(t('admin.fees.page.table.due_date'))}</div><div style="font-weight:bold">${escapeHtml(d.due_date ? formatDate(d.due_date) : '—')}</div><div>${escapeHtml(d.status.toUpperCase())}</div></td></tr></table>
+      <table style="width:100%;border-collapse:collapse"><tr><th style="border:1px solid ${colors.printBorder};padding:8px;text-align:start;background:${colors.printSurface}">${escapeHtml(t('app.fr_description'))}</th><th style="border:1px solid ${colors.printBorder};padding:8px;text-align:end;background:${colors.printSurface}">${escapeHtml(t('common.amount'))}</th></tr>${rows}</table>
+      ${d.notes ? `<p style="margin-top:12px;padding:10px;background:${colors.warningSoft};border:1px solid ${colors.warningSoft}"><strong>${escapeHtml(t('app.fr_note'))}:</strong> ${escapeHtml(d.notes)}</p>` : ''}
+      <p style="margin-top:32px;text-align:center;font-size:11px;color:${colors.printMuted}">${escapeHtml(t('app.fr_generated', { date: formatDate(new Date().toISOString()), time: new Date().toLocaleTimeString(locale) }))}<br/>${escapeHtml(t('app.fr_computer_generated'))}</p>`;
     try {
       const html = buildPrintHtml({ title: `${title} - ${studentName}`, pages: [body], school: print.school, layout: print.layout, withHeader: true, reportLabel: title });
       if (mode === 'print') await printHtml(html);
@@ -156,16 +158,16 @@ export default function FeeChallan() {
                     className={cn(
                       'border-border flex-row items-start justify-between gap-3 border-t px-4 py-2.5',
                       l.tone === 'total' && 'bg-muted/50',
-                      l.tone === 'due' && 'bg-emerald-50 dark:bg-emerald-900/30',
+                      l.tone === 'due' && 'bg-success-soft ',
                     )}>
                     <View className="flex-1">
                       <Text
                         className={cn(
                           'text-sm',
-                          l.tone === 'green' && 'text-green-700 dark:text-green-400',
-                          l.tone === 'orange' && 'text-orange-700 dark:text-orange-400',
+                          l.tone === 'green' && 'text-success ',
+                          l.tone === 'orange' && 'text-warning ',
                           (l.tone === 'total' || l.tone === 'due') && 'font-bold',
-                          l.tone === 'due' && 'text-emerald-800 dark:text-emerald-300',
+                          l.tone === 'due' && 'text-success ',
                         )}>
                         {l.label}
                       </Text>
@@ -179,10 +181,10 @@ export default function FeeChallan() {
                     <Text
                       className={cn(
                         'text-sm',
-                        l.tone === 'green' && 'text-green-700 dark:text-green-400',
-                        l.tone === 'orange' && 'text-orange-700 dark:text-orange-400',
+                        l.tone === 'green' && 'text-success ',
+                        l.tone === 'orange' && 'text-warning ',
                         (l.tone === 'total' || l.tone === 'due') && 'font-bold',
-                        l.tone === 'due' && 'text-emerald-800 dark:text-emerald-300',
+                        l.tone === 'due' && 'text-success ',
                       )}>
                       {l.amount}
                     </Text>
@@ -191,8 +193,8 @@ export default function FeeChallan() {
               </CardContent>
             </Card>
             {d.notes ? (
-              <View className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-700 dark:bg-yellow-900/30">
-                <Text className="text-sm text-yellow-800 dark:text-yellow-300">{`${t('app.fr_note')}: ${d.notes}`}</Text>
+              <View className="rounded-xl border border-warning/30 bg-warning-soft p-3">
+                <Text className="text-sm text-warning ">{`${t('app.fr_note')}: ${d.notes}`}</Text>
               </View>
             ) : null}
           </>
@@ -207,14 +209,14 @@ export default function FeeChallan() {
                 <CardContent className="gap-1 px-4">
                   <View className="flex-row items-start justify-between gap-3">
                     <View className="flex-1">
-                      <Text className="font-semibold text-green-700 dark:text-green-400">{money(pay.amount)}</Text>
+                      <Text className="font-semibold text-success ">{money(pay.amount)}</Text>
                       <Text className="text-muted-foreground text-sm">
                         {[pay.payment_method || t('app.fr_cash'), pay.payment_reference ? t('app.fr_ref', { ref: pay.payment_reference }) : null].filter(Boolean).join(' • ')}
                       </Text>
                     </View>
                     <View className="items-end">
                       <Text className="text-sm">{formatDate(pay.payment_date)}</Text>
-                      <Text className="text-muted-foreground text-xs">{new Date(pay.payment_date).toLocaleTimeString()}</Text>
+                      <Text className="text-muted-foreground text-xs">{new Date(pay.payment_date).toLocaleTimeString(locale)}</Text>
                     </View>
                   </View>
                   {pay.notes ? <Text className="text-muted-foreground text-sm italic">{`"${pay.notes}"`}</Text> : null}

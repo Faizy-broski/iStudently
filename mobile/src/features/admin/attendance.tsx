@@ -1,12 +1,12 @@
 import type { AttendanceCode } from '@studently/api-client';
-import { Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { Picker } from '@/components/app/picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Icon } from '@/components/ui/icon';
+import { CheckMark } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
@@ -77,8 +77,8 @@ export function CodeChip({ code, size = 'md' }: { code: Pick<AttendanceCode, 'sh
   if (!code) return <Text className="text-muted-foreground text-xs">--</Text>;
   return (
     <View
-      className={cn('items-center justify-center rounded', size === 'sm' ? 'h-5 min-w-5 px-1' : 'h-7 min-w-7 px-1.5')}
-      style={{ backgroundColor: code.color || '#6b7280' }}>
+      className={cn('items-center justify-center rounded-md', size === 'sm' ? 'h-5 min-w-5 px-1' : 'h-7 min-w-7 px-1.5')}
+      style={{ backgroundColor: code.color || colors.printMuted }}>
       <Text className={cn('font-bold text-white', size === 'sm' ? 'text-[10px]' : 'text-xs')}>{code.short_name}</Text>
     </View>
   );
@@ -108,7 +108,7 @@ export function CodeSelect({
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        className={cn('min-h-9 flex-row items-center gap-1.5 rounded-md border px-2 py-1', pending ? 'border-yellow-500 bg-yellow-500/10' : 'border-border')}>
+        className={cn('min-h-9 flex-row items-center gap-1.5 rounded-xl border px-2 py-1 active:opacity-70', pending ? 'border-warning bg-warning-soft' : 'border-info-soft dark:border-border bg-card')}>
         <CodeChip code={current} size="sm" />
         {showTitle && current ? <Text className="text-sm">{current.title}</Text> : null}
       </Pressable>
@@ -119,15 +119,16 @@ export function CodeSelect({
           </DialogHeader>
           <ScrollView className="max-h-96">
             {allowEmpty ? (
-              <Pressable onPress={() => (onChange(''), setOpen(false))} className="flex-row items-center gap-3 py-2.5">
+              <Pressable onPress={() => (onChange(''), setOpen(false))} className="flex-row items-center gap-3 rounded-xl px-2 py-2.5 active:opacity-70">
                 <CodeChip code={null} />
                 <Text className="text-muted-foreground">--</Text>
               </Pressable>
             ) : null}
             {codes.map((c) => (
-              <Pressable key={c.id} onPress={() => (onChange(c.id), setOpen(false))} className={cn('flex-row items-center gap-3 rounded-md px-1 py-2.5', c.id === value && 'bg-accent')}>
+              <Pressable key={c.id} onPress={() => (onChange(c.id), setOpen(false))} className={cn('flex-row items-center gap-3 rounded-xl px-2 py-2.5 active:opacity-70', c.id === value && 'bg-info-soft')}>
                 <CodeChip code={c} />
-                <Text>{c.title}</Text>
+                <Text className={cn('flex-1 text-sm', c.id === value && 'font-semibold')}>{c.title}</Text>
+                {c.id === value ? <CheckMark on /> : null}
               </Pressable>
             ))}
           </ScrollView>
@@ -143,9 +144,9 @@ export function CodeLegend({ codes }: { codes: AttendanceCode[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Pressable onPress={() => setOpen(true)} className="border-border flex-row items-center gap-1.5 rounded-md border px-3 py-2" accessibilityRole="button">
-        <View className="bg-foreground size-3 rounded-sm" />
-        <Text className="text-sm">{t('attendance.attendanceCodes')}</Text>
+      <Pressable onPress={() => setOpen(true)} className="bg-info-soft flex-row items-center gap-1.5 rounded-full px-3 py-2 active:opacity-70" accessibilityRole="button">
+        <View className="bg-brand dark:bg-brand-secondary size-3 rounded-sm" />
+        <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{t('attendance.attendanceCodes')}</Text>
       </Pressable>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[92vw] max-w-sm">
@@ -154,9 +155,9 @@ export function CodeLegend({ codes }: { codes: AttendanceCode[] }) {
           </DialogHeader>
           <View className="gap-2">
             {codes.map((c) => (
-              <View key={c.id} className="flex-row items-center gap-2">
+              <View key={c.id} className="flex-row items-center gap-3">
                 <CodeChip code={c} />
-                <Text>{c.title}</Text>
+                <Text className="text-sm">{c.title}</Text>
               </View>
             ))}
           </View>
@@ -170,10 +171,8 @@ export function CodeLegend({ codes }: { codes: AttendanceCode[] }) {
 export function CheckRow({ checked, onPress, label, disabled, tone }: { checked: boolean; onPress: () => void; label: string; disabled?: boolean; tone?: 'danger' }) {
   return (
     <Pressable onPress={onPress} disabled={disabled} accessibilityRole="checkbox" accessibilityState={{ checked, disabled }} className={cn('flex-row items-center gap-2 py-1', disabled && 'opacity-40')}>
-      <View className={cn('size-5 items-center justify-center rounded border', checked ? 'border-primary bg-primary' : 'border-input')}>
-        {checked ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}
-      </View>
-      <Text className={cn('text-sm', tone === 'danger' && 'font-medium text-red-500')}>{label}</Text>
+      <CheckMark on={checked} />
+      <Text className={cn('text-sm', tone === 'danger' && 'font-medium text-destructive')}>{label}</Text>
     </Pressable>
   );
 }

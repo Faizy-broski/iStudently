@@ -12,7 +12,7 @@ import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { TimeField } from '@/components/app/time-field';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { capacityTone, registrationLink, STATUS_TONE } from '@/features/admin/training';
@@ -204,16 +205,14 @@ export default function TrainingSessionDetail() {
         {regs.isLoading ? (
           <LoadingList />
         ) : !list.length ? (
-          <Text className="text-muted-foreground py-8 text-center">{a('no_registrations')}</Text>
+          <EmptyState title={a('no_registrations')} />
         ) : (
           list.map((reg) => (
             <Card key={reg.id}>
               <CardContent className="gap-3 pt-4">
                 <View className="flex-row items-center gap-2">
-                  <Text className="flex-1 font-medium">{reg.display_name ?? '—'}</Text>
-                  <View className={cn('rounded-full px-2 py-0.5', reg.student_type === 'internal' ? 'bg-blue-600' : 'bg-orange-500')}>
-                    <Text className="text-xs font-semibold text-white">{a(`type_${reg.student_type}`)}</Text>
-                  </View>
+                  <Text className="flex-1 text-sm font-semibold">{reg.display_name ?? '—'}</Text>
+                  <StatusChip label={a(`type_${reg.student_type}`)} tone={reg.student_type === 'internal' ? 'info' : 'warning'} />
                 </View>
                 <Text className="text-muted-foreground text-xs">
                   {a('contact')}: {reg.ext_parent_phone ?? '—'} · {a('registered')}: {day(reg.created_at)}
@@ -352,7 +351,7 @@ function CertificatesDialog({ reg, sessionId, campusId, templateId, onClose, onI
           <Text className="text-muted-foreground text-sm">{a('no_certificates')}</Text>
         ) : (
           list.map((c) => (
-            <View key={c.id} className="border-border flex-row items-center gap-2 rounded-md border p-2">
+            <View key={c.id} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border p-2">
               <View className="flex-1">
                 <Text className="font-mono text-xs">{c.verification_code}</Text>
                 <Text className="text-muted-foreground text-xs">{new Date(c.issued_at).toLocaleDateString(i18n.language, { dateStyle: 'medium' })}</Text>

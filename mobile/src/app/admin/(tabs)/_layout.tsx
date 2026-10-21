@@ -3,6 +3,7 @@ import { GraduationCap, LayoutDashboard, Menu, Users, Wallet, type LucideIcon } 
 import { useTranslation } from 'react-i18next';
 import type { ColorValue } from 'react-native';
 
+import { PillTabBar } from '@/components/app/pill-tab-bar';
 import { Icon } from '@/components/ui/icon';
 import { CampusSwitcher } from '@/features/campus/campus-switcher';
 
@@ -15,12 +16,12 @@ function tabIcon(icon: LucideIcon) {
 export default function AdminTabs() {
   const { t } = useTranslation();
   return (
-    <Tabs screenOptions={{ headerShown: true, headerTitleAlign: 'left', headerTitle: () => <CampusSwitcher /> }}>
-      <Tabs.Screen name="index" options={{ title: t('app.ad_tab_dashboard'), tabBarIcon: tabIcon(LayoutDashboard) }} />
-      <Tabs.Screen name="people" options={{ title: t('app.ad_tab_people'), tabBarIcon: tabIcon(Users) }} />
-      <Tabs.Screen name="fees" options={{ title: t('app.ad_tab_fees'), tabBarIcon: tabIcon(Wallet) }} />
-      <Tabs.Screen name="academics" options={{ title: t('app.ad_tab_academics'), tabBarIcon: tabIcon(GraduationCap) }} />
-      <Tabs.Screen name="more" options={{ title: t('app.ad_tab_more'), tabBarIcon: tabIcon(Menu) }} />
+    <Tabs tabBar={(props) => <PillTabBar {...props} />} screenOptions={{ headerShown: true, headerTitleAlign: 'left', headerTitle: () => <CampusSwitcher /> }}>
+      <Tabs.Screen name="index" options={{ headerShown: false, title: t('app.ad_tab_dashboard'), tabBarIcon: tabIcon(LayoutDashboard) }} />
+      <Tabs.Screen name="people" options={{ headerShown: false, title: t('app.ad_tab_people'), tabBarIcon: tabIcon(Users) }} />
+      <Tabs.Screen name="fees" options={{ headerShown: false, title: t('app.ad_tab_fees'), tabBarIcon: tabIcon(Wallet) }} />
+      <Tabs.Screen name="academics" options={{ headerShown: false, title: t('app.ad_tab_academics'), tabBarIcon: tabIcon(GraduationCap) }} />
+      <Tabs.Screen name="more" options={{ headerShown: false, title: t('app.ad_tab_more'), tabBarIcon: tabIcon(Menu) }} />
     </Tabs>
   );
 }

@@ -8,11 +8,11 @@ import { useSWRConfig } from 'swr';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
+import { FormSection, StickyActions } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { TimeField } from '@/components/app/time-field';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
@@ -57,46 +57,41 @@ export default function NewInspectionVisit() {
       <Stack.Screen options={{ title: k('new_visit_title') }} />
       <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-          <Text variant="muted">{k('new_visit_subtitle')}</Text>
-          <Card>
-            <CardHeader>
-              <View className="flex-row items-center gap-2">
-                <Icon as={CalendarPlus} className="size-5 text-[#022172] dark:text-blue-300" />
-                <CardTitle className="text-base">{k('form_title')}</CardTitle>
-              </View>
-              <CardDescription>{k('form_subtitle')}</CardDescription>
-            </CardHeader>
-            <CardContent className="gap-4">
-              <View className="gap-1.5">
-                <Label>{k('field_campus')}</Label>
-                {schools.isLoading ? (
-                  <Text className="text-muted-foreground text-sm">{k('loading_campuses')}</Text>
-                ) : !list.length ? (
-                  <Text className="text-muted-foreground text-sm">{k('no_assigned_campuses')}</Text>
-                ) : (
-                  <Picker value={f.school || null} onChange={(v) => set({ school: v })} placeholder={k('field_campus_placeholder')} options={list.map((s) => ({ value: s.id, label: s.name }))} />
-                )}
-              </View>
-              <View className="gap-1.5">
-                <Label>{k('field_visit_type')}</Label>
-                <Picker value={f.type} onChange={(v) => set({ type: v as InspectorVisitType })} options={TYPES.map((x) => ({ value: x, label: k(`visit_type_${x}`) }))} />
-              </View>
-              <DateField label={k('field_date')} value={f.date || null} onChange={(v) => set({ date: v })} />
-              <View className="flex-row gap-2">
-                <TimeField className="flex-1" label={k('field_start_time')} value={f.start} onChange={(v) => set({ start: v })} />
-                <TimeField className="flex-1" label={k('field_end_time')} value={f.end} onChange={(v) => set({ end: v })} />
-              </View>
-              <View className="gap-1.5">
-                <Label>{k('field_purpose')}</Label>
-                <Textarea value={f.purpose} onChangeText={(v) => set({ purpose: v })} placeholder={k('field_purpose_placeholder')} />
-              </View>
-              <Button onPress={submit} disabled={busy || !f.school || !f.date}>
-                <Icon as={CalendarPlus} className="text-primary-foreground size-4" />
-                <Text>{k('btn_schedule')}</Text>
-              </Button>
-            </CardContent>
-          </Card>
+          <Text variant="muted" className="text-sm">
+            {k('new_visit_subtitle')}
+          </Text>
+          <FormSection title={k('form_title')} description={k('form_subtitle')} icon={CalendarPlus}>
+            <View className="gap-1.5">
+              <Label>{k('field_campus')}</Label>
+              {schools.isLoading ? (
+                <Text className="text-muted-foreground text-sm">{k('loading_campuses')}</Text>
+              ) : !list.length ? (
+                <Text className="text-muted-foreground text-sm">{k('no_assigned_campuses')}</Text>
+              ) : (
+                <Picker value={f.school || null} onChange={(v) => set({ school: v })} placeholder={k('field_campus_placeholder')} options={list.map((s) => ({ value: s.id, label: s.name }))} />
+              )}
+            </View>
+            <View className="gap-1.5">
+              <Label>{k('field_visit_type')}</Label>
+              <Picker value={f.type} onChange={(v) => set({ type: v as InspectorVisitType })} options={TYPES.map((x) => ({ value: x, label: k(`visit_type_${x}`) }))} />
+            </View>
+            <DateField label={k('field_date')} value={f.date || null} onChange={(v) => set({ date: v })} />
+            <View className="flex-row gap-2">
+              <TimeField className="flex-1" label={k('field_start_time')} value={f.start} onChange={(v) => set({ start: v })} />
+              <TimeField className="flex-1" label={k('field_end_time')} value={f.end} onChange={(v) => set({ end: v })} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{k('field_purpose')}</Label>
+              <Textarea value={f.purpose} onChangeText={(v) => set({ purpose: v })} placeholder={k('field_purpose_placeholder')} />
+            </View>
+          </FormSection>
         </ScrollView>
+        <StickyActions>
+          <Button className="flex-1" onPress={submit} disabled={busy || !f.school || !f.date}>
+            <Icon as={CalendarPlus} className="text-primary-foreground size-4" />
+            <Text>{k('btn_schedule')}</Text>
+          </Button>
+        </StickyActions>
       </KeyboardAvoidingView>
     </>
   );

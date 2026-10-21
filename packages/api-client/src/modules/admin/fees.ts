@@ -278,6 +278,9 @@ export function adminFeesApi(api: ApiClient) {
       campusId: string,
       input: { student_id: string; grade_id: string; academic_year: string; period_type: PeriodType; category_ids: string[] | null; fee_month?: string; due_date?: string; period_number?: number },
     ) => api.post<StudentFee>('/fees/generate-for-student', { ...input, service_ids: [], school_id: campusId }, { timeout: 60_000 }),
+    /** First fee challan for a newly added student, with their services (web AddStudentForm: generateFeeForNewStudent). */
+    generateFirstFee: (campusId: string | undefined, input: { student_id: string; grade_id: string; service_ids: string[]; academic_year: string; fee_month: string; due_date: string }) =>
+      api.post<StudentFee>('/fees/generate-for-student', { ...input, campus_id: campusId }, { timeout: 60_000 }),
     /** Custom amounts for one student + category in a year (returned with the usual `pagination`). */
     overrides: async (campusId: string, p: { academic_year?: string; page?: number; limit?: number } = {}): Promise<ApiResponse<FeeOverride[]>> => {
       const limit = p.limit ?? 50

@@ -74,8 +74,8 @@ export default function AdjustFee() {
 
   const summary: [string, string, string][] = [
     [t('app.fr_base_amount'), money(d.base_amount), ''],
-    [t('app.fr_late_fee'), money(late), 'text-orange-600 dark:text-orange-400'],
-    [t('app.fr_custom_discount'), `-${money(d.custom_discount || 0)}`, 'text-green-600 dark:text-green-400'],
+    [t('app.fr_late_fee'), money(late), 'text-warning '],
+    [t('app.fr_custom_discount'), `-${money(d.custom_discount || 0)}`, 'text-success '],
     [t('app.fr_final_amount'), money(d.final_amount), 'text-primary'],
   ];
 
@@ -109,10 +109,10 @@ export default function AdjustFee() {
                 accessibilityState={{ selected: on, disabled }}
                 className={cn(
                   'min-w-[46%] flex-1 flex-row items-center gap-3 rounded-lg border-2 p-3',
-                  on ? (x.danger ? 'border-red-500 bg-red-50 dark:bg-red-900/30' : 'border-primary bg-primary/5') : 'border-border',
+                  on ? (x.danger ? 'border-destructive bg-destructive-soft ' : 'border-brand-secondary bg-info-soft') : 'border-border',
                   disabled && 'opacity-50',
                 )}>
-                <Icon as={x.icon} className={cn('size-5', on && (x.danger ? 'text-red-600' : 'text-primary'))} />
+                <Icon as={x.icon} className={cn('size-5', on && (x.danger ? 'text-destructive' : 'text-primary'))} />
                 <View className="flex-1">
                   <Text className="text-sm font-medium">{t(`app.fr_type_${x.type}`)}</Text>
                   <Text className="text-muted-foreground text-xs">{t(`app.fr_type_${x.type}_hint`)}</Text>

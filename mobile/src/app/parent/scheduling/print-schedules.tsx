@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Card, CardContent } from '@/components/ui/card';
+import { Initials, RowItem } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Text } from '@/components/ui/text';
 import { NoChild, useChild } from '@/features/parent/child';
 import { usePortalAcademic } from '@/features/portal/academic';
@@ -26,13 +27,14 @@ export default function ParentPrintSchedules() {
       list={
         <View className="gap-2">
           <Text className="text-sm font-semibold">{t('common.found_students', { count: 1 })}</Text>
-          <Card>
-            <CardContent className="gap-1 p-4">
-              <Text className="font-medium">{name}</Text>
-              <Text className="text-muted-foreground text-xs">{`${s('th_student_number')}: ${child.student_number}`}</Text>
-              <Text className="text-muted-foreground text-xs">{`${s('th_grade_level')}: ${child.grade_level || '—'}`}</Text>
-            </CardContent>
-          </Card>
+          <Panel>
+            <RowItem
+              leading={<Initials name={name} size={40} />}
+              title={name}
+              meta={`${s('th_student_number')}: ${child.student_number} · ${s('th_grade_level')}: ${child.grade_level || '—'}`}
+              last
+            />
+          </Panel>
         </View>
       }
     />

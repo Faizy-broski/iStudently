@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { DateField } from '@/components/app/date-field';
 import { MultiSelect } from '@/components/app/multi-select';
 import { SearchBar } from '@/components/app/search-bar';
@@ -31,19 +32,19 @@ type Payment = StudentWithPayments['payments'][number] & { student: StudentWithP
 type Group = { student: StudentWithPayments; payments: Payment[]; totalPaid: number; balance: number };
 
 const CSS = `
-.doc{border:2px solid #333;padding:24px}
-.hd{text-align:center;border-bottom:2px solid #333;padding-bottom:14px;margin-bottom:14px}
-.hd .dt{font-size:12px;color:#888;margin:0 0 8px}
+.doc{border:2px solid ${colors.printText};padding:24px}
+.hd{text-align:center;border-bottom:2px solid ${colors.printText};padding-bottom:14px;margin-bottom:14px}
+.hd .dt{font-size:12px;color:${colors.printMuted};margin:0 0 8px}
 .hd img{height:64px;display:block;margin:0 auto 8px}
-.hd .ini{height:64px;width:64px;line-height:64px;margin:0 auto 8px;background:#1e3a5f;color:#fff;border-radius:12px;font-size:28px;font-weight:700}
+.hd .ini{height:64px;width:64px;line-height:64px;margin:0 auto 8px;background:${colors.brand};color:${colors.white};border-radius:12px;font-size:28px;font-weight:700}
 .hd h1{font-size:22px;margin:0 0 4px}
-.hd .lb{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;margin:0}
+.hd .lb{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${colors.printMuted};margin:0}
 .grid{width:100%;margin-bottom:18px}.grid td{vertical-align:top}.grid p{margin:2px 0}
-table.t{width:100%;border-collapse:collapse;margin-bottom:18px}table.t th,table.t td{border:1px solid #333;padding:7px;text-align:start;font-size:13px}table.t th{background:#f0f0f0}
-.num{text-align:end !important}.b{font-weight:bold}.red{color:#dc2626}
-.box{width:100%;background:#f0f0f0;border:1px solid #ddd;margin-bottom:18px}.box td{text-align:center;padding:16px}.box .l{color:#666;font-size:13px}.box .a{font-size:24px;font-weight:bold;color:#16a34a}.box .a.due{color:#dc2626}
-.ft{border-top:1px solid #333;padding-top:12px;font-size:12px;color:#666}
-.sig{display:inline-block;border-top:1px solid #333;width:200px;text-align:center;padding-top:4px;margin-top:40px}
+table.t{width:100%;border-collapse:collapse;margin-bottom:18px}table.t th,table.t td{border:1px solid ${colors.printText};padding:7px;text-align:start;font-size:13px}table.t th{background:${colors.printSurface}}
+.num{text-align:end !important}.b{font-weight:bold}.red{color:${colors.destructive}}
+.box{width:100%;background:${colors.printSurface};border:1px solid ${colors.printBorder};margin-bottom:18px}.box td{text-align:center;padding:16px}.box .l{color:${colors.printMuted};font-size:13px}.box .a{font-size:24px;font-weight:bold;color:${colors.success}}.box .a.due{color:${colors.destructive}}
+.ft{border-top:1px solid ${colors.printText};padding-top:12px;font-size:12px;color:${colors.printMuted}}
+.sig{display:inline-block;border-top:1px solid ${colors.printText};width:200px;text-align:center;padding-top:4px;margin-top:40px}
 .mb h3{display:flex;justify-content:space-between;font-size:14px;margin:12px 0 6px}`;
 
 /**
@@ -201,7 +202,7 @@ export default function PrintFeeDocuments() {
         ${members
           .map(
             (m) =>
-              `<div class="mb"><h3><span>${escapeHtml(`${nameOf(m.student.profiles)} (${m.student.student_number || '-'}) — ${m.student.grade_levels?.name || '-'}`)}</span><span class="${m.balance > 0 ? 'red' : ''}">${escapeHtml(rec('remainingBalance'))}: ${escapeHtml(money(m.balance))}</span></h3>${m.payments.length ? paymentsTable(m.payments) : `<p style="font-style:italic;color:#888;font-size:13px">${escapeHtml(rec('noPayments'))}</p>`}</div>`,
+              `<div class="mb"><h3><span>${escapeHtml(`${nameOf(m.student.profiles)} (${m.student.student_number || '-'}) — ${m.student.grade_levels?.name || '-'}`)}</span><span class="${m.balance > 0 ? 'red' : ''}">${escapeHtml(rec('remainingBalance'))}: ${escapeHtml(money(m.balance))}</span></h3>${m.payments.length ? paymentsTable(m.payments) : `<p style="font-style:italic;color:${colors.printMuted};font-size:13px">${escapeHtml(rec('noPayments'))}</p>`}</div>`,
           )
           .join('')}
         <table class="box"><tr><td><div class="l">${escapeHtml(rec('familyTotalBalance'))}</div><div class="a${total > 0 ? ' due' : ''}">${escapeHtml(money(total))}</div></td></tr></table>${footer}</div>`;
@@ -327,12 +328,12 @@ export default function PrintFeeDocuments() {
             <Pressable onPress={() => toggle(f.id)} accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(f.id) }} className="active:bg-muted border-border flex-row items-center gap-3 border-b px-4 py-3">
               <Checkbox checked={selected.has(f.id)} onCheckedChange={() => toggle(f.id)} />
               <View className="flex-1">
-                <Text className="font-medium">{nameOf(f.students?.profiles)}</Text>
+                <Text className="text-sm font-semibold">{nameOf(f.students?.profiles)}</Text>
                 <Text className="text-muted-foreground text-xs">
                   {[f.students?.student_number, f.students?.grade_levels?.name, f.fee_month, f.due_date ? formatDate(f.due_date) : null].filter(Boolean).join(' · ')}
                 </Text>
               </View>
-              <Text className={f.balance > 0 ? 'font-semibold text-red-600 dark:text-red-400' : 'font-semibold'}>{money(f.balance)}</Text>
+              <Text className={f.balance > 0 ? 'font-semibold text-destructive ' : 'font-semibold'}>{money(f.balance)}</Text>
             </Pressable>
           )}
         />
@@ -349,12 +350,12 @@ export default function PrintFeeDocuments() {
             <Pressable onPress={() => toggle(p.id)} accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(p.id) }} className="active:bg-muted border-border flex-row items-center gap-3 border-b px-4 py-3">
               <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggle(p.id)} />
               <View className="flex-1">
-                <Text className="font-medium">{nameOf(p.student.profiles)}</Text>
+                <Text className="text-sm font-semibold">{nameOf(p.student.profiles)}</Text>
                 <Text className="text-muted-foreground text-xs">
                   {[p.student.student_number, p.student.grade_levels?.name, formatDate(p.payment_date), p.receipt_number, p.manual_receipt_number, p.payment_method || pay('cash'), p.comment].filter(Boolean).join(' · ')}
                 </Text>
               </View>
-              <Text className="font-semibold text-green-600 dark:text-green-400">{money(p.amount)}</Text>
+              <Text className="font-semibold text-success ">{money(p.amount)}</Text>
             </Pressable>
           )}
         />

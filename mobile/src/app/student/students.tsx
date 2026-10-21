@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { FilterChips } from '@/components/app/filter-chips';
-import { PersonAvatar } from '@/components/app/person-avatar';
+import { DetailHeader, IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { Segmented } from '@/components/app/segmented';
 import { LoadingList } from '@/components/app/states';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { student } from '@/lib/api';
@@ -19,8 +19,8 @@ const longDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateStrin
 
 function Row({ label, value }: { label: string; value?: string | null }) {
   return (
-    <View className="border-border gap-0.5 border-b py-2 last:border-b-0">
-      <Text className="text-muted-foreground text-xs uppercase">{label}</Text>
+    <View className="border-info-soft dark:border-border gap-0.5 border-b px-4 py-2.5 last:border-b-0">
+      <Text className="text-muted-foreground text-[11px]">{label}</Text>
       <Text className="text-sm font-medium" selectable>
         {value || '—'}
       </Text>
@@ -39,15 +39,13 @@ export default function StudentInfo() {
   if (info.error) {
     return (
       <View className="bg-background flex-1 p-4">
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-          <CardContent className="flex-row items-center gap-3 p-4">
-            <Icon as={AlertCircle} className="size-8 text-red-600" />
-            <View className="flex-1">
-              <Text className="font-semibold text-red-900 dark:text-red-200">{k('error')}</Text>
-              <Text className="text-sm text-red-700 dark:text-red-300">{info.error.message}</Text>
-            </View>
-          </CardContent>
-        </Card>
+        <View className="border-destructive/30 bg-destructive-soft flex-row items-center gap-3 rounded-2xl border p-4">
+          <Icon as={AlertCircle} className="text-destructive size-8" />
+          <View className="flex-1">
+            <Text className="text-destructive font-semibold">{k('error')}</Text>
+            <Text className="text-destructive text-sm">{info.error.message}</Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -60,29 +58,20 @@ export default function StudentInfo() {
     <>
       <Stack.Screen options={{ title: fullName || t('sidebar.students') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => info.mutate()} />}>
-        <View className="flex-row items-center gap-3">
-          <PersonAvatar url={s.profile_photo_url} name={fullName} size={56} />
-          <View className="flex-1">
-            <Text className="text-xl font-bold">{fullName || '—'}</Text>
-            <Text className="text-muted-foreground text-sm">{s.school_name}</Text>
-          </View>
-        </View>
-        <FilterChips<Tab> value={tab} onChange={setTab} options={[{ value: 'general', label: k('general') }, { value: 'contacts', label: k('contacts') }]} />
+        <DetailHeader name={fullName || '—'} subtitle={s.school_name} photo={s.profile_photo_url} />
+        <Segmented<Tab> value={tab} onChange={setTab} options={[{ value: 'general', label: k('general') }, { value: 'contacts', label: k('contacts') }]} />
 
         {tab === 'general' ? (
           <>
-            <Card>
-              <CardContent className="p-4">
+            <Panel className="py-1">
                 <Row label={k('name')} value={fullName} />
                 <Row label={k('number')} value={s.student_number} />
                 <Row label={k('admission')} value={admission} />
                 <Row label={k('grade')} value={s.grade_level_name || s.grade_level} />
                 <Row label={k('section')} value={s.section_name} />
                 <Row label={k('school')} value={s.school_name} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
+            </Panel>
+            <Panel className="py-1">
                 <Row label={k('gender')} value={s.gender} />
                 <Row label={k('birthdate')} value={longDate(s.date_of_birth)} />
                 <Row label={k('age')} value={s.age} />
@@ -90,42 +79,33 @@ export default function StudentInfo() {
                 <Row label={k('father')} value={s.father_name} />
                 <Row label={k('grandfather')} value={s.grandfather_name} />
                 <Row label={k('last')} value={s.last_name} />
-              </CardContent>
-            </Card>
+            </Panel>
             <Text className="text-muted-foreground text-sm">{k('enroll_found')}</Text>
-            <Card>
-              <CardContent className="p-4">
+            <Panel className="py-1">
                 <Row label={k('enroll_start')} value={admission ? k('begin_year', { date: admission }) : null} />
                 <Row label={k('dropped')} value="- - N/A" />
                 <Row label={k('school')} value={s.school_name} />
-              </CardContent>
-            </Card>
+            </Panel>
           </>
         ) : (
           <>
-            <Card>
-              <CardContent className="p-4">
+            <Panel className="py-1">
                 <SectionTitle icon={Mail} label={k('contact')} />
                 <Row label={k('email')} value={s.email} />
                 <Row label={k('phone')} value={s.phone} />
-              </CardContent>
-            </Card>
+            </Panel>
             {s.address ? (
-              <Card>
-                <CardContent className="p-4">
+              <Panel className="py-1">
                   <SectionTitle icon={MapPin} label={k('address')} />
-                  <Text className="text-sm">{s.address}</Text>
-                </CardContent>
-              </Card>
+                  <Text className="px-4 pb-3 text-sm">{s.address}</Text>
+              </Panel>
             ) : null}
-            <Card>
-              <CardContent className="p-4">
+            <Panel className="py-1">
                 <SectionTitle icon={School} label={k('school_contact')} />
                 <Row label={k('school_name')} value={s.school_name} />
                 <Row label={k('school_address')} value={s.school_address} />
                 <Row label={k('school_phone')} value={s.school_phone} />
-              </CardContent>
-            </Card>
+            </Panel>
           </>
         )}
       </ScrollView>
@@ -135,9 +115,9 @@ export default function StudentInfo() {
 
 function SectionTitle({ icon, label }: { icon: typeof Mail; label: string }) {
   return (
-    <View className="mb-3 flex-row items-center gap-2">
-      <Icon as={icon} className="text-muted-foreground size-4" />
-      <Text className="text-muted-foreground text-sm font-semibold uppercase">{label}</Text>
+    <View className="flex-row items-center gap-2.5 px-4 pb-1 pt-3">
+      <IconTile icon={icon} size={32} />
+      <Text className="flex-1 font-semibold">{label}</Text>
     </View>
   );
 }

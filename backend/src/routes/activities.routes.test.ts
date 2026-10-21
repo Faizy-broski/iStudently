@@ -4,7 +4,7 @@
 jest.mock('../middlewares/auth.middleware', () => ({
   authenticate: (req: any, _res: any, next: any) => {
     const role = req.headers['x-test-role']
-    if (role) req.profile = { id: 'p1', role, school_id: 's1' }
+    if (role) req.profile = { id: 'p1', role, school_id: 's1', staff_id: role === 'teacher' ? 't1' : null }
     next()
   },
 }))
@@ -55,7 +55,7 @@ afterAll(() => {
 })
 beforeEach(() => {
   for (const k of Object.keys(rows)) delete rows[k]
-  Object.assign(rows, { act1: { school_id: 's1' }, actX: { school_id: 's9' }, stu1: { school_id: 'c1' }, stuX: { school_id: 's9' }, cp1: { school_id: 's1' }, cpX: { school_id: 's9' } })
+  Object.assign(rows, { act1: { school_id: 's1' }, actX: { school_id: 's9' }, stu1: { school_id: 'c1' }, stuX: { school_id: 's9' }, cp1: { school_id: 's1', teacher_id: 't1' }, cpX: { school_id: 's9' } })
 })
 
 const call = (method: string, path: string, body?: unknown, role = 'admin') =>

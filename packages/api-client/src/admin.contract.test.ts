@@ -1,4 +1,7 @@
 import { portalApi } from './modules/portal'
+import { appConfigApi } from './modules/app-config'
+import { authApi } from './modules/auth'
+import { mediaApi } from './modules/media'
 import { teacherApi } from './modules/teacher'
 import { assignmentsApi } from './modules/assignments'
 import { examsApi } from './modules/exams'
@@ -7,12 +10,15 @@ import { readingLogsApi } from './modules/reading-logs'
 import { inspectorApi } from './modules/inspector'
 import { librarianApi } from './modules/librarian'
 import { learningResourcesApi } from './modules/learning-resources'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 import { createApiClient } from './client'
 import { campusesApi } from './modules/admin/campuses'
+import { adminSchoolDataImportApi } from './modules/admin/school-data-import'
+import { exportTemplatesApi } from './modules/admin/export-templates'
+import { adminParentAgreementApi } from './modules/admin/parent-agreement'
 import { schoolDashboardApi } from './modules/admin/dashboard'
 import { adminSchoolApi } from './modules/admin/school'
 import { adminStudentsApi } from './modules/admin/students'
@@ -36,6 +42,8 @@ import { adminQuizApi } from './modules/admin/quiz'
 import { adminOnlineClassesApi } from './modules/admin/online-classes'
 import { adminActivitiesApi } from './modules/admin/activities'
 import { adminHistoricalGradesApi } from './modules/admin/historical-grades'
+import { jahbadhGradesApi } from './modules/jahbadh-grades'
+import { jahbadhControlApi } from './modules/jahbadh-control'
 import { adminHumanResourcesApi } from './modules/admin/human-resources'
 import { adminLetterTemplatesApi } from './modules/admin/letter-templates'
 import { adminAttendanceApi } from './modules/admin/attendance'
@@ -88,6 +96,7 @@ const ROUTERS: Record<string, string> = {
   'school-dashboard': 'school-dashboard.routes.ts',
   'school-settings': 'school-settings.routes.ts',
   auth: 'auth.routes.ts',
+  media: 'media-upload.routes.ts',
   'setup-assistant': 'setup-assistant.routes.ts',
   'user-profiles': 'user-profiles.routes.ts',
   push: 'push-notifications.routes.ts',
@@ -149,6 +158,9 @@ const ROUTERS: Record<string, string> = {
   staff: 'staff.routes.ts',
   'default-field-orders': 'default-field-order.routes.ts',
   'signup-links': 'signup-links.routes.ts',
+  'school-data-import': 'school-data-import.routes.ts',
+  'export-templates': 'export-templates.routes.ts',
+  'parent-agreement': 'parent-agreement.routes.ts',
   'pending-signups': 'pending-signups.routes.ts',
   mail: 'mail.routes.ts',
   'staff-designations': 'staff-designation.routes.ts',
@@ -185,6 +197,8 @@ const ROUTERS: Record<string, string> = {
   'letter-templates': 'letter-template.routes.ts',
   'history-marking-periods': 'history-marking-periods.routes.ts',
   'historical-grades': 'historical-grades.routes.ts',
+  'jahbadh-grades': 'jahbadh-grades.routes.ts',
+  'jahbadh-control': 'jahbadh-control.routes.ts',
   'graduation-paths': 'graduation-paths.routes.ts',
   gradebook: 'gradebook.routes.ts',
   scheduling: 'scheduling.routes.ts',
@@ -219,7 +233,6 @@ const ROUTERS: Record<string, string> = {
   'inspector-teachers': 'inspector-teacher-profile.routes.ts',
   'inspection-coaching': 'inspection-coaching.routes.ts',
   'inspection-media': 'inspection-media.routes.ts',
-  'hifzi/compliance': 'hifzi/compliance.routes.ts',
   'training-prescriptions': 'training-prescription.routes.ts',
   inspectors: 'inspector-directory.routes.ts',
   performance: 'performance.routes.ts',
@@ -246,6 +259,9 @@ const MODULES: Record<string, (api: ReturnType<typeof createApiClient>) => Recor
   customFields: adminCustomFieldsApi as any,
   fieldOrders: adminFieldOrdersApi as any,
   signups: adminSignupsApi as any,
+  exportTemplates: exportTemplatesApi as any,
+  parentAgreement: adminParentAgreementApi as any,
+  schoolDataImport: ((api: any) => { const { templatePath: _t, ...rest } = adminSchoolDataImportApi(api); return rest }) as any,
   mail: adminMailApi as any,
   analytics: adminAnalyticsApi as any,
   designations: adminDesignationsApi as any,
@@ -258,6 +274,8 @@ const MODULES: Record<string, (api: ReturnType<typeof createApiClient>) => Recor
   onlineClasses: adminOnlineClassesApi as any,
   activities: adminActivitiesApi as any,
   historicalGrades: adminHistoricalGradesApi as any,
+  jahbadhGrades: jahbadhGradesApi as any,
+  jahbadhControl: jahbadhControlApi as any,
   humanResources: adminHumanResourcesApi as any,
   letterTemplates: adminLetterTemplatesApi as any,
   discipline: adminDisciplineApi as any,
@@ -266,7 +284,10 @@ const MODULES: Record<string, (api: ReturnType<typeof createApiClient>) => Recor
   periods: adminPeriodsApi as any,
   calendars: adminCalendarsApi as any,
   generator: adminGeneratorApi as any,
-  portal: adminPortalApi as any,
+  adminPortal: adminPortalApi as any,
+  appConfig: appConfigApi as any,
+  authClient: authApi as any,
+  media: mediaApi as any,
   rollover: adminRolloverApi as any,
   calculations: adminCalculationsApi as any,
   weather: adminWeatherApi as any,
@@ -346,6 +367,38 @@ async function record(factory: (typeof MODULES)[string]) {
   for (const fn of Object.values(factory(api))) await fn('campus-1', 'x', 1)
   return calls
 }
+
+const APP_TS = join(BACKEND_ROUTES, '../app.ts')
+
+/** A router file counts as mounted when app.ts (or a router that is itself mounted) imports it and uses the import. */
+function isMounted(file: string, seen = new Set<string>()): boolean {
+  const spec = `./${file.replace(/\.ts$/, '')}`
+  const used = (src: string, from: string) => {
+    const re = new RegExp(`import\\s+(\\w+)\\s*(?:,\\s*\\{[^}]*\\})?\\s+from\\s+['"]${from.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}['"]`)
+    const name = src.match(re)?.[1]
+    return !!name && (src.match(new RegExp(`\\b${name}\\b`, 'g')) ?? []).length > 1
+  }
+  if (used(readFileSync(APP_TS, 'utf8'), `./routes/${file.replace(/\.ts$/, '')}`)) return true
+  if (seen.has(file)) return false
+  seen.add(file)
+  const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : ''
+  return readdirSync(BACKEND_ROUTES, { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('.routes.ts') && f !== file)
+    .some((other) => {
+      const odir = other.includes('/') ? other.slice(0, other.lastIndexOf('/') + 1) : ''
+      const rel = odir === dir ? spec : `./${file.replace(/\.ts$/, '')}`
+      const src = readFileSync(join(BACKEND_ROUTES, other), 'utf8')
+      return (used(src, rel) || used(src, `../${file.replace(/\.ts$/, '')}`)) && isMounted(other, seen)
+    })
+}
+
+describe('backend routers used by the app are mounted', () => {
+  const files = [...new Set([...Object.values(ROUTERS), ...Object.values(EXTRA_ROUTERS).flat().map(([f]) => f)])]
+  it.each(files)('%s is registered in app.ts', (file) => {
+    expect(isMounted(file)).toBe(true)
+  })
+})
 
 describe('admin modules match backend routes', () => {
   const routers = Object.fromEntries(

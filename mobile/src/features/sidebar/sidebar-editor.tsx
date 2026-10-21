@@ -1,16 +1,18 @@
 import type { ApiResponse, SidebarConfig, SidebarConfigInput } from '@studently/api-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
-import { ImagePlus, LayoutDashboard, RotateCcw } from 'lucide-react-native';
+import { Eye, ImagePlus, LayoutDashboard, Palette, RotateCcw } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { z } from 'zod';
 
+import { colors } from '@/lib/colors';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { ColorField, NumberField } from '@/components/app/form';
+import { FormSection } from '@/components/app/layout';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -26,14 +28,14 @@ import { useAction } from '@/lib/use-action';
 const POSITIONS = ['top', 'center', 'bottom', 'left', 'right'] as const;
 /** Same presets as the web (SidebarConfigEditor COLOR_PRESETS). */
 const PRESETS = [
-  ['default_blue', '#022172'],
-  ['deep_navy', '#0f172a'],
-  ['forest_green', '#14532d'],
-  ['burgundy', '#6b1e1e'],
-  ['charcoal', '#374151'],
-  ['dark_teal', '#134e4a'],
-  ['royal_purple', '#3b0764'],
-  ['slate', '#1e293b'],
+  ['default_blue', colors.sidebarPresetDefaultBlue],
+  ['deep_navy', colors.sidebarPresetDeepNavy],
+  ['forest_green', colors.sidebarPresetForestGreen],
+  ['burgundy', colors.sidebarPresetBurgundy],
+  ['charcoal', colors.sidebarPresetCharcoal],
+  ['dark_teal', colors.sidebarPresetDarkTeal],
+  ['royal_purple', colors.sidebarPresetRoyalPurple],
+  ['slate', colors.sidebarPresetSlate],
 ] as const;
 const hexOrEmpty = z.string().trim().regex(/^(#[0-9a-fA-F]{6})?$/, 'app.v_hex');
 const schema = z.object({
@@ -109,64 +111,69 @@ export function SidebarEditor({
   return (
     <Screen scroll edges={['bottom']}>
         {header}
-        <View className="h-40 overflow-hidden rounded-lg" style={{ backgroundColor: f.bg_color || '#0f172a' }}>
-          {f.bg_image_url ? (
-            <Image
-              source={{ uri: f.bg_image_url }}
-              style={{ position: 'absolute', inset: 0, opacity: f.bg_image_opacity ?? 1 }}
-              contentFit="cover"
-              contentPosition={f.bg_image_position}
-            />
-          ) : null}
-          <View className="flex-row items-center gap-2 p-4">
-            <Icon as={LayoutDashboard} size={18} color={f.text_color || '#ffffff'} />
-            <Text style={{ color: f.text_color || '#ffffff' }} className="font-medium">
-              {t('app.sb_preview_item')}
-            </Text>
+        <FormSection title={t('app.sb_preview_item')} icon={Eye}>
+          <View className="h-40 overflow-hidden rounded-xl" style={{ backgroundColor: f.bg_color || colors.printText }}>
+            {f.bg_image_url ? (
+              <Image
+                source={{ uri: f.bg_image_url }}
+                style={{ position: 'absolute', inset: 0, opacity: f.bg_image_opacity ?? 1 }}
+                contentFit="cover"
+                contentPosition={f.bg_image_position}
+              />
+            ) : null}
+            <View className="flex-row items-center gap-2 p-4">
+              <Icon as={LayoutDashboard} size={18} color={f.text_color || colors.white} />
+              <Text style={{ color: f.text_color || colors.white }} className="font-medium">
+                {t('app.sb_preview_item')}
+              </Text>
+            </View>
           </View>
-        </View>
+        </FormSection>
 
-        <Label>{t('sidebarConfig.preset_colors')}</Label>
-        <View className="flex-row flex-wrap gap-2">
-          {PRESETS.map(([id, color]) => (
-            <Pressable
-              key={id}
-              onPress={() => setValue('bg_color', color, { shouldDirty: true })}
-              accessibilityRole="button"
-              accessibilityLabel={t(`sidebarConfig.preset_${id}`)}
-              accessibilityState={{ selected: f.bg_color?.toLowerCase() === color }}
-              className={f.bg_color?.toLowerCase() === color ? 'border-primary rounded-md border-2 p-0.5' : 'rounded-md border-2 border-transparent p-0.5'}>
-              <View className="h-9 w-9 rounded" style={{ backgroundColor: color }} />
-            </Pressable>
-          ))}
-        </View>
-        <ColorField control={control} name="bg_color" label={t('app.sb_bg_color')} />
-        <ColorField control={control} name="text_color" label={t('app.sb_text_color')} />
-        <Label>{t('app.sb_image')}</Label>
-        <View className="flex-row flex-wrap gap-2">
-          <Button variant="outline" size="sm" onPress={uploadImage} disabled={uploading}>
-            <Icon as={ImagePlus} className="size-4" />
-            <Text>{uploading ? t('app.ob_uploading') : f.bg_image_url ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
-          </Button>
-          {f.bg_image_url ? (
-            <Button variant="ghost" size="sm" onPress={() => setValue('bg_image_url', null, { shouldDirty: true })}>
-              <Text>{t('app.lp_remove_image')}</Text>
+        <FormSection title={t('sidebarConfig.preset_colors')} icon={Palette}>
+          <View className="flex-row flex-wrap gap-2">
+            {PRESETS.map(([id, color]) => (
+              <Pressable
+                key={id}
+                onPress={() => setValue('bg_color', color, { shouldDirty: true })}
+                accessibilityRole="button"
+                accessibilityLabel={t(`sidebarConfig.preset_${id}`)}
+                accessibilityState={{ selected: f.bg_color?.toLowerCase() === color }}
+                className={f.bg_color?.toLowerCase() === color ? 'border-brand dark:border-brand-secondary rounded-xl border-2 p-0.5' : 'rounded-xl border-2 border-transparent p-0.5'}>
+                <View className="h-9 w-9 rounded-lg" style={{ backgroundColor: color }} />
+              </Pressable>
+            ))}
+          </View>
+          <ColorField control={control} name="bg_color" label={t('app.sb_bg_color')} />
+          <ColorField control={control} name="text_color" label={t('app.sb_text_color')} />
+        </FormSection>
+        <FormSection title={t('app.sb_image')} icon={ImagePlus}>
+          <View className="flex-row flex-wrap gap-2">
+            <Button variant="outline" size="sm" onPress={uploadImage} disabled={uploading}>
+              <Icon as={ImagePlus} className="size-4" />
+              <Text>{uploading ? t('app.ob_uploading') : f.bg_image_url ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
             </Button>
+            {f.bg_image_url ? (
+              <Button variant="ghost" size="sm" onPress={() => setValue('bg_image_url', null, { shouldDirty: true })}>
+                <Text>{t('app.lp_remove_image')}</Text>
+              </Button>
+            ) : null}
+          </View>
+          {f.bg_image_url ? (
+            <>
+              <NumberField control={control} name="bg_image_opacity" label={t('app.sb_opacity')} />
+              <Label>{t('app.sb_position')}</Label>
+              <FilterChips value={f.bg_image_position} onChange={(p) => setValue('bg_image_position', p, { shouldDirty: true })} options={POSITIONS.map((p) => ({ value: p, label: t(`app.sb_pos_${p}`) }))} />
+            </>
           ) : null}
-        </View>
-        {f.bg_image_url ? (
-          <>
-            <NumberField control={control} name="bg_image_opacity" label={t('app.sb_opacity')} />
-            <Label>{t('app.sb_position')}</Label>
-            <FilterChips value={f.bg_image_position} onChange={(p) => setValue('bg_image_position', p, { shouldDirty: true })} options={POSITIONS.map((p) => ({ value: p, label: t(`app.sb_pos_${p}`) }))} />
-          </>
-        ) : null}
+        </FormSection>
 
         <Button onPress={handleSubmit((v) => save.run(v))} disabled={save.running || uploading}>
           <Text>{t('app.bl_save')}</Text>
         </Button>
         <Button
           variant="ghost"
+          className="bg-destructive-soft rounded-full"
           onPress={async () => {
             if (await confirm({ title: t('app.sb_reset_title'), body: t('app.sb_reset_body'), destructive: true, confirmLabel: t('app.lp_reset') })) resetCfg.run();
           }}

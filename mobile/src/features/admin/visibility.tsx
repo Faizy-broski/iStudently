@@ -10,6 +10,7 @@ import { SearchBar } from '@/components/app/search-bar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { CheckRow } from '@/features/admin/attendance';
 import { shortName } from '@/features/admin/people';
@@ -99,7 +100,7 @@ export function VisibilityPicker({ value, onChange }: { value: VisibilityState; 
           setDraft(value);
           setOpen(true);
         }}
-        className="border-input flex-row items-center gap-2 rounded-md border px-3 py-2.5">
+        className="border-input flex-row items-center gap-2 rounded-xl border px-3 py-2.5">
         <Icon as={Eye} className="text-muted-foreground size-4" />
         <Text className="flex-1 text-sm" numberOfLines={1}>
           {summary}
@@ -125,7 +126,7 @@ export function VisibilityPicker({ value, onChange }: { value: VisibilityState; 
                 {ROLES.map((r) => (
                   <CheckRow key={r} checked={draft.roles.includes(r)} onPress={() => setDraft((d) => ({ ...d, roles: d.roles.includes(r) ? d.roles.filter((x) => x !== r) : [...d.roles, r] }))} label={v(`role_${r}`)} />
                 ))}
-                {draft.roles.length === 0 ? <Text className="text-xs text-amber-600">{v('no_roles_hint')}</Text> : null}
+                {draft.roles.length === 0 ? <Text className="text-xs text-warning">{v('no_roles_hint')}</Text> : null}
               </>
             ) : (
               <>
@@ -165,11 +166,11 @@ export function VisibilityPicker({ value, onChange }: { value: VisibilityState; 
                       <CheckRow checked={filteredStudents.every((s) => draft.userIds.includes(s.id))} onPress={() => toggleAll(filteredStudents.map((s) => s.id))} label={v('select_all_n', { count: filteredStudents.length })} />
                     ) : null}
                     {students.isLoading ? (
-                      <Text className="text-muted-foreground py-4 text-center text-sm">{t('common.loading')}</Text>
+                      <EmptyState title={t('common.loading')} />
                     ) : !(students.data ?? []).length ? (
-                      <Text className="text-muted-foreground py-4 text-center text-sm">{v('no_students_found')}</Text>
+                      <EmptyState title={v('no_students_found')} />
                     ) : !filteredStudents.length ? (
-                      <Text className="text-muted-foreground py-4 text-center text-sm">{v('no_students_match')}</Text>
+                      <EmptyState title={v('no_students_match')} />
                     ) : (
                       filteredStudents.map((s) => (
                         <CheckRow key={s.id} checked={draft.userIds.includes(s.id)} onPress={() => toggleId(s.id)} label={`${s.name || `${s.first_name} ${s.last_name}`} · ${s.grade_level}${s.section_name ? ` - ${s.section_name}` : ''}`} />
@@ -181,9 +182,9 @@ export function VisibilityPicker({ value, onChange }: { value: VisibilityState; 
                     <SearchBar value={staffSearch} onChangeText={setStaffSearch} placeholder={v('search_staff')} />
                     {filteredStaff.length ? <CheckRow checked={filteredStaff.every((s) => draft.userIds.includes(s.id))} onPress={() => toggleAll(filteredStaff.map((s) => s.id))} label={v('select_all_staff')} /> : null}
                     {staff.isLoading ? (
-                      <Text className="text-muted-foreground py-4 text-center text-sm">{t('common.loading')}</Text>
+                      <EmptyState title={t('common.loading')} />
                     ) : !filteredStaff.length ? (
-                      <Text className="text-muted-foreground py-4 text-center text-sm">{v('no_staff_found')}</Text>
+                      <EmptyState title={v('no_staff_found')} />
                     ) : (
                       filteredStaff.map((s) => <CheckRow key={s.id} checked={draft.userIds.includes(s.id)} onPress={() => toggleId(s.id)} label={`${s.name} · ${s.tag}`} />)
                     )}

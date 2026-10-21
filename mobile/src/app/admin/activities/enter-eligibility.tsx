@@ -7,7 +7,7 @@ import { Pressable, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { ELIGIBILITY_TEXT, ELIGIBILITY_TONE, useAc } from '@/features/admin/activities';
 import { useCampus } from '@/features/campus/campus';
-import { adminActivities, adminCourses, adminScheduling } from '@/lib/api';
+import { adminActivities, adminCourses, adminStudents } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
@@ -62,15 +62,15 @@ export default function EnterEligibility() {
     if (!cpId || !date) return;
     setLoading(true);
     try {
-      // The course period's own students (the web lists the whole school here).
-      const [cl, el] = await Promise.all([adminScheduling.classListForPeriod(cpId), adminActivities.eligibility(cpId, date, campusId)]);
+      // Same list as the web: the school's (campus's) students, up to 500.
+      const [cl, el] = await Promise.all([adminStudents.list(campusId, { page: 1, limit: 500 }), adminActivities.eligibility(cpId, date, campusId)]);
       if (!cl.success || !el.success) return toast.error(cl.error || el.error || a('failedToLoadStudents'));
       const existing = new Map((el.data ?? []).map((e) => [e.student_id, e.eligibility_code]));
-      const next = (cl.data?.students ?? []).map((s) => ({
-        student_id: s.student_id,
-        name: s.student_name,
+      const next = (cl.data ?? []).map((s) => ({
+        student_id: s.id,
+        name: [s.profile?.first_name, s.profile?.father_name, s.profile?.last_name].filter(Boolean).join(' ').trim() || s.student_number,
         student_number: s.student_number ?? '',
-        eligibility_code: existing.get(s.student_id) ?? ('PASSING' as EligibilityCode),
+        eligibility_code: existing.get(s.id) ?? ('PASSING' as EligibilityCode),
       }));
       next.sort((x, y) => x.name.localeCompare(y.name));
       setRows(next);
@@ -147,7 +147,7 @@ export default function EnterEligibility() {
                     <CodeChips value={null} onChange={(c) => setRows(rows.map((x) => ({ ...x, eligibility_code: c })))} />
                   </View>
                 ) : (
-                  <Text className="text-muted-foreground py-4 text-center text-sm">{a('noStudentsFound')}</Text>
+                  <EmptyState title={a('noStudentsFound')} />
                 )}
                 {rows.map((x) => (
                   <View key={x.student_id} className="gap-1.5">

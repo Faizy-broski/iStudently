@@ -1,15 +1,17 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { FileDown, Search } from 'lucide-react-native';
+import { FileDown, Search, Table2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, RefreshControl, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
+import { FormSection } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useTeacherStudents } from '@/features/teacher/students';
 import { adminCustomFields, adminStudents } from '@/lib/api';
@@ -67,8 +69,8 @@ export default function TeacherReportResults() {
 
   if (report.isLoading || mine.isLoading) {
     return (
-      <View className="bg-background flex-1 items-center justify-center">
-        <ActivityIndicator />
+      <View className="bg-background flex-1">
+        <LoadingList rows={5} />
       </View>
     );
   }
@@ -77,41 +79,37 @@ export default function TeacherReportResults() {
       <Stack.Screen options={{ title: t('app.pa_ar_results') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => report.mutate()} />}>
         <View className="flex-row items-center justify-between gap-2">
-          <Text variant="muted" className="flex-1">
+          <Text variant="muted" className="flex-1 text-sm">
             {t('common.found_students', { count: rows.length })}
           </Text>
-          <Button variant="outline" onPress={exportCsv} disabled={!rows.length}>
-            <Icon as={FileDown} className="size-4" />
+          <Button size="sm" variant="outline" className="rounded-full" onPress={exportCsv} disabled={!rows.length}>
+            <Icon as={FileDown} className="text-brand dark:text-brand-secondary size-4" />
             <Text>{k('export')}</Text>
           </Button>
         </View>
-        {report.error ? <Text className="text-sm text-red-600">{report.error.message}</Text> : null}
-        <Card>
-          <CardHeader>
-            <CardTitle>{k('data')}</CardTitle>
-            <CardDescription>{k('count', { count: selected.length })}</CardDescription>
-          </CardHeader>
-          <CardContent className="gap-3">
-            <View className="justify-center">
-              <Icon as={Search} className="text-muted-foreground absolute start-3 size-4" />
-              <Input className="ps-9" value={query} onChangeText={setQuery} placeholder={t('common.search')} />
-            </View>
-            {!rows.length ? (
-              <Text className="text-muted-foreground py-6 text-center">{t('app.pa_ar_none')}</Text>
-            ) : (
-              rows.map((r) => (
-                <View key={String(r.id)} className="border-border rounded-lg border px-3 py-1">
-                  {selected.map((f) => (
-                    <View key={f} className="border-border flex-row justify-between gap-3 border-b py-2 last:border-b-0">
-                      <Text className="text-muted-foreground flex-1 text-sm">{labelOf(f)}</Text>
-                      <Text className="flex-1 text-end text-sm font-medium">{valueOf(r, f)}</Text>
-                    </View>
-                  ))}
+        {report.error ? <ErrorState message={report.error.message} onRetry={() => report.mutate()} /> : null}
+        <FormSection title={k('data')} description={k('count', { count: selected.length })} icon={Table2}>
+          <View className="justify-center">
+            <Icon as={Search} className="text-muted-foreground absolute start-3 size-4" />
+            <Input className="ps-9" value={query} onChangeText={setQuery} placeholder={t('common.search')} />
+          </View>
+        </FormSection>
+        {!rows.length ? (
+          <EmptyState icon={Search} title={t('app.pa_ar_none')} />
+        ) : (
+          rows.map((r) => (
+            <Panel key={String(r.id)} className="px-4 py-1">
+              {selected.map((f, i) => (
+                <View key={f} className={i < selected.length - 1 ? 'border-info-soft dark:border-border flex-row justify-between gap-3 border-b py-2.5' : 'flex-row justify-between gap-3 py-2.5'}>
+                  <Text variant="muted" className="flex-1 text-xs">
+                    {labelOf(f)}
+                  </Text>
+                  <Text className="flex-1 text-end text-sm font-medium">{valueOf(r, f)}</Text>
                 </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
+              ))}
+            </Panel>
+          ))
+        )}
       </ScrollView>
     </>
   );

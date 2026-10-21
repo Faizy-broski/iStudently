@@ -104,18 +104,18 @@ export default function Rollover() {
   }
 
   const checklist = (
-    <View className="border-border rounded-md border">
+    <View className="border-info-soft dark:border-border rounded-xl border">
       {ITEMS.map((item, i) => {
         const on = !!options[item.key];
         const has = (item.existing?.(pv) ?? 0) > 0;
         return (
           <Pressable key={item.key} onPress={() => setOptions((o) => ({ ...o, [item.key]: !on }))} className={cn('flex-row items-center gap-3 px-4 py-2.5', i > 0 && 'border-border border-t')}>
             {item.indent ? <Text className="text-muted-foreground ms-3 text-xs">↳</Text> : null}
-            <View className={cn('size-4 items-center justify-center rounded-sm border-2', on ? 'border-teal-600 bg-teal-600' : 'border-gray-400')}>{on ? <Text className="text-[10px] font-bold text-white">✓</Text> : null}</View>
+            <View className={cn('size-4 items-center justify-center rounded-sm border-2', on ? 'border-success bg-success' : 'border-border')}>{on ? <Text className="text-[10px] font-bold text-white">✓</Text> : null}</View>
             <Text className={cn('flex-1 text-sm', has && on && 'text-muted-foreground')}>{r(`rollover_items.${item.key}`)}</Text>
             {item.info ? (
               <Pressable onPress={() => toast.info(r(`rollover_items.${item.key}_info`))} hitSlop={8}>
-                <Icon as={Info} className="size-4 text-orange-500" />
+                <Icon as={Info} className="size-4 text-warning" />
               </Pressable>
             ) : null}
           </Pressable>
@@ -136,7 +136,7 @@ export default function Rollover() {
             <Card>
               <CardContent className="gap-3 pt-4">
                 <View className="flex-row items-center gap-2">
-                  <Icon as={Info} className="size-5 text-blue-500" />
+                  <Icon as={Info} className="size-5 text-brand dark:text-brand-secondary" />
                   <Text className="font-semibold">{r('select_academic_years')}</Text>
                 </View>
                 <Text className="text-muted-foreground text-sm">{r('no_current_year_desc')}</Text>
@@ -160,7 +160,7 @@ export default function Rollover() {
               </CardContent>
             </Card>
           ) : (
-            <View className="border-destructive/50 bg-destructive/5 gap-1 rounded-md border p-3">
+            <View className="border-destructive/50 bg-destructive/5 gap-1 rounded-xl border p-3">
               <Text className="text-destructive font-semibold">{t('app.ro_not_available')}</Text>
               {years.length === 0 ? <Text className="text-sm">{t('app.ro_no_years')}</Text> : null}
               {years.length === 1 ? <Text className="text-sm">{t('app.ro_one_year', { name: years[0].name })}</Text> : null}
@@ -184,8 +184,8 @@ export default function Rollover() {
         </Button>
 
         {pc ? (
-          <View className={cn('flex-row gap-2 rounded-md border p-3', pc.is_valid ? 'border-green-500/50 bg-green-50 dark:bg-green-950/20' : 'border-destructive/50 bg-destructive/5')}>
-            <Icon as={pc.is_valid ? CheckCircle2 : AlertTriangle} className={pc.is_valid ? 'size-4 text-green-600' : 'text-destructive size-4'} />
+          <View className={cn('flex-row gap-2 rounded-md border p-3', pc.is_valid ? 'border-success bg-success-soft ' : 'border-destructive/50 bg-destructive/5')}>
+            <Icon as={pc.is_valid ? CheckCircle2 : AlertTriangle} className={pc.is_valid ? 'size-4 text-success' : 'text-destructive size-4'} />
             <View className="flex-1">
               <Text className="font-semibold">{pc.is_valid ? r('status_ready') : r('status_not_met')}</Text>
               <Text className="text-sm">{pc.error_message || r('all_checks_passed')}</Text>
@@ -196,16 +196,16 @@ export default function Rollover() {
         <Card>
           <CardContent className="items-center gap-2 pt-4">
             <Text className="text-muted-foreground text-sm">{r('label_current_year')}</Text>
-            <View className="rounded-lg bg-blue-100 px-6 py-2 dark:bg-blue-950/40">
-              <Text className="text-lg font-semibold text-blue-700 dark:text-blue-300">{current.name}</Text>
+            <View className="rounded-lg bg-info-soft px-6 py-2 ">
+              <Text className="text-lg font-semibold text-brand dark:text-brand-secondary ">{current.name}</Text>
             </View>
             <Text className="text-muted-foreground text-xs">
               {day(current.start_date)} - {day(current.end_date)}
             </Text>
             <Icon as={ArrowDown} className="text-muted-foreground size-6" />
             <Text className="text-muted-foreground text-sm">{r('label_roll_to')}</Text>
-            <View className="rounded-lg bg-green-100 px-6 py-2 dark:bg-green-950/40">
-              <Text className="text-lg font-semibold text-green-700 dark:text-green-300">{next.name}</Text>
+            <View className="rounded-lg bg-success-soft px-6 py-2 ">
+              <Text className="text-lg font-semibold text-success ">{next.name}</Text>
             </View>
             <Text className="text-muted-foreground text-xs">
               {day(next.start_date)} - {day(next.end_date)}
@@ -221,7 +221,7 @@ export default function Rollover() {
                 <Text className="text-sm font-medium">{r('label_campus_scope')}</Text>
               </View>
               <Picker value={scope} onChange={setScope} options={[{ value: 'all', label: r('campus_all') }, ...campuses.map((c) => ({ value: c.id, label: c.name }))]} />
-              {scope !== 'all' ? <Text className="text-xs font-medium text-amber-600">{r('campus_scope_warning')}</Text> : null}
+              {scope !== 'all' ? <Text className="text-xs font-medium text-warning">{r('campus_scope_warning')}</Text> : null}
             </CardContent>
           </Card>
         ) : null}
@@ -259,9 +259,9 @@ export default function Rollover() {
                 <Text className="text-2xl font-bold">{pv.marking_periods.current_year_total}</Text>
                 <Text className="text-muted-foreground text-xs">{r('to_be_rolled_over')}</Text>
                 {pv.marking_periods.next_year_existing > 0 ? (
-                  <View className="mt-2 flex-row gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 dark:border-amber-700 dark:bg-amber-950/30">
-                    <Icon as={AlertTriangle} className="size-3.5 text-amber-500" />
-                    <Text className="flex-1 text-xs text-amber-800 dark:text-amber-300">{r('marking_periods_exist_warning', { count: pv.marking_periods.next_year_existing, nextYear: next.name })}</Text>
+                  <View className="mt-2 flex-row gap-2 rounded-xl border border-warning/30 bg-warning-soft p-2">
+                    <Icon as={AlertTriangle} className="size-3.5 text-warning" />
+                    <Text className="flex-1 text-xs text-warning ">{r('marking_periods_exist_warning', { count: pv.marking_periods.next_year_existing, nextYear: next.name })}</Text>
                   </View>
                 ) : null}
               </CardContent>
@@ -289,10 +289,10 @@ export default function Rollover() {
         </Card>
 
         {result?.success ? (
-          <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+          <Card className="border-success/30 bg-success-soft ">
             <CardContent className="gap-2 pt-4">
-              <Text className="font-semibold text-green-900 dark:text-green-300">{r('rollover_complete')}</Text>
-              <Text className="text-xs text-green-700">{r('completed_in', { ms: result.duration_ms })}</Text>
+              <Text className="font-semibold text-success ">{r('rollover_complete')}</Text>
+              <Text className="text-xs text-success">{r('completed_in', { ms: result.duration_ms })}</Text>
               {result.students ? (
                 <Text className="text-sm">
                   {r('card_students')}: {r('promoted')} {result.students.promoted} · {r('retained')} {result.students.retained} · {r('graduated')} {result.students.graduated}
@@ -325,12 +325,12 @@ export default function Rollover() {
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center uppercase">{r('confirm_title')}</DialogTitle>
+            <DialogTitle className="text-center">{r('confirm_title')}</DialogTitle>
           </DialogHeader>
           <ScrollView className="max-h-[440px]" contentContainerClassName="gap-3">
             <Text className="text-center text-sm font-semibold">{r('confirm_question', { current: current.name })}</Text>
             {checklist}
-            <View className="gap-1 border-s-4 border-green-600 bg-green-50 p-3 dark:bg-green-950/30">
+            <View className="gap-1 border-s-4 border-success bg-success-soft p-3 ">
               <Text className="text-sm font-bold">{r('note_title')}</Text>
               <Text className="text-muted-foreground text-xs">• {r('note_greyed_desc')}</Text>
               <Text className="text-muted-foreground text-xs">• {r('note_overwrite_desc')}</Text>

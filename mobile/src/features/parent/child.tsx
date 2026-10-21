@@ -1,16 +1,19 @@
 import type { ParentStudent } from '@studently/api-client';
 import Storage from 'expo-sqlite/kv-store';
-import { ChevronDown, User } from 'lucide-react-native';
+import { Check, ChevronDown, User } from 'lucide-react-native';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { BottomSheet } from '@/components/app/bottom-sheet';
 import { PersonAvatar } from '@/components/app/person-avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { raised } from '@/components/app/tile-grid';
 import { Icon } from '@/components/ui/icon';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { parent } from '@/lib/api';
+import { colors } from '@/lib/colors';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
@@ -67,23 +70,24 @@ export function ChildSwitcher({ className }: { className?: string }) {
         disabled={isLoading || kids.length === 0}
         accessibilityRole="button"
         accessibilityLabel={k('select_child')}
-        className={cn('border-border bg-card flex-row items-center gap-2 rounded-lg border px-3 py-2', className)}>
-        {child ? <PersonAvatar url={child.profile_photo_url} name={name(child)} size={28} /> : <Icon as={User} className="text-muted-foreground size-5" />}
+        style={raised(colors.brand)}
+        className={cn('border-info-soft dark:border-border bg-card flex-row items-center gap-3 rounded-2xl border p-3', className)}>
+        {child ? <PersonAvatar url={child.profile_photo_url} name={name(child)} size={40} /> : <Icon as={User} className="text-muted-foreground size-5" />}
         <View className="flex-1">
-          <Text className="font-medium" numberOfLines={1}>
-            {isLoading ? k('loading') : child ? name(child) : kids.length === 0 ? k('no_children') : k('select_child')}
+          <Text variant="muted" className="text-[11px]">
+            {k('viewing')}
           </Text>
-          {child ? <Text className="text-muted-foreground text-xs" numberOfLines={1}>{`${child.grade_level} — ${child.section}`}</Text> : null}
+          <Text className="font-semibold" numberOfLines={1}>
+            {isLoading ? k('loading') : child ? `${name(child)} · ${child.grade_level}-${child.section}` : kids.length === 0 ? k('no_children') : k('select_child')}
+          </Text>
         </View>
         {kids.length > 1 ? <Icon as={ChevronDown} className="text-muted-foreground size-4" /> : null}
       </Pressable>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{k('select_child')}</DialogTitle>
-          </DialogHeader>
-          <View className="gap-2">
-            {kids.map((c) => (
+      <BottomSheet open={open} onClose={() => setOpen(false)} title={k('select_child')}>
+        <View className="gap-2.5 pb-2">
+          {kids.map((c) => {
+            const on = c.id === child?.id;
+            return (
               <Pressable
                 key={c.id}
                 onPress={() => {
@@ -91,18 +95,23 @@ export function ChildSwitcher({ className }: { className?: string }) {
                   setOpen(false);
                 }}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: c.id === child?.id }}
-                className={cn('flex-row items-center gap-3 rounded-lg border p-3', c.id === child?.id ? 'border-primary bg-primary/5' : 'border-border')}>
-                <PersonAvatar url={c.profile_photo_url} name={name(c)} size={36} />
+                accessibilityState={{ checked: on }}
+                className={cn('flex-row items-center gap-3 rounded-2xl p-3', on ? 'bg-info-soft border-brand-secondary border-2' : 'border-info-soft dark:border-border bg-card border')}>
+                <PersonAvatar url={c.profile_photo_url} name={name(c)} size={40} />
                 <View className="flex-1">
-                  <Text className="font-medium">{name(c)}</Text>
-                  <Text className="text-muted-foreground text-xs">{`${c.grade_level} — ${c.section} · ${c.campus_name}`}</Text>
+                  <Text className="font-semibold">{name(c)}</Text>
+                  <Text variant="muted" className="text-xs">{`${c.grade_level} — ${c.section} · ${c.campus_name}`}</Text>
                 </View>
+                {on ? (
+                  <View className="bg-brand size-6 items-center justify-center rounded-full">
+                    <Icon as={Check} strokeWidth={3} className="size-3.5 text-white" />
+                  </View>
+                ) : null}
               </Pressable>
-            ))}
-          </View>
-        </DialogContent>
-      </Dialog>
+            );
+          })}
+        </View>
+      </BottomSheet>
     </>
   );
 }
@@ -116,7 +125,7 @@ export function NoChild() {
     <View className="bg-background flex-1 items-center justify-center gap-2 p-6">
       <Icon as={User} className="text-muted-foreground size-10" />
       <Text className="font-semibold">{t('app.pa_no_child_title')}</Text>
-      <Text className="text-muted-foreground text-center text-sm">{t('app.pa_no_child_body')}</Text>
+      <EmptyState title={t('app.pa_no_child_body')} />
       <ChildSwitcher className="mt-2 self-stretch" />
     </View>
   );

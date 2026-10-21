@@ -30,7 +30,7 @@ export function HtmlTextField({ value, onChange, placeholder }: { value: string;
           onChange(v.trim() ? textToHtml(v) : '');
         }}
       />
-      {rich ? <Text className="text-xs text-amber-700 dark:text-amber-400">{t('app.rt_formatting_note')}</Text> : null}
+      {rich ? <Text className="text-warning text-xs">{t('app.rt_formatting_note')}</Text> : null}
     </View>
   );
 }

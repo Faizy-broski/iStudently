@@ -18,3 +18,11 @@ export function useRefreshBilling() {
       return k.includes('platform-records') || k.includes('records') || k.includes('summary');
     });
 }
+
+/** Soft chip tone per invoice status (cards). */
+export const PAY_TONE: Record<PaymentStatus, 'success' | 'warning' | 'destructive' | 'info'> = {
+  paid: 'success',
+  pending: 'warning',
+  unpaid: 'info',
+  overdue: 'destructive',
+}

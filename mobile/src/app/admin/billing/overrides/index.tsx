@@ -82,11 +82,11 @@ export default function FeeOverrides() {
   const header = (
     <View className="gap-3 p-4">
       <Text variant="muted">{o('subtitle')}</Text>
-      <View className="flex-row gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-        <Icon as={Info} className="mt-0.5 size-4 text-blue-600 dark:text-blue-400" />
+      <View className="flex-row gap-3 rounded-xl border border-info-soft bg-info-soft p-3">
+        <Icon as={Info} className="mt-0.5 size-4 text-brand dark:text-brand-secondary " />
         <View className="flex-1">
-          <Text className="text-sm font-medium text-blue-700 dark:text-blue-300">{o('howItWorks')}</Text>
-          <Text className="text-xs text-blue-600 dark:text-blue-400">{o('howItWorksDesc')}</Text>
+          <Text className="text-sm font-medium text-brand dark:text-brand-secondary ">{o('howItWorks')}</Text>
+          <Text className="text-xs text-brand dark:text-brand-secondary ">{o('howItWorksDesc')}</Text>
         </View>
       </View>
       <Button variant="outline" size="sm" onPress={refresh}>
@@ -140,13 +140,13 @@ export default function FeeOverrides() {
       </Text>
       <View className="flex-row items-center justify-between">
         <Button variant="outline" size="sm" disabled={current === 1} onPress={() => setPage(current - 1)}>
-          <Icon as={ChevronLeft} className="size-4 rtl:rotate-180" />
+          <Icon flipRtl as={ChevronLeft} className="size-4" />
           <Text>{o('previous')}</Text>
         </Button>
         <Text className="text-sm">{o('pageOf', { current, total: pages })}</Text>
         <Button variant="outline" size="sm" disabled={current >= pages} onPress={() => setPage(current + 1)}>
           <Text>{o('next')}</Text>
-          <Icon as={ChevronRight} className="size-4 rtl:rotate-180" />
+          <Icon flipRtl as={ChevronRight} className="size-4" />
         </Button>
       </View>
       <Card className="gap-3 py-4">
@@ -187,7 +187,7 @@ export default function FeeOverrides() {
               <Pressable onPress={() => open(s)} className="active:bg-muted border-border gap-1.5 border-b px-4 py-3">
                 <View className="flex-row items-start gap-2">
                   <View className="flex-1">
-                    <Text className="font-medium">{nameOf(s)}</Text>
+                    <Text className="text-sm font-semibold">{nameOf(s)}</Text>
                     <Text className="text-muted-foreground text-xs">{[s.student_number, s.grade?.name ?? s.grade_level ?? '-', sectionName(s)].filter(Boolean).join(' · ')}</Text>
                   </View>
                   <Badge variant={list.length ? 'default' : 'outline'}>

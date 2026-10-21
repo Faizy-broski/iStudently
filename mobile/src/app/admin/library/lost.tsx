@@ -61,9 +61,9 @@ export default function LibraryLost() {
       <Stack.Screen options={{ title: t('app.lb_mark_lost_title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{t('app.lb_lost_desc')}</Text>
-        <View className="flex-row gap-2 rounded-md border border-red-200 bg-red-50 p-3 dark:bg-red-950/30">
-          <Icon as={AlertTriangle} className="size-4 text-red-600" />
-          <Text className="flex-1 text-sm text-red-800 dark:text-red-300">{t('app.lb_lost_warning')}</Text>
+        <View className="flex-row gap-2 rounded-xl border border-destructive/30 bg-destructive-soft p-3">
+          <Icon as={AlertTriangle} className="size-4 text-destructive" />
+          <Text className="flex-1 text-sm text-destructive ">{t('app.lb_lost_warning')}</Text>
         </View>
         <View className="gap-1.5">
           <Label>{t('app.lb_search_issued')}</Label>
@@ -94,8 +94,8 @@ export default function LibraryLost() {
             <Card>
               <CardContent className="gap-1 pt-4">
                 <View className="flex-row items-center justify-between">
-                  <Text className="font-medium">{t('app.lb_total_fee')}</Text>
-                  <Text className="text-lg font-bold text-red-600">{money(rep + proc)}</Text>
+                  <Text className="text-sm font-semibold">{t('app.lb_total_fee')}</Text>
+                  <Text className="text-lg font-bold text-destructive">{money(rep + proc)}</Text>
                 </View>
                 <Text className="text-muted-foreground text-xs">
                   {t('app.lb_replacement')}: {money(rep)} + {t('app.lb_processing')}: {money(proc)}

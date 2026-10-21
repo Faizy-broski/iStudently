@@ -6,35 +6,33 @@
 
 import { Platform } from 'react-native';
 
-export const Brand = {
-  navy: '#022172',
-  blue: '#003dd6',
-} as const;
+import { colors } from '@/lib/colors';
+
+/**
+ * Colours for the older Expo template components (ThemedText, StatusScreen…), taken from the
+ * tokens in src/global.css. Getters read the current value, so light/dark follow the theme.
+ */
+const palette = () => ({
+  text: colors.foreground,
+  background: colors.background,
+  backgroundElement: colors.muted,
+  backgroundSelected: colors.border,
+  textSecondary: colors.mutedForeground,
+  primary: colors.primary,
+  onPrimary: colors.primaryForeground,
+  danger: colors.destructive,
+});
 
 export const Colors = {
-  light: {
-    text: '#0B1220',
-    background: '#ffffff',
-    backgroundElement: '#F0F2F7',
-    backgroundSelected: '#E0E5F0',
-    textSecondary: '#5B6475',
-    primary: Brand.blue,
-    onPrimary: '#ffffff',
-    danger: '#C62828',
+  get light() {
+    return palette();
   },
-  dark: {
-    text: '#F3F5FA',
-    background: '#0A0F1E',
-    backgroundElement: '#161C2E',
-    backgroundSelected: '#222A40',
-    textSecondary: '#A3ABBD',
-    primary: '#5B8CFF',
-    onPrimary: '#0A0F1E',
-    danger: '#EF5350',
+  get dark() {
+    return palette();
   },
-} as const;
+};
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+export type ThemeColor = keyof ReturnType<typeof palette>;
 
 export const Fonts = Platform.select({
   ios: {

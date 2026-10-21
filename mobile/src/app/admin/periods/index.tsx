@@ -127,8 +127,8 @@ export default function Periods() {
                   </View>
                   <View className="flex-row items-center justify-between">
                     {x.short_name && x.id ? (
-                      <Pressable onPress={() => router.push({ pathname: '/admin/periods/[name]', params: { name: x.short_name } })}>
-                        <Text className="text-primary text-sm">{`${p('table_courses')}: ${x.course_periods_count}`}</Text>
+                      <Pressable className="bg-info-soft rounded-full px-3 py-1.5 active:opacity-70" onPress={() => router.push({ pathname: '/admin/periods/[name]', params: { name: x.short_name } })}>
+                        <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{`${p('table_courses')}: ${x.course_periods_count}`}</Text>
                       </Pressable>
                     ) : (
                       <Text className="text-muted-foreground text-sm">{`${p('table_courses')}: ${x.course_periods_count}`}</Text>

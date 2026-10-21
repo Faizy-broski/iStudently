@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 
 import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
-import { adminSchool } from '@/lib/api';
+import { adminResources, adminSchool } from '@/lib/api';
 import { useApi } from '@/lib/data';
 
 /**
@@ -78,6 +78,18 @@ export const NATIVE_ROUTES: Record<string, Href> = {
   '/admin/salary/advances': '/admin/salary/advances',
   '/admin/salary/settings': '/admin/salary/settings',
   '/admin/staff/financial-statements': '/admin/salary/statements',
+  '/admin/jahbadh-grades': '/admin/jahbadh',
+  '/admin/jahbadh-grades/distribution': '/admin/jahbadh/distribution',
+  '/admin/jahbadh-grades/setup': '/admin/jahbadh/setup',
+  '/admin/jahbadh-grades/report-cards': '/admin/jahbadh/report-cards',
+  '/admin/jahbadh-grades/activities': '/admin/jahbadh/activities',
+  '/admin/jahbadh-grades/dashboard': '/admin/jahbadh/dashboard',
+  '/admin/jahbadh-grades/early-warning': { pathname: '/admin/jahbadh/insights', params: { view: 'warning' } },
+  '/admin/jahbadh-grades/test-analysis': '/admin/jahbadh/test-analysis',
+  '/admin/jahbadh-grades/rubrics': '/admin/jahbadh/rubrics',
+  '/admin/jahbadh-grades/ideas': '/admin/jahbadh/ideas',
+  '/admin/exam-control': '/admin/exam-control',
+  '/admin/exam-timer': '/admin/exam-timer',
   '/admin/grades/student-grades': '/admin/grades/student-grades',
   '/admin/grades/teacher-completion': '/admin/grades/teacher-completion',
   '/admin/grades/class-ranks': '/admin/grades/class-ranks',
@@ -140,6 +152,8 @@ export const NATIVE_ROUTES: Record<string, Href> = {
   '/admin/attendance': '/admin/attendance',
   '/admin/attendance/administration': '/admin/attendance',
   '/admin/attendance/add-absences': '/admin/attendance/add-absences',
+  '/admin/attendance/class-diary': '/admin/attendance/class-diary',
+  '/admin/attendance/class-diary-write': '/admin/attendance/class-diary-write',
   '/admin/attendance/teacher-completion': '/admin/attendance/teacher-completion',
   '/admin/attendance/average-daily': '/admin/attendance/average-daily',
   '/admin/attendance/chart': '/admin/attendance/chart',
@@ -230,6 +244,8 @@ export const NATIVE_ROUTES: Record<string, Href> = {
   '/admin/settings/marking-period-groups': '/admin/settings/marking-period-groups',
   '/admin/settings/academic-years': '/admin/settings/academic-years',
   '/admin/school-details': '/admin/school-details',
+  '/admin/setup': '/admin/setup',
+  '/admin/setup/import-school-data': '/admin/import/school-data',
   '/admin/reports/calculations': '/admin/reports/calculations',
   '/admin/reports/calculation-reports': '/admin/reports/calculation-reports',
   '/admin/training': '/admin/training',
@@ -253,6 +269,8 @@ export const NATIVE_ROUTES: Record<string, Href> = {
   '/admin/settings/custom-menu': '/admin/settings/custom-menu',
   '/admin/settings/setup-assistant': '/admin/settings/setup-assistant',
   '/admin/settings/user-agreements': '/admin/settings/user-agreements',
+  '/admin/settings/parent-agreement': '/admin/settings/parent-agreement',
+  '/admin/settings/grade-progression': '/admin/settings/grade-progression',
   '/admin/settings/user-profiles': '/admin/settings/user-profiles',
   '/admin/settings/push-notifications': '/admin/settings/push-notifications',
   '/admin/settings/email-reminders': '/admin/settings/email-reminders',
@@ -335,6 +353,16 @@ export const NATIVE_ROUTES: Record<string, Href> = {
   '/admin/resources/virtual-labs': '/admin/tools/virtual-labs',
 };
 
+/** The native route for an admin menu href, including the dynamic embedded-resource pages. */
+export function adminRouteFor(href: string): Href | null {
+  const fixed: Href | undefined = NATIVE_ROUTES[href];
+  if (fixed) return fixed;
+  const m = /^\/admin\/resources\/embedded\/([^/]+)$/.exec(href);
+  if (!m) return null;
+  const path: string = `/admin/resources/embedded/${encodeURIComponent(m[1])}`;
+  return path as unknown as Href;
+}
+
 /** Menu groups shown on each admin tab; everything else is under More. */
 export const TAB_GROUPS = {
   people: ['students', 'teachers', 'staff', 'parents', 'user_management'],
@@ -349,6 +377,8 @@ export function useAdminMenu() {
   const role = me.status === 'ready' ? me.me.profile.role : null;
   const settings = useApi(['admin', 'school-settings', campusId ?? 'school'], () => adminSchool.getSettings(campusId));
   const permissions = useApi(role === 'staff' ? ['admin', 'my-permissions'] : null, () => adminSchool.getMyPermissions());
+  // Web DashboardLayout: admins get every embedded resource under Resources → Premium resources.
+  const embedded = useApi(role === 'admin' ? ['admin', 'embedded', campusId ?? 'school'] : null, () => adminResources.embedded(campusId), { revalidateOnFocus: false });
 
   const groups = useMemo<AdminMenuGroup[]>(() => {
     if (role !== 'admin' && role !== 'staff') return [];
@@ -361,14 +391,24 @@ export function useAdminMenu() {
       : me.status === 'ready'
         ? me.me.plugins
         : [];
-    return filterAdminMenu({
+    const menu = filterAdminMenu({
       role,
       plugins,
       deniedModules: s?.denied_modules ?? null,
       permissions: role === 'staff' ? (permissions.data ?? null) : null,
       customOrder: s?.custom_menu_order?.admin ?? null,
     });
-  }, [role, settings.data, permissions.data, me]);
+    const extra = (embedded.data ?? []).map((r) => ({ title: r.title, href: `/admin/resources/embedded/${r.id}` }));
+    if (!extra.length) return menu;
+    return menu.map((g) => {
+      if (g.title !== 'resources' || g.items.length === 0) return g;
+      const have = new Set(g.items.map((i) => i.href));
+      const add = extra.filter((i) => !have.has(i.href));
+      if (!add.length) return g;
+      const label = g.items.some((i) => i.title === 'premium_resources' && i.label) ? [] : [{ title: 'premium_resources', href: '#', label: true }];
+      return { ...g, items: [...g.items, ...label, ...add] };
+    });
+  }, [role, settings.data, permissions.data, me, embedded.data]);
 
   return {
     groups,

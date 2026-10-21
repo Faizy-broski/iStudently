@@ -55,6 +55,8 @@ export default function AddExceptions() {
   const students = useStudentRoster(tab === 'STUDENT' ? term : '', gs.gradeName, gs.sectionId);
   const staff = useApi(tab === 'STAFF' ? ['admin', 'ee-staff-roster', campusId ?? 'school', term] : null, async () => {
     const [a, b] = await Promise.all([adminEmployees.list('teacher', campusId, { page: 1, limit: 500, search: term || undefined }), adminEmployees.list('staff', campusId, { page: 1, limit: 500, search: term || undefined })]);
+    if (!a.success) return { ...a, data: undefined };
+    if (!b.success) return { ...b, data: undefined };
     return { ...a, data: [...(a.data ?? []), ...(b.data ?? [])] };
   });
   const rows =
@@ -119,7 +121,7 @@ export default function AddExceptions() {
               />
               <Card>
                 <CardContent className="gap-3 pt-4">
-                  <Text className="text-muted-foreground text-center text-sm font-semibold uppercase">{x('card_add_title')}</Text>
+                  <Text className="text-muted-foreground text-center text-sm font-semibold">{x('card_add_title')}</Text>
                   <View className="gap-1.5">
                     <Label>{x('label_checkpoint')}</Label>
                     <Picker value={checkpoint} onChange={setCheckpoint} options={[{ value: 'all', label: x('option_na_all') }, ...(checkpoints.data ?? []).map((c) => ({ value: c.id, label: c.name }))]} />

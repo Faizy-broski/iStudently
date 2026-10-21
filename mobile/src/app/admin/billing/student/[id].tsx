@@ -6,12 +6,13 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Linking, Pressable, RefreshControl, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { colors } from '@/lib/colors';
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
-import { StatCard } from '@/components/app/stat-card';
+import { HeroCard } from '@/components/app/layout';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
@@ -102,9 +103,9 @@ export default function StudentLedgerScreen() {
     ];
     const body = `<div class="record-header"><span>${escapeHtml(p('paymentReceipts'))}</span><span class="rh-right">${escapeHtml(pay.receipt_number ?? '')}</span></div>
       <table style="width:100%;border-collapse:collapse;margin-top:12px">${rows
-        .map(([k, v]) => `<tr><td style="color:#555;padding:6px 8px 6px 0;width:40%;border-bottom:1px solid #eee">${escapeHtml(k)}</td><td style="padding:6px 0;border-bottom:1px solid #eee;font-weight:600">${escapeHtml(v)}</td></tr>`)
+        .map(([k, v]) => `<tr><td style="color:${colors.printMuted};padding:6px 8px 6px 0;width:40%;border-bottom:1px solid ${colors.printBorder}">${escapeHtml(k)}</td><td style="padding:6px 0;border-bottom:1px solid ${colors.printBorder};font-weight:600">${escapeHtml(v)}</td></tr>`)
         .join('')}</table>
-      <p style="margin-top:28px;color:#777;font-size:11px">${escapeHtml(p('computerGenerated'))}</p>`;
+      <p style="margin-top:28px;color:${colors.printMuted};font-size:11px">${escapeHtml(p('computerGenerated'))}</p>`;
     await output(buildPrintHtml({ title: p('paymentReceipts'), pages: [body], school: print.school, layout: print.layout, withHeader: true, reportLabel: p('paymentReceipts') }), mode, `receipt-${pay.receipt_number ?? pay.id.slice(0, 8)}.pdf`);
   }
 
@@ -118,13 +119,13 @@ export default function StudentLedgerScreen() {
         return `<tr><td>${escapeHtml(formatDate(x.payment_date))}</td><td>${escapeHtml(x.receipt_number || `RCP-${x.id.substring(0, 8).toUpperCase()}`)}</td><td>${escapeHtml(x.payment_method || '-')}</td><td>${escapeHtml(money(x.amount))}</td><td>${escapeHtml(money(data.summary.totalFees - paid))}</td><td>${escapeHtml(x.comment || '-')}</td></tr>`;
       })
       .join('');
-    const cellCss = 'border:1px solid #333;padding:8px;text-align:start;font-size:13px';
-    const body = `<div style="border:2px solid #333;padding:24px">
-      <div style="text-align:center;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:16px"><h1 style="font-size:24px;margin:0 0 4px">${escapeHtml(campus?.name ?? print.school?.name ?? '')}</h1><p style="color:#666;margin:0">${escapeHtml(p('feeChallan'))}</p></div>
+    const cellCss = `border:1px solid ${colors.printText};padding:8px;text-align:start;font-size:13px`;
+    const body = `<div style="border:2px solid ${colors.printText};padding:24px">
+      <div style="text-align:center;border-bottom:2px solid ${colors.printText};padding-bottom:16px;margin-bottom:16px"><h1 style="font-size:24px;margin:0 0 4px">${escapeHtml(campus?.name ?? print.school?.name ?? '')}</h1><p style="color:${colors.printMuted};margin:0">${escapeHtml(p('feeChallan'))}</p></div>
       <table style="width:100%;margin-bottom:24px"><tr><td><p><strong>${escapeHtml(p('student'))}:</strong> ${escapeHtml(name || '-')}</p><p><strong>${escapeHtml(p('istudentlyId'))}:</strong> ${escapeHtml(info?.student_number || '-')}</p></td><td style="text-align:end"><p><strong>${escapeHtml(p('th_createdAt'))}:</strong> ${escapeHtml(formatDate(new Date().toISOString()))}</p></td></tr></table>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:24px"><tr>${[p('th_paymentDate'), p('th_receipt'), p('th_method'), p('th_amount'), p('th_balance'), p('th_comment')].map((h) => `<th style="${cellCss};background:#f0f0f0">${escapeHtml(h)}</th>`).join('')}</tr>${rows.replace(/<td>/g, `<td style="${cellCss}">`)}</table>
-      <table style="width:100%;background:#f0f0f0;border:1px solid #ddd;margin-bottom:24px"><tr><td style="text-align:center;padding:24px"><p style="color:#666;font-size:14px">${escapeHtml(p('th_amount'))}</p><p style="font-size:28px;font-weight:bold;color:#16a34a">${escapeHtml(money(data.summary.totalPayments))}</p></td><td style="text-align:center;padding:24px"><p style="color:#666;font-size:14px">${escapeHtml(p('th_balance'))}</p><p style="font-size:28px;font-weight:bold;color:#16a34a">${escapeHtml(money(data.summary.balance))}</p></td></tr></table>
-      <table style="width:100%;border-top:1px solid #333"><tr><td style="font-size:12px;color:#666;padding-top:16px">${escapeHtml(p('computerGenerated'))}</td><td style="text-align:end;padding-top:64px"><div style="display:inline-block;border-top:1px solid #333;width:200px;text-align:center;padding-top:4px">${escapeHtml(p('authorizedSignature'))}</div></td></tr></table></div>`;
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px"><tr>${[p('th_paymentDate'), p('th_receipt'), p('th_method'), p('th_amount'), p('th_balance'), p('th_comment')].map((h) => `<th style="${cellCss};background:${colors.printSurface}">${escapeHtml(h)}</th>`).join('')}</tr>${rows.replace(/<td>/g, `<td style="${cellCss}">`)}</table>
+      <table style="width:100%;background:${colors.printSurface};border:1px solid ${colors.printBorder};margin-bottom:24px"><tr><td style="text-align:center;padding:24px"><p style="color:${colors.printMuted};font-size:14px">${escapeHtml(p('th_amount'))}</p><p style="font-size:28px;font-weight:bold;color:${colors.success}">${escapeHtml(money(data.summary.totalPayments))}</p></td><td style="text-align:center;padding:24px"><p style="color:${colors.printMuted};font-size:14px">${escapeHtml(p('th_balance'))}</p><p style="font-size:28px;font-weight:bold;color:${colors.success}">${escapeHtml(money(data.summary.balance))}</p></td></tr></table>
+      <table style="width:100%;border-top:1px solid ${colors.printText}"><tr><td style="font-size:12px;color:${colors.printMuted};padding-top:16px">${escapeHtml(p('computerGenerated'))}</td><td style="text-align:end;padding-top:64px"><div style="display:inline-block;border-top:1px solid ${colors.printText};width:200px;text-align:center;padding-top:4px">${escapeHtml(p('authorizedSignature'))}</div></td></tr></table></div>`;
     await output(buildPrintHtml({ title: p('paymentReceipts'), pages: [body], school: print.school, layout: print.layout, withHeader: false }), mode, `payments-${info?.student_number ?? id}.pdf`);
   }
 
@@ -287,12 +288,11 @@ export default function StudentLedgerScreen() {
             ) : null}
           </View>
           <View className="flex-row flex-wrap items-center gap-4 pt-1">
-            <Pressable hitSlop={8} onPress={() => receipt(pay, 'pdf')} accessibilityRole="button">
-              <Text className="text-primary text-sm">{p('printReceipt')}</Text>
+            <Pressable className="bg-info-soft rounded-full px-3 py-1.5 active:opacity-70" hitSlop={8} onPress={() => receipt(pay, 'pdf')} accessibilityRole="button">
+              <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{p('printReceipt')}</Text>
             </Pressable>
             {isAdmin ? (
               <Pressable
-                hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={t('common.edit')}
                 onPress={() =>
@@ -305,8 +305,8 @@ export default function StudentLedgerScreen() {
                     is_lunch_payment: pay.is_lunch_payment,
                     manual_receipt_number: pay.manual_receipt_number ?? '',
                   })
-                }>
-                <Icon as={Pencil} className="text-muted-foreground size-4" />
+                } hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
               </Pressable>
             ) : null}
             {isAdmin && !isRefund && refundable(pay) > 0 ? (
@@ -325,8 +325,8 @@ export default function StudentLedgerScreen() {
               </Pressable>
             ) : null}
             {isAdmin ? (
-              <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel={t('app.bl_delete')} onPress={() => remove(pay)}>
-                <Icon as={Trash2} className="text-muted-foreground size-4" />
+              <Pressable accessibilityRole="button" accessibilityLabel={t('app.bl_delete')} onPress={() => remove(pay)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             ) : null}
           </View>
@@ -348,25 +348,42 @@ export default function StudentLedgerScreen() {
         }}
       />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={ledger.isValidating} onRefresh={refresh} />}>
-        <View className="flex-row items-center justify-between gap-2">
-          <Button variant="outline" size="sm" disabled={!prevId} onPress={() => prevId && router.replace({ pathname: '/admin/billing/student/[id]', params: { id: prevId } })}>
-            <Icon as={ChevronLeft} className="size-4 rtl:rotate-180" />
-            <Text>{t('common.previous')}</Text>
-          </Button>
-          <Text className="text-muted-foreground flex-1 text-center text-sm" numberOfLines={1}>
-            {`${name.toUpperCase()}${info ? ` · ${info.student_number}` : ''}`}
-          </Text>
-          <Button variant="outline" size="sm" disabled={!nextId} onPress={() => nextId && router.replace({ pathname: '/admin/billing/student/[id]', params: { id: nextId } })}>
-            <Text>{t('common.next')}</Text>
-            <Icon as={ChevronRight} className="size-4 rtl:rotate-180" />
-          </Button>
-        </View>
-
-        <View className="flex-row gap-3">
-          <StatCard icon={FileText} label={p('totalFees')} value={money(data.summary.totalFees)} />
-          <StatCard icon={FileText} label={p('lessTotalPayments')} value={money(data.summary.totalPayments)} />
-        </View>
-        <StatCard icon={FileText} label={p('balance')} value={money(data.summary.balance)} tone={data.summary.balance > 0 ? 'warning' : undefined} />
+        <HeroCard>
+          <View className="flex-row items-center gap-2">
+            <Pressable onPress={() => prevId && router.replace({ pathname: '/admin/billing/student/[id]', params: { id: prevId } })} disabled={!prevId} className={cn('size-9 items-center justify-center rounded-full bg-white/15', !prevId && 'opacity-40')} accessibilityRole="button" accessibilityLabel={t('common.previous')}>
+              <Icon as={ChevronLeft} flipRtl className="text-white size-5" />
+            </Pressable>
+            <View className="flex-1 items-center">
+              <Text className="text-white text-center font-bold" numberOfLines={1}>
+                {name}
+              </Text>
+              {info ? <Text className="text-white text-center text-xs opacity-80">{info.student_number}</Text> : null}
+            </View>
+            <Pressable onPress={() => nextId && router.replace({ pathname: '/admin/billing/student/[id]', params: { id: nextId } })} disabled={!nextId} className={cn('size-9 items-center justify-center rounded-full bg-white/15', !nextId && 'opacity-40')} accessibilityRole="button" accessibilityLabel={t('common.next')}>
+              <Icon as={ChevronRight} flipRtl className="text-white size-5" />
+            </Pressable>
+          </View>
+          <View className="items-center gap-0.5">
+            <Text className="text-white text-xs opacity-80">{p('balance')}</Text>
+            <Text className={cn('text-3xl font-bold', data.summary.balance > 0 ? 'text-brand-accent' : 'text-white')} numberOfLines={1} adjustsFontSizeToFit>
+              {money(data.summary.balance)}
+            </Text>
+          </View>
+          <View className="flex-row gap-2">
+            <View className="flex-1 items-center rounded-2xl bg-white/10 p-2.5">
+              <Text className="text-white text-[11px] opacity-80">{p('totalFees')}</Text>
+              <Text className="text-white text-sm font-bold" numberOfLines={1} adjustsFontSizeToFit>
+                {money(data.summary.totalFees)}
+              </Text>
+            </View>
+            <View className="flex-1 items-center rounded-2xl bg-white/10 p-2.5">
+              <Text className="text-white text-[11px] opacity-80">{p('lessTotalPayments')}</Text>
+              <Text className="text-white text-sm font-bold" numberOfLines={1} adjustsFontSizeToFit>
+                {money(data.summary.totalPayments)}
+              </Text>
+            </View>
+          </View>
+        </HeroCard>
 
         <View className="flex-row flex-wrap gap-2">
           <Button className="flex-1" onPress={() => router.push({ pathname: '/admin/billing/record', params: { studentId: id } })}>

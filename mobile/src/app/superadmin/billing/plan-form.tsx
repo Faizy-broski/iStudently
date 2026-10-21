@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { v } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Trash2 } from 'lucide-react-native';
+import { CircleCheck, DollarSign, ListChecks, Tag, Trash2 } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { useConfirm } from '@/components/app/confirm';
 import { NumberField, SwitchField, TextField } from '@/components/app/form';
+import { FormSection } from '@/components/app/layout';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { Button } from '@/components/ui/button';
@@ -101,19 +102,27 @@ export default function PlanForm() {
     <>
       <Stack.Screen options={{ title: editing ? plan?.name ?? '' : t('app.bl_new_plan') }} />
       <Screen scroll edges={['bottom']}>
-        <TextField control={control} name="name" label={t('app.bl_plan_name')} />
-        <TextField control={control} name="description" label={t('app.bl_description')} multiline />
-        <NumberField control={control} name="monthly_price" label={t('app.bl_monthly_price')} />
-        <NumberField control={control} name="quarterly_price" label={t('app.bl_quarterly_price')} />
-        <NumberField control={control} name="yearly_price" label={t('app.bl_yearly_price')} />
-        <NumberField control={control} name="max_students" label={t('app.bl_max_students_label')} keyboardType="number-pad" />
-        <TextField control={control} name="features" label={t('app.bl_features')} hint={t('app.bl_features_hint')} multiline />
-        <SwitchField control={control} name="is_active" label={t('app.bl_active')} hint={t('app.bl_active_hint')} />
+        <FormSection title={t('app.bl_plan')} icon={Tag}>
+          <TextField control={control} name="name" label={t('app.bl_plan_name')} />
+          <TextField control={control} name="description" label={t('app.bl_description')} multiline />
+        </FormSection>
+        <FormSection title={t('app.bl_amount')} icon={DollarSign}>
+          <NumberField control={control} name="monthly_price" label={t('app.bl_monthly_price')} />
+          <NumberField control={control} name="quarterly_price" label={t('app.bl_quarterly_price')} />
+          <NumberField control={control} name="yearly_price" label={t('app.bl_yearly_price')} />
+        </FormSection>
+        <FormSection title={t('app.bl_features')} icon={ListChecks}>
+          <NumberField control={control} name="max_students" label={t('app.bl_max_students_label')} keyboardType="number-pad" />
+          <TextField control={control} name="features" label={t('app.bl_features')} hint={t('app.bl_features_hint')} multiline />
+        </FormSection>
+        <FormSection title={t('app.bl_status')} icon={CircleCheck}>
+          <SwitchField control={control} name="is_active" label={t('app.bl_active')} hint={t('app.bl_active_hint')} />
+        </FormSection>
         <Button onPress={onSubmit} disabled={save.running}>
           <Text>{t('app.bl_save')}</Text>
         </Button>
         {editing ? (
-          <Button variant="ghost" onPress={onDelete} disabled={remove.running}>
+          <Button variant="ghost" className="bg-destructive-soft rounded-full" onPress={onDelete} disabled={remove.running}>
             <Icon as={Trash2} className="text-destructive size-4" />
             <Text className="text-destructive">{t('app.bl_delete')}</Text>
           </Button>

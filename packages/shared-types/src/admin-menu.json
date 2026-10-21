@@ -817,6 +817,66 @@
     ]
   },
   {
+    "title": "jahbadh_grades",
+    "href": "/admin/jahbadh-grades",
+    "plugin": "jahbadh_grades",
+    "items": [
+      {
+        "title": "jahbadh_class_home",
+        "href": "/admin/jahbadh-grades"
+      },
+      {
+        "title": "jahbadh_report_cards",
+        "href": "/admin/jahbadh-grades/report-cards"
+      },
+      {
+        "title": "jahbadh_activities",
+        "href": "/admin/jahbadh-grades/activities"
+      },
+      {
+        "title": "jahbadh_analytics",
+        "href": "#",
+        "label": true
+      },
+      {
+        "title": "jahbadh_dashboard",
+        "href": "/admin/jahbadh-grades/dashboard"
+      },
+      {
+        "title": "jahbadh_early_warning",
+        "href": "/admin/jahbadh-grades/early-warning"
+      },
+      {
+        "title": "jahbadh_test_analysis",
+        "href": "/admin/jahbadh-grades/test-analysis"
+      },
+      {
+        "title": "jahbadh_rubrics",
+        "href": "/admin/jahbadh-grades/rubrics"
+      },
+      {
+        "title": "jahbadh_ideas",
+        "href": "/admin/jahbadh-grades/ideas"
+      },
+      {
+        "title": "jahbadh_exam_control",
+        "href": "/admin/exam-control"
+      },
+      {
+        "title": "jahbadh_exam_timer",
+        "href": "/admin/exam-timer"
+      },
+      {
+        "title": "jahbadh_distribution",
+        "href": "/admin/jahbadh-grades/distribution"
+      },
+      {
+        "title": "jahbadh_setup",
+        "href": "/admin/jahbadh-grades/setup"
+      }
+    ]
+  },
+  {
     "title": "student_billing",
     "href": "/admin/fees",
     "items": [

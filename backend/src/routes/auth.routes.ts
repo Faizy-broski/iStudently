@@ -16,6 +16,9 @@ router.post(
   authController.changePassword,
 )
 
+// POST /auth/delete-account  — the user deletes their own account (store requirement)
+router.post('/delete-account', createProfileRateLimit(60 * 60 * 1000, 3), authController.deleteAccount)
+
 // GET /auth/me  — profile (safe fields), sign-in gates, plugins, branding (mobile + web)
 router.get('/me', authController.getMe)
 

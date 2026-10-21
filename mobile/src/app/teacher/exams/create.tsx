@@ -1,10 +1,12 @@
 import { router, Stack } from 'expo-router';
+import { ClipboardList, Target } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
+import { FormSection, StickyActions } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -68,46 +70,50 @@ export default function TeacherCreateExam() {
       <Stack.Screen options={{ title: k('createNewExam') }} />
       <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-          <View className="gap-1.5">
-            <Label>{`${k('examType')} *`}</Label>
-            <Picker value={f.type || null} onChange={(v) => set({ type: v })} placeholder={k('selectType')} options={(types.data ?? []).map((x) => ({ value: x.id, label: x.name }))} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{`${k('gradeLevel')} *`}</Label>
-            <Picker value={f.grade || null} onChange={(v) => set({ grade: v, section: '', subject: '' })} placeholder={k('selectGrade')} options={grades.map(([id, name]) => ({ value: id, label: name }))} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{`${k('section')} *`}</Label>
-            <Picker value={f.section || null} onChange={(v) => set({ section: v, subject: '' })} placeholder={k('selectSection')} options={sections.map(([id, name]) => ({ value: id, label: name }))} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{`${k('subject')} *`}</Label>
-            <Picker value={f.subject || null} onChange={(v) => set({ subject: v })} placeholder={k('selectSubject')} options={subjectsFor.map(([id, name]) => ({ value: id, label: name }))} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{`${k('examName')} *`}</Label>
-            <Input value={f.name} onChangeText={(v) => set({ name: v })} placeholder={k('examNamePlaceholder')} />
-          </View>
-          <DateField label={k('examDate')} value={f.date || null} onChange={(v) => set({ date: v })} clearable />
-          <View className="flex-row gap-2">
-            <View className="flex-1 gap-1.5">
-              <Label>{`${k('maxMarks')} *`}</Label>
-              <Input value={f.max} onChangeText={(v) => set({ max: v.replace(/[^0-9.]/g, '') })} keyboardType="decimal-pad" />
+          <FormSection title={k('createNewExam')} icon={ClipboardList}>
+            <View className="gap-1.5">
+              <Label>{`${k('examType')} *`}</Label>
+              <Picker value={f.type || null} onChange={(v) => set({ type: v })} placeholder={k('selectType')} options={(types.data ?? []).map((x) => ({ value: x.id, label: x.name }))} />
             </View>
-            <View className="flex-1 gap-1.5">
-              <Label>{`${k('passingMarks')} *`}</Label>
-              <Input value={f.pass} onChangeText={(v) => set({ pass: v.replace(/[^0-9.]/g, '') })} keyboardType="decimal-pad" />
+            <View className="gap-1.5">
+              <Label>{`${k('gradeLevel')} *`}</Label>
+              <Picker value={f.grade || null} onChange={(v) => set({ grade: v, section: '', subject: '' })} placeholder={k('selectGrade')} options={grades.map(([id, name]) => ({ value: id, label: name }))} />
             </View>
-          </View>
-          <View className="flex-row gap-2">
-            <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={busy}>
-              <Text>{k('cancel')}</Text>
-            </Button>
-            <Button className="flex-1" onPress={create} disabled={busy}>
-              <Text>{k('createExam')}</Text>
-            </Button>
-          </View>
+            <View className="gap-1.5">
+              <Label>{`${k('section')} *`}</Label>
+              <Picker value={f.section || null} onChange={(v) => set({ section: v, subject: '' })} placeholder={k('selectSection')} options={sections.map(([id, name]) => ({ value: id, label: name }))} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{`${k('subject')} *`}</Label>
+              <Picker value={f.subject || null} onChange={(v) => set({ subject: v })} placeholder={k('selectSubject')} options={subjectsFor.map(([id, name]) => ({ value: id, label: name }))} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{`${k('examName')} *`}</Label>
+              <Input value={f.name} onChangeText={(v) => set({ name: v })} placeholder={k('examNamePlaceholder')} />
+            </View>
+            <DateField label={k('examDate')} value={f.date || null} onChange={(v) => set({ date: v })} clearable />
+          </FormSection>
+          <FormSection title={k('maxMarks')} icon={Target}>
+            <View className="flex-row gap-2">
+              <View className="flex-1 gap-1.5">
+                <Label>{`${k('maxMarks')} *`}</Label>
+                <Input value={f.max} onChangeText={(v) => set({ max: v.replace(/[^0-9.]/g, '') })} keyboardType="decimal-pad" />
+              </View>
+              <View className="flex-1 gap-1.5">
+                <Label>{`${k('passingMarks')} *`}</Label>
+                <Input value={f.pass} onChangeText={(v) => set({ pass: v.replace(/[^0-9.]/g, '') })} keyboardType="decimal-pad" />
+              </View>
+            </View>
+          </FormSection>
         </ScrollView>
+        <StickyActions>
+          <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={busy}>
+            <Text>{k('cancel')}</Text>
+          </Button>
+          <Button className="flex-1" onPress={create} disabled={busy}>
+            <Text>{k('createExam')}</Text>
+          </Button>
+        </StickyActions>
       </KeyboardAvoidingView>
     </>
   );

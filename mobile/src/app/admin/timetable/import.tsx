@@ -1,7 +1,6 @@
 import type { BulkTimetableRow } from '@studently/api-client';
-import { csvToObjects, toCsv } from '@studently/shared-utils';
+import { toCsv } from '@studently/shared-utils';
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
 import { router, Stack } from 'expo-router';
 import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Download, Upload, XCircle } from 'lucide-react-native';
 import { useState } from 'react';
@@ -21,6 +20,7 @@ import { useAcademicYear } from '@/features/admin/use-academic-year';
 import { adminTimetable } from '@/lib/api';
 import { shareTextFile } from '@/lib/share-file';
 import { cn } from '@/lib/utils';
+import { isSheetFile, readSheetObjects, SHEET_TYPES } from '@/lib/spreadsheet';
 
 interface ParsedRow extends BulkTimetableRow {
   rowIndex: number;
@@ -83,12 +83,12 @@ export default function TimetableImport() {
   const invalid = rows.length - valid.length;
 
   async function pick() {
-    const res = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'application/csv'], copyToCacheDirectory: true });
+    const res = await DocumentPicker.getDocumentAsync({ type: SHEET_TYPES, copyToCacheDirectory: true });
     if (res.canceled || !res.assets?.[0]) return;
     const asset = res.assets[0];
-    if (!asset.name.toLowerCase().endsWith('.csv')) return toast.error(m('err_invalid_file'));
+    if (!isSheetFile(asset.name)) return toast.error(m('err_invalid_file'));
     try {
-      const { rows: objs } = csvToObjects(await new File(asset.uri).text());
+      const objs = await readSheetObjects(asset);
       setRows(validate(objs.filter((o) => Object.values(o).some((v) => v))));
       setStep(2);
     } catch {
@@ -149,7 +149,7 @@ export default function TimetableImport() {
             const active = step === n;
             return (
               <View key={label} className="flex-row items-center gap-1.5">
-                <View className={cn('size-6 items-center justify-center rounded-full', done ? 'bg-green-600' : active ? 'bg-primary' : 'bg-muted')}>
+                <View className={cn('size-6 items-center justify-center rounded-full', done ? 'bg-success' : active ? 'bg-primary' : 'bg-muted')}>
                   {done ? <Icon as={CheckCircle2} className="size-3.5 text-white" /> : <Text className={cn('text-xs font-semibold', active ? 'text-primary-foreground' : 'text-muted-foreground')}>{n}</Text>}
                 </View>
                 <Text className={cn('text-xs', active ? 'font-medium' : 'text-muted-foreground')}>{label}</Text>
@@ -201,12 +201,12 @@ export default function TimetableImport() {
             </View>
             <View className="flex-row gap-2">
               <Button variant="outline" size="sm" onPress={reset}>
-                <Icon as={ArrowLeft} className="text-foreground size-4 rtl:rotate-180" />
+                <Icon flipRtl as={ArrowLeft} className="text-foreground size-4" />
                 <Text>{m('btn_back')}</Text>
               </Button>
               <Button size="sm" onPress={runImport} disabled={!valid.length || !yearId}>
                 <Text>{m('btn_import', { count: valid.length })}</Text>
-                <Icon as={ArrowRight} className="text-primary-foreground size-4 rtl:rotate-180" />
+                <Icon flipRtl as={ArrowRight} className="text-primary-foreground size-4" />
               </Button>
             </View>
             {!yearId ? (
@@ -240,7 +240,7 @@ export default function TimetableImport() {
                         <Text className="flex-1 text-sm font-medium" numberOfLines={1}>
                           {m('table_row')} {r.rowIndex} · {r.grade_name || '—'} / {r.section_name}
                         </Text>
-                        <Text className={r.errors.length ? 'text-destructive text-xs' : 'text-xs text-green-600'}>{r.errors.length ? m('status_error') : m('status_ok')}</Text>
+                        <Text className={r.errors.length ? 'text-destructive text-xs' : 'text-xs text-success'}>{r.errors.length ? m('status_error') : m('status_ok')}</Text>
                       </View>
                       <Text className="text-muted-foreground text-xs">
                         {r.subject_name || r.subject_code || '—'} · {r.teacher_email || r.teacher_name || '—'} · {DAY_LABELS[String(r.day_of_week).toLowerCase()] || r.day_of_week} · {m('table_period')} {r.period_number} · {r.room_number || '—'}
@@ -258,7 +258,7 @@ export default function TimetableImport() {
           <Card>
             <CardContent className="items-center gap-2 py-10">
               <LoadingList rows={2} />
-              <Text className="font-medium">{m('importing_title')}</Text>
+              <Text className="text-sm font-semibold">{m('importing_title')}</Text>
               <Text className="text-muted-foreground text-sm">{m('importing_desc', { count: valid.length })}</Text>
             </CardContent>
           </Card>

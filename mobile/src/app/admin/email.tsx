@@ -1,4 +1,5 @@
-import { isRunDone, type BulkSendRun, type DisciplineLogFields, type GroupEntity } from '@studently/api-client';
+import { isRunDone, type BulkSendRun, type DisciplineLogFields } from '@studently/api-client';
+import { htmlToText, textToHtml } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +9,7 @@ import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
+import { RichTextField } from '@/components/app/rich-text-field';
 import { Screen } from '@/components/app/screen';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -16,13 +18,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Text } from '@/components/ui/text';
-import { Textarea } from '@/components/ui/textarea';
 import { CheckRow } from '@/features/admin/attendance';
 import { useAcademicYears } from '@/features/admin/grades';
-import { PeoplePicker } from '@/features/admin/people-picker';
+import { PeoplePicker, type PeopleEntity } from '@/features/admin/people-picker';
+import { MultiSelect } from '@/components/app/multi-select';
 import { useCampus } from '@/features/campus/campus';
 import { locale } from '@/i18n';
-import { adminGrades, adminMail } from '@/lib/api';
+import { adminAcademics, adminEmployees, adminGrades, adminMail } from '@/lib/api';
 import { useApi } from '@/lib/data';
 
 type Audience = 'students' | 'staff' | 'balances' | 'balances-parents' | 'days-absent' | 'discipline' | 'discipline-parents' | 'report-cards' | 'report-cards-parents';
@@ -74,15 +76,6 @@ function defaultText(a: Audience) {
   return DEFAULTS[a] ?? { subject: '', body: '' };
 }
 
-/** Plain text from the phone -> the HTML body the server sends (line breaks kept, markup escaped). */
-function toHtml(text: string) {
-  const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return esc
-    .split(/\n{2,}/)
-    .map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`)
-    .join('');
-}
-
 /** Email selected students, staff, balances, days absent or discipline logs (web: /admin/email/*, attendance/email-parents, discipline/email-*). */
 export default function SendEmail() {
   const { t } = useTranslation();
@@ -94,7 +87,9 @@ export default function SendEmail() {
   const [step, setStep] = useState<'compose' | 'recipients' | 'sending'>('compose');
   // Balance emails start from the web's default text; the server fills {{balance}} and {{fees_list}}.
   const [subject, setSubject] = useState(() => defaultText(audience).subject);
-  const [body, setBody] = useState(() => defaultText(audience).body);
+  // Rich-text body (HTML), like the web's RichTextEditor; the default texts start as paragraphs.
+  const [body, setBody] = useState(() => textToHtml(defaultText(audience).body));
+  const insertToken = useRef<(content: string) => void>(() => {});
   const [startDate, setStartDate] = useState(() => `${todayYmd().slice(0, 8)}01`);
   const [endDate, setEndDate] = useState(todayYmd);
   const [yearId, setYearId] = useState('');
@@ -104,7 +99,20 @@ export default function SendEmail() {
   const mps = useApi(isReportCards(audience) ? ['admin', 'marking-periods', campusId ?? 'school'] : null, () => adminGrades.markingPeriods(campusId));
   const years = useAcademicYears();
   const [testEmail, setTestEmail] = useState('');
-  const [staffKind, setStaffKind] = useState<GroupEntity>('teacher');
+  // Web staff email: all employees by default, or one role.
+  const [staffKind, setStaffKind] = useState<PeopleEntity>('employees');
+  // Web student emails: grade/section filters (sections of the chosen grades) and CC staff.
+  const [gradeIds, setGradeIds] = useState<string[]>([]);
+  const [sectionIds, setSectionIds] = useState<string[]>([]);
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const studentAudience = audience !== 'staff';
+  const gradesQ = useApi(studentAudience ? ['admin', 'grades', campusId ?? 'school'] : null, () => adminAcademics.grades(campusId));
+  const sectionsQ = useApi(studentAudience ? ['admin', 'sections', campusId ?? 'school', 'all'] : null, () => adminAcademics.sections(campusId));
+  const ccStaff = useApi(audience === 'students' ? ['admin', 'email-cc-staff', campusId ?? 'school'] : null, () => adminEmployees.list('all', undefined, { page: 1, limit: 200 }));
+  const gradeList = gradesQ.data ?? [];
+  const sectionOptions = (sectionsQ.data ?? [])
+    .filter((x) => gradeIds.includes(x.grade_level_id))
+    .map((x) => ({ id: x.id, label: gradeIds.length > 1 ? `${gradeList.find((g) => g.id === x.grade_level_id)?.name ?? ''} - ${x.name}` : x.name }));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [run, setRun] = useState<BulkSendRun | null>(null);
   const polling = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -115,14 +123,21 @@ export default function SendEmail() {
 
   function next() {
     if (!subject.trim()) return toast.error(s('subject_required'));
-    if (!body.trim()) return toast.error(s('body_required'));
+    if (!htmlToText(body).trim()) return toast.error(s('body_required'));
     if (audience === 'days-absent' && startDate > endDate) return toast.error(t('app.at_range_order'));
     setStep('recipients');
   }
 
   async function send() {
     if (selected.size === 0) return toast.error(s('select_student_error'));
-    const input = { recipient_ids: [...selected], subject: subject.trim(), body: toHtml(body), test_email: testEmail.trim() || undefined, campus_id: campusId };
+    const input = {
+      recipient_ids: [...selected],
+      subject: subject.trim(),
+      body,
+      test_email: testEmail.trim() || undefined,
+      cc_emails: audience === 'students' && ccEmails.length ? ccEmails : undefined,
+      campus_id: campusId,
+    };
     const res =
       audience === 'staff'
         ? await adminMail.sendToStaff(input)
@@ -131,8 +146,13 @@ export default function SendEmail() {
           : isDiscipline(audience)
             ? await adminMail.sendDisciplineLog({ ...input, academic_year_id: yearId || undefined, include_fields: include }, audience === 'discipline-parents')
             : isBalances(audience)
-          ? await adminMail.sendBalances(input, audience === 'balances-parents')
-          : await adminMail.sendToStudents(input);
+              ? await adminMail.sendBalances({ ...input, academic_year: yearId || undefined }, audience === 'balances-parents')
+              : isReportCards(audience)
+                ? await adminMail.sendReportCards(
+                    { ...input, marking_period_id: mpId || undefined, academic_year_id: yearId || undefined, include_fields: rcInclude },
+                    audience === 'report-cards-parents',
+                  )
+                : await adminMail.sendToStudents(input);
     if (!res.success || !res.data) return toast.error(res.error || t('app.error_title'));
     const runId = res.data.run_id;
     setStep('sending');
@@ -189,7 +209,7 @@ export default function SendEmail() {
   }
 
   if (step === 'recipients') {
-    const entity: GroupEntity = audience === 'staff' ? staffKind : 'student';
+    const entity: PeopleEntity = audience === 'staff' ? staffKind : 'student';
     return (
       <>
         <Stack.Screen options={{ title: s('recipients_title') }} />
@@ -198,18 +218,36 @@ export default function SendEmail() {
           campusId={campusId}
           selected={selected}
           onChange={setSelected}
+          selectAllWithEmail
+          filter={studentAudience ? { gradeIds, sectionIds: sectionIds.filter((id) => sectionOptions.some((o) => o.id === id)) } : undefined}
           subtitle={(r) => r.email || s('no_email')}
           header={
             audience === 'staff' ? (
-              <FilterChips<GroupEntity>
+              <FilterChips<PeopleEntity>
                 value={staffKind}
                 onChange={setStaffKind}
                 options={[
-                  { value: 'teacher', label: t('app.role_teacher') },
-                  { value: 'staff', label: t('app.role_staff') },
+                  { value: 'employees', label: t('email.role_all') },
+                  { value: 'teacher', label: t('email.role_teachers') },
+                  { value: 'librarian', label: t('email.role_librarians') },
+                  { value: 'staff', label: t('email.role_staff') },
+                  { value: 'counselor', label: t('email.role_counselors') },
                 ]}
               />
-            ) : undefined
+            ) : (
+              <View className="gap-2">
+                <MultiSelect
+                  options={gradeList.map((g) => ({ id: g.id, label: g.name }))}
+                  value={gradeIds}
+                  onChange={setGradeIds}
+                  placeholder={t('app.em_all_grades')}
+                  title={t('app.em_grades')}
+                />
+                {gradeIds.length && sectionOptions.length ? (
+                  <MultiSelect options={sectionOptions} value={sectionIds} onChange={setSectionIds} placeholder={t('app.em_all_sections')} title={t('app.em_sections')} />
+                ) : null}
+              </View>
+            )
           }
           footer={
             <View className="border-border flex-row gap-2 border-t p-4">
@@ -281,6 +319,12 @@ export default function SendEmail() {
             </View>
           </View>
         ) : null}
+        {isBalances(audience) ? (
+          <View className="gap-1.5">
+            <Label>{t('app.em_academic_year')}</Label>
+            <Picker value={yearId} onChange={setYearId} placeholder={t('app.em_all_years')} options={[{ value: '', label: t('app.em_all_years') }, ...years.list.map((y) => ({ value: y.id, label: y.name }))]} />
+          </View>
+        ) : null}
         {isDiscipline(audience) ? (
           <View className="gap-3">
             <View className="gap-1.5">
@@ -303,16 +347,30 @@ export default function SendEmail() {
         </View>
         <View className="gap-1.5">
           <Label nativeID="body">{s('body_label')}</Label>
-          <Textarea aria-labelledby="body" value={body} onChangeText={setBody} placeholder={s('body_placeholder')} className="min-h-48" />
+          <RichTextField value={body} onChange={setBody} placeholder={s('body_placeholder')} campusId={campusId} minHeight={200} insertRef={(fn) => (insertToken.current = fn)} />
           <Text className="text-muted-foreground text-xs">{s('substitution_chips_label')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
             {TOKENS[audience].map((k) => (
-              <Pressable key={k} onPress={() => setBody((b) => `${b}{{${k}}}`)} className="border-border rounded-full border px-3 py-1.5" accessibilityRole="button">
+              <Pressable key={k} onPress={() => insertToken.current(`{{${k}}}`)} className="border-border rounded-full border px-3 py-1.5" accessibilityRole="button">
                 <Text className="font-mono text-xs">{`{{${k}}}`}</Text>
               </Pressable>
             ))}
           </ScrollView>
         </View>
+        {audience === 'students' && (ccStaff.data ?? []).some((x) => x.profile?.email) ? (
+          <View className="gap-1.5">
+            <Label>{s('cc_staff')}</Label>
+            <MultiSelect
+              options={(ccStaff.data ?? [])
+                .filter((x) => !!x.profile?.email)
+                .map((x) => ({ id: x.profile?.email as string, label: `${x.profile?.first_name ?? ''} ${x.profile?.last_name ?? ''}`.trim() || (x.profile?.email as string) }))}
+              value={ccEmails}
+              onChange={setCcEmails}
+              placeholder={t('app.em_no_cc')}
+              title={s('cc_staff')}
+            />
+          </View>
+        ) : null}
         <View className="gap-1.5">
           <Label nativeID="test">{s('test_mode')}</Label>
           <Input aria-labelledby="test" value={testEmail} onChangeText={setTestEmail} placeholder={s('test_mode_placeholder')} keyboardType="email-address" autoCapitalize="none" />

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { FilterChips } from '@/components/app/filter-chips';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -174,7 +174,7 @@ export default function PeopleFields() {
         ) : (
           <Card>
             <CardContent className="py-1">
-              {!ordered.length ? <Text className="text-muted-foreground py-6 text-center text-sm">{t('app.cf_none')}</Text> : null}
+              {!ordered.length ? <EmptyState title={t('app.cf_none')} /> : null}
               {ordered.map((x, i) => (
                 <View key={x.key}>
                   {i > 0 ? <Separator /> : null}

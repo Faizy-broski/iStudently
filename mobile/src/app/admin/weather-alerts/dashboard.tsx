@@ -7,7 +7,7 @@ import { View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,10 +21,10 @@ import { cn } from '@/lib/utils';
 
 const STATUSES: WeatherAlertStatus[] = ['draft', 'approved', 'sent', 'rejected', 'expired'];
 const SEVERITY_TONE: Record<string, string> = {
-  minor: 'bg-blue-100 text-blue-800',
-  moderate: 'bg-amber-100 text-amber-800',
-  severe: 'bg-orange-100 text-orange-800',
-  extreme: 'bg-red-100 text-red-800',
+  minor: 'bg-info-soft text-brand dark:text-brand-secondary',
+  moderate: 'bg-warning-soft text-warning',
+  severe: 'bg-warning-soft text-warning',
+  extreme: 'bg-destructive-soft text-destructive',
 };
 
 /** Weather alert drafts to approve (sent by push + portal note) or reject, by status (web: /admin/weather-alerts/dashboard). */
@@ -77,7 +77,7 @@ export default function WeatherDashboard() {
         {res.isLoading ? (
           <LoadingList />
         ) : !list.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{d('empty')}</Text>
+          <EmptyState title={d('empty')} />
         ) : (
           list.map((a) => (
             <Card key={a.id}>

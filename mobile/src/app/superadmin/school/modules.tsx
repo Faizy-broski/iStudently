@@ -2,14 +2,15 @@ import { ALL_MODULE_HREFS, MODULE_CATALOG, type ModuleCatalogItem } from '@stude
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SectionList, View } from 'react-native';
+import { Pressable, SectionList, View } from 'react-native';
 
+import { CheckMark, RowPill, StickyActions } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { SearchBar } from '@/components/app/search-bar';
+import { StatusChip } from '@/components/app/status-chip';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { platform } from '@/lib/api';
@@ -91,24 +92,23 @@ export default function SchoolModules() {
       <Stack.Screen options={{ title: name ? `${t('app.ma_title')} · ${name}` : t('app.ma_title') }} />
       <View className="bg-background flex-1">
         <View className="gap-3 p-4">
-          <View className="flex-row items-center justify-between gap-4">
+          <Panel className="flex-row items-center justify-between gap-4 p-4">
             <View className="flex-1 gap-0.5">
-              <Text className="font-medium">{t('app.ma_restrict')}</Text>
-              <Text variant="muted">{t('app.ma_restrict_hint')}</Text>
+              <Text className="text-sm font-semibold">{t('app.ma_restrict')}</Text>
+              <Text variant="muted" className="text-xs">
+                {t('app.ma_restrict_hint')}
+              </Text>
             </View>
             <Switch checked={restricted} onCheckedChange={setRestricted} />
-          </View>
+          </Panel>
           {restricted ? (
             <>
-              <Text variant="muted">{t('app.ma_hidden_count', { count: denied.size })}</Text>
               <SearchBar value={search} onChangeText={setSearch} placeholder={t('app.ma_search')} />
-              <View className="flex-row gap-2">
-                <Button size="sm" variant="outline" onPress={() => setDenied(new Set())}>
-                  <Text>{t('app.ma_show_all')}</Text>
-                </Button>
-                <Button size="sm" variant="outline" onPress={() => setDenied(new Set(ALL_MODULE_HREFS))}>
-                  <Text>{t('app.ma_hide_all')}</Text>
-                </Button>
+              <View className="flex-row flex-wrap items-center gap-2">
+                <StatusChip label={t('app.ma_hidden_count', { count: denied.size })} tone={denied.size ? 'warning' : 'muted'} />
+                <View className="flex-1" />
+                <RowPill label={t('app.ma_show_all')} onPress={() => setDenied(new Set())} />
+                <RowPill label={t('app.ma_hide_all')} tone="destructive" onPress={() => setDenied(new Set(ALL_MODULE_HREFS))} />
               </View>
             </>
           ) : null}
@@ -119,33 +119,39 @@ export default function SchoolModules() {
             keyExtractor={(item, i) => `${item.title}:${i}`}
             keyboardShouldPersistTaps="handled"
             stickySectionHeadersEnabled
-            ItemSeparatorComponent={() => <Separator />}
+            contentContainerClassName="px-4 pb-4"
+            ItemSeparatorComponent={() => <View className="h-1.5" />}
             renderSectionHeader={({ section }) => (
-              <View className="bg-muted px-4 py-2">
-                <Text className="text-muted-foreground text-xs font-semibold uppercase">{section.title}</Text>
+              <View className="bg-background pb-2 pt-3">
+                <Text className="text-sm font-semibold">{section.title}</Text>
               </View>
             )}
             renderItem={({ item }) => {
               const s = state(item);
+              const on = s !== false;
               return (
-                <View className="min-h-12 flex-row items-center gap-3 px-4 py-2">
-                  <Checkbox checked={s !== false} onCheckedChange={(c) => setItem(item, !!c)} />
+                <Pressable
+                  onPress={() => setItem(item, !on)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: s === 'partial' ? 'mixed' : on }}
+                  className={on ? 'border-brand-secondary bg-info-soft min-h-12 flex-row items-center gap-3 rounded-xl border px-3 py-2.5 active:opacity-70' : 'border-info-soft dark:border-border bg-card min-h-12 flex-row items-center gap-3 rounded-xl border px-3 py-2.5 active:opacity-70'}>
+                  <CheckMark on={on} />
                   <View className="flex-1">
-                    <Text>{t(`sidebar.${item.title}`, { defaultValue: item.title })}</Text>
+                    <Text className="text-sm font-medium">{t(`sidebar.${item.title}`, { defaultValue: item.title })}</Text>
                     {s === 'partial' ? <Text className="text-warning text-xs">{t('app.ma_partial')}</Text> : null}
                   </View>
-                </View>
+                </Pressable>
               );
             }}
           />
         ) : (
           <View className="flex-1" />
         )}
-        <View className="border-border border-t p-4">
-          <Button onPress={save} disabled={saving}>
+        <StickyActions>
+          <Button className="flex-1" onPress={save} disabled={saving}>
             <Text>{t('app.bl_save')}</Text>
           </Button>
-        </View>
+        </StickyActions>
       </View>
     </>
   );

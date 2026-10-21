@@ -10,11 +10,11 @@ function files(dir: string): string[] {
 }
 
 describe('profile selects', () => {
-  it('no service, controller or route embeds profiles(*)', () => {
+  it('no service, controller or route embeds profiles(*) or profiles!fk(*)', () => {
     const root = join(__dirname, '..')
     const offenders = ['services', 'controllers', 'routes']
       .flatMap((d) => files(join(root, d)))
-      .filter((f) => /profiles?\s*\(\s*\*\s*\)/.test(readFileSync(f, 'utf8')))
+      .filter((f) => /profiles?(![\w]+)?\s*\(\s*\*\s*\)/.test(readFileSync(f, 'utf8')))
       .map((f) => f.replace(root, 'src'))
     expect(offenders).toEqual([])
   })

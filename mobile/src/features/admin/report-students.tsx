@@ -1,26 +1,23 @@
 import type { MarkingPeriod } from '@studently/api-client';
-import { Check } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
-import { Picker } from '@/components/app/picker';
-import { Icon } from '@/components/ui/icon';
-import { Label } from '@/components/ui/label';
+import { FilterChips } from '@/components/app/filter-chips';
+import { CheckMark } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { StudentChecklist, useCampusStudents } from '@/features/admin/scheduling-tools';
 import { useCampus } from '@/features/campus/campus';
 import { adminAcademics } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { cn } from '@/lib/utils';
 
 export function Tick({ on }: { on: boolean }) {
-  return <View className={cn('size-5 items-center justify-center rounded border', on ? 'border-primary bg-primary' : 'border-border')}>{on ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>;
+  return <CheckMark on={on} />;
 }
 
 /** A labelled check box row. */
 export function CheckRow({ label, value, onChange, hint }: { label: string; value: boolean; onChange: (v: boolean) => void; hint?: string }) {
   return (
-    <Pressable onPress={() => onChange(!value)} className="flex-row items-start gap-3 py-1.5" accessibilityRole="checkbox" accessibilityState={{ checked: value }}>
+    <Pressable onPress={() => onChange(!value)} className="flex-row items-start gap-3 py-2 active:opacity-70" accessibilityRole="checkbox" accessibilityState={{ checked: value }}>
       <Tick on={value} />
       <View className="flex-1">
         <Text className="text-sm">{label}</Text>
@@ -39,8 +36,8 @@ export function ReportStudents({ grade, onGrade, selected, onChange, allLabel }:
   const list = (students.data ?? []).filter((s) => grade === 'all' || s.grade_level === grade);
   return (
     <View className="gap-2">
-      <Label>{t('school.grades_module.common.filter_by_grade')}</Label>
-      <Picker value={grade} onChange={onGrade} options={[{ value: 'all', label: allLabel }, ...(grades.data ?? []).map((g) => ({ value: g.name, label: g.name }))]} />
+      <Text className="text-sm font-semibold">{t('school.grades_module.common.filter_by_grade')}</Text>
+      <FilterChips value={grade} onChange={onGrade} options={[{ value: 'all', label: allLabel }, ...(grades.data ?? []).map((g) => ({ value: g.name, label: g.name }))]} />
       <StudentChecklist students={list} loading={students.isLoading} selected={selected} onChange={onChange} countKey="school.grades_module.common.students_found" />
     </View>
   );
@@ -57,7 +54,9 @@ export function MarkingPeriodChecks({ list, value, onChange }: { list: MarkingPe
     <View className="gap-2">
       {types.map((type) => (
         <View key={type} className="gap-0.5">
-          <Text className="text-muted-foreground text-xs font-semibold">{type}</Text>
+          <Text variant="muted" className="text-[11px] font-semibold">
+            {type}
+          </Text>
           {list
             .filter((m) => m.mp_type === type)
             .map((m) => (

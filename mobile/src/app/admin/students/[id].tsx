@@ -1,14 +1,14 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Building, ChevronLeft, ChevronRight, Mail, MapPin, Pencil, Phone } from 'lucide-react-native';
+import { Building, Mail, MapPin, Pencil, Phone } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, RefreshControl, ScrollView, View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { InfoCard, InfoRow } from '@/components/app/info';
-import { PersonAvatar } from '@/components/app/person-avatar';
+import { PersonHero } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { ErrorState, LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -94,47 +94,27 @@ export default function StudentDetail() {
         className="bg-background flex-1"
         contentContainerClassName="gap-3 p-4 pb-10"
         refreshControl={<RefreshControl refreshing={student.isValidating && !student.isLoading} onRefresh={() => student.mutate()} />}>
-        <View className="items-center gap-2 py-2">
-          <PersonAvatar url={s.profile?.profile_photo_url ?? s.profile?.avatar_url} name={name} size={80} />
-          <Text variant="h4" className="text-center">
-            {name}
-          </Text>
-          <Text variant="muted">{[s.student_number, s.grade?.name ?? s.grade_level, s.section?.name].filter(Boolean).join(' · ')}</Text>
-          <View className="flex-row flex-wrap items-center justify-center gap-1.5">
-            <Badge variant={active ? 'default' : 'secondary'}>
-              <Text>{active ? td('active') : td('inactive')}</Text>
-            </Badge>
-            <ConfidentialBadge status={s.confidential_family_status} />
-          </View>
-          <View className="flex-row gap-2 pt-1">
-            {phone ? (
-              <Button size="sm" variant="outline" onPress={() => Linking.openURL(`tel:${phone}`)}>
-                <Icon as={Phone} className="size-4" />
-                <Text>{tf('phone_number')}</Text>
-              </Button>
-            ) : null}
-            {email ? (
-              <Button size="sm" variant="outline" onPress={() => Linking.openURL(`mailto:${email}`)}>
-                <Icon as={Mail} className="size-4" />
-                <Text>{tf('email')}</Text>
-              </Button>
-            ) : null}
-          </View>
-        </View>
+        <PersonHero
+          name={name}
+          photo={s.profile?.profile_photo_url ?? s.profile?.avatar_url}
+          subtitle={[s.student_number, s.grade?.name ?? s.grade_level, s.section?.name].filter(Boolean).join(' · ')}
+          chips={
+            <>
+              <StatusChip label={active ? td('active') : td('inactive')} tone={active ? 'success' : 'muted'} className="px-2.5 py-0.5" />
+              <ConfidentialBadge status={s.confidential_family_status} />
+            </>
+          }
+          actions={[
+            ...(phone ? [{ icon: Phone, label: tf('phone_number'), onPress: () => Linking.openURL(`tel:${phone}`) }] : []),
+            ...(email ? [{ icon: Mail, label: tf('email'), onPress: () => Linking.openURL(`mailto:${email}`) }] : []),
+            { icon: Pencil, label: td('edit_student'), onPress: () => router.push({ pathname: '/admin/students/form', params: { number: studentNumber } }) },
+          ]}
+          {...(ordered.length > 1 && at >= 0 ? { onPrev: at > 0 ? () => go(at - 1) : null, onNext: at < ordered.length - 1 ? () => go(at + 1) : null } : {})}
+          prevLabel={td('previous')}
+          nextLabel={td('next')}
+        />
 
         {s.profile_id ? <MiqatCard personId={s.profile_id} name={name} /> : null}
-        {ordered.length > 1 && at >= 0 ? (
-          <View className="flex-row gap-2">
-            <Button size="sm" variant="outline" className="flex-1" onPress={() => go(at - 1)} disabled={at <= 0}>
-              <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
-              <Text>{td('previous')}</Text>
-            </Button>
-            <Button size="sm" variant="outline" className="flex-1" onPress={() => go(at + 1)} disabled={at >= ordered.length - 1}>
-              <Text>{td('next')}</Text>
-              <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
-            </Button>
-          </View>
-        ) : null}
 
         <InfoCard title={td('personal_info')}>
           <InfoRow label={tf('first_name')} value={s.profile?.first_name} />
@@ -256,3 +236,4 @@ export default function StudentDetail() {
     </>
   );
 }
+

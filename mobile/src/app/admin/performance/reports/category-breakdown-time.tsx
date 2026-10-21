@@ -11,6 +11,7 @@ import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { actionName } from '@/features/admin/performance';
 import { monthKey, monthLabel, monthRange, schoolYearKey, TimeSeriesBreakdown, yearLabel, yearRange } from '@/features/admin/report-views';
@@ -84,7 +85,7 @@ export default function PerformanceBreakdownOverTime() {
             </CardHeader>
             <CardContent>
               {!actions.length ? (
-                <Text variant="muted" className="py-8 text-center">{p('no_logs_filters')}</Text>
+                <EmptyState title={p('no_logs_filters')} />
               ) : (
                 <TimeSeriesBreakdown periods={periods} options={actions} counts={counts} optionHeader={p('action')} labels={{ column: p('column'), list: p('list') }} />
               )}

@@ -11,6 +11,7 @@ import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useAttendanceScope } from '@/features/admin/attendance';
 import { CHARTABLE_TYPES, chosenValues, fieldOptions } from '@/features/admin/discipline';
@@ -79,7 +80,7 @@ export default function DisciplineCategoryBreakdown() {
             </CardHeader>
             <CardContent>
               {data.length === 0 ? (
-                <Text variant="muted" className="py-8 text-center">{d('noReferralsForFilters')}</Text>
+                <EmptyState title={d('noReferralsForFilters')} />
               ) : (
                 <CountsBreakdown data={data} nameHeader={d('option')} valueHeader={d('numberOfReferrals')} labels={{ column: d('column'), pie: d('pie'), list: d('list'), total: d('total') }} />
               )}

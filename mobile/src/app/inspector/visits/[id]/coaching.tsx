@@ -8,11 +8,11 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { FormSection, RowPill, type Tone } from '@/components/app/layout';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
@@ -22,10 +22,10 @@ import { PillPicker } from '@/features/inspector/ui';
 import { inspector } from '@/lib/api';
 import { useApi } from '@/lib/data';
 
-const NOTE_TYPES: { key: CoachingNoteType; icon: LucideIcon }[] = [
-  { key: 'strength', icon: ThumbsUp },
-  { key: 'area_for_growth', icon: TrendingUp },
-  { key: 'action_item', icon: ListChecks },
+const NOTE_TYPES: { key: CoachingNoteType; icon: LucideIcon; tone: Tone }[] = [
+  { key: 'strength', icon: ThumbsUp, tone: 'success' },
+  { key: 'area_for_growth', icon: TrendingUp, tone: 'warning' },
+  { key: 'action_item', icon: ListChecks, tone: 'brand' },
 ];
 const NONE = '__none__';
 
@@ -43,6 +43,8 @@ export default function CoachingScreen() {
   const evalId = picked ?? evals.data?.[0]?.id ?? null;
   const detail = useApi(evalId ? ['inspector', 'coaching', evalId] : null, async ([, , e]) => {
     const [n, p] = await Promise.all([inspector.notes(e as string), inspector.prescriptions(e as string)]);
+    if (!n.success) return { ...n, data: undefined };
+    if (!p.success) return { ...p, data: undefined };
     return { success: true as const, data: { notes: n.data ?? [], prescriptions: p.data ?? [] } };
   });
   const [note, setNote] = useState<{ type: CoachingNoteType; content: string; date: string } | null>(null);
@@ -63,20 +65,16 @@ export default function CoachingScreen() {
 
   if (visit.isLoading || evals.isLoading) return <LoadingList rows={4} />;
   const v = visit.data;
-  if (!v) return <Text className="text-muted-foreground p-6 text-center">{k('visit_not_found')}</Text>;
+  if (!v) return <ErrorState message={k('visit_not_found')} onRetry={() => visit.mutate()} />;
   const notes = detail.data?.notes ?? [];
   const prescriptions = detail.data?.prescriptions ?? [];
   return (
     <>
       <Stack.Screen options={{ title: k('page_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => detail.mutate()} />}>
-        <Text variant="muted">{`${v.school?.name ?? ''} · ${v.scheduled_date}`}</Text>
+        <Text variant="muted" className="text-sm">{`${v.school?.name ?? ''} · ${v.scheduled_date}`}</Text>
         {!(evals.data ?? []).length ? (
-          <Card>
-            <CardContent className="py-10">
-              <Text className="text-muted-foreground text-center text-sm">{k('no_evaluations')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={GraduationCap} title={k('no_evaluations')} />
         ) : (
           <>
             {(evals.data ?? []).length > 1 ? (
@@ -84,91 +82,64 @@ export default function CoachingScreen() {
             ) : null}
             {detail.isLoading ? (
               <LoadingList rows={3} />
+            ) : detail.error ? (
+              <ErrorState message={detail.error.message} onRetry={() => detail.mutate()} />
             ) : (
               <>
-                {NOTE_TYPES.map(({ key, icon }) => {
+                {NOTE_TYPES.map(({ key, icon, tone }) => {
                   const list = notes.filter((n) => n.note_type === key);
                   return (
-                    <Card key={key}>
-                      <CardHeader className="flex-row items-center justify-between gap-2">
-                        <View className="flex-row items-center gap-2">
-                          <Icon as={icon} className="size-4 text-[#022172] dark:text-blue-300" />
-                          <CardTitle className="text-base">{k(`note_type_${key}`)}</CardTitle>
-                        </View>
-                        <Button size="sm" variant="outline" onPress={() => setNote({ type: key, content: '', date: '' })}>
-                          <Icon as={Plus} className="size-3.5" />
-                          <Text>{k('btn_add_note')}</Text>
-                        </Button>
-                      </CardHeader>
-                      <CardContent className="gap-2">
-                        {!list.length ? (
-                          <Text className="text-muted-foreground text-sm">{k('no_notes')}</Text>
-                        ) : (
-                          list.map((n) => (
-                            <View key={n.id} className="border-border flex-row items-start gap-2 rounded-md border p-2.5">
-                              <View className="flex-1">
-                                <Text className="text-sm">{n.content}</Text>
-                                {n.target_date ? <Text className="text-muted-foreground text-xs">{`${k('target_date_label')}: ${n.target_date}`}</Text> : null}
-                              </View>
-                              <Pressable hitSlop={8} accessibilityLabel={t('common.delete')} onPress={() => act(inspector.deleteNote(n.id), 'msg_note_deleted')}>
-                                <Icon as={X} className="text-destructive size-3.5" />
-                              </Pressable>
+                    <FormSection key={key} title={k(`note_type_${key}`)} icon={icon} action={<RowPill icon={Plus} tone={tone} label={k('btn_add_note')} onPress={() => setNote({ type: key, content: '', date: '' })} />}>
+                      {!list.length ? (
+                        <Text className="text-muted-foreground text-sm">{k('no_notes')}</Text>
+                      ) : (
+                        list.map((n) => (
+                          <View key={n.id} className="border-info-soft dark:border-border flex-row items-start gap-2 rounded-xl border p-3">
+                            <View className="flex-1">
+                              <Text className="text-sm">{n.content}</Text>
+                              {n.target_date ? <Text className="text-muted-foreground text-xs">{`${k('target_date_label')}: ${n.target_date}`}</Text> : null}
                             </View>
-                          ))
-                        )}
-                      </CardContent>
-                    </Card>
+                            <Pressable hitSlop={8} accessibilityLabel={t('common.delete')} className="bg-destructive-soft size-8 items-center justify-center rounded-full active:opacity-70" onPress={() => act(inspector.deleteNote(n.id), 'msg_note_deleted')}>
+                              <Icon as={X} className="text-destructive size-3.5" />
+                            </Pressable>
+                          </View>
+                        ))
+                      )}
+                    </FormSection>
                   );
                 })}
-                <Card>
-                  <CardHeader className="flex-row items-start justify-between gap-2">
-                    <View className="flex-1">
-                      <View className="flex-row items-center gap-2">
-                        <Icon as={GraduationCap} className="size-4 text-[#022172] dark:text-blue-300" />
-                        <CardTitle className="text-base">{k('prescriptions_title')}</CardTitle>
-                      </View>
-                      <CardDescription>{k('prescriptions_desc')}</CardDescription>
-                    </View>
-                    <Button size="sm" variant="outline" onPress={() => setRx({ reason: '', session: '' })}>
-                      <Icon as={Plus} className="size-3.5" />
-                      <Text>{k('btn_add_prescription')}</Text>
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="gap-2">
-                    {!prescriptions.length ? (
-                      <Text className="text-muted-foreground text-sm">{k('no_prescriptions')}</Text>
-                    ) : (
-                      prescriptions.map((p) => (
-                        <View key={p.id} className="border-border gap-1.5 rounded-md border p-2.5">
-                          <View className="flex-row flex-wrap items-center gap-1.5">
-                            {p.auto_suggested ? (
-                              <Badge variant="outline" className="flex-row items-center gap-1">
-                                <Icon as={Sparkles} className="size-2.5" />
-                                <Text className="text-[10px]">{k('auto_suggested_badge')}</Text>
-                              </Badge>
-                            ) : null}
-                            <Badge variant="secondary">
-                              <Text className="text-[10px]">{k(`prescription_status_${p.status}`)}</Text>
-                            </Badge>
-                            {p.criterion ? <Text className="text-muted-foreground text-xs">{p.criterion.name}</Text> : null}
-                          </View>
-                          {p.reason ? <Text className="text-sm">{p.reason}</Text> : null}
-                          {p.training_session ? <Text className="text-muted-foreground text-xs">{`${k('linked_session_label')}: ${p.training_session.title}`}</Text> : null}
-                          {p.status === 'suggested' || p.status === 'assigned' ? (
-                            <View className="flex-row gap-2">
-                              <Button size="sm" variant="outline" onPress={() => setAssign({ id: p.id, session: p.training_session_id ?? '' })}>
-                                <Text className="text-xs">{k('btn_assign')}</Text>
-                              </Button>
-                              <Button size="sm" variant="ghost" onPress={() => act(inspector.dismissPrescription(p.id), 'msg_dismissed')}>
-                                <Text className="text-destructive text-xs">{k('btn_dismiss')}</Text>
-                              </Button>
+                <FormSection
+                  title={k('prescriptions_title')}
+                  description={k('prescriptions_desc')}
+                  icon={GraduationCap}
+                  action={<RowPill icon={Plus} label={k('btn_add_prescription')} onPress={() => setRx({ reason: '', session: '' })} />}>
+                  {!prescriptions.length ? (
+                    <Text className="text-muted-foreground text-sm">{k('no_prescriptions')}</Text>
+                  ) : (
+                    prescriptions.map((p) => (
+                      <View key={p.id} className="border-info-soft dark:border-border gap-1.5 rounded-xl border p-3">
+                        <View className="flex-row flex-wrap items-center gap-1.5">
+                          {p.auto_suggested ? (
+                            <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
+                              <Icon as={Sparkles} className="text-brand dark:text-brand-secondary size-2.5" />
+                              <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{k('auto_suggested_badge')}</Text>
                             </View>
                           ) : null}
+                          <StatusChip label={k(`prescription_status_${p.status}`)} tone={p.status === 'suggested' ? 'warning' : p.status === 'assigned' ? 'info' : p.status === 'dismissed' ? 'muted' : 'success'} />
+                          {p.criterion ? <Text className="text-muted-foreground text-xs">{p.criterion.name}</Text> : null}
                         </View>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+                        {p.reason ? <Text className="text-sm">{p.reason}</Text> : null}
+                        {p.training_session ? <Text className="text-muted-foreground text-xs">{`${k('linked_session_label')}: ${p.training_session.title}`}</Text> : null}
+                        {p.status === 'suggested' || p.status === 'assigned' ? (
+                          <View className="flex-row gap-2">
+                            <RowPill label={k('btn_assign')} onPress={() => setAssign({ id: p.id, session: p.training_session_id ?? '' })} />
+                            <RowPill label={k('btn_dismiss')} tone="destructive" onPress={() => act(inspector.dismissPrescription(p.id), 'msg_dismissed')} />
+                          </View>
+                        ) : null}
+                      </View>
+                    ))
+                  )}
+                </FormSection>
               </>
             )}
           </>

@@ -1,12 +1,11 @@
 import { router, Stack } from 'expo-router';
-import { CircleDot, Trash2, Upload, Video } from 'lucide-react-native';
+import { CircleDot, Trash2, Upload, Video, Image as ImageIcon } from 'lucide-react-native';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
-import { LoadingList } from '@/components/app/states';
+import { LoadingList, EmptyState } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { GatedImage, useFn } from '@/features/admin/fina';
@@ -60,11 +59,7 @@ export default function FinaMediaLibrary() {
         {pending.isLoading ? (
           <LoadingList rows={2} />
         ) : !(pending.data ?? []).length ? (
-          <Card>
-            <CardContent className="pt-4">
-              <Text className="text-muted-foreground text-sm">{f('pending_queue_empty')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={ImageIcon} title={f('pending_queue_empty')} />
         ) : (
           <View className="flex-row flex-wrap gap-1.5">
             {(pending.data ?? []).map((m) => (

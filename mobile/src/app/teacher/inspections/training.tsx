@@ -4,16 +4,16 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { IconTile, RowItem } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { teacherInspections } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { cn } from '@/lib/utils';
 
 /** Training suggested or assigned after inspections; mark one complete (web: /teacher/inspections/training). */
 export default function TeacherInspectionTraining() {
@@ -37,44 +37,42 @@ export default function TeacherInspectionTraining() {
     <>
       <Stack.Screen options={{ title: k('page_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        <Text variant="muted">{k('page_subtitle')}</Text>
+        <Text variant="muted" className="text-sm">
+          {k('page_subtitle')}
+        </Text>
         {res.isLoading ? (
           <LoadingList rows={3} />
         ) : !list.length ? (
-          <Text className="text-muted-foreground py-12 text-center text-sm">{k('no_prescriptions')}</Text>
+          <EmptyState icon={GraduationCap} title={k('no_prescriptions')} />
         ) : (
-          <Card>
-            <CardContent className="p-0">
-              {list.map((p, i) => (
-                <View key={p.id} className={cn('flex-row items-start gap-3 p-4', i > 0 && 'border-border border-t')}>
-                  <View className="size-9 items-center justify-center rounded-full bg-[#022172]/10">
-                    <Icon as={GraduationCap} className="size-4 text-[#022172] dark:text-blue-300" />
-                  </View>
-                  <View className="flex-1 gap-1">
-                    <View className="flex-row flex-wrap gap-1.5">
-                      {p.auto_suggested ? (
-                        <Badge variant="outline" className="flex-row items-center gap-1">
-                          <Icon as={Sparkles} className="size-2.5" />
-                          <Text className="text-[10px]">{k('auto_suggested_badge')}</Text>
-                        </Badge>
-                      ) : null}
-                      <Badge variant="secondary">
-                        <Text className="text-[10px]">{k(`status_${p.status}`)}</Text>
-                      </Badge>
-                    </View>
-                    {p.reason ? <Text className="text-sm">{p.reason}</Text> : null}
-                    {p.training_session ? <Text className="text-muted-foreground text-xs">{`${k('linked_session_label')}: ${p.training_session.title}`}</Text> : null}
+          <Panel>
+            {list.map((p, i) => (
+              <RowItem
+                key={p.id}
+                leading={<IconTile icon={GraduationCap} size={40} round />}
+                title={p.reason || k(`status_${p.status}`)}
+                meta={p.training_session ? `${k('linked_session_label')}: ${p.training_session.title}` : null}
+                trailing={<StatusChip label={k(`status_${p.status}`)} tone={p.status === 'completed' ? 'success' : p.status === 'dismissed' ? 'muted' : 'warning'} />}
+                last={i === list.length - 1}>
+                {p.auto_suggested || p.status === 'suggested' || p.status === 'assigned' ? (
+                  <View className="flex-row flex-wrap items-center gap-2 ps-[52px]">
+                    {p.auto_suggested ? (
+                      <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
+                        <Icon as={Sparkles} className="text-brand dark:text-brand-secondary size-3" />
+                        <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{k('auto_suggested_badge')}</Text>
+                      </View>
+                    ) : null}
                     {p.status === 'suggested' || p.status === 'assigned' ? (
-                      <Button size="sm" variant="outline" className="mt-1 self-start" onPress={() => complete(p.id)} disabled={busy === p.id}>
-                        <Icon as={Check} className="size-3.5" />
+                      <Button size="sm" variant="outline" className="rounded-full" onPress={() => complete(p.id)} disabled={busy === p.id}>
+                        <Icon as={Check} className="text-success size-3.5" />
                         <Text>{k('btn_mark_complete')}</Text>
                       </Button>
                     ) : null}
                   </View>
-                </View>
-              ))}
-            </CardContent>
-          </Card>
+                ) : null}
+              </RowItem>
+            ))}
+          </Panel>
         )}
       </ScrollView>
     </>

@@ -14,6 +14,7 @@ import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAttendanceCodes, useAttendanceScope } from '@/features/admin/attendance';
 import { adminAcademics, adminAttendance } from '@/lib/api';
@@ -29,7 +30,7 @@ const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 function StateBadge({ value }: { value: number | null | undefined }) {
   if (value === null || value === undefined) return <View className="size-7" />;
-  const [letter, cls] = value >= 1 ? ['P', 'bg-green-100 border-green-300 text-green-800'] : value === 0 ? ['A', 'bg-red-100 border-red-300 text-red-800'] : ['H', 'bg-yellow-100 border-yellow-300 text-yellow-800'];
+  const [letter, cls] = value >= 1 ? ['P', 'bg-success-soft border-success text-success'] : value === 0 ? ['A', 'bg-destructive-soft border-destructive text-destructive'] : ['H', 'bg-warning-soft border-warning text-warning'];
   const [bg, border, fg] = cls.split(' ');
   return (
     <View className={cn('size-7 items-center justify-center rounded border', bg, border)}>
@@ -110,8 +111,8 @@ export default function AttendanceChart() {
 
   const metric = (label: string, value: number) => (
     <View className="w-1/4 py-1">
-      <Text className="text-muted-foreground text-[10px] uppercase">{label}</Text>
-      <Text className="font-medium">{value}</Text>
+      <Text className="text-muted-foreground text-[10px]">{label}</Text>
+      <Text className="text-sm font-semibold">{value}</Text>
     </View>
   );
 
@@ -146,7 +147,7 @@ export default function AttendanceChart() {
                   options={sections.map((x) => ({ value: x.id, label: `${x.name}${x.grade_level?.name ? ` — ${x.grade_level.name}` : ''}` }))}
                 />
               ) : null}
-              <Text className="font-medium">{a('timeframe')}</Text>
+              <Text className="text-sm font-semibold">{a('timeframe')}</Text>
               <View className="flex-row gap-2">
                 <DateField className="flex-1" value={start} onChange={(d) => d && setStart(d)} />
                 <DateField className="flex-1" value={end} onChange={(d) => d && setEnd(d)} />
@@ -159,7 +160,7 @@ export default function AttendanceChart() {
               </Button>
               {mode === 'chart' && codes.length ? (
                 <View className="border-border flex-row flex-wrap items-center gap-x-4 gap-y-2 border-b pb-2">
-                  <Text className="text-muted-foreground text-xs font-semibold uppercase">{a('codes_title')}</Text>
+                  <Text className="text-muted-foreground text-sm font-semibold">{a('codes_title')}</Text>
                   {codes.map((c) => (
                     <View key={c.id} className="flex-row items-center gap-1.5">
                       <StateBadge value={c.state_code === 'P' ? 1 : c.state_code === 'A' ? 0 : 0.5} />
@@ -191,8 +192,13 @@ export default function AttendanceChart() {
           renderItem={(s) => (
             <View className="gap-2 px-4 py-3">
               <View>
-                <Text className="text-primary font-medium">{s.student_name}</Text>
-                <Text className="text-muted-foreground text-xs">{[s.student_number, s.grade_name].filter(Boolean).join(' · ') || '—'}</Text>
+                <View className="flex-row items-center gap-3">
+                  <Initials name={s.student_name || '?'} />
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-sm font-semibold">{s.student_name}</Text>
+                    <Text className="text-muted-foreground text-xs">{[s.student_number, s.grade_name].filter(Boolean).join(' · ') || '—'}</Text>
+                  </View>
+                </View>
               </View>
               {mode === 'chart' && grid ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="grow-0" contentContainerClassName="gap-1.5">
@@ -216,8 +222,8 @@ export default function AttendanceChart() {
                         {metric(a('ada_th_excusedAbsence'), bd['Excused Absence'] ?? bd['Excused'] ?? 0)}
                         {extraCols.map((k) => (
                           <View key={k} className="w-1/4 py-1">
-                            <Text className="text-muted-foreground text-[10px] uppercase">{k}</Text>
-                            <Text className="font-medium">{bd[k] ?? 0}</Text>
+                            <Text className="text-muted-foreground text-[10px]">{k}</Text>
+                            <Text className="text-sm font-semibold">{bd[k] ?? 0}</Text>
                           </View>
                         ))}
                       </View>

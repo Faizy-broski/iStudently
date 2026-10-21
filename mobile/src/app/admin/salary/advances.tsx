@@ -63,14 +63,14 @@ export default function SalaryAdvances() {
           renderItem={(x) => (
             <View className="gap-1 px-4 py-3">
               <View className="flex-row items-center justify-between gap-3">
-                <Text className="flex-1 font-medium">{advanceName(x)}</Text>
+                <Text className="flex-1 text-sm font-semibold">{advanceName(x)}</Text>
                 <Text className="font-semibold">{money(x.amount)}</Text>
               </View>
               <Text className="text-muted-foreground text-xs">{[x.staff?.title, `${a('table.request_date')}: ${formatDate(x.request_date)}`].filter(Boolean).join(' · ')}</Text>
               {x.reason ? <Text className="text-sm">{x.reason}</Text> : null}
               <View className="flex-row gap-4 pt-1">
-                <Pressable hitSlop={8} onPress={() => setOpen({ advance: x, action: 'approve' })} accessibilityRole="button">
-                  <Text className="text-primary text-sm">{t('app.sl_approve')}</Text>
+                <Pressable className="bg-info-soft rounded-full px-3 py-1.5 active:opacity-70" hitSlop={8} onPress={() => setOpen({ advance: x, action: 'approve' })} accessibilityRole="button">
+                  <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{t('app.sl_approve')}</Text>
                 </Pressable>
                 <Pressable hitSlop={8} onPress={() => setOpen({ advance: x, action: 'reject' })} accessibilityRole="button">
                   <Text className="text-destructive text-sm">{t('app.sl_reject')}</Text>

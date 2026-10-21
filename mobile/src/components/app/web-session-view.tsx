@@ -165,6 +165,8 @@ export function WebSessionView({ path, css, refreshMinutes, campusId }: { path: 
       injectedJavaScriptBeforeContentLoaded={`${script}\n${FILE_BRIDGE_SCRIPT}`}
       injectedJavaScript={cssScript(css)}
       onMessage={async (e) => {
+        // Only the website itself may ask the app to print or save files (not a page it navigated to).
+        if (e.nativeEvent.url === 'about:blank' || !sameOrigin(e.nativeEvent.url, [env.webUrl])) return;
         const err = await handleBridgeMessage(e);
         if (err) toast.error(t(err === 'print-failed' ? 'app.wv_print_failed' : 'app.wv_file_failed'));
       }}

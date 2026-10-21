@@ -318,6 +318,11 @@ export interface School {
     activities: boolean;
   };
   custom_fields?: Record<string, any>;
+  // Printed on official report cards (Jahbadh grades); columns added by migrations/jahbadh_grades.sql.
+  nationality?: string | null;
+  mother_name?: string | null;
+  place_of_birth?: string | null;
+  registration_number?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -415,6 +420,11 @@ export interface CreateStudentDTO {
   confidential_family_status?: ConfidentialFamilyStatus | null;
   medical_info?: Student["medical_info"];
   custom_fields?: Record<string, any>;
+  // Printed on official report cards (Jahbadh grades); columns added by migrations/jahbadh_grades.sql.
+  nationality?: string | null;
+  mother_name?: string | null;
+  place_of_birth?: string | null;
+  registration_number?: string | null;
   // Profile data (if creating new user)
   first_name?: string;
   father_name?: string;
@@ -438,6 +448,11 @@ export interface UpdateStudentDTO {
   confidential_family_status?: ConfidentialFamilyStatus | null;
   medical_info?: Student["medical_info"];
   custom_fields?: Record<string, any>;
+  // Printed on official report cards (Jahbadh grades); columns added by migrations/jahbadh_grades.sql.
+  nationality?: string | null;
+  mother_name?: string | null;
+  place_of_birth?: string | null;
+  registration_number?: string | null;
   // Profile updates
   first_name?: string;
   father_name?: string;

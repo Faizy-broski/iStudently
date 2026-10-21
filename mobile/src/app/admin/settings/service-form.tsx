@@ -48,6 +48,8 @@ export default function ServiceForm() {
   const [frequency, setFrequency] = useState<ChargeFrequency>('monthly');
   const [defaultCharge, setDefaultCharge] = useState('0');
   const [mandatory, setMandatory] = useState(false);
+  // Web fees/services: display order of the service in lists.
+  const [displayOrder, setDisplayOrder] = useState('0');
   const [gradeCharges, setGradeCharges] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -61,6 +63,7 @@ export default function ServiceForm() {
     setFrequency(editing.charge_frequency);
     setDefaultCharge(String(editing.default_charge ?? 0));
     setMandatory(editing.is_mandatory);
+    setDisplayOrder(String(editing.display_order ?? 0));
     const charges: Record<string, string> = {};
     for (const gc of editing.grade_charges ?? []) charges[gc.grade_level_id] = String(gc.charge_amount);
     setGradeCharges(charges);
@@ -71,7 +74,7 @@ export default function ServiceForm() {
     if (!name.trim() || !code.trim()) return toast.error(s('msg_required'));
     setSaving(true);
     try {
-      const body = { name, code, description, service_type: serviceType, charge_frequency: frequency, default_charge: num(defaultCharge), is_mandatory: mandatory };
+      const body = { name, code, description, service_type: serviceType, charge_frequency: frequency, default_charge: num(defaultCharge), is_mandatory: mandatory, display_order: Math.max(0, parseInt(displayOrder, 10) || 0) };
       const r = editingId ? await adminServices.update(editingId, body) : await adminServices.create(body, campusId);
       if (!r.success) return toast.error(r.error || t('app.svc_save_failed'));
       const serviceId = editingId ?? r.data?.id;
@@ -142,6 +145,10 @@ export default function ServiceForm() {
               <View className="gap-1.5">
                 <Label>{s('label_default_charge')}</Label>
                 <Input value={defaultCharge} onChangeText={setDefaultCharge} keyboardType="decimal-pad" />
+              </View>
+              <View className="gap-1.5">
+                <Label>{t('app.svc_display_order')}</Label>
+                <Input value={displayOrder} onChangeText={setDisplayOrder} keyboardType="number-pad" />
               </View>
               <View className="flex-row items-center gap-3">
                 <Switch checked={mandatory} onCheckedChange={setMandatory} />

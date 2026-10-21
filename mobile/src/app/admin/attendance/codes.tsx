@@ -96,15 +96,24 @@ export default function AttendanceCodes() {
     try {
       for (const r of current.filter((x) => x._deleted && x.id)) {
         const res = await adminAttendance.deleteCode(r.id!);
-        if (!res.success) (errors++, toast.error(`${r.title}: ${res.error ?? ''}`));
+        if (!res.success) {
+          errors++;
+          toast.error(`${r.title}: ${res.error ?? ''}`);
+        }
       }
       for (const r of current.filter((x) => x._isNew && !x._deleted)) {
         const res = await adminAttendance.createCode({ school_id: schoolId, campus_id: campusId ?? null, title: r.title, short_name: r.short_name, state_code: r.state_code, type: r.type, is_default: r.is_default, sort_order: r.sort_order });
-        if (!res.success) (errors++, toast.error(`${r.title}: ${res.error ?? ''}`));
+        if (!res.success) {
+          errors++;
+          toast.error(`${r.title}: ${res.error ?? ''}`);
+        }
       }
       for (const r of current.filter((x) => x._dirty && !x._isNew && !x._deleted && x.id)) {
         const res = await adminAttendance.updateCode(r.id!, { title: r.title, short_name: r.short_name, sort_order: r.sort_order, type: r.type, is_default: r.is_default, state_code: r.state_code });
-        if (!res.success) (errors++, toast.error(`${r.title}: ${res.error ?? ''}`));
+        if (!res.success) {
+          errors++;
+          toast.error(`${r.title}: ${res.error ?? ''}`);
+        }
       }
       if (!errors) toast.success(a('codes_saved'));
       await codes.mutate();

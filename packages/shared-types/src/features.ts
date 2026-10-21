@@ -12,6 +12,7 @@ export type PluginId =
   | 'hadith_forty'
   | 'qirtasi'
   | 'online_classes'
+  | 'jahbadh_grades'
 
 export interface MobileFeature {
   roles: readonly UserRole[]
@@ -41,6 +42,8 @@ export const MOBILE_FEATURES = {
   online_class: { roles: ['student', 'parent', 'teacher', 'admin'], plugin: 'online_classes' },
   worksheets: { roles: ['student', 'parent', 'teacher', 'librarian'], plugin: 'qirtasi' },
   weather: { roles: ['admin'], plugin: 'weather_alerts' },
+  /** Official Libyan grade distribution: class home, grade entry, results, second round. */
+  jahbadh_grades: { roles: ['student', 'parent', 'teacher', 'admin'], plugin: 'jahbadh_grades' },
 
   /** QR attendance card and gate history come from Miqat. */
   qr_card: { roles: ['student', 'parent'], plugin: 'miqat' },

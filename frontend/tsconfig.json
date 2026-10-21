@@ -32,6 +32,7 @@
       "@/config/*": ["./src/config/*"],
       "@/context/*": ["./src/context/*"],
       "@/app/*": ["./src/app/*"],
+      "@studently/api-client/modules/*": ["../packages/api-client/src/modules/*"],
       "@studently/*": ["../packages/*/src"]
     }
   },

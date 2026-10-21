@@ -1,15 +1,17 @@
 import type { TextbookCondition } from '@studently/api-client';
+import { BookOpen } from 'lucide-react-native';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { GradeSectionPicker } from '@/features/admin/textbooks';
 import { useCampus } from '@/features/campus/campus';
@@ -81,25 +83,28 @@ export default function TextbookReturnMode() {
           </Button>
         ) : null}
         {!section ? (
-          <Text className="text-muted-foreground text-sm">{r('selectPrompt')}</Text>
+          <EmptyState icon={BookOpen} title={r('selectPrompt')} />
         ) : res.isLoading ? (
           <LoadingList />
         ) : res.error ? (
-          <Text className="text-destructive">{res.error.message}</Text>
+          <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : matrix ? (
           matrix.students.map((s) => (
             <Card key={s.id}>
               <CardContent className="gap-2 pt-4">
-                <View>
-                  <Text className="font-medium">{s.name}</Text>
-                  <Text className="text-muted-foreground text-xs">{s.student_number}</Text>
+                <View className="flex-row items-center gap-3">
+                  <Initials name={s.name || '?'} />
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold">{s.name}</Text>
+                    <Text className="text-muted-foreground text-xs">{s.student_number}</Text>
+                  </View>
                 </View>
                 {matrix.books.map((b, i) => {
                   const d = s.deliveries[b.id];
                   return (
                     <View key={b.id} className="gap-1.5">
                       {i > 0 ? <Separator /> : null}
-                      <Text className="text-sm font-medium">{b.title}</Text>
+                      <Text className="text-sm font-semibold">{b.title}</Text>
                       {!d || !d.is_delivered ? (
                         <Text className="text-muted-foreground text-xs">{r('notDelivered')}</Text>
                       ) : (

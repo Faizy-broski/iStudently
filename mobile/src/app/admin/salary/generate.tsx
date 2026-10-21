@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { MonthYearPicker, monthLabel } from '@/features/admin/salary';
+import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
 import { adminSalary } from '@/lib/api';
 
@@ -22,7 +23,9 @@ export default function GenerateSalaries() {
   const toast = useToast();
   const confirm = useConfirm();
   const { mutate } = useSWRConfig();
-  const { scopeId } = useCampus();
+  const { scopeId, campusId } = useCampus();
+  const { me } = useSession();
+  const rootSchoolId = me.status === 'ready' ? (me.me.profile.school_id ?? null) : null;
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -35,7 +38,7 @@ export default function GenerateSalaries() {
     if (!(await confirm({ title: g('actions.generate_all'), body: period, confirmLabel: g('actions.generate_all') }))) return;
     setBusy(true);
     setResult(null);
-    const res = await adminSalary.generateBulk(scopeId, month, year);
+    const res = await adminSalary.generateBulk(rootSchoolId ?? scopeId, month, year, campusId);
     setBusy(false);
     if (!res.success || !res.data) return toast.error(res.error || g('toast.generate_error'));
     setResult(res.data);

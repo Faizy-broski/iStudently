@@ -2,9 +2,9 @@ import { Stack } from 'expo-router';
 import { TrendingUp, Users } from 'lucide-react-native';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Card, CardContent } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { StatTile, StatTiles } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { CompletionBars, useHz } from '@/features/admin/hifzi';
 import { useCampus } from '@/features/campus/campus';
@@ -27,34 +27,18 @@ export default function HifziCompliance() {
         {year.isLoading || stats.isLoading ? (
           <LoadingList rows={3} />
         ) : !yearId ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{h('noAcademicYear')}</Text>
+          <EmptyState title={h('noAcademicYear')} />
         ) : stats.error || !s ? (
           <ErrorState message={stats.error?.message || h('loadError')} onRetry={() => stats.mutate()} />
         ) : (
           <>
-            <View className="flex-row gap-3">
-              <Card className="flex-1">
-                <CardContent className="gap-1 pt-4">
-                  <View className="flex-row items-center gap-1.5">
-                    <Icon as={Users} className="text-muted-foreground size-4" />
-                    <Text className="text-muted-foreground text-xs">{h('studentsTracked')}</Text>
-                  </View>
-                  <Text className="text-2xl font-bold">{s.studentsTracked}</Text>
-                </CardContent>
-              </Card>
-              <Card className="flex-1">
-                <CardContent className="gap-1 pt-4">
-                  <View className="flex-row items-center gap-1.5">
-                    <Icon as={TrendingUp} className="text-muted-foreground size-4" />
-                    <Text className="text-muted-foreground text-xs">{h('avgCompletion')}</Text>
-                  </View>
-                  <Text className="text-2xl font-bold">{s.avgCompletionPercent !== null ? `${s.avgCompletionPercent.toFixed(1)}%` : '—'}</Text>
-                </CardContent>
-              </Card>
-            </View>
+            <StatTiles>
+              <StatTile icon={Users} label={h('studentsTracked')} value={String(s.studentsTracked)} />
+              <StatTile icon={TrendingUp} tone="success" label={h('avgCompletion')} value={s.avgCompletionPercent !== null ? `${s.avgCompletionPercent.toFixed(1)}%` : '—'} />
+            </StatTiles>
             <Card>
               <CardContent className="gap-3 pt-4">
-                <Text className="font-semibold">{h('completionByCircle')}</Text>
+                <Text className="text-base font-semibold">{h('completionByCircle')}</Text>
                 <CompletionBars rows={s.heatmap} emptyLabel={h('noData')} />
               </CardContent>
             </Card>

@@ -58,7 +58,7 @@ export default function PeriodClasses() {
           keyExtractor={(x) => `${x.id}-${x.day_of_week}`}
           renderItem={(x) => (
             <View className="gap-0.5 px-4 py-3">
-              <Text className="font-medium">{`${x.subject_name}${x.subject_code ? ` (${x.subject_code})` : ''}`}</Text>
+              <Text className="text-sm font-semibold">{`${x.subject_name}${x.subject_code ? ` (${x.subject_code})` : ''}`}</Text>
               <Text className="text-muted-foreground text-xs">{[`${x.grade_name} ${x.section_name}`.trim(), x.teacher_name].filter(Boolean).join(' · ')}</Text>
               <Text className="text-sm">{[x.day_name, x.room_number ? c('room', { room: x.room_number }) : null].filter(Boolean).join(' · ')}</Text>
             </View>

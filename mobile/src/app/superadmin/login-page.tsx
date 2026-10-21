@@ -1,22 +1,23 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { DEFAULT_LOGIN_PAGE_CONFIG, type LoginPageConfig } from '@studently/api-client';
+import type { LoginPageConfig } from '@studently/api-client';
 import { Image } from 'expo-image';
 import { Stack } from 'expo-router';
-import { ImagePlus, RotateCcw } from 'lucide-react-native';
+import { Eye, ImagePlus, Palette, RotateCcw, SlidersHorizontal, Type } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useForm, useWatch, type Control } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { z } from 'zod';
 
+import { loginPageDefaults } from '@/features/auth/login-page-defaults';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { ColorField, NumberField, TextField } from '@/components/app/form';
+import { FormSection } from '@/components/app/layout';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
@@ -56,7 +57,7 @@ function Preview({ control }: { control: Control<FormValues> }) {
   const ar = i18n.language === 'ar';
   const bg = f.background_type === 'color' ? f.background_color : f.gradient_from;
   return (
-    <View className="h-44 flex-row overflow-hidden rounded-lg">
+    <View className="h-44 flex-row overflow-hidden rounded-xl">
       <View className="flex-1 items-start justify-center gap-1 bg-white p-3">
         {f.logo_url ? <Image source={{ uri: f.logo_url }} style={{ width: 36, height: 36 }} contentFit="contain" /> : null}
         <Text style={{ color: f.text_color_left }} className="font-semibold" numberOfLines={2}>
@@ -89,11 +90,11 @@ export default function LoginPageSettings() {
   const confirm = useConfirm();
   const config = useApi(['platform', 'login-page'], () => platform.getLoginPageConfig());
   const [uploading, setUploading] = useState<'logo' | 'bg' | null>(null);
-  const { control, handleSubmit, reset, setValue } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: DEFAULT_LOGIN_PAGE_CONFIG });
+  const { control, handleSubmit, reset, setValue } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: loginPageDefaults() });
   const [bgType, bgImage, logo] = useWatch({ control, name: ['background_type', 'background_image_url', 'logo_url'] });
 
   useEffect(() => {
-    if (config.data) reset({ ...DEFAULT_LOGIN_PAGE_CONFIG, ...config.data } as LoginPageConfig);
+    if (config.data) reset({ ...loginPageDefaults(), ...config.data } as LoginPageConfig);
   }, [config.data, reset]);
 
   const save = useAction((f: FormValues) => platform.updateLoginPageConfig(f), { success: t('app.saved'), onSuccess: () => config.mutate() });
@@ -118,100 +119,81 @@ export default function LoginPageSettings() {
     <>
       <Stack.Screen options={{ title: t('app.lp_title') }} />
       <Screen scroll edges={['bottom']}>
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.lp_preview')}</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4">
-            <Preview control={control} />
-          </CardContent>
-        </Card>
+        <FormSection title={t('app.lp_preview')} icon={Eye}>
+          <Preview control={control} />
+        </FormSection>
 
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.lp_background')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-3 px-4">
-            <FilterChips<FormValues['background_type']>
-              value={bgType}
-              onChange={(v) => setValue('background_type', v, { shouldDirty: true })}
-              options={[
-                { value: 'gradient', label: t('app.lp_bg_gradient') },
-                { value: 'color', label: t('app.lp_bg_color') },
-                { value: 'image', label: t('app.lp_bg_image') },
-              ]}
-            />
-            {bgType === 'gradient' ? (
-              <>
-                <ColorField control={control} name="gradient_from" label={t('app.lp_gradient_from')} />
-                <ColorField control={control} name="gradient_to" label={t('app.lp_gradient_to')} />
-              </>
-            ) : null}
-            {bgType === 'color' ? <ColorField control={control} name="background_color" label={t('app.lp_bg_color_label')} /> : null}
-            {bgType === 'image' ? (
-              <>
-                <Label>{t('app.lp_image')}</Label>
-                <View className="flex-row flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onPress={() => upload('bg')} disabled={!!uploading}>
-                    <Icon as={ImagePlus} className="size-4" />
-                    <Text>{uploading === 'bg' ? t('app.ob_uploading') : bgImage ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
-                  </Button>
-                  {bgImage ? (
-                    <Button variant="ghost" size="sm" onPress={() => setValue('background_image_url', null, { shouldDirty: true })}>
-                      <Text>{t('app.lp_remove_image')}</Text>
-                    </Button>
-                  ) : null}
-                </View>
-                <NumberField control={control} name="background_image_opacity" label={t('app.lp_image_opacity')} />
-              </>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.lp_text')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-3 px-4">
-            <Label>{t('app.lp_logo')}</Label>
-            <View className="flex-row flex-wrap gap-2">
-              <Button variant="outline" size="sm" onPress={() => upload('logo')} disabled={!!uploading}>
-                <Icon as={ImagePlus} className="size-4" />
-                <Text>{uploading === 'logo' ? t('app.ob_uploading') : logo ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
-              </Button>
-              {logo ? (
-                <Button variant="ghost" size="sm" onPress={() => setValue('logo_url', null, { shouldDirty: true })}>
-                  <Text>{t('app.lp_remove_image')}</Text>
+        <FormSection title={t('app.lp_background')} icon={Palette}>
+          <FilterChips<FormValues['background_type']>
+            value={bgType}
+            onChange={(v) => setValue('background_type', v, { shouldDirty: true })}
+            options={[
+              { value: 'gradient', label: t('app.lp_bg_gradient') },
+              { value: 'color', label: t('app.lp_bg_color') },
+              { value: 'image', label: t('app.lp_bg_image') },
+            ]}
+          />
+          {bgType === 'gradient' ? (
+            <>
+              <ColorField control={control} name="gradient_from" label={t('app.lp_gradient_from')} />
+              <ColorField control={control} name="gradient_to" label={t('app.lp_gradient_to')} />
+            </>
+          ) : null}
+          {bgType === 'color' ? <ColorField control={control} name="background_color" label={t('app.lp_bg_color_label')} /> : null}
+          {bgType === 'image' ? (
+            <>
+              <Label>{t('app.lp_image')}</Label>
+              <View className="flex-row flex-wrap gap-2">
+                <Button variant="outline" size="sm" onPress={() => upload('bg')} disabled={!!uploading}>
+                  <Icon as={ImagePlus} className="size-4" />
+                  <Text>{uploading === 'bg' ? t('app.ob_uploading') : bgImage ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
                 </Button>
-              ) : null}
-            </View>
-            <ColorField control={control} name="text_color_left" label={t('app.lp_text_left')} />
-            <ColorField control={control} name="text_color_right" label={t('app.lp_text_right')} />
-            <TextField control={control} name="title_en" label={t('app.lp_title_en')} />
-            <TextField control={control} name="title_ar" label={t('app.lp_title_ar')} style={{ writingDirection: 'rtl', textAlign: 'right' }} />
-            <TextField control={control} name="subtitle_en" label={t('app.lp_subtitle_en')} />
-            <TextField control={control} name="subtitle_ar" label={t('app.lp_subtitle_ar')} style={{ writingDirection: 'rtl', textAlign: 'right' }} />
-            <TextField control={control} name="heading_en" label={t('app.lp_heading_en')} />
-            <TextField control={control} name="heading_ar" label={t('app.lp_heading_ar')} style={{ writingDirection: 'rtl', textAlign: 'right' }} />
-          </CardContent>
-        </Card>
+                {bgImage ? (
+                  <Button variant="ghost" size="sm" onPress={() => setValue('background_image_url', null, { shouldDirty: true })}>
+                    <Text>{t('app.lp_remove_image')}</Text>
+                  </Button>
+                ) : null}
+              </View>
+              <NumberField control={control} name="background_image_opacity" label={t('app.lp_image_opacity')} />
+            </>
+          ) : null}
+        </FormSection>
 
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.lp_advanced')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-3 px-4">
-            <NumberField control={control} name="form_width" label={t('app.lp_form_width')} keyboardType="number-pad" />
-            <NumberField control={control} name="form_offset_x" label={t('app.lp_offset_x')} keyboardType="numbers-and-punctuation" />
-            <NumberField control={control} name="form_offset_y" label={t('app.lp_offset_y')} keyboardType="numbers-and-punctuation" />
-          </CardContent>
-        </Card>
+        <FormSection title={t('app.lp_text')} icon={Type}>
+          <Label>{t('app.lp_logo')}</Label>
+          <View className="flex-row flex-wrap gap-2">
+            <Button variant="outline" size="sm" onPress={() => upload('logo')} disabled={!!uploading}>
+              <Icon as={ImagePlus} className="size-4" />
+              <Text>{uploading === 'logo' ? t('app.ob_uploading') : logo ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
+            </Button>
+            {logo ? (
+              <Button variant="ghost" size="sm" onPress={() => setValue('logo_url', null, { shouldDirty: true })}>
+                <Text>{t('app.lp_remove_image')}</Text>
+              </Button>
+            ) : null}
+          </View>
+          <ColorField control={control} name="text_color_left" label={t('app.lp_text_left')} />
+          <ColorField control={control} name="text_color_right" label={t('app.lp_text_right')} />
+          <TextField control={control} name="title_en" label={t('app.lp_title_en')} />
+          <TextField control={control} name="title_ar" label={t('app.lp_title_ar')} style={{ writingDirection: 'rtl', textAlign: 'right' }} />
+          <TextField control={control} name="subtitle_en" label={t('app.lp_subtitle_en')} />
+          <TextField control={control} name="subtitle_ar" label={t('app.lp_subtitle_ar')} style={{ writingDirection: 'rtl', textAlign: 'right' }} />
+          <TextField control={control} name="heading_en" label={t('app.lp_heading_en')} />
+          <TextField control={control} name="heading_ar" label={t('app.lp_heading_ar')} style={{ writingDirection: 'rtl', textAlign: 'right' }} />
+        </FormSection>
+
+        <FormSection title={t('app.lp_advanced')} icon={SlidersHorizontal}>
+          <NumberField control={control} name="form_width" label={t('app.lp_form_width')} keyboardType="number-pad" />
+          <NumberField control={control} name="form_offset_x" label={t('app.lp_offset_x')} keyboardType="numbers-and-punctuation" />
+          <NumberField control={control} name="form_offset_y" label={t('app.lp_offset_y')} keyboardType="numbers-and-punctuation" />
+        </FormSection>
 
         <Button onPress={handleSubmit((f) => save.run(f))} disabled={save.running || !!uploading}>
           <Text>{t('app.bl_save')}</Text>
         </Button>
         <Button
           variant="ghost"
+          className="bg-destructive-soft rounded-full"
           onPress={async () => {
             if (await confirm({ title: t('app.lp_reset_title'), body: t('app.lp_reset_body'), destructive: true, confirmLabel: t('app.lp_reset') })) resetCfg.run();
           }}

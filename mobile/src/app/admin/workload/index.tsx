@@ -89,12 +89,12 @@ export default function Workload() {
             stickySectionHeadersEnabled={false}
             contentContainerClassName="pb-10"
             ListEmptyComponent={<EmptyState title={w('noSubjectsAssigned')} />}
-            renderSectionHeader={({ section }) => <Text className="text-muted-foreground px-4 pt-5 pb-1 text-xs font-semibold uppercase">{section.title}</Text>}
+            renderSectionHeader={({ section }) => <Text className="text-muted-foreground px-4 pt-5 pb-1 text-sm font-semibold">{section.title}</Text>}
             ItemSeparatorComponent={() => <Separator className="ms-4" />}
             renderItem={({ item: a }) => (
               <View className="flex-row items-center gap-3 px-4 py-3">
                 <View className="flex-1">
-                  <Text className="font-medium">{subjectName(a)}</Text>
+                  <Text className="text-sm font-semibold">{subjectName(a)}</Text>
                   <Text className="text-muted-foreground text-sm">{classLabel(a)}</Text>
                 </View>
                 <Badge variant={a.is_primary ? 'default' : 'secondary'}>

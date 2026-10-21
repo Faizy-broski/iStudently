@@ -13,12 +13,12 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSFaceIDUsageDescription": "Studently uses Face ID to unlock the app and to protect sensitive information.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#2563EB",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -39,7 +39,6 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#022172",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 180
         }
@@ -62,20 +61,27 @@
         "expo-image-picker",
         {
           "photosPermission": "Studently needs access to your photos to upload pictures such as profile photos, attachments and inspection evidence.",
-          "cameraPermission": "Studently uses the camera to take photos for profiles, attachments and inspection evidence."
+          "cameraPermission": "Studently uses the camera to scan QR codes and to take photos for profiles, attachments and inspection evidence."
         }
       ],
       "expo-sharing",
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Studently uses your location to set the school check-in area and to confirm on-site attendance."
+          "locationWhenInUsePermission": "Studently uses your location to set the school check-in area and to confirm on-site attendance.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       [
         "expo-audio",
         {
-          "microphonePermission": "Studently uses the microphone to record your reading in Speed Reading and voice notes during inspections."
+          "microphonePermission": "Studently uses the microphone to record your reading in Speed Reading and voice notes during inspections.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
         }
       ],
       [
@@ -83,6 +89,20 @@
         {
           "microphonePermission": "Studently uses the microphone to record your reading in Speed Reading and voice notes during inspections.",
           "speechRecognitionPermission": "Studently checks the words you read aloud in Speed Reading."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Studently uses the camera to scan QR codes and to take photos for profiles, attachments and inspection evidence.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "default"
         }
       ]
     ],
@@ -92,6 +112,10 @@
     },
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "locales": {
+      "en": "./locales/en.json",
+      "ar": "./locales/ar.json"
     }
   }
 }

@@ -7,7 +7,7 @@ import { Pressable, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,13 +26,13 @@ import { cn } from '@/lib/utils';
 
 /** Badge colours per room type (web: ROOM_TYPE_BADGE_CLASS). */
 export const ROOM_TYPE_TONE: Record<RoomType, string> = {
-  classroom: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300',
-  lab: 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300',
-  auditorium: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
-  library: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
-  gym: 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300',
-  office: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
-  other: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  classroom: 'bg-info-soft text-brand dark:text-brand-secondary  ',
+  lab: 'bg-chart-6/10 text-chart-6  ',
+  auditorium: 'bg-warning-soft text-warning  ',
+  library: 'bg-success-soft text-success  ',
+  gym: 'bg-warning-soft text-warning  ',
+  office: 'bg-muted text-muted-foreground  ',
+  other: 'bg-muted text-muted-foreground  ',
 };
 
 /** Weekdays the timetable covers; the index is the API's day_of_week (0 = Monday). */
@@ -261,13 +261,13 @@ export function SlotDialog({ target, academicYearId, withCoursePeriods, onClose,
             </View>
           ) : null}
           {conflictText ? (
-            <View className="border-destructive/50 bg-destructive/5 flex-row gap-2 rounded-md border p-2.5">
+            <View className="border-destructive/50 bg-destructive/5 flex-row gap-2 rounded-xl border p-2.5">
               <Icon as={AlertCircle} className="text-destructive size-4" />
               <Text className="text-destructive flex-1 text-sm">{conflictText}</Text>
             </View>
           ) : null}
           {roomClash ? (
-            <View className="border-destructive/50 bg-destructive/5 gap-2 rounded-md border p-2.5">
+            <View className="border-destructive/50 bg-destructive/5 gap-2 rounded-xl border p-2.5">
               <Text className="text-destructive text-sm">{roomClash.conflictReason}</Text>
               {roomClash.suggestedAlternativeRoom ? (
                 <Button size="sm" variant="outline" className="self-start" onPress={() => setRoom(roomClash.suggestedAlternativeRoom!)}>
@@ -277,7 +277,7 @@ export function SlotDialog({ target, academicYearId, withCoursePeriods, onClose,
             </View>
           ) : null}
           {loading ? (
-            <Text className="text-muted-foreground py-6 text-center">{t('common.loading')}</Text>
+            <EmptyState title={t('common.loading')} />
           ) : (
             <>
               {withCoursePeriods ? (
@@ -325,7 +325,7 @@ export function SlotDialog({ target, academicYearId, withCoursePeriods, onClose,
                   </View>
                 </View>
               ) : (
-                <View className="bg-muted/30 border-border gap-1 rounded-lg border p-3">
+                <View className="bg-muted/30 border-info-soft dark:border-border gap-1 rounded-xl border p-3">
                   {info(tt('label_subject'), cp.course?.subject ? `${cp.course.subject.name}${cp.course.subject.code ? ` (${cp.course.subject.code})` : ''}` : undefined)}
                   {info(tt('label_teacher'), shortName(cp.teacher?.profile) || undefined)}
                   {cp.room ? <Text className="text-muted-foreground text-xs">{`${tt('label_default_room')}: ${cp.room}`}</Text> : null}
@@ -514,7 +514,7 @@ export function TimetableBuilder({
           </Button>
         </View>
         {erase ? (
-          <View className="border-destructive/40 bg-destructive/5 rounded-md border p-2">
+          <View className="border-destructive/40 bg-destructive/5 rounded-xl border p-2">
             <Text className="text-destructive text-xs">{tt('erase_active_desc')}</Text>
           </View>
         ) : null}
@@ -526,8 +526,8 @@ export function TimetableBuilder({
               <Pressable disabled={busy} onPress={() => copyDay(i)} hitSlop={6} accessibilityLabel={tt('tip_copy_next')}>
                 <Icon as={Copy} className="text-muted-foreground size-3.5" />
               </Pressable>
-              <Pressable disabled={busy} onPress={() => clearDay(i)} hitSlop={6} accessibilityLabel={tt('tip_clear_day')}>
-                <Icon as={Trash2} className="text-muted-foreground size-3.5" />
+              <Pressable disabled={busy} onPress={() => clearDay(i)} accessibilityLabel={tt('tip_clear_day')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </View>
           )}
@@ -537,7 +537,7 @@ export function TimetableBuilder({
             return (
               <Pressable
                 onPress={() => tap(dayIdx, p)}
-                className={cn('min-h-14 justify-center p-1.5', e && (isLocked ? 'bg-amber-50 dark:bg-amber-950/20' : erase ? 'bg-red-50 dark:bg-red-950/20' : 'bg-blue-50 dark:bg-blue-950/20'))}>
+                className={cn('min-h-14 justify-center p-1.5', e && (isLocked ? 'bg-warning-soft ' : erase ? 'bg-destructive-soft ' : 'bg-info-soft '))}>
                 {e ? (
                   <View className="gap-0.5">
                     <View className="flex-row items-start justify-between gap-1">
@@ -545,7 +545,7 @@ export function TimetableBuilder({
                         {e.subject_name}
                       </Text>
                       <Pressable onPress={() => toggleLock(e)} disabled={locking === e.id} hitSlop={6} accessibilityLabel={isLocked ? a('unlock_cell') : a('lock_cell')}>
-                        <Icon as={isLocked ? Lock : Unlock} className={isLocked ? 'size-3 text-amber-600' : 'text-muted-foreground size-3'} />
+                        <Icon as={isLocked ? Lock : Unlock} className={isLocked ? 'size-3 text-warning' : 'text-muted-foreground size-3'} />
                       </Pressable>
                     </View>
                     <View className="flex-row items-center gap-0.5">
@@ -556,9 +556,9 @@ export function TimetableBuilder({
                     </View>
                     {e.room_number ? <Text className="text-muted-foreground text-[10px]">{e.room_number}</Text> : null}
                     {e.generated_by_job_id ? (
-                      <View className="flex-row items-center gap-0.5 self-start rounded bg-purple-100 px-1 dark:bg-purple-950/40">
-                        <Icon as={Sparkles} className="size-2.5 text-purple-700 dark:text-purple-300" />
-                        <Text className="text-[9px] text-purple-700 dark:text-purple-300">{a('generated')}</Text>
+                      <View className="flex-row items-center gap-0.5 self-start rounded bg-chart-6/10 px-1 ">
+                        <Icon as={Sparkles} className="size-2.5 text-chart-6 " />
+                        <Text className="text-[9px] text-chart-6 ">{a('generated')}</Text>
                       </View>
                     ) : null}
                   </View>

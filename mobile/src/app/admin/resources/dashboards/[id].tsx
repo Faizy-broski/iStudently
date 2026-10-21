@@ -38,15 +38,15 @@ export default function DashboardView() {
         {!elements.length ? (
           <View className="items-center gap-3 py-12">
             <Icon as={LayoutDashboard} className="text-muted-foreground size-10" />
-            <Text className="font-medium">{t('app.rd_no_elements')}</Text>
-            <Text className="text-muted-foreground text-center text-sm">{t('app.rd_no_elements_body')}</Text>
+            <Text className="text-sm font-semibold">{t('app.rd_no_elements')}</Text>
+            <EmptyState title={t('app.rd_no_elements_body')} />
             <Button variant="outline" onPress={configure}>
               <Text>{t('app.rd_configure_dashboard')}</Text>
             </Button>
           </View>
         ) : (
           elements.map((el) => (
-            <View key={el.id} className="border-border overflow-hidden rounded-md border" style={{ height: el.height_px || 400 }}>
+            <View key={el.id} className="border-info-soft dark:border-border overflow-hidden rounded-xl border" style={{ height: el.height_px || 400 }}>
               {el.url.startsWith('http') ? (
                 <PublicWebView url={el.url} css={el.custom_css} refreshMinutes={el.refresh_minutes} />
               ) : (

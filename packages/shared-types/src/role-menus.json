@@ -118,6 +118,11 @@
           "href": "/student/grades/final-grades"
         },
         {
+          "title": "jahbadh_report_cards",
+          "href": "/student/jahbadh-report-cards",
+          "plugin": "jahbadh_grades"
+        },
+        {
           "title": "report_cards",
           "href": "/student/grades/report-cards"
         },
@@ -551,6 +556,11 @@
           "href": "/parent/grades/report-cards"
         },
         {
+          "title": "jahbadh_report_cards",
+          "href": "/parent/jahbadh-report-cards",
+          "plugin": "jahbadh_grades"
+        },
+        {
           "title": "progress_reports",
           "href": "/parent/grades/progress-reports"
         },
@@ -888,6 +898,61 @@
         {
           "title": "gradebook",
           "href": "/teacher/grades/gradebook"
+        },
+        {
+          "title": "jahbadh_class_home",
+          "href": "/teacher/jahbadh-grades",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_report_cards",
+          "href": "/teacher/jahbadh-grades/report-cards",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_activities",
+          "href": "/teacher/jahbadh-grades/activities",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_dashboard",
+          "href": "/teacher/jahbadh-grades/dashboard",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_early_warning",
+          "href": "/teacher/jahbadh-grades/early-warning",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_test_analysis",
+          "href": "/teacher/jahbadh-grades/test-analysis",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_rubrics",
+          "href": "/teacher/jahbadh-grades/rubrics",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_ideas",
+          "href": "/teacher/jahbadh-grades/ideas",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_distribution",
+          "href": "/teacher/jahbadh-grades/distribution",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_exam_control",
+          "href": "/teacher/exam-control",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_exam_timer",
+          "href": "/teacher/exam-timer",
+          "plugin": "jahbadh_grades"
         },
         {
           "title": "assignments",

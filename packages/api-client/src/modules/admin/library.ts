@@ -65,9 +65,18 @@ export interface LoansBreakdown {
   total_loans: number
 }
 
+/** Library policies (router: school.routes.ts, /schools/settings/library; admins and librarians). */
+export interface LibrarySettings {
+  fine_per_day: number
+  max_books_per_student: number
+  loan_duration_days: number
+}
+
 export function adminLibraryApi(api: ApiClient) {
   const id = (v: string) => encodeURIComponent(v)
   return {
+    settings: () => api.get<LibrarySettings>('/schools/settings/library'),
+    saveSettings: (body: LibrarySettings) => api.put<LibrarySettings>('/schools/settings/library', body),
     books: () => api.get<Book[]>('/library/books'),
     book: (bookId: string) => api.get<Book>(`/library/books/${id(bookId)}`),
     createBook: (body: Partial<Book>) => api.post<Book>('/library/books', body),

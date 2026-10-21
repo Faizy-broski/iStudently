@@ -20,8 +20,8 @@ export default function StudentFeeTimeline() {
   return (
     <>
       <Stack.Screen options={{ title: t('student_billing.timeline.page_title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => fees.mutate()} />}>
-        <Text variant="muted">{t('student_billing.timeline.page_subtitle')}</Text>
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => fees.mutate()} />}>
+        <Text className="text-muted-foreground text-sm">{t('student_billing.timeline.page_subtitle')}</Text>
         <FeePaymentTimeline fees={fees.data ?? []} money={money} onPay={() => router.push('/student/billing/fees')} />
       </ScrollView>
     </>

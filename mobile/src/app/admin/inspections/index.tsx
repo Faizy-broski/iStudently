@@ -1,29 +1,18 @@
 import { Stack } from 'expo-router';
-import { CalendarCheck, ClipboardCheck, MessageSquareWarning, TrendingUp, type LucideIcon } from 'lucide-react-native';
+import { CalendarCheck, ClipboardCheck, MessageSquareWarning, TrendingUp } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { ScrollView } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { BarChart } from '@/components/app/charts';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { StatTile, StatTiles } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { ScoreHeatmap } from '@/features/admin/inspections-ui';
 import { useCampus } from '@/features/campus/campus';
 import { adminInspections } from '@/lib/api';
 import { useApi } from '@/lib/data';
-
-function Stat({ icon, label, value }: { icon: LucideIcon; label: string; value: string | number }) {
-  return (
-    <View className="border-border bg-card rounded-xl border p-4" style={{ width: '47.5%' }}>
-      <View className="mb-1 flex-row items-center gap-1.5">
-        <Icon as={icon} className="text-muted-foreground size-3.5" />
-        <Text className="text-muted-foreground flex-1 text-xs">{label}</Text>
-      </View>
-      <Text className="text-2xl font-bold">{value}</Text>
-    </View>
-  );
-}
 
 /** Inspection dashboard for the selected campus (web: /admin/inspections/dashboard). */
 export default function InspectionDashboard() {
@@ -38,17 +27,17 @@ export default function InspectionDashboard() {
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
         <Text variant="muted" className="text-sm">{d('admin_page_subtitle')}</Text>
         {!scopeId ? (
-          <Text variant="muted" className="py-10 text-center text-sm">{d('select_campus_prompt')}</Text>
+          <EmptyState icon={ClipboardCheck} title={d('select_campus_prompt')} />
         ) : res.isLoading ? (
           <LoadingList rows={4} />
         ) : s ? (
           <>
-            <View className="flex-row flex-wrap gap-3">
-              <Stat icon={CalendarCheck} label={d('stat_visits_scheduled')} value={s.visitsScheduled} />
-              <Stat icon={ClipboardCheck} label={d('stat_visits_completed')} value={s.visitsCompleted} />
-              <Stat icon={TrendingUp} label={d('stat_avg_score')} value={s.avgOverallScore ?? '—'} />
-              <Stat icon={MessageSquareWarning} label={d('stat_open_appeals')} value={s.openAppealsCount} />
-            </View>
+            <StatTiles>
+              <StatTile icon={CalendarCheck} label={d('stat_visits_scheduled')} value={String(s.visitsScheduled)} />
+              <StatTile icon={ClipboardCheck} tone="success" label={d('stat_visits_completed')} value={String(s.visitsCompleted)} />
+              <StatTile icon={TrendingUp} tone="warning" label={d('stat_avg_score')} value={String(s.avgOverallScore ?? '—')} />
+              <StatTile icon={MessageSquareWarning} tone="destructive" label={d('stat_open_appeals')} value={String(s.openAppealsCount)} />
+            </StatTiles>
             {s.avgScoreByCategory.length ? (
               <Card>
                 <CardHeader>
@@ -56,7 +45,7 @@ export default function InspectionDashboard() {
                   <CardDescription>{d('chart_desc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <BarChart categories={s.avgScoreByCategory.map((c) => c.category)} series={[{ name: '', color: '#022172', values: s.avgScoreByCategory.map((c) => c.avgScore) }]} />
+                  <BarChart categories={s.avgScoreByCategory.map((c) => c.category)} series={[{ name: '', color: colors.brand, values: s.avgScoreByCategory.map((c) => c.avgScore) }]} />
                 </CardContent>
               </Card>
             ) : null}

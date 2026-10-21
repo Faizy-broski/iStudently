@@ -14,7 +14,6 @@ import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
@@ -23,6 +22,7 @@ import { useCampus } from '@/features/campus/campus';
 import { adminAcademics, adminParents, adminStudents } from '@/lib/api';
 import { useApi, usePagedApi } from '@/lib/data';
 import { useDebounced } from '@/lib/use-debounced';
+import { IconTile } from '@/components/app/layout';
 
 /** Link one or more students to a parent with a relationship (web: /admin/parents/associate-parent). */
 export default function LinkChildren() {
@@ -73,7 +73,7 @@ export default function LinkChildren() {
             <View className="gap-1.5">
               <Label>{t('parents.selectParent')}</Label>
               {pickedParent ? (
-                <Pressable onPress={() => setPickedParent('')} className="border-primary bg-primary/10 rounded-md border p-2">
+                <Pressable onPress={() => setPickedParent('')} className="border-brand-secondary bg-info-soft rounded-xl border p-2">
                   <Text className="text-sm font-medium">{shortName((parents.data ?? []).find((x) => x.id === pickedParent)?.profile) || t('parents.selectedParent')}</Text>
                   <Text className="text-muted-foreground text-xs">{t('parents.searchParent')}</Text>
                 </Pressable>
@@ -82,7 +82,7 @@ export default function LinkChildren() {
                   <SearchBar value={parentQ} onChangeText={setParentQ} placeholder={t('parents.associate.parentSearchPlaceholder')} />
                   {!pq ? <Text className="text-muted-foreground text-xs">{t('parents.associate.typeToSearchParents')}</Text> : parents.isLoading ? <Text className="text-muted-foreground text-xs">{t('parents.associate.searchingParents')}</Text> : !(parents.data ?? []).length ? <Text className="text-muted-foreground text-xs">{t('parents.associate.noParentsFoundTryDifferent')}</Text> : null}
                   {(parents.data ?? []).slice(0, 8).map((x) => (
-                    <Pressable key={x.id} onPress={() => setPickedParent(x.id)} className="border-border rounded-md border p-2">
+                    <Pressable key={x.id} onPress={() => setPickedParent(x.id)} className="border-info-soft dark:border-border rounded-xl border p-2">
                       <Text className="text-sm">{shortName(x.profile) || '—'}</Text>
                       <Text className="text-muted-foreground text-xs">{[x.profile?.email || t('parents.noEmail'), x.profile?.phone || t('parents.noPhone')].join(' · ')}</Text>
                     </Pressable>
@@ -122,7 +122,7 @@ export default function LinkChildren() {
                 title={name}
                 subtitle={[s.student_number, s.grade?.name ?? s.grade_level].filter(Boolean).join(' · ')}
                 leading={<PersonAvatar url={s.profile?.profile_photo_url} name={name} size={36} />}
-                trailing={on ? <Icon as={Check} className="text-primary size-5" /> : undefined}
+                trailing={on ? <IconTile icon={Check} size={32} /> : undefined}
                 chevron={false}
                 onPress={() =>
                   setSelected((prev) => {

@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminMiqat } from '@/lib/api';
@@ -99,7 +100,7 @@ export default function MiqatReports() {
                 </CardContent>
               </Card>
               <View className="flex-row items-center gap-2">
-                <Icon as={AlertTriangle} className="size-4 text-amber-600" />
+                <Icon as={AlertTriangle} className="size-4 text-warning" />
                 <Text className="font-semibold">{r('patternFlags')}</Text>
               </View>
             </View>
@@ -112,8 +113,9 @@ export default function MiqatReports() {
           keyExtractor={(f) => f.id}
           renderItem={(f) => (
             <View className="flex-row items-center gap-3 px-4 py-3">
+              <Initials name={(f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : f.person_id) || '?'} />
               <View className="flex-1 gap-1">
-                <Text className="font-medium">{f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : f.person_id}</Text>
+                <Text className="text-sm font-semibold">{f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : f.person_id}</Text>
                 <Badge variant="outline" className="self-start">
                   <Text>{FLAG_LABEL[f.flag_type] ? r(FLAG_LABEL[f.flag_type]) : f.flag_type}</Text>
                 </Badge>

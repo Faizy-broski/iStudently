@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
+import { locale } from '@/i18n';
 import { Textarea } from '@/components/ui/textarea';
 import { useCampus } from '@/features/campus/campus';
 import { adminOnlineClasses } from '@/lib/api';
@@ -155,14 +156,14 @@ export default function OnlineClasses() {
                       <Text className="font-semibold">{s.title}</Text>
                       <Text className="text-muted-foreground text-xs">{mode(s)}</Text>
                     </View>
-                    <Badge className="bg-green-600">
+                    <Badge className="bg-success">
                       <Text>{o('status_active')}</Text>
                     </Badge>
                   </View>
                   {s.started_at ? (
                     <View className="flex-row items-center gap-1">
                       <Icon as={CalendarClock} className="text-muted-foreground size-3.5" />
-                      <Text className="text-muted-foreground text-sm">{`${o('started_label')}: ${new Date(s.started_at).toLocaleString()}`}</Text>
+                      <Text className="text-muted-foreground text-sm">{`${o('started_label')}: ${new Date(s.started_at).toLocaleString(locale)}`}</Text>
                     </View>
                   ) : null}
                   <Button size="sm" variant="outline" className="self-start" disabled={busy === s.id} onPress={() => end(s)}>

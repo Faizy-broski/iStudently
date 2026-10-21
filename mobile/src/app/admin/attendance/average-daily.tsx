@@ -1,11 +1,14 @@
 import type { ADAGradeRow } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
+import { GraduationCap, Sigma } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { DataList } from '@/components/app/data-list';
+import { IconTile } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -41,8 +44,10 @@ export default function AverageDailyAttendance() {
 
   const metric = (label: string, value: string | number) => (
     <View className="w-1/3 py-1">
-      <Text className="text-muted-foreground text-[11px]">{label}</Text>
-      <Text className="font-medium">{value}</Text>
+      <Text variant="muted" className="text-[11px]">
+        {label}
+      </Text>
+      <Text className="text-sm font-semibold">{value}</Text>
     </View>
   );
 
@@ -69,8 +74,12 @@ export default function AverageDailyAttendance() {
           renderItem={(r) => {
             const total = r.grade_id === '__total__';
             return (
-              <View className={cn('gap-1 px-4 py-3', total && 'bg-muted')}>
-                <Text className={cn('font-medium', total && 'font-bold')}>{r.grade_name}</Text>
+              <View className={cn('gap-2 px-4 py-3', total && 'bg-info-soft/60')}>
+                <View className="flex-row items-center gap-3">
+                  <IconTile icon={total ? Sigma : GraduationCap} tone={total ? 'brand' : 'success'} />
+                  <Text className={cn('flex-1 text-sm', total ? 'font-bold' : 'font-semibold')}>{r.grade_name}</Text>
+                  <StatusChip label={`${r.ada}%`} tone={Number(r.ada) >= 90 ? 'success' : Number(r.ada) >= 75 ? 'warning' : 'destructive'} className="px-2 py-0.5" />
+                </View>
                 <View className="flex-row flex-wrap">
                   {metric(a('ada_th_students'), r.students)}
                   {metric(a('ada_th_daysPossible'), r.days_possible)}

@@ -1,6 +1,6 @@
 import type { AbsenceFieldType, StaffAbsenceField } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { Pencil, Plus, Trash2, ListChecks } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -10,13 +10,14 @@ import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { IconTile } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { useAttendanceScope } from '@/features/admin/attendance';
@@ -103,24 +104,21 @@ export default function AbsenceFields() {
           keyExtractor={(f) => f.id}
           renderItem={(f) => (
             <View className="flex-row items-center gap-3 px-4 py-3">
+              <IconTile icon={ListChecks} />
               <View className="flex-1 gap-1">
-                <Text className="font-medium">{f.title}</Text>
+                <Text className="text-sm font-semibold">{f.title}</Text>
                 <View className="flex-row flex-wrap items-center gap-2">
-                  <Badge variant="secondary">
-                    <Text className="text-xs">{s(`fieldTypes.${f.type}`)}</Text>
-                  </Badge>
+                  <StatusChip label={s(`fieldTypes.${f.type}`)} tone="info" className="px-2 py-0.5" />
                   <Text className="text-muted-foreground text-xs">{`${s('fieldsPage.table.sort')}: ${f.sort_order ?? s('notAvailable')}`}</Text>
                   {f.required ? (
-                    <View className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5">
-                      <Text className="text-xs text-red-700">{s('fieldsPage.table.required')}</Text>
-                    </View>
+                    <StatusChip label={s('fieldsPage.table.required')} tone="destructive" className="px-2 py-0.5" />
                   ) : null}
                 </View>
               </View>
-              <Pressable onPress={() => openEdit(f)} hitSlop={8} className="p-1">
-                <Icon as={Pencil} className="text-muted-foreground size-4" />
+              <Pressable onPress={() => openEdit(f)} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
               </Pressable>
-              <Pressable onPress={() => remove(f)} hitSlop={8} className="p-1">
+              <Pressable onPress={() => remove(f)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                 <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </View>

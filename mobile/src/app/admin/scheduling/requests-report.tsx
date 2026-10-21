@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { FilterChips } from '@/components/app/filter-chips';
-import { LoadingList } from '@/components/app/states';
+import { Initials } from '@/components/app/layout';
+import { Segmented } from '@/components/app/segmented';
+import { StatusChip } from '@/components/app/status-chip';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
@@ -18,10 +20,10 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 const STATUS_CLASS: Record<string, string> = {
-  fulfilled: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
-  unfilled: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
-  cancelled: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
-  pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
+  fulfilled: 'bg-success-soft text-success  ',
+  unfilled: 'bg-destructive-soft text-destructive  ',
+  cancelled: 'bg-muted text-muted-foreground  ',
+  pending: 'bg-warning-soft text-warning  ',
 };
 
 /** Course requests per subject and course, all or only unfilled (web: /admin/scheduling/requests-report). */
@@ -51,10 +53,10 @@ export default function RequestsReport() {
   const row = (key: string, label: string, count: number, on: boolean, onPress: () => void) => (
     <View key={key}>
       <Separator />
-      <Pressable onPress={onPress} className={cn('flex-row items-center gap-2 py-2', on && 'bg-primary/10 rounded')}>
-        <Text className={cn('flex-1 text-sm', on && 'font-semibold')}>{label}</Text>
-        <Text className="w-10 text-center text-xs">{count}</Text>
-        <Icon as={ChevronRight} className="text-muted-foreground size-3.5 rtl:rotate-180" />
+      <Pressable onPress={onPress} className={cn('flex-row items-center gap-2 rounded-xl px-2 py-2.5 active:opacity-70', on && 'bg-info-soft')}>
+        <Text className={cn('flex-1 text-sm', on ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')}>{label}</Text>
+        <StatusChip label={String(count)} tone={count ? 'info' : 'muted'} className="px-2 py-0.5" />
+        <Icon flipRtl as={ChevronRight} className="text-muted-foreground size-3.5" />
       </Pressable>
     </View>
   );
@@ -63,7 +65,7 @@ export default function RequestsReport() {
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: s('title') }} />
       <ScrollView contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => requests.mutate()} />}>
-        <FilterChips
+        <Segmented
           value={mode}
           onChange={setMode}
           options={[
@@ -74,7 +76,7 @@ export default function RequestsReport() {
         {subjects.isLoading || requests.isLoading ? (
           <LoadingList rows={4} />
         ) : !all.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{t('common.no_items_found', { label: t('common.subjects') })}</Text>
+          <EmptyState title={t('common.no_items_found', { label: t('common.subjects') })} />
         ) : (
           <>
             <Card>
@@ -108,8 +110,9 @@ export default function RequestsReport() {
                   {studentRows.map((r, i) => (
                     <View key={i}>
                       <Separator />
-                      <View className="flex-row items-center gap-2 py-2.5">
-                        <Text className="flex-1 text-sm">{r.name}</Text>
+                      <View className="flex-row items-center gap-3 py-2.5">
+                        <Initials name={r.name} size={32} />
+                        <Text className="flex-1 text-sm font-medium">{r.name}</Text>
                         <Text className={cn('rounded-full px-2 py-0.5 text-xs font-medium', STATUS_CLASS[r.status] ?? STATUS_CLASS.pending)}>{t(`common.status.${r.status}`)}</Text>
                       </View>
                     </View>

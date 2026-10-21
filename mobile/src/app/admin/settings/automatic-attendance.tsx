@@ -96,14 +96,14 @@ export default function AutomaticAttendance() {
             <Text className="text-muted-foreground text-xs">{t('app.ps_aa_days_hint')}</Text>
           </View>
         </SettingsCard>
-        <View className="border-border flex-row items-center gap-3 rounded-lg border p-3">
+        <View className="border-info-soft dark:border-border flex-row items-center gap-3 rounded-xl border p-3">
           <View className="flex-1">
             <Text className="text-sm font-medium">{t('app.ps_aa_missing')}</Text>
             <Text className="text-muted-foreground text-xs">{t('app.ps_aa_missing_hint')}</Text>
           </View>
           <Button size="sm" variant="outline" onPress={() => router.push('/admin/attendance/take-missing')}>
             <Text>{t('app.ps_open')}</Text>
-            <Icon as={ArrowRight} className="size-4 rtl:rotate-180" />
+            <Icon flipRtl as={ArrowRight} className="size-4" />
           </Button>
         </View>
         <Button onPress={save} disabled={saving}>

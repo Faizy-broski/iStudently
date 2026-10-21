@@ -168,7 +168,7 @@ function Form({ quiz }: { quiz: AdminQuiz | null }) {
                     <Text className="text-xs">
                       {q(`difficulty.${d}`)} <Text className="text-muted-foreground text-xs">({poolCounts[d]} {q('avail')})</Text>
                     </Text>
-                    <Input value={bp[d]} onChangeText={(v) => setBp({ ...bp, [d]: v })} keyboardType="number-pad" className={counts[d] > poolCounts[d] * nForms ? 'border-amber-400' : undefined} />
+                    <Input value={bp[d]} onChangeText={(v) => setBp({ ...bp, [d]: v })} keyboardType="number-pad" className={counts[d] > poolCounts[d] * nForms ? 'border-warning' : undefined} />
                   </View>
                 ))}
               </View>

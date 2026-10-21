@@ -4,7 +4,7 @@ import { Download, FileText } from 'lucide-react-native';
 import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -64,7 +64,7 @@ export default function FinaReports() {
         ) : res.error ? (
           <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : !list.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{f('empty')}</Text>
+          <EmptyState title={f('empty')} />
         ) : (
           <Card>
             <CardContent className="py-1">
@@ -73,7 +73,7 @@ export default function FinaReports() {
                   {i > 0 ? <Separator /> : null}
                   <View className="flex-row items-center gap-3 py-2.5">
                     <View className="flex-1">
-                      <Text className="font-medium">{rep.period}</Text>
+                      <Text className="text-sm font-semibold">{rep.period}</Text>
                       <Text className="text-muted-foreground text-xs">
                         {f('col_generated')}: {new Date(rep.generated_at).toLocaleDateString(lang)}
                       </Text>

@@ -5,7 +5,7 @@ import { RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { ListRow } from '@/components/app/list-row';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -55,7 +55,7 @@ export function FinaAlbumsScreen({ canCreate, detail }: { canCreate: boolean; de
         {res.isLoading ? (
           <LoadingList rows={3} />
         ) : !list.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{f('pending_queue_empty')}</Text>
+          <EmptyState title={f('pending_queue_empty')} />
         ) : (
           <Card>
             <CardContent className="py-1">
@@ -64,7 +64,7 @@ export function FinaAlbumsScreen({ canCreate, detail }: { canCreate: boolean; de
                   key={al.id}
                   title={al.title}
                   subtitle={al.activity_date}
-                  leading={<Icon as={FolderOpen} className="size-5 text-amber-500" />}
+                  leading={<Icon as={FolderOpen} className="size-5 text-warning" />}
                   onPress={() => router.push(detail(al.id))}
                 />
               ))}

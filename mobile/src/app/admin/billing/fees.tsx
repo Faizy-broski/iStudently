@@ -1,16 +1,19 @@
 import type { StudentFee, StudentFeeStatus } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
-import { AlertCircle, Banknote, CheckCircle2, ChevronLeft, ChevronRight, FileText, Pencil, Receipt, RefreshCw, Settings, SlidersHorizontal } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, FileText, Filter, Pencil, RefreshCw, Settings, SlidersHorizontal } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import { MultiSelect } from '@/components/app/multi-select';
 import { Picker } from '@/components/app/picker';
-import { StatCard } from '@/components/app/stat-card';
+import { BottomSheet } from '@/components/app/bottom-sheet';
+import { BrandGradient } from '@/components/app/brand-gradient';
+import { FilterChips } from '@/components/app/filter-chips';
+import { FilterTag, HeroCard, Initials, RoundIcon } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { EmptyState, ErrorState } from '@/components/app/states';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { DueDateBadge, FeeStatusBadge } from '@/features/admin/fee-records';
@@ -41,6 +44,7 @@ export default function StudentFees() {
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sheet, setSheet] = useState(false);
 
   const stats = useApi(scopeId ? ['admin', 'fees-dashboard', scopeId] : null, ([, , sid]) => adminFees.dashboard(sid as string));
   const grades = useApi(scopeId ? ['admin', 'grades', key] : null, ([, , sid]) => adminAcademics.grades(sid as string));
@@ -73,54 +77,47 @@ export default function StudentFees() {
     stats.mutate();
   };
 
-  function feeRow(fee: StudentFee) {
+  function feeRow(fee: StudentFee, i: number) {
     const balance = (fee.final_amount ?? 0) - (fee.amount_paid ?? 0);
     const p = fee.students?.profiles;
+    const name = `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || '—';
     return (
-      <Card key={fee.id} className="gap-2 py-3">
-        <CardContent className="gap-2 px-4">
-          <View className="flex-row items-start gap-2">
-            <Pressable className="flex-1" onPress={() => router.push({ pathname: '/admin/billing/fee/[id]', params: { id: fee.id } })}>
-              <Text className="font-semibold">{`${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || '—'}</Text>
-              <Text className="text-muted-foreground text-xs">{[fee.students?.student_number, fee.fee_structures?.fee_categories?.name].filter(Boolean).join(' · ')}</Text>
-            </Pressable>
-            <FeeStatusBadge status={fee.status} />
-          </View>
-          <View className="flex-row flex-wrap gap-x-4 gap-y-1">
-            <Text className="text-sm">{`${c('amount')}: ${money(fee.final_amount)}`}</Text>
-            <Text className="text-sm text-green-600 dark:text-green-400">{`${c('paid')}: ${money(fee.amount_paid)}`}</Text>
-            <Text className={cn('text-sm font-medium', balance > 0 ? 'text-red-600 dark:text-red-400' : balance < 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground')}>
-              {`${c('balance')}: ${money(balance)}`}
+      <View key={fee.id} className={cn('gap-2 px-4 py-3', i < rows.length - 1 && 'border-info-soft dark:border-border border-b')}>
+        <Pressable onPress={() => router.push({ pathname: '/admin/billing/fee/[id]', params: { id: fee.id } })} className="flex-row items-center gap-3 active:opacity-70" accessibilityRole="button">
+          <Initials name={name} />
+          <View className="flex-1">
+            <Text className="text-sm font-semibold" numberOfLines={1}>
+              {name}
+            </Text>
+            <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+              {[fee.students?.student_number, fee.fee_structures?.fee_categories?.name, fee.due_date ? `${f('table.due_date')}: ${formatDate(fee.due_date)}` : null].filter(Boolean).join(' · ')}
             </Text>
           </View>
-          <View className="flex-row flex-wrap items-center gap-2">
-            <Text className="text-muted-foreground text-xs">{`${f('table.due_date')}: ${fee.due_date ? formatDate(fee.due_date) : '—'}`}</Text>
-            <DueDateBadge dueDate={fee.due_date} status={fee.status} />
+          <View className="items-end gap-1">
+            <Text className="text-sm font-bold">{money(fee.final_amount)}</Text>
+            <FeeStatusBadge status={fee.status} />
           </View>
-          <View className="flex-row flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onPress={() =>
-                router.push({
-                  pathname: '/admin/billing/student-overrides/[id]',
-                  params: { id: fee.student_id, name: `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim(), number: fee.students?.student_number ?? '', grade: fee.students?.grade_levels?.name ?? '' },
-                })
-              }>
-              <Icon as={Pencil} className="size-3.5" />
-              <Text>{f('actions.override')}</Text>
-            </Button>
-            <Button size="sm" variant="outline" onPress={() => router.push({ pathname: '/admin/billing/fee/adjust', params: { id: fee.id } })}>
-              <Icon as={SlidersHorizontal} className="size-3.5" />
-              <Text>{f('actions.adjust')}</Text>
-            </Button>
-            <Button size="sm" variant="outline" onPress={() => router.push({ pathname: '/admin/billing/fee/[id]', params: { id: fee.id } })}>
-              <Icon as={FileText} className="size-3.5" />
-              <Text>{f('actions.view_challan')}</Text>
-            </Button>
-          </View>
-        </CardContent>
-      </Card>
+        </Pressable>
+        <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
+          <Text className="text-success text-[11px] font-semibold">{`${c('paid')}: ${money(fee.amount_paid)}`}</Text>
+          <Text className={cn('text-[11px] font-semibold', balance > 0 ? 'text-destructive' : balance < 0 ? 'text-success' : 'text-muted-foreground')}>{`${c('balance')}: ${money(balance)}`}</Text>
+          <DueDateBadge dueDate={fee.due_date} status={fee.status} />
+        </View>
+        <View className="flex-row flex-wrap gap-1.5">
+          <PillAction
+            icon={Pencil}
+            label={f('actions.override')}
+            onPress={() =>
+              router.push({
+                pathname: '/admin/billing/student-overrides/[id]',
+                params: { id: fee.student_id, name, number: fee.students?.student_number ?? '', grade: fee.students?.grade_levels?.name ?? '' },
+              })
+            }
+          />
+          <PillAction icon={SlidersHorizontal} label={f('actions.adjust')} onPress={() => router.push({ pathname: '/admin/billing/fee/adjust', params: { id: fee.id } })} />
+          <PillAction icon={FileText} label={f('actions.view_challan')} onPress={() => router.push({ pathname: '/admin/billing/fee/[id]', params: { id: fee.id } })} />
+        </View>
+      </View>
     );
   }
 
@@ -131,92 +128,47 @@ export default function StudentFees() {
     <>
       <Stack.Screen options={{ title: f('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
-        <Text variant="muted">{f('subtitle')}</Text>
-        <View className="flex-row gap-2">
-          <Button variant="outline" className="flex-1" onPress={() => router.push('/admin/billing/settings')}>
-            <Icon as={Settings} className="size-4" />
-            <Text>{f('actions.settings')}</Text>
-          </Button>
-          <Button className="flex-1" onPress={() => router.push('/admin/billing/generate')}>
-            <Text>{f('actions.generate')}</Text>
-          </Button>
-        </View>
+        <HeroCard>
+          <Text className="text-white text-xs opacity-80">{f('stats.total_fees')}</Text>
+          <Text className="text-white text-3xl font-bold" numberOfLines={1} adjustsFontSizeToFit>
+            {s ? money(s.total_fees) : '…'}
+          </Text>
+          <View className="h-2 overflow-hidden rounded-full bg-white/20">
+            <View className="h-full rounded-full bg-white" style={{ width: `${s && s.total_fees > 0 ? Math.min(100, (s.total_collected / s.total_fees) * 100) : 0}%` }} />
+          </View>
+          <View className="flex-row flex-wrap gap-x-4 gap-y-1">
+            <Text className="text-white text-xs">{`${f('stats.collected')}: ${s ? money(s.total_collected) : '…'}`}</Text>
+            <Text className="text-white text-xs opacity-80">{`${f('stats.pending')}: ${s ? money(s.total_pending) : '…'}`}</Text>
+            <Text className="text-brand-accent text-xs font-semibold">{`${f('stats.overdue')}: ${s ? money(s.total_overdue) : '…'}`}</Text>
+          </View>
+          <View className="flex-row gap-2 pt-1">
+            <Pressable onPress={() => router.push('/admin/billing/settings')} className="flex-1 flex-row items-center justify-center gap-2 rounded-full bg-white/15 py-2.5" accessibilityRole="button">
+              <Icon as={Settings} className="text-white size-4" />
+              <Text className="text-white text-sm font-semibold">{f('actions.settings')}</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/admin/billing/generate')} className="flex-1 overflow-hidden rounded-full" accessibilityRole="button">
+              <BrandGradient variant="gold" style={{ paddingVertical: 10, alignItems: 'center' }}>
+                <Text className="text-white text-sm font-semibold">{f('actions.generate')}</Text>
+              </BrandGradient>
+            </Pressable>
+          </View>
+        </HeroCard>
 
-        <View className="flex-row gap-2">
-          <StatCard icon={Receipt} label={f('stats.total_fees')} value={s ? money(s.total_fees) : '…'} />
-          <StatCard icon={CheckCircle2} label={f('stats.collected')} value={s ? money(s.total_collected) : '…'} />
+        <View className="flex-row items-center justify-between gap-2">
+          <Text className="flex-1 text-base font-semibold">{f('table.title')}</Text>
+          <RoundIcon icon={RefreshCw} label={f('actions.refresh')} onPress={refresh} />
+          <RoundIcon icon={Filter} label={t('app.st_filters')} count={gradeIds.length + sectionIds.length + (month !== 'all' ? 1 : 0) + (status !== 'all' ? 1 : 0)} onPress={() => setSheet(true)} />
         </View>
-        <View className="flex-row gap-2">
-          <StatCard icon={Banknote} label={f('stats.pending')} value={s ? money(s.total_pending) : '…'} tone="warning" />
-          <StatCard icon={AlertCircle} label={f('stats.overdue')} value={s ? money(s.total_overdue) : '…'} tone="destructive" />
+        <View className="flex-row flex-wrap gap-1.5">
+          {gradeIds.map((g) => (
+            <FilterTag key={g} label={gradeList.find((x) => x.id === g)?.name ?? g} onClear={() => (setGradeIds((x) => x.filter((y) => y !== g)), setSectionIds([]), filtersChanged())} />
+          ))}
+          {sectionIds.map((sid) => (
+            <FilterTag key={sid} label={sectionList.find((x) => x.id === sid)?.name ?? sid} onClear={() => (setSectionIds((x) => x.filter((y) => y !== sid)), filtersChanged())} />
+          ))}
+          {month !== 'all' ? <FilterTag label={c(`months.${MONTHS.indexOf(month)}`)} onClear={() => (setMonth('all'), filtersChanged())} /> : null}
+          {status !== 'all' ? <FilterTag label={status === 'pending' || status === 'paid' ? c(status) : f(`status.${status}`)} onClear={() => (setStatus('all'), filtersChanged())} /> : null}
         </View>
-
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{f('table.title')}</CardTitle>
-            <CardDescription>{f('table.description')}</CardDescription>
-          </CardHeader>
-          <CardContent className="gap-2 px-4">
-            <Text className="text-muted-foreground text-xs">{c('grade_level')}</Text>
-            <MultiSelect
-              options={gradeList.map((g) => ({ id: g.id, label: g.name }))}
-              value={gradeIds}
-              onChange={(ids) => {
-                setGradeIds(ids);
-                setSectionIds([]);
-                filtersChanged();
-              }}
-              placeholder={c('all_grades')}
-              title={c('grade_level')}
-            />
-            {gradeIds.length > 0 ? (
-              <>
-                <Text className="text-muted-foreground text-xs">{c('section')}</Text>
-                <MultiSelect
-                  options={sectionList.map((x) => ({ id: x.id, label: x.name }))}
-                  value={sectionIds}
-                  onChange={(ids) => {
-                    setSectionIds(ids);
-                    filtersChanged();
-                  }}
-                  placeholder={c('all_sections')}
-                  title={c('section')}
-                />
-              </>
-            ) : null}
-            <View className="flex-row gap-2">
-              <View className="flex-1 gap-1">
-                <Text className="text-muted-foreground text-xs">{f('filters.fee_month')}</Text>
-                <Picker
-                  value={month}
-                  onChange={(v) => {
-                    setMonth(v);
-                    filtersChanged();
-                  }}
-                  options={[{ value: 'all', label: f('filters.all_months') }, ...MONTHS.map((m, i) => ({ value: m, label: c(`months.${i}`) }))]}
-                />
-              </View>
-              <View className="flex-1 gap-1">
-                <Text className="text-muted-foreground text-xs">{c('status')}</Text>
-                <Picker
-                  value={status}
-                  onChange={(v) => {
-                    setStatus(v);
-                    filtersChanged();
-                  }}
-                  options={[
-                    { value: 'all', label: f('filters.all_statuses') },
-                    ...STATUSES.map((x) => ({ value: x, label: x === 'pending' || x === 'paid' ? c(x) : f(`status.${x}`) })),
-                  ]}
-                />
-              </View>
-            </View>
-            <Button variant="outline" size="sm" onPress={refresh} disabled={fees.isValidating} accessibilityLabel={f('actions.refresh')}>
-              <Icon as={RefreshCw} className="size-4" />
-              <Text>{f('actions.refresh')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
 
         {fees.isLoading ? (
           <ActivityIndicator className="py-8" />
@@ -225,7 +177,7 @@ export default function StudentFees() {
         ) : rows.length === 0 ? (
           <EmptyState title={f('table.empty')} />
         ) : (
-          rows.map(feeRow)
+          <Panel>{rows.map(feeRow)}</Panel>
         )}
 
         <View className="border-border gap-2 border-t pt-3">
@@ -247,17 +199,82 @@ export default function StudentFees() {
           </View>
           <View className="flex-row items-center justify-between gap-2">
             <Button variant="outline" size="sm" disabled={page === 1} onPress={() => setPage((x) => Math.max(1, x - 1))}>
-              <Icon as={ChevronLeft} className="size-4 rtl:rotate-180" />
+              <Icon flipRtl as={ChevronLeft} className="size-4" />
               <Text>{c('previous')}</Text>
             </Button>
             <Text className="text-sm">{c('page_x_of_y', { current: page, total: totalPages })}</Text>
             <Button variant="outline" size="sm" disabled={!pagination || page >= totalPages} onPress={() => setPage((x) => x + 1)}>
               <Text>{c('next')}</Text>
-              <Icon as={ChevronRight} className="size-4 rtl:rotate-180" />
+              <Icon flipRtl as={ChevronRight} className="size-4" />
             </Button>
           </View>
         </View>
       </ScrollView>
+      <BottomSheet open={sheet} onClose={() => setSheet(false)} title={t('app.st_filters')}>
+        <ScrollView contentContainerClassName="gap-3 pb-2" keyboardShouldPersistTaps="handled">
+          <Text variant="muted" className="text-xs">
+            {f('table.description')}
+          </Text>
+          <Text className="text-sm font-semibold">{c('grade_level')}</Text>
+          <MultiSelect
+            options={gradeList.map((g) => ({ id: g.id, label: g.name }))}
+            value={gradeIds}
+            onChange={(ids) => {
+              setGradeIds(ids);
+              setSectionIds([]);
+              filtersChanged();
+            }}
+            placeholder={c('all_grades')}
+            title={c('grade_level')}
+          />
+          {gradeIds.length > 0 ? (
+            <>
+              <Text className="text-sm font-semibold">{c('section')}</Text>
+              <MultiSelect
+                options={sectionList.map((x) => ({ id: x.id, label: x.name }))}
+                value={sectionIds}
+                onChange={(ids) => {
+                  setSectionIds(ids);
+                  filtersChanged();
+                }}
+                placeholder={c('all_sections')}
+                title={c('section')}
+              />
+            </>
+          ) : null}
+          <Text className="text-sm font-semibold">{f('filters.fee_month')}</Text>
+          <Picker
+            value={month}
+            onChange={(v) => {
+              setMonth(v);
+              filtersChanged();
+            }}
+            options={[{ value: 'all', label: f('filters.all_months') }, ...MONTHS.map((m, i) => ({ value: m, label: c(`months.${i}`) }))]}
+          />
+          <Text className="text-sm font-semibold">{c('status')}</Text>
+          <FilterChips
+            value={status}
+            onChange={(v) => {
+              setStatus(v);
+              filtersChanged();
+            }}
+            options={[{ value: 'all', label: f('filters.all_statuses') }, ...STATUSES.map((x) => ({ value: x, label: x === 'pending' || x === 'paid' ? c(x) : f(`status.${x}`) }))]}
+          />
+          <Button onPress={() => setSheet(false)}>
+            <Text>{t('app.st_show_results')}</Text>
+          </Button>
+        </ScrollView>
+      </BottomSheet>
     </>
+  );
+}
+
+/** Small outline pill action under a row. */
+function PillAction({ icon, label, onPress }: { icon: typeof Pencil; label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1 active:opacity-70" accessibilityRole="button">
+      <Icon as={icon} className="text-brand dark:text-brand-secondary size-3" />
+      <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{label}</Text>
+    </Pressable>
   );
 }

@@ -1,11 +1,11 @@
 import type { FinaPost } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Check, ShieldCheck, X } from 'lucide-react-native';
+import { Check, ShieldCheck, X, CheckCircle2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
-import { LoadingList } from '@/components/app/states';
+import { LoadingList, EmptyState } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,11 +63,7 @@ export default function FinaApprovals() {
         {res.isLoading ? (
           <LoadingList rows={3} />
         ) : !list.length ? (
-          <Card>
-            <CardContent className="pt-4">
-              <Text className="text-muted-foreground text-sm">{f('approval_queue_empty')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={CheckCircle2} title={f('approval_queue_empty')} />
         ) : (
           list.map((p) => {
             const meta = POST_TYPE_META[p.type];
@@ -93,8 +89,8 @@ export default function FinaApprovals() {
                     </View>
                   ) : null}
                   <View className="flex-row items-center gap-1">
-                    <Icon as={ShieldCheck} className="size-3.5 text-amber-600" />
-                    <Text className="text-xs text-amber-700 dark:text-amber-300">{f('approval_badge')}</Text>
+                    <Icon as={ShieldCheck} className="size-3.5 text-warning" />
+                    <Text className="text-xs text-warning ">{f('approval_badge')}</Text>
                   </View>
                   <View className="flex-row gap-2">
                     <Button size="sm" className="flex-1" onPress={() => approve(p)} disabled={busy === p.id}>

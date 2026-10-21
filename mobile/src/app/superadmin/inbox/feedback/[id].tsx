@@ -5,10 +5,10 @@ import { ScrollView, View } from 'react-native';
 
 import { FilterChips } from '@/components/app/filter-chips';
 import { ErrorState, LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Panel } from '@/components/app/panel';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
-import { FEEDBACK_VARIANT } from '@/features/superadmin/feedback';
+import { FEEDBACK_TONE } from '@/features/superadmin/feedback';
 import { platform } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate } from '@/lib/format';
@@ -35,24 +35,20 @@ export default function FeedbackDetail() {
     <>
       <Stack.Screen options={{ title: t(`app.ib_cat_${f.category}`) }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
-        <Card className="py-4">
-          <CardContent className="gap-2 px-4">
-            <View className="flex-row flex-wrap items-center gap-2">
-              <Badge variant={FEEDBACK_VARIANT[f.status]}>
-                <Text>{t(`app.ib_status_${f.status}`)}</Text>
-              </Badge>
-              <Badge variant="outline">
-                <Text>{t(`app.ib_cat_${f.category}`)}</Text>
-              </Badge>
-            </View>
-            <Text variant="large">{f.title}</Text>
-            <Text selectable>{f.description}</Text>
-            <Text variant="muted">
-              {[f.submitter_name, f.submitter_role, f.submitter_email, formatDate(f.created_at)].filter(Boolean).join(' · ')}
-            </Text>
-          </CardContent>
-        </Card>
-        <Text className="text-muted-foreground text-sm">{t('app.ib_change_status')}</Text>
+        <Panel className="gap-2 p-4">
+          <View className="flex-row flex-wrap items-center gap-2">
+            <StatusChip label={t(`app.ib_status_${f.status}`)} tone={FEEDBACK_TONE[f.status]} />
+            <StatusChip label={t(`app.ib_cat_${f.category}`)} tone="muted" />
+          </View>
+          <Text className="text-lg font-semibold">{f.title}</Text>
+          <Text className="text-sm" selectable>
+            {f.description}
+          </Text>
+          <Text variant="muted" className="text-xs">
+            {[f.submitter_name, f.submitter_role, f.submitter_email, formatDate(f.created_at)].filter(Boolean).join(' · ')}
+          </Text>
+        </Panel>
+        <Text className="text-sm font-semibold">{t('app.ib_change_status')}</Text>
         <FilterChips<FeedbackStatus>
           value={f.status}
           onChange={(s) => s !== f.status && setStatus.run(f.id, s)}

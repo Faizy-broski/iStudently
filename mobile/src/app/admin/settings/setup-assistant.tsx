@@ -50,7 +50,7 @@ export default function SetupAssistantSettings() {
         <InfoBanner title={t('app.ps_how_it_works')}>
           <View className="gap-0.5">
             {[1, 2, 3, 4, 5].map((n) => (
-              <Text key={n} className="text-sm text-blue-800 dark:text-blue-300">{`• ${t(`app.ps_sa_how${n}`)}`}</Text>
+              <Text key={n} className="text-sm text-brand dark:text-brand-secondary ">{`• ${t(`app.ps_sa_how${n}`)}`}</Text>
             ))}
           </View>
         </InfoBanner>

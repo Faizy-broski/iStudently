@@ -156,15 +156,15 @@ export default function AddReferral() {
           {campus ? ` (${d('campus')}: ${campus.name})` : ''}
         </Text>
         {success ? (
-          <View className="flex-row items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
-            <Icon as={CheckCircle2} className="size-4 text-green-700" />
-            <Text className="flex-1 text-sm text-green-800">{d('successReferralSubmitted')}</Text>
+          <View className="flex-row items-center gap-2 rounded-xl border border-success/30 bg-success-soft p-3">
+            <Icon as={CheckCircle2} className="size-4 text-success" />
+            <Text className="flex-1 text-sm text-success">{d('successReferralSubmitted')}</Text>
           </View>
         ) : null}
         {!schoolId ? (
-          <View className="flex-row items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-            <Icon as={Info} className="size-4 text-yellow-800" />
-            <Text className="flex-1 text-sm text-yellow-800">{d('selectSchoolBeforeReferral')}</Text>
+          <View className="flex-row items-center gap-2 rounded-xl border border-warning/30 bg-warning-soft p-3">
+            <Icon as={Info} className="size-4 text-warning" />
+            <Text className="flex-1 text-sm text-warning">{d('selectSchoolBeforeReferral')}</Text>
           </View>
         ) : null}
 
@@ -184,18 +184,18 @@ export default function AddReferral() {
             {mode === 'single' ? (
               picked ? (
                 <View className="gap-1">
-                  <View className="border-border flex-row items-center gap-3 rounded-md border p-3">
+                  <View className="border-info-soft dark:border-border flex-row items-center gap-3 rounded-xl border p-3">
                     <Icon as={User} className="text-muted-foreground size-5" />
                     <View className="flex-1">
-                      <Text className="font-medium">{picked.name}</Text>
+                      <Text className="text-sm font-semibold">{picked.name}</Text>
                       <Text className="text-muted-foreground text-xs">{picked.sub}</Text>
                     </View>
                     <Pressable onPress={() => setPicked(null)} hitSlop={8} accessibilityLabel={d('change')}>
                       <Icon as={X} className="text-muted-foreground size-5" />
                     </Pressable>
                   </View>
-                  {!isStaff && picked.campusId && campusId && picked.campusId !== campusId ? <Text className="text-sm text-yellow-700">{d('warnings.studentDifferentCampus')}</Text> : null}
-                  {!isStaff && !picked.campusId && !campusId ? <Text className="text-sm text-red-700">{d('warnings.noCampusSelected')}</Text> : null}
+                  {!isStaff && picked.campusId && campusId && picked.campusId !== campusId ? <Text className="text-sm text-warning">{d('warnings.studentDifferentCampus')}</Text> : null}
+                  {!isStaff && !picked.campusId && !campusId ? <Text className="text-sm text-destructive">{d('warnings.noCampusSelected')}</Text> : null}
                 </View>
               ) : (
                 <View className="gap-2">
@@ -282,7 +282,7 @@ export default function AddReferral() {
                 <View key={f.id} className="gap-2">
                   {idx > 0 ? <Separator className="mb-3" /> : null}
                   <View className="flex-row flex-wrap items-center gap-2">
-                    <Text className="text-base font-semibold text-blue-700 dark:text-blue-400">{f.name}</Text>
+                    <Text className="text-base font-semibold text-brand dark:text-brand-secondary ">{f.name}</Text>
                     {f.penalty_points !== null && f.penalty_points !== undefined ? <PointsBadge pts={f.penalty_points} /> : null}
                   </View>
                   <DisciplineFieldInput field={f} value={values[f.id]} onChange={(v) => setValues((x) => ({ ...x, [f.id]: v }))} />
@@ -293,11 +293,11 @@ export default function AddReferral() {
         </Card>
 
         {fields.some((f) => f.penalty_points) ? (
-          <View className={cn('flex-row items-center justify-between rounded-lg border p-3', impact > 0 ? 'border-green-200 bg-green-50/50' : impact < 0 ? 'border-red-200 bg-red-50/50' : 'border-border bg-muted/30')}>
+          <View className={cn('flex-row items-center justify-between rounded-lg border p-3', impact > 0 ? 'border-success/30 bg-success-soft' : impact < 0 ? 'border-destructive/30 bg-destructive-soft' : 'border-border bg-muted/30')}>
             <Text className="text-muted-foreground text-sm font-medium">{t('app.dc_points_impact')}</Text>
             <View className="flex-row items-center gap-1.5">
-              <Icon as={impact > 0 ? TrendingUp : impact < 0 ? TrendingDown : Minus} className={cn('size-4', impact > 0 ? 'text-green-700' : impact < 0 ? 'text-red-700' : 'text-muted-foreground')} />
-              <Text className={cn('text-sm font-semibold', impact > 0 ? 'text-green-700' : impact < 0 ? 'text-red-700' : 'text-muted-foreground')}>{`${impact > 0 ? '+' : ''}${impact} pts`}</Text>
+              <Icon as={impact > 0 ? TrendingUp : impact < 0 ? TrendingDown : Minus} className={cn('size-4', impact > 0 ? 'text-success' : impact < 0 ? 'text-destructive' : 'text-muted-foreground')} />
+              <Text className={cn('text-sm font-semibold', impact > 0 ? 'text-success' : impact < 0 ? 'text-destructive' : 'text-muted-foreground')}>{`${impact > 0 ? '+' : ''}${impact} pts`}</Text>
             </View>
           </View>
         ) : null}

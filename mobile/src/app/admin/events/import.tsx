@@ -1,7 +1,5 @@
 import type { BulkEventRow, MarkingPeriod } from '@studently/api-client';
-import { csvToObjects, toCsv } from '@studently/shared-utils';
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
 import { router, Stack } from 'expo-router';
 import { AlertCircle, CheckCircle2, Download, Upload } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -9,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { colors } from '@/lib/colors';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,8 @@ import { EVENT_CATEGORIES } from '@/features/admin/events';
 import { useCampus } from '@/features/campus/campus';
 import { adminAcademics, adminGrades, events } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { shareTextFile } from '@/lib/share-file';
+import { shareBase64File } from '@/lib/share-file';
+import { readSheetObjects, SHEET_TYPES, xlsxBase64 } from '@/lib/spreadsheet';
 
 interface ParsedRow extends BulkEventRow {
   gradeNames: string[];
@@ -39,7 +39,7 @@ function toIsoDate(v: string) {
 const outside = (r: { start_date: string; end_date?: string }, mp?: MarkingPeriod) =>
   !!mp?.start_date && !!mp.end_date && !!r.start_date && (r.start_date < mp.start_date || (r.end_date || r.start_date) > mp.end_date);
 
-/** Import school events from a CSV for one marking period (web: ImportEventsDialog). */
+/** Import school events from a CSV or Excel file for one marking period (web: ImportEventsDialog). */
 export default function ImportEvents() {
   const { t } = useTranslation();
   const m = (k: string, o?: Record<string, unknown>) => t(`app.evi_${k}`, o);
@@ -65,24 +65,40 @@ export default function ImportEvents() {
 
   async function downloadTemplate() {
     const example = period?.start_date ?? '2026-09-20';
-    const csv = toCsv(
-      ['Title', 'Category', 'Start Date', 'End Date', 'Grades', 'Description', 'Color'],
-      [
-        ['Mid-term exams', 'exam', example, example, '', 'Exam week', '#dc2626'],
-        ['Parents meeting', 'meeting', example, example, grades[0]?.name ?? 'Grade 1', '', ''],
-      ],
-    );
-    await shareTextFile('events-import-template.csv', csv, 'text/csv', 'public.comma-separated-values-text');
+    // Same as the web: an .xlsx template.
+    const book = xlsxBase64([
+      {
+        name: 'Events',
+        widths: [28, 12, 12, 12, 24, 30, 10],
+        rows: [
+          ['Title', 'Category', 'Start Date', 'End Date', 'Grades', 'Description', 'Color'],
+          ['Mid-term exams', 'exam', example, example, '', 'Exam week', colors.destructive],
+          ['Parents meeting', 'meeting', example, example, grades[0]?.name ?? 'Grade 1', '', ''],
+        ],
+      },
+      {
+        name: 'Instructions',
+        rows: [
+          ['Column', 'Notes'],
+          ['Title', 'Required'],
+          ['Category', `Required - one of: ${EVENT_CATEGORIES.join(', ')}`],
+          ['Start Date / End Date', 'YYYY-MM-DD. End Date is optional (single-day event). Must be inside the marking period.'],
+          ['Grades', 'Optional. Grade names separated by ; - leave empty for a school-wide event.'],
+          ['Description / Color', `Optional. Color is a hex value like ${colors.destructive}.`],
+        ],
+      },
+    ]);
+    await shareBase64File('events-import-template.xlsx', book, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   }
 
   async function pick() {
-    const res = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'application/csv'], copyToCacheDirectory: true });
+    const res = await DocumentPicker.getDocumentAsync({ type: SHEET_TYPES, copyToCacheDirectory: true });
     if (res.canceled || !res.assets?.[0]) return;
     const asset = res.assets[0];
     setFileName(asset.name);
     setServerErrors([]);
     try {
-      const { rows: objs } = csvToObjects(await new File(asset.uri).text());
+      const objs = await readSheetObjects(asset);
       const norm = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.trim().toLowerCase().replace(/[\s_]+/g, ''), v]));
       const get = (o: Record<string, string>, ...keys: string[]) => keys.map((k) => o[k]).find((v) => v !== undefined) ?? '';
       const byName = new Map(grades.map((g) => [g.name.trim().toLowerCase(), g.id]));
@@ -201,7 +217,7 @@ export default function ImportEvents() {
                       <Text className="flex-1 text-sm font-medium" numberOfLines={1}>
                         {m('row_n', { n: r.row })} · {r.title || '-'}
                       </Text>
-                      <Text className={r.error ? 'text-destructive text-xs' : 'text-xs text-green-600'}>{r.error ? (r.error === '__outside__' ? periodMsg : r.error) : m('ok')}</Text>
+                      <Text className={r.error ? 'text-destructive text-xs' : 'text-xs text-success'}>{r.error ? (r.error === '__outside__' ? periodMsg : r.error) : m('ok')}</Text>
                     </View>
                     <Text className="text-muted-foreground text-xs">
                       {r.category || '-'} · {r.start_date}
@@ -215,7 +231,7 @@ export default function ImportEvents() {
         ) : null}
 
         {serverErrors.length ? (
-          <View className="border-destructive/40 bg-destructive/5 gap-1 rounded-md border p-3">
+          <View className="border-destructive/40 bg-destructive/5 gap-1 rounded-xl border p-3">
             <Text className="text-destructive text-xs font-medium">{m('server_skipped')}</Text>
             {serverErrors.map((e) => (
               <Text key={e.row} className="text-xs">

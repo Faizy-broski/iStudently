@@ -1,25 +1,27 @@
 import type { FeeWithPayments } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { AlertCircle, Calendar, CheckCircle, Clock, Download, Filter, Receipt, type LucideIcon } from 'lucide-react-native';
+import { AlertCircle, Check, CheckCircle, Clock, Download, Filter, Receipt, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { colors as themeColors } from '@/lib/colors';
+import { BrandGradient } from '@/components/app/brand-gradient';
 import { FilterChips } from '@/components/app/filter-chips';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { NoChild, useChild } from '@/features/parent/child';
+import { ChildSwitcher, NoChild, useChild } from '@/features/parent/child';
 import { usePortalCurrency } from '@/features/portal/currency';
 import { FeeDueDateBadge } from '@/features/portal/fees';
 import { PortalError } from '@/features/portal/ui';
 import { parent } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { formatDate } from '@/lib/format';
+import { daysUntil, formatDate } from '@/lib/format';
 import { buildPrintHtml, escapeHtml, printHtml } from '@/lib/print';
 import { cn } from '@/lib/utils';
 import i18n from '@/i18n';
@@ -28,9 +30,9 @@ type Bucket = 'paid' | 'pending' | 'overdue';
 const isPaid = (f: FeeWithPayments) => f.status === 'paid' || f.balance <= 0;
 const bucketOf = (f: FeeWithPayments, now: Date): Bucket => (isPaid(f) ? 'paid' : f.due_date && new Date(f.due_date) < now ? 'overdue' : 'pending');
 const TONE: Record<Bucket, { box: string; text: string; icon: LucideIcon }> = {
-  paid: { box: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600', icon: CheckCircle },
-  pending: { box: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-600', icon: Clock },
-  overdue: { box: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600', icon: AlertCircle },
+  paid: { box: 'bg-success-soft', text: 'text-success', icon: CheckCircle },
+  pending: { box: 'bg-warning-soft', text: 'text-warning', icon: Clock },
+  overdue: { box: 'bg-destructive-soft', text: 'text-destructive', icon: AlertCircle },
 };
 
 /**
@@ -73,7 +75,7 @@ export default function ParentFeeChallans() {
   async function challan(fee: FeeWithPayments) {
     if (!child) return;
     const b = bucketOf(fee, new Date());
-    const colors = { paid: ['#c8e6c9', '#2e7d32'], pending: ['#fff3e0', '#ef6c00'], overdue: ['#ffebee', '#c62828'] }[b];
+    const colors = { paid: [themeColors.successSoft, themeColors.success], pending: [themeColors.warningSoft, themeColors.warning], overdue: [themeColors.destructiveSoft, themeColors.destructive] }[b];
     const box = (label: string, value: string) => `<div class="box"><label>${escapeHtml(label)}</label><span>${value}</span></div>`;
     const row = (label: string, value: string) => `<div class="row"><span>${escapeHtml(label)}</span><span>${escapeHtml(value)}</span></div>`;
     const td = (v: string) => `<td>${escapeHtml(v)}</td>`;
@@ -97,11 +99,11 @@ export default function ParentFeeChallans() {
         .map((p) => `<tr>${td(p.payment_date ? formatDate(p.payment_date) : 'N/A')}${td(money(p.amount || 0))}${td(p.payment_method || 'N/A')}${td(p.payment_reference || '-')}</tr>`)
         .join('')}</table>` : ''}
       <div class="foot"><p>${escapeHtml(k('footer_1'))}</p><p>${escapeHtml(k('footer_2'))}</p></div>`;
-    const css = `.head{text-align:center;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:24px}.head h1{margin:0}.head p{margin:4px 0;color:#666}
-      .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}.box{padding:12px;background:#f5f5f5;border-radius:8px}.box label{font-size:12px;color:#666;display:block}.box span{font-size:15px;font-weight:bold}
-      .status{display:inline-block;padding:4px 12px;border-radius:20px}.amounts{background:#e8f5e9;padding:16px;border-radius:8px;margin-bottom:24px}
-      .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #c8e6c9}.row:last-child{border-bottom:none;font-size:17px;font-weight:bold}
-      table{width:100%;border-collapse:collapse;margin-bottom:24px}th,td{padding:8px;border:1px solid #ddd;text-align:start}th{background:#f5f5f5}.foot{margin-top:32px;text-align:center;font-size:12px;color:#666}`;
+    const css = `.head{text-align:center;border-bottom:2px solid ${themeColors.printText};padding-bottom:16px;margin-bottom:24px}.head h1{margin:0}.head p{margin:4px 0;color:${themeColors.printMuted}}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}.box{padding:12px;background:${themeColors.printSurface};border-radius:8px}.box label{font-size:12px;color:${themeColors.printMuted};display:block}.box span{font-size:15px;font-weight:bold}
+      .status{display:inline-block;padding:4px 12px;border-radius:20px}.amounts{background:${themeColors.successSoft};padding:16px;border-radius:8px;margin-bottom:24px}
+      .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid ${themeColors.successSoft}}.row:last-child{border-bottom:none;font-size:17px;font-weight:bold}
+      table{width:100%;border-collapse:collapse;margin-bottom:24px}th,td{padding:8px;border:1px solid ${themeColors.printBorder};text-align:start}th{background:${themeColors.printSurface}}.foot{margin-top:32px;text-align:center;font-size:12px;color:${themeColors.printMuted}}`;
     try {
       await printHtml(buildPrintHtml({ title: `${k('challan_title')} - ${fee.fee_name}`, school: { name: child.campus_name }, pages: [body], extraCss: css }));
     } catch {
@@ -115,104 +117,152 @@ export default function ParentFeeChallans() {
     overdue: { icon: CheckCircle, title: k('empty_overdue'), body: k('empty_overdue_body'), good: true },
   }[tab];
 
+  // Hero: outstanding balance (pending + overdue) and the next unpaid fee.
+  const unpaid = [...groups.overdue, ...groups.pending].sort((a, b) => time(a) - time(b));
+  const next = unpaid[0] ?? null;
+  const outstanding = pendingAmount + overdueAmount;
+  const nextDays = next?.due_date ? daysUntil(next.due_date, now) : null;
+  // Payment history from all fees (newest first).
+  const history = all
+    .flatMap((f) => (f.payments ?? []).map((p) => ({ fee: f, p })))
+    .sort((a, b) => new Date(b.p.payment_date || 0).getTime() - new Date(a.p.payment_date || 0).getTime());
+  const chipTone: Record<Bucket, 'success' | 'warning' | 'destructive'> = { paid: 'success', pending: 'warning', overdue: 'destructive' };
+
   return (
     <>
       <Stack.Screen options={{ title: t('student_billing.fees.title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => fees.mutate()} />}>
-        <Text variant="muted">{k('subtitle', { name: `${child.first_name} ${child.last_name}` })}</Text>
-        <View className="flex-row gap-2">
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => fees.mutate()} />}>
+        <ChildSwitcher />
+
+        {/* Outstanding balance */}
+        <BrandGradient variant="primary" angle={150} style={{ borderRadius: 24 }}>
+          <View className="gap-2 p-5">
+            <Text className="text-white text-xs opacity-80">{k('outstanding')}</Text>
+            <Text className="text-white text-3xl font-bold">{money(outstanding)}</Text>
+            {next ? (
+              <View className="flex-row flex-wrap items-center gap-2">
+                <View className="bg-warning-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
+                  <Icon as={Clock} className="text-warning size-3" />
+                  <Text className="text-warning text-[11px] font-semibold">{`${k('due')} ${next.due_date ? formatDate(next.due_date) : '—'}`}</Text>
+                </View>
+                {nextDays !== null ? <Text className="text-white text-xs opacity-80">{nextDays >= 0 ? k('days_left', { count: nextDays }) : k('days_overdue', { count: -nextDays })}</Text> : null}
+              </View>
+            ) : (
+              <Text className="text-white text-xs opacity-80">{k('all_settled')}</Text>
+            )}
+            {next ? (
+              <Pressable onPress={() => challan(next)} className="mt-2 overflow-hidden rounded-full" accessibilityRole="button">
+                <BrandGradient variant="gold" style={{ height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <Icon as={Download} className="text-white size-4" />
+                  <Text className="text-white font-semibold">{k('challan_next')}</Text>
+                </BrandGradient>
+              </Pressable>
+            ) : null}
+          </View>
+        </BrandGradient>
+
+        <View className="flex-row gap-2.5">
           <Stat bucket="paid" amount={money(paidAmount)} label={k('stat_paid', { count: groups.paid.length })} />
           <Stat bucket="pending" amount={money(pendingAmount)} label={k('stat_pending', { count: groups.pending.length })} />
           <Stat bucket="overdue" amount={money(overdueAmount)} label={k('stat_overdue', { count: groups.overdue.length })} />
         </View>
 
-        <Card>
-          <CardHeader className="gap-3">
-            <CardTitle>{k('details_title')}</CardTitle>
-            <View className="flex-row items-center gap-2">
-              <Icon as={Filter} className="text-muted-foreground size-4" />
-              <View className="flex-1">
-                <Picker
-                  value={String(month)}
-                  onChange={(v) => setMonth(Number(v))}
-                  options={[{ value: '0', label: k('all_months') }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${monthName(i + 1)} ${year}` }))]}
-                />
-              </View>
+        {/* Fee breakdown with month filter and status tabs */}
+        <View className="gap-2.5">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-semibold">{k('details_title')}</Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Icon as={Filter} className="text-muted-foreground size-4" />
+            <View className="flex-1">
+              <Picker
+                value={String(month)}
+                onChange={(v) => setMonth(Number(v))}
+                options={[{ value: '0', label: k('all_months') }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${monthName(i + 1)} ${year}` }))]}
+              />
             </View>
-          </CardHeader>
-          <CardContent className="gap-3">
-            <FilterChips<Bucket>
-              value={tab}
-              onChange={setTab}
-              options={[
-                { value: 'paid', label: `${k('paid')} (${groups.paid.length})` },
-                { value: 'pending', label: `${k('pending')} (${groups.pending.length})` },
-                { value: 'overdue', label: `${k('overdue')} (${groups.overdue.length})` },
-              ]}
-            />
-            {groups[tab].length === 0 ? (
-              <View className="items-center py-10">
-                <Icon as={empty.icon} className={cn('mb-3 size-14', empty.good ? 'text-green-500' : 'text-muted-foreground')} />
-                <Text className={cn('text-lg', empty.good ? 'text-green-600' : 'text-muted-foreground')}>{empty.title}</Text>
-                <Text className="text-muted-foreground text-sm">{empty.body}</Text>
-              </View>
-            ) : (
-              groups[tab].map((f) => {
+          </View>
+          <FilterChips<Bucket>
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'paid', label: `${k('paid')} (${groups.paid.length})` },
+              { value: 'pending', label: `${k('pending')} (${groups.pending.length})` },
+              { value: 'overdue', label: `${k('overdue')} (${groups.overdue.length})` },
+            ]}
+          />
+          {groups[tab].length === 0 ? (
+            <Panel className="items-center gap-1 py-8">
+              <Icon as={empty.icon} className={cn('mb-2 size-10', empty.good ? 'text-success' : 'text-muted-foreground')} />
+              <Text className={cn('font-semibold', empty.good ? 'text-success' : 'text-muted-foreground')}>{empty.title}</Text>
+              <Text className="text-muted-foreground text-center text-sm">{empty.body}</Text>
+            </Panel>
+          ) : (
+            <Panel>
+              {groups[tab].map((f, i, arr) => {
                 const b = bucketOf(f, now);
-                const tone = TONE[b];
                 return (
-                  <View key={f.id} className="border-border gap-2 rounded-lg border p-3">
-                    <View className="flex-row items-start gap-3">
-                      <View className={cn('rounded-lg p-2', tone.box)}>
-                        <Icon as={Receipt} className={cn('size-5', tone.text)} />
+                  <View key={f.id} className={cn('gap-1 px-4 py-3', i < arr.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                    <View className="flex-row items-center gap-3">
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold" numberOfLines={1}>
+                          {f.fee_name || f.category || k('fee')}
+                        </Text>
+                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                          {[f.due_date ? `${k('due')}: ${formatDate(f.due_date)}` : null, `${k('amount')}: ${money(f.final_amount || 0)}`].filter(Boolean).join(' · ')}
+                        </Text>
                       </View>
-                      <View className="flex-1 gap-1">
-                        <View className="flex-row flex-wrap items-center gap-2">
-                          <Text className="font-semibold" numberOfLines={1}>
-                            {f.fee_name || f.category || k('fee')}
-                          </Text>
-                          <FeeDueDateBadge dueDate={f.due_date} status={f.status} />
-                        </View>
-                        <View className="flex-row flex-wrap items-center gap-3">
-                          <Text className="text-muted-foreground text-xs">{`${k('amount')}: ${money(f.final_amount || 0)}`}</Text>
-                          {f.due_date ? (
-                            <View className="flex-row items-center gap-1">
-                              <Icon as={Calendar} className="text-muted-foreground size-3" />
-                              <Text className="text-muted-foreground text-xs">{`${k('due')}: ${formatDate(f.due_date)}`}</Text>
-                            </View>
-                          ) : null}
-                        </View>
-                        {f.amount_paid > 0 && b !== 'paid' ? <Text className="text-xs text-green-600">{k('partial', { paid: money(f.amount_paid), balance: money(f.balance) })}</Text> : null}
-                      </View>
+                      <Text className="text-sm font-bold">{money(b === 'paid' ? f.final_amount : f.balance)}</Text>
+                      <StatusChip label={k(b)} tone={chipTone[b]} className="px-2 py-0.5" />
                     </View>
                     <View className="flex-row items-center justify-between gap-2">
-                      <View>
-                        <Text className={cn('text-lg font-bold', tone.text)}>{money(b === 'paid' ? f.final_amount : f.balance)}</Text>
-                        <Text className="text-muted-foreground text-xs">{b === 'paid' ? k('total_paid') : k('balance')}</Text>
-                      </View>
-                      <Button variant="outline" size="sm" onPress={() => challan(f)}>
-                        <Icon as={Download} className="text-foreground size-4" />
-                        <Text>{k('challan')}</Text>
-                      </Button>
+                      {f.amount_paid > 0 && b !== 'paid' ? <Text className="text-success flex-1 text-[11px]">{k('partial', { paid: money(f.amount_paid), balance: money(f.balance) })}</Text> : <FeeDueDateBadge dueDate={f.due_date} status={f.status} />}
+                      <Pressable onPress={() => challan(f)} className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1" accessibilityRole="button">
+                        <Icon as={Download} className="text-brand dark:text-brand-secondary size-3.5" />
+                        <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{k('challan')}</Text>
+                      </Pressable>
                     </View>
                   </View>
                 );
-              })
-            )}
-          </CardContent>
-        </Card>
+              })}
+            </Panel>
+          )}
+        </View>
 
-        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-          <CardContent className="gap-2 p-4">
-            <View className="flex-row items-center gap-2">
-              <Icon as={AlertCircle} className="size-5 text-blue-900 dark:text-blue-200" />
-              <Text className="font-bold text-blue-900 dark:text-blue-200">{k('info_title')}</Text>
-            </View>
-            {[1, 2, 3, 4].map((i) => (
-              <Text key={i} className="text-sm text-blue-800 dark:text-blue-300">{`• ${k(`info_${i}`)}`}</Text>
-            ))}
-          </CardContent>
-        </Card>
+        {/* Payment history */}
+        {history.length ? (
+          <View className="gap-2.5">
+            <Text className="text-base font-semibold">{k('payment_history')}</Text>
+            <Panel>
+              {history.slice(0, 10).map(({ fee, p }, i, arr) => (
+                <View key={`${fee.id}:${i}`} className={cn('flex-row items-center gap-3 px-4 py-3', i < arr.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                  <View className="border-success size-8 items-center justify-center rounded-full border-2">
+                    <Icon as={Check} strokeWidth={3} className="text-success size-3.5" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold" numberOfLines={1}>
+                      {fee.fee_name || fee.category || k('fee')}
+                    </Text>
+                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      {[p.payment_date ? formatDate(p.payment_date) : null, p.payment_method].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                  <Text className="text-sm font-bold">{money(p.amount || 0)}</Text>
+                </View>
+              ))}
+            </Panel>
+          </View>
+        ) : null}
+
+        <View className="bg-info-soft gap-2 rounded-2xl p-4">
+          <View className="flex-row items-center gap-2">
+            <Icon as={AlertCircle} className="text-brand dark:text-brand-secondary size-5" />
+            <Text className="text-brand dark:text-foreground font-bold">{k('info_title')}</Text>
+          </View>
+          {[1, 2, 3, 4].map((i) => (
+            <Text key={i} className="text-sm">{`• ${k(`info_${i}`)}`}</Text>
+          ))}
+        </View>
       </ScrollView>
     </>
   );
@@ -221,16 +271,14 @@ export default function ParentFeeChallans() {
 function Stat({ bucket, amount, label }: { bucket: Bucket; amount: string; label: string }) {
   const tone = TONE[bucket];
   return (
-    <Card className="flex-1">
-      <CardContent className="items-center gap-1.5 p-3">
-        <View className={cn('rounded-full p-2', tone.box)}>
-          <Icon as={tone.icon} className={cn('size-5', tone.text)} />
-        </View>
-        <Text className={cn('text-base font-bold', tone.text)} numberOfLines={1} adjustsFontSizeToFit>
-          {amount}
-        </Text>
-        <Text className="text-muted-foreground text-center text-xs">{label}</Text>
-      </CardContent>
-    </Card>
+    <Panel className="flex-1 items-center gap-1 p-3">
+      <View className={cn('rounded-full p-1.5', tone.box)}>
+        <Icon as={tone.icon} className={cn('size-4', tone.text)} />
+      </View>
+      <Text className={cn('text-sm font-bold', tone.text)} numberOfLines={1} adjustsFontSizeToFit>
+        {amount}
+      </Text>
+      <Text className="text-muted-foreground text-center text-[11px]">{label}</Text>
+    </Panel>
   );
 }

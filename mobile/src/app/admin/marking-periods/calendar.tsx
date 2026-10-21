@@ -204,7 +204,7 @@ export default function AcademicCalendar() {
               {editable.length === 0 ? (
                 <Text className="text-muted-foreground text-xs">{a('no_events')}</Text>
               ) : (
-                <View className="border-border rounded-md border">
+                <View className="border-info-soft dark:border-border rounded-xl border">
                   {editable.map((ev, i) => (
                     <View key={ev.id}>
                       {i > 0 ? <Separator /> : null}

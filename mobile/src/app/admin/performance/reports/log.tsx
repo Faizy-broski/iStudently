@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { SearchBar } from '@/components/app/search-bar';
@@ -14,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { usePrintContext } from '@/features/admin/print-context';
 import { actionName, effectiveFine, effectivePoints, logStaffName } from '@/features/admin/performance';
@@ -60,14 +62,14 @@ export default function PerformanceLogReport() {
     setBusy(true);
     try {
       const range = from && to ? `${from} – ${to}` : to ? `≤ ${to}` : '';
-      const th = cols.map((c) => `<th style="text-align:start;padding:5px;border-bottom:2px solid #111;font-size:11px">${escapeHtml(c)}</th>`).join('');
+      const th = cols.map((c) => `<th style="text-align:start;padding:5px;border-bottom:2px solid ${colors.printText};font-size:11px">${escapeHtml(c)}</th>`).join('');
       const body =
-        `<h2 style="margin:0">${escapeHtml(p('performance_log'))}</h2><p style="color:#666;margin:2px 0 12px">${escapeHtml(range)}</p>` +
+        `<h2 style="margin:0">${escapeHtml(p('performance_log'))}</h2><p style="color:${colors.printMuted};margin:2px 0 12px">${escapeHtml(range)}</p>` +
         [...groups.values()]
           .map((g) => {
             const f = g[0];
-            const head = `<h3 style="margin:14px 0 4px">${escapeHtml(logStaffName(f))} ${f.staff?.employee_number ? `#${escapeHtml(f.staff.employee_number)}` : ''} ${f.staff?.role ? `· ${escapeHtml(f.staff.role)}` : ''} <span style="font-weight:400;color:#666">(${escapeHtml(p('logs_count', { count: g.length }))})</span></h3>`;
-            return `${head}<table style="width:100%;border-collapse:collapse"><tr>${th}</tr>${g.map((l) => `<tr>${cells(l).map((c) => `<td style="padding:5px;border-bottom:1px solid #eee;font-size:11px">${escapeHtml(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+            const head = `<h3 style="margin:14px 0 4px">${escapeHtml(logStaffName(f))} ${f.staff?.employee_number ? `#${escapeHtml(f.staff.employee_number)}` : ''} ${f.staff?.role ? `· ${escapeHtml(f.staff.role)}` : ''} <span style="font-weight:400;color:${colors.printMuted}">(${escapeHtml(p('logs_count', { count: g.length }))})</span></h3>`;
+            return `${head}<table style="width:100%;border-collapse:collapse"><tr>${th}</tr>${g.map((l) => `<tr>${cells(l).map((c) => `<td style="padding:5px;border-bottom:1px solid ${colors.printBorder};font-size:11px">${escapeHtml(c)}</td>`).join('')}</tr>`).join('')}</table>`;
           })
           .join('');
       await sharePdf(buildPrintHtml({ title: p('performance_log'), pages: [body], school: print.school, layout: print.layout, withHeader: true, reportLabel: p('performance_log') }), 'performance-log.pdf');
@@ -84,7 +86,7 @@ export default function PerformanceLogReport() {
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-sm uppercase">{p('filters')}</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">{p('filters')}</CardTitle>
           </CardHeader>
           <CardContent className="gap-3">
             <View className="flex-row gap-2">
@@ -116,7 +118,7 @@ export default function PerformanceLogReport() {
         </Card>
         {logs ? (
           groups.size === 0 ? (
-            <Text variant="muted" className="py-8 text-center">{p('no_staff_match')}</Text>
+            <EmptyState title={p('no_staff_match')} />
           ) : (
             <>
               <Button variant="outline" onPress={sharePrint} disabled={busy || !print.ready}>

@@ -1,14 +1,12 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Award, Building2, FileText, GraduationCap, Languages, Sparkles, type LucideIcon } from 'lucide-react-native';
+import { Award, FileText, GraduationCap, Languages, Sparkles, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
-import { PersonAvatar } from '@/components/app/person-avatar';
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { DetailHeader, FormSection } from '@/components/app/layout';
+import { ErrorState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { inspector } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -21,25 +19,14 @@ export default function TeacherPortfolio() {
   const res = useApi(teacherId ? ['inspector', 'portfolio', teacherId] : null, ([, , id]) => inspector.portfolio(id as string));
   if (res.isLoading) return <LoadingList rows={4} />;
   const p = res.data;
-  if (!p) return <Text className="text-muted-foreground p-6 text-center">{res.error?.message || k('not_found')}</Text>;
+  if (!p) return <ErrorState message={res.error?.message || k('not_found')} onRetry={() => res.mutate()} />;
   const { teacher, qualifications: q } = p;
   const name = `${teacher.first_name} ${teacher.last_name}`;
   return (
     <>
       <Stack.Screen options={{ title: name }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
-        <Card>
-          <CardContent className="flex-row items-center gap-3 p-4">
-            <PersonAvatar url={teacher.profile_photo_url} name={name} size={56} />
-            <View className="flex-1">
-              <Text className="text-lg font-semibold">{name}</Text>
-              <View className="flex-row items-center gap-1">
-                <Icon as={Building2} className="text-muted-foreground size-3.5" />
-                <Text className="text-muted-foreground text-sm">{teacher.school?.name || teacher.school_id}</Text>
-              </View>
-            </View>
-          </CardContent>
-        </Card>
+        <DetailHeader name={name} subtitle={teacher.school?.name || teacher.school_id} photo={teacher.profile_photo_url} />
         <Section icon={GraduationCap} title={k('education_title')} empty={!q.education.length} none={k('no_data')}>
           {q.education.map((e) => (
             <Text key={e.id} className="text-sm">
@@ -60,16 +47,12 @@ export default function TeacherPortfolio() {
         </Section>
         <Section icon={Languages} title={k('languages_title')} empty={!q.languages.length} none={k('no_data')} row>
           {q.languages.map((l) => (
-            <Badge key={l.id} variant="outline">
-              <Text className="text-xs">{l.title}</Text>
-            </Badge>
+            <StatusChip key={l.id} label={l.title} tone="info" />
           ))}
         </Section>
         <Section icon={Sparkles} title={k('skills_title')} empty={!q.skills.length} none={k('no_data')} row>
           {q.skills.map((s) => (
-            <Badge key={s.id} variant="outline">
-              <Text className="text-xs">{s.title}</Text>
-            </Badge>
+            <StatusChip key={s.id} label={s.title} tone="info" />
           ))}
         </Section>
         <Section icon={FileText} title={k('historical_reports_title')} empty={!p.historical_reports.length} none={k('no_historical_reports')}>
@@ -82,12 +65,8 @@ export default function TeacherPortfolio() {
 
 function Section({ icon, title, empty, none, row, children }: { icon: LucideIcon; title: string; empty: boolean; none: string; row?: boolean; children: ReactNode }) {
   return (
-    <Card>
-      <CardHeader className="flex-row items-center gap-2">
-        <Icon as={icon} className="size-5 text-[#022172] dark:text-blue-300" />
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className={row ? 'flex-row flex-wrap gap-2' : 'gap-2'}>{empty ? <Text className="text-muted-foreground text-sm">{none}</Text> : children}</CardContent>
-    </Card>
+    <FormSection title={title} icon={icon}>
+      <View className={row ? 'flex-row flex-wrap gap-2' : 'gap-2'}>{empty ? <Text className="text-muted-foreground text-sm">{none}</Text> : children}</View>
+    </FormSection>
   );
 }

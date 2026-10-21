@@ -1,11 +1,13 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, ChevronRight, Link2, Mail, MapPin, Pencil, Phone, Unlink } from 'lucide-react-native';
+import { Link2, Mail, MapPin, Pencil, Phone, Unlink } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { InfoCard, InfoRow } from '@/components/app/info';
+import { PersonHero } from '@/components/app/layout';
 import { ListRow } from '@/components/app/list-row';
+import { StatusChip } from '@/components/app/status-chip';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { Button } from '@/components/ui/button';
@@ -64,41 +66,22 @@ export default function ParentDetail() {
         }}
       />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={parent.isValidating && !parent.isLoading} onRefresh={() => parent.mutate()} />}>
-        <View className="items-center gap-2 py-2">
-          <PersonAvatar url={p.profile?.profile_photo_url ?? p.profile?.avatar_url} name={name} size={80} />
-          <Text variant="h4" className="text-center">
-            {name}
-          </Text>
-          {p.occupation ? <Text variant="muted">{[p.occupation, p.workplace].filter(Boolean).join(' · ')}</Text> : null}
-          <View className="flex-row gap-2 pt-1">
-            {phone ? (
-              <Button size="sm" variant="outline" onPress={() => Linking.openURL(`tel:${phone}`)}>
-                <Icon as={Phone} className="size-4" />
-                <Text>{t('parents.fields.phone')}</Text>
-              </Button>
-            ) : null}
-            {email ? (
-              <Button size="sm" variant="outline" onPress={() => Linking.openURL(`mailto:${email}`)}>
-                <Icon as={Mail} className="size-4" />
-                <Text>{t('parents.fields.email')}</Text>
-              </Button>
-            ) : null}
-          </View>
-        </View>
+        <PersonHero
+          name={name}
+          photo={p.profile?.profile_photo_url ?? p.profile?.avatar_url}
+          subtitle={[p.occupation, p.workplace].filter(Boolean).join(' · ') || null}
+          chips={p.profile && p.profile.is_active === false ? <StatusChip label={t('parents.inactive')} tone="muted" className="px-2.5 py-0.5" /> : undefined}
+          actions={[
+            ...(phone ? [{ icon: Phone, label: t('parents.fields.phone'), onPress: () => Linking.openURL(`tel:${phone}`) }] : []),
+            ...(email ? [{ icon: Mail, label: t('parents.fields.email'), onPress: () => Linking.openURL(`mailto:${email}`) }] : []),
+            { icon: Pencil, label: t('parents.editInfo'), onPress: () => router.push({ pathname: '/admin/parents/form', params: { id } }) },
+          ]}
+          {...(ordered.length > 1 && at >= 0 ? { onPrev: at > 0 ? () => go(at - 1) : null, onNext: at < ordered.length - 1 ? () => go(at + 1) : null } : {})}
+          prevLabel={t('parents.previous')}
+          nextLabel={t('parents.next')}
+        />
 
         {p.profile_id ? <VerifyQr profileId={p.profile_id} label={name} /> : null}
-        {ordered.length > 1 && at >= 0 ? (
-          <View className="flex-row gap-2">
-            <Button size="sm" variant="outline" className="flex-1" onPress={() => go(at - 1)} disabled={at <= 0}>
-              <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
-              <Text>{t('parents.previous')}</Text>
-            </Button>
-            <Button size="sm" variant="outline" className="flex-1" onPress={() => go(at + 1)} disabled={at >= ordered.length - 1}>
-              <Text>{t('parents.next')}</Text>
-              <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
-            </Button>
-          </View>
-        ) : null}
 
         <Card className="gap-1 py-4">
           <CardHeader className="flex-row items-center justify-between px-4">

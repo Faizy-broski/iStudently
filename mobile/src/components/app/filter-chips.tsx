@@ -3,7 +3,7 @@ import { Pressable, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
-/** Horizontal single-choice chips (status filters etc.). */
+/** Horizontal single-choice chips (status filters etc.): brand pill when active, soft card otherwise. */
 export function FilterChips<T extends string>({
   options,
   value,
@@ -29,8 +29,8 @@ export function FilterChips<T extends string>({
             onPress={() => onChange(o.value)}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            className={cn('rounded-full border px-3.5 py-1.5', active ? 'bg-primary border-primary' : 'border-border bg-background')}>
-            <Text className={cn('text-sm font-medium', active ? 'text-primary-foreground' : 'text-foreground')}>{o.label}</Text>
+            className={cn('rounded-full border px-3.5 py-1.5', active ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
+            <Text className={cn('text-[13px] font-semibold', active ? 'text-white' : 'text-muted-foreground')}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -64,8 +64,8 @@ export function MultiChips<T extends string>({
             onPress={() => onChange(active ? value.filter((v) => v !== o.value) : [...value, o.value])}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: active }}
-            className={cn('rounded-full border px-3.5 py-1.5', active ? 'bg-primary border-primary' : 'border-border bg-background')}>
-            <Text className={cn('text-sm font-medium', active ? 'text-primary-foreground' : 'text-foreground')}>{o.label}</Text>
+            className={cn('rounded-full border px-3.5 py-1.5', active ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
+            <Text className={cn('text-[13px] font-semibold', active ? 'text-white' : 'text-muted-foreground')}>{o.label}</Text>
           </Pressable>
         );
       })}

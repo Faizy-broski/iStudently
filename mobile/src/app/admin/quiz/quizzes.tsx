@@ -96,7 +96,7 @@ export default function Quizzes() {
           <View className="gap-1.5 px-4 py-3">
             <View className="flex-row items-start gap-2">
               <View className="flex-1 gap-0.5">
-                <Text className="font-medium">{x.title}</Text>
+                <Text className="text-sm font-semibold">{x.title}</Text>
                 <Text className="text-muted-foreground text-xs">
                   {x.assignment?.title ?? q('noAssignment')} · {q('table.dueDate')}: {dueDate(x.assignment?.due_date)}
                 </Text>

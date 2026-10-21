@@ -17,6 +17,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useAttendanceScope } from '@/features/admin/attendance';
 import { useCheckpoints } from '@/features/admin/entry-exit';
@@ -24,7 +25,7 @@ import { adminEntryExit } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 type Slot = { day_of_week: number; start_time: string; end_time: string };
-const MODE_CLS: Record<string, [string, string]> = { entry: ['bg-emerald-100', 'text-emerald-700'], exit: ['bg-orange-100', 'text-orange-700'], both: ['bg-blue-100', 'text-blue-700'] };
+const MODE_CLS: Record<string, [string, string]> = { entry: ['bg-success-soft', 'text-success'], exit: ['bg-warning-soft', 'text-warning'], both: ['bg-info-soft', 'text-brand dark:text-brand-secondary'] };
 
 /** Checkpoints: add/edit/delete, active switch, authorized time slots (web: /admin/entry-exit/checkpoints). */
 export default function Checkpoints() {
@@ -177,7 +178,7 @@ export default function Checkpoints() {
           <ScrollView contentContainerClassName="gap-3">
             {times?.slots.length ? (
               times.slots.map((s, i) => (
-                <View key={i} className="border-border gap-2 rounded-lg border p-3">
+                <View key={i} className="border-info-soft dark:border-border gap-2 rounded-xl border p-3">
                   <View className="flex-row items-center gap-2">
                     <Picker className="flex-1" value={String(s.day_of_week)} onChange={(v) => setSlot(i, { day_of_week: Number(v) })} options={days.map((d, n) => ({ value: String(n), label: d }))} />
                     <Pressable onPress={() => setTimes((x) => (x ? { ...x, slots: x.slots.filter((_, j) => j !== i) } : x))} hitSlop={8} className="p-1">
@@ -192,7 +193,7 @@ export default function Checkpoints() {
                 </View>
               ))
             ) : (
-              <Text variant="muted" className="py-4 text-center">{c('msg_no_times')}</Text>
+              <EmptyState title={c('msg_no_times')} />
             )}
             <Button variant="outline" onPress={() => setTimes((x) => (x ? { ...x, slots: [...x.slots, { day_of_week: 1, start_time: '07:00', end_time: '18:00' }] } : x))}>
               <Icon as={Plus} className="text-foreground size-4" />

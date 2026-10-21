@@ -1,15 +1,15 @@
 import { htmlToText } from '@studently/shared-utils';
 import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { AlertCircle, BookOpen, Calendar, ChevronDown, ChevronRight, Clock, FileText } from 'lucide-react-native';
+import { BookOpen, Calendar, ChevronDown, ChevronRight, Clock, FileText } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { FilterChips } from '@/components/app/filter-chips';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import type { StudentLessonPlansData } from '@studently/api-client';
@@ -38,16 +38,8 @@ export function LessonPlanRead({ scope, load, subtitle }: { scope: string; load:
   if (data.isLoading && !data.data) return <LoadingList rows={5} />;
   if (data.error) {
     return (
-      <View className="bg-background flex-1 p-4">
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-          <CardContent className="flex-row items-center gap-3 p-4">
-            <Icon as={AlertCircle} className="size-8 text-red-600" />
-            <View className="flex-1">
-              <Text className="font-semibold text-red-900 dark:text-red-200">{k('error')}</Text>
-              <Text className="text-sm text-red-700 dark:text-red-300">{data.error.message}</Text>
-            </View>
-          </CardContent>
-        </Card>
+      <View className="bg-background flex-1">
+        <ErrorState message={`${k('error')}: ${data.error.message}`} onRetry={() => data.mutate()} />
       </View>
     );
   }
@@ -58,33 +50,25 @@ export function LessonPlanRead({ scope, load, subtitle }: { scope: string; load:
     <>
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
-        <Text variant="muted">{subtitle}</Text>
-        <Picker value={cp} onChange={setCp} options={[{ value: 'all', label: k('all') }, ...cps.map((c) => ({ value: c.id, label: c.title || c.course_title || '' }))]} />
-        <Text className="text-muted-foreground text-sm">{k('count', { count: lessons.length })}</Text>
+        <Text variant="muted" className="text-sm">
+          {subtitle}
+        </Text>
+        <FilterChips value={cp} onChange={setCp} options={[{ value: 'all', label: k('all') }, ...cps.map((c) => ({ value: c.id, label: c.title || c.course_title || '' }))]} />
+        <Text className="text-muted-foreground text-xs">{k('count', { count: lessons.length })}</Text>
         {lessons.length === 0 ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Icon as={BookOpen} className="text-muted-foreground mb-3 size-12 opacity-40" />
-              <Text className="mb-1 text-lg font-medium">{k('empty')}</Text>
-              <Text className="text-muted-foreground text-center text-sm">{cps.length === 0 ? k('not_enrolled') : k('none_published')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={BookOpen} title={k('empty')} body={cps.length === 0 ? k('not_enrolled') : k('none_published')} />
         ) : (
           lessons.map((l) => {
             const open = expanded.includes(l.id);
             const c = l.course_period;
             return (
-              <Card key={l.id} className="gap-0 overflow-hidden py-0">
-                <Pressable onPress={() => toggle(l.id)} accessibilityRole="button" accessibilityState={{ expanded: open }} className="flex-row items-center gap-3 p-4">
-                  <Icon as={open ? ChevronDown : ChevronRight} className="text-muted-foreground size-4 rtl:rotate-180" />
+              <Panel key={l.id} className="overflow-hidden">
+                <Pressable onPress={() => toggle(l.id)} accessibilityRole="button" accessibilityState={{ expanded: open }} className="flex-row items-center gap-3 p-4 active:opacity-70">
+                  <Icon flipRtl as={open ? ChevronDown : ChevronRight} className="text-muted-foreground size-4" />
                   <View className="flex-1">
-                    <Text className="font-semibold">{l.title}</Text>
+                    <Text className="text-sm font-semibold">{l.title}</Text>
                     <View className="mt-1 flex-row flex-wrap items-center gap-2">
-                      {c ? (
-                        <Badge variant="outline">
-                          <Text className="text-xs">{c.title || c.course_title}</Text>
-                        </Badge>
-                      ) : null}
+                      {c ? <StatusChip label={c.title || c.course_title || ''} tone="muted" /> : null}
                       {l.on_date ? (
                         <View className="flex-row items-center gap-1">
                           <Icon as={Calendar} className="text-muted-foreground size-3" />
@@ -99,12 +83,10 @@ export function LessonPlanRead({ scope, load, subtitle }: { scope: string; load:
                       ) : null}
                     </View>
                   </View>
-                  <Badge variant="secondary">
-                    <Text>{k('lesson', { n: l.lesson_number })}</Text>
-                  </Badge>
+                  <StatusChip label={k('lesson', { n: l.lesson_number })} tone="info" />
                 </Pressable>
                 {open ? (
-                  <View className="border-border bg-muted/10 gap-4 border-t px-4 py-4">
+                  <View className="border-info-soft dark:border-border bg-muted/20 gap-4 border-t px-4 py-4">
                     {l.learning_objectives ? (
                       <View>
                         <Heading label={k('objectives')} />
@@ -115,11 +97,9 @@ export function LessonPlanRead({ scope, load, subtitle }: { scope: string; load:
                       <View className="gap-2">
                         <Heading label={k('activities')} />
                         {l.items.map((it, i) => (
-                          <View key={it.id} className="border-border bg-card gap-2 rounded-lg border p-3">
+                          <View key={it.id} className="border-info-soft dark:border-border bg-card gap-2 rounded-xl border p-3">
                             <View className="flex-row items-center gap-2">
-                              <Badge variant="outline">
-                                <Text className="text-xs">{k('step', { n: i + 1 })}</Text>
-                              </Badge>
+                              <StatusChip label={k('step', { n: i + 1 })} tone="info" />
                               {it.time_minutes ? (
                                 <View className="flex-row items-center gap-1">
                                   <Icon as={Clock} className="text-muted-foreground size-3" />
@@ -148,9 +128,9 @@ export function LessonPlanRead({ scope, load, subtitle }: { scope: string; load:
                         <Heading label={k('attachments')} />
                         <View className="flex-row flex-wrap gap-2">
                           {l.files.map((f) => (
-                            <Pressable key={f.id} onPress={() => WebBrowser.openBrowserAsync(f.file_url)} accessibilityRole="link" className="border-border bg-card flex-row items-center gap-1.5 rounded-lg border px-3 py-1.5">
-                              <Icon as={FileText} className="text-muted-foreground size-3.5" />
-                              <Text className="text-sm">{f.file_name}</Text>
+                            <Pressable key={f.id} onPress={() => WebBrowser.openBrowserAsync(f.file_url)} accessibilityRole="link" className="bg-info-soft flex-row items-center gap-1.5 rounded-full px-3 py-1.5 active:opacity-70">
+                              <Icon as={FileText} className="text-brand dark:text-brand-secondary size-3.5" />
+                              <Text className="text-brand dark:text-brand-secondary text-sm font-medium">{f.file_name}</Text>
                             </Pressable>
                           ))}
                         </View>
@@ -164,7 +144,7 @@ export function LessonPlanRead({ scope, load, subtitle }: { scope: string; load:
                     ) : null}
                   </View>
                 ) : null}
-              </Card>
+              </Panel>
             );
           })
         )}
@@ -174,5 +154,5 @@ export function LessonPlanRead({ scope, load, subtitle }: { scope: string; load:
 }
 
 function Heading({ label }: { label: string }) {
-  return <Text className="text-muted-foreground mb-1 text-xs font-semibold uppercase">{label}</Text>;
+  return <Text className="text-muted-foreground mb-1 text-sm font-semibold">{label}</Text>;
 }

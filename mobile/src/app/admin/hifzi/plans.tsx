@@ -7,7 +7,7 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -173,7 +173,7 @@ export default function HifziPlans() {
             ) : !plan ? (
               <Card>
                 <CardContent className="items-center gap-3 pt-6 pb-6">
-                  <Text className="text-muted-foreground text-center text-sm">{h('noPlanYet')}</Text>
+                  <EmptyState title={h('noPlanYet')} />
                   <Button onPress={() => setDialog({ editing: null })}>
                     <Icon as={Plus} className="text-primary-foreground size-4" />
                     <Text>{h('create')}</Text>
@@ -192,10 +192,10 @@ export default function HifziPlans() {
                         {riwayahName(plan.riwayah_id)}
                         {plan.daily_new_ayat_target != null ? ` · ${h('dailyTargetLabel')}: ${plan.daily_new_ayat_target}` : ''}
                       </Text>
-                      <Pressable onPress={() => setDialog({ editing: plan })} hitSlop={6} className="p-1" accessibilityLabel={h('edit')}>
-                        <Icon as={Pencil} className="text-muted-foreground size-4" />
+                      <Pressable onPress={() => setDialog({ editing: plan })} accessibilityLabel={h('edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                        <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                       </Pressable>
-                      <Pressable onPress={() => remove(plan)} disabled={busy} hitSlop={6} className="p-1" accessibilityLabel={h('delete')}>
+                      <Pressable onPress={() => remove(plan)} disabled={busy} accessibilityLabel={h('delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                         <Icon as={Trash2} className="text-destructive size-4" />
                       </Pressable>
                     </View>

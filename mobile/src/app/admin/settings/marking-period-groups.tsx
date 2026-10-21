@@ -3,11 +3,11 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, CalendarRange, Info, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { View, Pressable } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -82,16 +82,16 @@ export default function MarkingPeriodGroups() {
       <Stack.Screen options={{ title: g('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10">
         {!active ? (
-          <View className="flex-row gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950/30">
-            <Icon as={AlertTriangle} className="size-5 text-amber-600" />
-            <Text className="flex-1 text-sm text-amber-800 dark:text-amber-300">{g('inactive_notice')}</Text>
+          <View className="flex-row gap-2 rounded-xl border border-warning/30 bg-warning-soft p-3">
+            <Icon as={AlertTriangle} className="size-5 text-warning" />
+            <Text className="flex-1 text-sm text-warning ">{g('inactive_notice')}</Text>
           </View>
         ) : (
           <>
             <Text className="text-muted-foreground text-sm">{g('subtitle')}</Text>
-            <View className="flex-row gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 dark:bg-blue-950/30">
-              <Icon as={Info} className="size-4 text-blue-600" />
-              <Text className="flex-1 text-sm text-blue-800 dark:text-blue-200">{banner}</Text>
+            <View className="flex-row gap-2 rounded-xl border border-info-soft bg-info-soft p-3">
+              <Icon as={Info} className="size-4 text-brand dark:text-brand-secondary" />
+              <Text className="flex-1 text-sm text-brand dark:text-brand-secondary ">{banner}</Text>
             </View>
             <Card>
               <CardContent className="gap-3 pt-4">
@@ -108,7 +108,7 @@ export default function MarkingPeriodGroups() {
                 {res.isLoading ? (
                   <LoadingList rows={3} />
                 ) : !(res.data ?? []).length ? (
-                  <Text className="text-muted-foreground py-6 text-center">{g('no_groups')}</Text>
+                  <EmptyState title={g('no_groups')} />
                 ) : (
                   (res.data ?? []).map((group, i) => (
                     <View key={group.id}>
@@ -117,9 +117,9 @@ export default function MarkingPeriodGroups() {
                         <Icon as={CalendarRange} className="text-muted-foreground size-4" />
                         <View className="flex-1 gap-1">
                           <View className="flex-row flex-wrap items-center gap-2">
-                            <Text className="font-medium">{group.name}</Text>
+                            <Text className="text-sm font-semibold">{group.name}</Text>
                             {group.is_default ? (
-                              <View className="rounded-full bg-green-600 px-2 py-0.5">
+                              <View className="rounded-full bg-success px-2 py-0.5">
                                 <Text className="text-xs text-white">{g('badge_default')}</Text>
                               </View>
                             ) : null}
@@ -128,12 +128,12 @@ export default function MarkingPeriodGroups() {
                             <Text className="text-xs">{group.campus_id ? g('scope_campus') : g('scope_whole_school')}</Text>
                           </View>
                         </View>
-                        <Button size="icon" variant="ghost" onPress={() => openForm(group)} accessibilityLabel={t('common.edit')}>
-                          <Icon as={Pencil} className="text-foreground size-4" />
-                        </Button>
+                        <Pressable onPress={() => openForm(group)} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                          <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                        </Pressable>
                         {!group.is_default ? (
                           <Button size="icon" variant="ghost" disabled={deleting === group.id} onPress={() => remove(group)} accessibilityLabel={t('common.delete')}>
-                            <Icon as={Trash2} className="size-4 text-red-500" />
+                            <Icon as={Trash2} className="size-4 text-destructive" />
                           </Button>
                         ) : null}
                       </View>

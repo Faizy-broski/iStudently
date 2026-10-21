@@ -1,7 +1,9 @@
 import type { CustomFieldDefinition } from '@studently/api-client';
 import { useTranslation } from 'react-i18next';
+import { View } from 'react-native';
 
-import { InfoCard, InfoRow } from '@/components/app/info';
+import { InfoRow } from '@/components/app/info';
+import { Panel, PanelTitle } from '@/components/app/panel';
 import { locale } from '@/i18n';
 import { formatDate } from '@/lib/format';
 
@@ -63,17 +65,18 @@ export function CustomFieldValues({ defs, values, hideEmpty }: { defs?: CustomFi
       {[...categories.entries()]
         .sort((a, b) => a[1].order - b[1].order)
         .map(([categoryId, c]) => (
-          <InfoCard key={categoryId} title={c.name}>
-            {c.fields
-              .sort((a, b) => a.sort_order - b.sort_order)
-              .map((d) => (
-                <InfoRow
-                  key={d.id}
-                  label={(ar && d.label_ar) || d.label}
-                  value={display(d, readCustomValue(values, d), yes, no)}
-                />
-              ))}
-          </InfoCard>
+          <Panel key={categoryId}>
+            <PanelTitle title={c.name} />
+            <View className="px-4 pb-2">
+              {c.fields
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map((d, i, arr) => (
+                  <View key={d.id} className={i < arr.length - 1 ? 'border-info-soft dark:border-border border-b' : undefined}>
+                    <InfoRow label={(ar && d.label_ar) || d.label} value={display(d, readCustomValue(values, d), yes, no)} />
+                  </View>
+                ))}
+            </View>
+          </Panel>
         ))}
     </>
   );

@@ -252,3 +252,324 @@
   - Android adaptive icon: glyph foreground on a blue background (#2563EB), plus a white monochrome version.
   - `splash-icon.png`: the rounded logo on #022172, imageWidth 180.
   - Preview APK 1.0.1 (81 MB) with the keyboard fix and the new icons. Checked on the emulator: the bottom field of Platform settings scrolls above the keyboard.
+- 2026-10-16: app colours defined once, in `mobile/src/global.css`.
+  - Brand: primary #103B95, secondary #5D88E2, accent #DE8C10. Linear gradient #5697F8 → #103B95 (56%) → #041951; radial gradient #F5E1A6 → #FDAF3A. Plus status, soft status, chart 1–8, print and overlay tokens.
+  - In dark mode `primary` points to the secondary blue, for contrast.
+  - `tailwind.config.js` reads the token names from global.css; each becomes a class, and all are safelisted.
+  - `lib/colors.ts` (`colors`, `useColors`, `chartPalette`) reads the CSS variables at runtime through NativeWind's root variables, following `var()` aliases.
+  - `<BrandGradient variant="primary|gold">`. `navTheme()`, charts and `constants/theme.ts` derive from the tokens.
+  - AST codemod: 137 files, about 600 hard-coded colours mapped to their nearest token. Class names use theme tokens; HTML/PDF uses the print tokens.
+  - No colour literals remain in `mobile/src` outside global.css (the i18n hint text keeps an example code).
+  - Rule added to CLAUDE.md. The web is not changed.
+- 2026-10-16: animated splash and first-launch onboarding, built from the Figma screenshots.
+  - `features/splash/animated-splash.tsx`: brand gradient, the large `Vector.svg` logo shape (fill now `currentColor`), logo mark on a white shape, "iStudently" and the tagline, a loading bar, and the version with the last school name. Shown over the app until session and /auth/me load (at least 1.8 s), then fades out.
+  - The native splash is now plain brand colour; `app.config.js` reads it from global.css.
+  - `.svg` imports work through react-native-svg-transformer (metro.config.js, `src/types/svg.d.ts`).
+  - Onboarding `/(auth)/onboarding`: 3 slides, dots, Continue / Get started. Shown once (`features/onboarding/seen.ts`). Slides fall back to the gradient until the photos are added.
+  - Fix: tokens stay hex in global.css, and tailwind.config derives `--name-rgb` from them, so opacity classes (`bg-primary/10`, 583 uses) work again. `raw-*` classes keep the hex variables alive for `lib/colors`.
+  - Fix: NativeWind's `rtl:` variant also applied in left-to-right, so 84 chevrons and arrows pointed the wrong way in English. They now use `<Icon flipRtl>` (checks `I18nManager.isRTL`).
+- 2026-10-16: auth screens and form controls follow the Figma design.
+  - `AuthBackground` (light background with the faded Vector.svg logo shape), also available as `Screen auth`. Used on sign-in, forgot / reset / change password and 2FA.
+  - Sign-in rebuilt: the server's logo, title, heading, subtitle, quote and About links are kept, like the web; the pencil background image and text colours are not used in the app. Pill fields with mail/lock icons, "Remember me" (email/username only, kv `auth.remembered_identifier`), and a full-strength gradient Sign In. No Face ID button.
+  - Illustrations `forgot-password.png` and `reset-password.png` (copies of the Figma "Forgot password-cuate" exports) on forgot / reset / change password.
+  - App-wide: `Button` is a pill and the default variant draws the brand gradient (unless the screen sets a bg-* class); sizes h-11/h-12. `Input` is a 48 px pill with a card background, a brand-secondary border when focused, and an optional `icon`. `Textarea` uses rounded-2xl with the same focus border.
+- 2026-10-16: error screen and system states (Figma).
+  - `AppErrorBoundary`: AuthBackground, `error.png` illustration (white background removed), title, body, an "Error ref: STU-1234" chip, Restart App (`Updates.reloadAsync`, `retry()` in dev), and "Report this issue" (mailto support_email from app-config, with the ref).
+  - The ref is sent with the crash report: `monitoring.reportError({ ref })`, and the backend logs `ref` (`client-errors.routes.ts`; needs a backend deploy).
+  - States: `LoadingList` shows skeleton cards; `EmptyState` / `ErrorState` show a card with an icon circle; offline shows a warning tone and a "Retry connection" button.
+  - `OfflineBanner` is a warning-soft pill: "You're offline · Showing data from HH:mm" (the time the connection dropped).
+  - Not built: the offline queue (queued attendance / gate scans syncing later); the app has no offline write queue yet.
+- 2026-10-16: animated pill tab bar (Figma "Nav") for every role.
+  - `components/app/pill-tab-bar.tsx`: a floating white pill. The active tab is a gradient pill with icon and label (Reanimated spring layout, the label fades in); the others show only the icon; `more` is a dashed circle with an ellipsis.
+  - Used by all 7 `(tabs)/_layout.tsx` (admin, inspector, librarian, parent, student, superadmin, teacher) via `tabBar`.
+- 2026-10-16: super admin dashboard restyled to the Figma "Studently Console" look, with real data only.
+  - Own header (icon, search → Schools, bell with an open-feedback dot → Inbox); the tab header is hidden.
+  - Gradient hero: paid this month in the settings currency, % change, monthly sparkline, outstanding / paid this year / overdue.
+  - 2×2 tiles: schools, campuses, on trial, overdue invoices.
+  - Subscriptions by plan (latest invoice per school), schools requiring attention (overdue invoices, trials ending, suspended), support requests (open feedback), platform activity, the School growth and Revenue charts (web parity), and quick actions.
+- 2026-10-16: More screen (Figma "More Menu") for all 7 roles.
+  - `features/menu/more-layout.tsx` provides `MoreFrame` (AuthBackground), `MoreHeader` (title, top card, search), `ProfileCard`, `AccountTiles` (Settings, Sign out) and `OpenWebsiteCard`.
+  - `components/app/tile-grid.tsx` is the 3-column tile grid; `features/menu/menu-icon.ts` picks an icon from the page name.
+  - `MenuList` renders sidebar groups as tile grids, so the module tabs (People, Fees …) are grids too. Web-only pages show a small accent dot instead of the "Web" badge.
+  - Admin top card is `CampusSwitcher variant="card"`; parent shows the profile and child switcher; the other roles show the profile.
+  - The More tab header is hidden. An open More tab becomes a gradient pill in `PillTabBar`.
+  - Fix: super admin "Public pages" was labelled "Polls & Surveys" because polls reused `pp_title`; it now uses `app.sa_public_pages`.
+- 2026-10-16: More tiles reworked to match Figma.
+  - Tiles are 76 px, equal-width 3-column rows with 10 px gaps, a white → info-soft fill, a faint info-soft border, a 20 px icon and a 12 px label.
+  - Super admin and inspector have Settings and Sign out inside the grid (no "Account" heading).
+  - Menu sub-labels start their own grid.
+- 2026-10-16: More tiles: bolder icons (strokeWidth 2.4), labels in the icon colour (brand; destructive for Sign out), semibold.
+  - Cards are raised with `raised(colors.brand)` from tile-grid (brand-tinted shadow, Android elevation 4) on tiles, the profile / campus card and Open on website.
+- 2026-10-16: tab bar: icons 22 px; tabs spread evenly (justify-between, 48 px icon buttons, the More circle no longer pushed to the end).
+- 2026-10-16: super admin Billing redesigned in the new style.
+  - AuthBackground, own header (title, subtitle, gradient + button for a new invoice or plan) and a summary row (outstanding, overdue, paid this month).
+  - `Segmented` (Invoices / Plans, sliding white thumb).
+  - Raised invoice cards (initial avatar, school, number · due, `StatusChip` with `PAY_TONE`, amount, plan · cycle) and plan cards.
+  - The search bar and round export button scroll with the list.
+  - New shared: `components/app/segmented.tsx`, `components/app/status-chip.tsx`.
+  - `FilterChips` restyled app-wide: brand pill when active, soft card when not.
+- 2026-10-16: billing rows made compact (one row, about 64 px): initial, school, number · due, amount, small status chip; 8 px gap. Plan rows likewise.
+- 2026-10-16: super admin school detail redesigned (no background shape).
+  - Gradient hero with logo, name, "city · campuses · since", status chip, and quick actions (Edit, Modules, Sidebar, Fields).
+  - Status panel with a soft Suspend / Activate button; Details as `InfoRow`s with icons; admin with an initial avatar and login details; Copy settings as an `ActionRow`; compact campuses and invoices.
+  - New shared `components/app/panel.tsx`: `Panel`, `PanelTitle`, `InfoRow`, `ActionRow`.
+  - All role stacks use `headerBackButtonDisplayMode: 'minimal'`, so the back button no longer shows "(tabs)".
+- 2026-10-16: super admin Schools tab in card style: AuthBackground, header (title, subtitle, gradient + → onboard), counts (total / active / trial / suspended), search, chips, compact `ListCard` rows (logo, name, city · campuses, `SchoolStatusChip`).
+  - Shared `ListCard` and `CARD_LIST_PROPS` in panel.tsx. `StatusChip` no longer forces self-start.
+- 2026-10-16: super admin Inbox in card style: AuthBackground, header (title, subtitle, gradient + on Quotes), `Segmented` Feedback / Login quotes, soft chips.
+  - Feedback `ListCard`s: bug / lightbulb icon circle, title, from · date, `FEEDBACK_TONE` chip.
+  - Quote cards: quote icon, both languages, inactive chip, round up / down reorder buttons, plus the rotation picker.
+- 2026-10-16: shared `Card` restyled app-wide: info-soft border, rounded-2xl, `raised()` shadow, CardTitle text-base. Every form and settings card picks it up.
+  - Onboard: gradient intro card and section titles with icon tiles (school, administrator, first invoice).
+  - Public pages: `ListCard` rows (type icon, title, type · roles or Everyone, draft chip, switch, round reorder buttons).
+- 2026-10-16: admin dashboard rebuilt in the Figma admin-dashboard style, with real data only.
+  - Header (school logo, name, School admin, search → More, bell → Messaging), campus pill (`CampusSwitcher variant="pill"` with the year) plus the year / quarter pickers.
+  - 4 tiles (students, teachers, staff, parents), attendance today (rate, present-of-total, stacked bar, legend), enrolment trend (last 6 months; the last bar gradient, % change chip), fee collection (ring + collected / outstanding / overdue from `/fees/dashboard`, in the school currency).
+  - Students by grade (bars + total), upcoming events (`/events/upcoming`, 3), library tiles, weather (plugin), quick actions (Add student, Fees, Timetable, Reports).
+  - Not built: "Alerts" and "Recent activity" from the design (no backend source yet). Not checked on a device: needs an admin login and EXPO_PUBLIC_ALL_ROLES=1 (admins see Coming soon).
+- 2026-10-16: campus switcher is a bottom sheet (Figma "Switch campus").
+  - New `components/app/bottom-sheet.tsx` (Modal slide-up, dimmed backdrop, grab handle, title, keyboard-safe).
+  - Search appears when there are more than 5 campuses. Campus cards have a gradient pin circle, name and address · city; the selected card has an info-soft fill, brand-secondary border and check.
+  - Student counts per campus aren't in the campus data, so they aren't shown. Not checked on a device (admin login needed).
+- 2026-10-16: More screens follow the Figma grid exactly: one tile per sidebar group (`MenuList onOpenGroup`), Settings and Sign out tiles at the end (`useAccountTiles`), then Open on website. No group headings and no visible search.
+  - A 🔍 button by the title toggles search; search still matches every page.
+  - New `/{admin,student,teacher,parent,librarian}/menu-group?group=` screens show a group's pages as tiles. Single-page groups open directly, so nothing is dropped.
+  - `SearchBar` gained `autoFocus`. Not checked on a device for these roles (they show Coming soon).
+- 2026-10-16: three screens restyled to the Figma designs, with every function kept.
+  - Student homework (`student/assignments/[id]`): assignment panel with due / points / status chips, teacher and course, description and file link; detail `InfoRow`s; dashed "Tap to add files" zone; file rows (type icon, size, per-file spinner → check while uploading, remove); previous attachments; note field (HtmlEditorField); gradient Submit / Resubmit.
+  - Take attendance (`admin/teacher-programs/attendance`, also the teacher screen): class panel (section, subject, period, time, Today chip, date and class pickers, refresh); posting-window notice; Present / Absent / Late tiles plus total and rate; new student search; mark-all buttons; one card list with initials, roll and round P / A / L buttons; per-student remarks behind a note toggle (open when a remark exists); gradient "Save Attendance · done/total".
+  - Inspector observation: teacher panel (initials, name, school · date, live average / 5); rubric categories with a weight chip; criteria with a 1–5 segmented scale and level label (Unsatisfactory → Outstanding); per-criterion evidence tools; general evidence as tiles plus a dashed camera tile; grade sample; bottom "scored X/Y" progress bar and gradient Submit.
+  - Not in the app: the design's observation "Notes" field (no notes field on the evaluation). Not checked on a device (those roles show Coming soon).
+
+### 2026-10-16 — Parent fees and librarian issue redesign
+- `app/parent/fees.tsx`: child switcher card; gradient hero (outstanding = pending + overdue, next due chip with days left/overdue, gold button prints that fee's challan); paid/pending/overdue stat panels; month filter + tabs kept; compact fee rows (amount, status chip, partial-payment note or due badge, per-row challan); new payment history list (from `fee.payments`); info card on info-soft. No online "Pay now" (none exists on web/API).
+- `app/librarian/issue.tsx`: 3 steps (borrower with loans chip, book + copy radio rows, due date with 7/14/21 chips), summary panel, fixed Issue Book button. `StudentSelectCard` and `ChildSwitcher` (bottom sheet) restyled.
+- Not previewable on the simulator: parent and librarian are behind Coming soon / no test logins.
+
+### 2026-10-16 — Student dashboard redesign (Figma student home)
+- `app/student/(tabs)/index.tsx` rewritten (tab header hidden; AuthBackground like admin): greeting header (avatar → profile, search → More, bell → announcements); gradient hero (ring = overall performance, term average from `grades/gpa-rank` with fallback to performance grade average, attendance %, rank N of M, pending/submitted/overdue from the assignments list); year/quarter pickers; Setup Assistant; today's timetable rows (Done/Now/Next/in N min); homework due soon (taps open the assignment); upcoming exams carousel (`exams/upcoming`); performance meter restyled (overall + 4 sub-metrics); enrolled online classes with Join (only with the `online_classes` plugin); latest 2 announcements; quick actions (submit work, timetable, e-library, messages); marking periods; campus details; fees widget; weather.
+- Not built: Figma "Performance trend" weekly chart (no time-series endpoint; performance meter shown instead). Web's pink theme for female students dropped in favour of the design's brand palette. Not previewable (student role = Coming soon, no test login).
+
+### 2026-10-16 — Parent dashboard redesign (Figma parent home)
+- `app/parent/(tabs)/index.tsx` rewritten (tab header hidden; AuthBackground): greeting header (avatar → settings, search → More, bell → announcements of the child's campus); ChildSwitcher; tiles Attendance (last 30 days from attendance history) → attendance, Average (gpa-rank % + grade chip / rank) → academics, Homework pending → homework; fee card from `fees/:id/status` (overdue or next due, total due, View fees) + paid/total bar from payment history; last 7 attendance days (P/A/L/E) + last absence; recent grades (3) → report cards; upcoming exams with days chips; latest 2 announcements; quick actions (message teacher, reports, fee statement, ID card); Setup Assistant; weather; no-children empty state.
+- Dropped vs old screen: the FinancialWidget list (replaced by the fee card), the multi-child tip, and the student number / campus line on the child card. No "Pay now" (no online payment) and no "Book meeting" (no endpoint).
+
+### 2026-10-16 — Teacher dashboard redesign (Figma teacher home)
+- `app/teacher/(tabs)/index.tsx` rewritten (tab header hidden; AuthBackground): greeting header (avatar → settings, subjects taught today · date, search → More, bell → announcements); amber "N classes to mark" banner with Mark (started classes without attendance); tiles Periods today (done/left) → timetable, Attendance rate → attendance, My performance score + band chip + demerit/redemption → performance; course-period pickers; today's schedule rows (Now / Marked / Attendance pending / Next / Period N, present counts, tap → attendance); class attendance bars; homework awaiting review (published, due ≤ today, tap → submissions for that assignment); upcoming exams (Draft/Ready); class roster of the selected course period (avatar stack, expands to the full numbered list, Take attendance); latest 2 inbox messages; quick actions (attendance, gradebook, assignments, lesson plans, timetable, subjects); Setup Assistant; weather.
+- Not built: "To review N submissions" count and "Class avg" tiles, and the "Grading summary" grade distribution — no endpoint gives those without one call per assignment/course period. The separate current/next class cards are folded into the schedule rows + banner.
+
+### 2026-10-16 — Librarian dashboard redesign (Figma library dashboard)
+- `app/librarian/(tabs)/index.tsx` rewritten (tab header hidden; AuthBackground): greeting header (avatar → profile, librarian · campus, search → books, refresh); Setup Assistant; tiles Total books (copies), Available copies (%), Active loans, Overdue (pending fines chip) + fines-collected strip → fines; search bar → books; inventory preview (3 latest books, available/total chip); overdue loans (initials, book · due, days chip); recent issues & returns; categories with copy counts (from the books list) → manage categories; recent fines (fine stats); quick actions (issue, return, mark lost, e-library, loan directory, search books). Error and empty states kept.
+- Design differences: the "Recent library incidents" card shows recent fines (no incidents feed); no notifications bell (librarians have no announcements page), refresh in its place; overdue rows have no per-loan fine amount (not in the stats payload).
+
+### 2026-10-16 — Inspector dashboard redesign (Figma inspector dashboard)
+- `app/inspector/(tabs)/index.tsx` rewritten (tab header hidden; AuthBackground): header (name, inspector · N campuses, search → More, bell → Community); gradient visit card for the in-progress visit or next upcoming one (time, school, type · status · purpose, observation progress = submitted evaluations / visit teachers, gold Check in today or Observe when in progress; tap → visit); tiles scheduled / completed / avg score / open appeals; visit schedule (date badges → visit); teachers awaiting observation (→ observe for that teacher when in progress); average score by rubric category bars; score heatmap; reports pending signatures; assigned campuses chips; quick actions (check in, observe, reports, community, new visit, all visits).
+- `visits/[id]/observe.tsx`: optional `teacher` param preselects the teacher.
+- Design differences: no "+0.2" score trend (no history endpoint); the bell opens Community (inspectors have no notifications page); "Coaching follow-up" rows under reports are not shown (coaching notes are per evaluation only).
+
+### 2026-10-16 — Inspector/librarian dashboards vs web
+- Parity check against `frontend/src/app/{librarian,inspector}/dashboard/page.tsx`: every web element is present in both app dashboards.
+- Fix: inspector scores are percentages (backend `inspection-analytics.service.ts`), not 1–5. Category bars now use the percentage directly and show `N%`; the Avg score tile shows `N%` (removed `idb_out_of_5`).
+
+### 2026-10-17 — Admin parity audit (all ~410 web admin pages) and Wave 1 fixes
+- Audit: about 90% of admin pages FULL; gaps listed in the plan (`~/.claude/plans/merry-mixing-donut.md`, "school admin app vs web"), fixed in waves.
+- Wave 1 (bugs) done:
+  - `admin/email.tsx`: report-card audiences now call `sendReportCards` (marking period, year, include fields) instead of plain student emails; balance emails get the Academic Year picker and send `academic_year`.
+  - Salary bulk generate sends `school_id` = main school + `campus_id` like the web (`adminSalary.generateBulk(schoolId, month, year, campusId)`).
+  - Add absences: grade filter by id (server resolves ids or names), no `is_active` filter (web lists all), search matches admission number.
+  - Sidebar theme presets save the web's exact colours (new `--sidebar-preset-*` tokens in global.css + `ColorToken`). Logo stays resized to 1200 px on pick, so the web's 2 MB check isn't needed.
+  - PDF header/footer margins clamped to 0–80 mm like the web.
+  - Force password change kept campus-scoped on mobile: the web page text says "campus-scoped" but the web never sends `campus_id` (web bug); backend supports `campus_id`.
+- Wave 2 (missing workflows) done:
+  - Student add/edit (`admin/students/form.tsx` + new `features/admin/student-extras.tsx`): previous school, emergency contacts (list), and on add: link existing parent (search, relationship) or create a new parent (web's required CNIC/address/city), services to subscribe (`adminServices.active` / `subscribeStudent`), optional first fee challan (`adminFees.generateFirstFee`, web due-date/period defaults) that then opens the challan screen.
+  - Staff delete on `employees/[id]` (staff only, `DELETE /staff/:id`, confirm with the web's warning).
+  - Signup links: full web form (grade levels offered, standard field show/required, profile & custom-field toggles in server order, freeform fields, poster upload, date pickers) for create and edit (`link-form?id=`, `adminSignups.link/updateLink/profileFields`), Edit action and created/uses/expiry sort on the list.
+  - First-run setup wizard `admin/setup.tsx` (campus → year → FY/2 semesters/4 quarters, web defaults) and the dashboard redirect for admins until `/setup/status` is complete (`campuses.setupStatus`).
+  - Whole-school data import `admin/import/school-data.tsx` (template share, .xlsx validate, commit, 3 s job polling, results, credentials CSV, undo) with new `adminSchoolDataImportApi` + contract entry; linked from the setup wizard (web has no menu link).
+  - Email composers: grade/section filters, "select all with email", staff roles (all/teachers/librarians/staff/counselors), CC staff for student emails (`PeoplePicker` gains `filter` / `selectAllWithEmail`).
+- Wave 3 (rich text, file formats, exports) done:
+  - New shared `components/app/rich-text-field.tsx`: WebView contenteditable + native toolbar (bold/italic/underline, lists, alignment, token-palette text colour, link, image upload via `media.uploadAttachment`, clear), cursor inserts for {{tokens}}; `RichOrSourceField` adds a Visual/HTML switch. No new native module (uses react-native-webview), so no rebuild needed. Rendering checked on the iOS simulator (temporary preview page, deleted).
+  - Used in: admin email composer (all audiences, body now HTML), messaging compose + template editor (all roles), user agreements, parent agreement, PDF header/footer (visual/HTML), class diary write, print letters (HTML body, placeholders filled in HTML).
+  - Excel import (`lib/spreadsheet.ts`, SheetJS): grades import, timetable import, events import (+ the web's two-sheet .xlsx template).
+  - Student list export: Excel/PDF/CSV with saved column presets (`features/admin/table-export.tsx`, new `exportTemplatesApi` + contract) incl. preset manager (create/edit/default/delete, reorder, EN/AR labels).
+  - Print buttons (`features/admin/print-table.tsx`) on accounting staff balances, daily transactions, rollup.
+  - Advanced report: username/password columns (`adminStudents.bulkCredentials`, chunks of 200 like the web).
+  - Print schedules "Mailing labels": not built — the web checkbox is never used when printing (no-op).
+- Wave 4 done: student multi-grade filter; staff designation dropdown + librarian auto password; parent photo upload; parent list sort + show inactive; enter-eligibility school-wide list (500) with father name; parent agreement settings (`adminParentAgreementApi` + contract, linked from user agreements); grade progression screen (path, per-grade next grade, save all; linked from Grades); admin class diary read + write (comments, files, slots, edit/delete; linked from Attendance); admin take-attendance "By section" mode with entry/exit checkpoint hints; admin embedded resource viewer + dynamic "Premium resources" menu items; services display order; accounting "Save and add another"; profile QR save as image; link audience drops students of removed sections.
+- Not applicable / skipped after checking: student bulk delete (web super-admin only; super admins don't enter schools in the app), library issue copy pick (web auto-picks the first copy), vault field search (already present), force-password-change scope (web bug; app stays campus-scoped), Jitsi call/whiteboard (browser hand-off, platform difference).
+
+### 2026-10-20 — Admin redesign (plan: `~/.claude/plans/merry-mixing-donut.md`, "redesign every admin screen")
+- Phase A (shared, all 349 admin screens):
+  - Primitives restyled with unchanged APIs: Badge = soft chips, Tabs = pill segmented, larger Switch/Checkbox, ListRow, Separator, StatCard (soft icon tile, brand number), info InfoRow (icon circle), SettingsCard (icon tile), PersonAvatar initials (soft brand).
+  - `DataList` groups rows into one rounded card with inset dividers by default (lists that pass their own separator keep spaced cards).
+  - New `components/app/layout.tsx`: Section, IconTile, Initials, RowItem, StatTile/StatTiles, HeroCard, FormSection, StickyActions, DetailHeader, RoundIcon, FilterTag, SortChips, PersonHero.
+  - Colour sweep (codemod): 1,617 raw Tailwind palette classes in 175 files (`app/admin`, `features`) → tokens (success/warning/destructive/brand/info-soft/muted/chart); `dark:` palette variants dropped (tokens switch themselves); 124 `text-brand` paired with `dark:text-brand-secondary`.
+- B1 People: students list (search + Filters/Actions bottom sheets, status Segmented, removable filter tags, card rows), student/employee/parent profiles (`PersonHero` gradient header with quick actions + previous/next), employees and parents lists (filter sheet, SortChips), pending signups (count tiles, status chips), signup links chips.
+- B2 Fees: Fees tab (MoreFrame header, gradient collection overview, pending/overdue tiles, payments/balances rows), fees list (gradient summary with settings/generate, filter sheet + tags, compact rows with pill actions), billing student page (gradient balance header with previous/next), fee status = StatusChip.
+- People / Fees / Academics tabs now use the More frame (title, campus pill, search) instead of a plain list.
+- Admin login for previews: typed into the simulator via a temporary deep-link route that was deleted right after; never stored.
+- Continued: accounting entries (gradient general-balance card with in/out, icon rows with amounts), discipline referral rows (initials), hostel buildings/rooms status chips, 17 section icons → `IconTile`, 141 legacy bordered boxes → rounded-xl + soft borders. Fixed 3 highlights where the colour sweep had turned `bg-*-500/10` into solid fills (attendance changed row, attendance code pending, discipline trend) → soft tokens.
+- Remaining for later sessions: per-screen polish of B3–B7 module screens beyond the shared restyle (heroes/filter sheets where a screen has a large filter block), e.g. grades, scheduling, timetable, library admin, hostel, fina, hifzi.
+- Flat design (user request 2026-10-20): `raised()` (components/app/tile-grid.tsx) now returns no shadow, so all cards/tiles/panels/round buttons are flat with their soft border; small shadows removed from Button variants, Tabs trigger and Select trigger (dialogs/popovers keep theirs).
+- 2026-10-20: Menu icons: every menu page (all 332 sidebar title keys, all roles) now has its own icon (`PAGE_ICONS` in `mobile/src/features/menu/menu-icon.ts`); unknown titles still fall back to the keyword rules.
+- 2026-10-20: **Jahbadh grades plugin — design reply + Phase 1 (Grades core)** from the client brief (`docs/jahbadh/00-DESIGN.md`, sample report card `docs/jahbadh/sample-report-card.pdf`, one A4 page at the worst case).
+  - Data: `backend/migrations/jahbadh_grades.sql` + generated `jahbadh_grades_seed.sql` (**not run yet — user runs both**), 4 new `students` columns (nationality, mother_name, place_of_birth, registration_number; written only when sent, so student saves work before the migration).
+  - Engine + Appendix A in `packages/shared-utils/src/jahbadh` (29 tests: brief F1 totals, subject counts, pass/round2/need boundary, decisions, ranks), synced into backend/web.
+  - Backend `/jahbadh-grades` (plugin gate, audit log, teacher ownership via subject links + course periods, PDFs via Puppeteer + embedded Cairo font); 9 jest tests.
+  - Web: class home, Excel-like grid (keyboard, paste, absent «غ», autosave, undo, locks, footer stats), results, second round, distribution (edit), setup; sidebar group + teacher items; `grades` i18n namespace EN/AR; `--success`/`--warning` theme tokens.
+  - App: `/admin/jahbadh/*` (class home, student list, per-student entry, results, second round, distribution, setup) + teacher re-exports; menu routes/icons; `grades` namespace synced.
+  - Not verified against live data (migrations pending). Pre-existing failures left alone: backend jest suites qaida/hadith-forty/timetable/user-profiles, web tsc errors in qaida and Add/EditStudentForm.
+- 2026-10-20: **Jahbadh grades Phase 2 — report cards (B7)**.
+  - Migration `backend/migrations/jahbadh_report_cards.sql` (not run yet): activities, school days, report card settings, publications.
+  - Backend: activities, settings (12 options, tips, quotes), scope-aware card builder (stage or final), batch/range PDF (one A4 per student; options switched off reflow), publish/withdraw with push to students + parents, `/my/report-cards` for students/parents. 14 jest tests.
+  - Web: report cards page (scope, options, range with count, preview, per-student print, publishing), activities page, student/parent «الصحائف» page; sidebar items for all four roles.
+  - App: `/admin/jahbadh/report-cards`, `/admin/jahbadh/activities` (+ teacher), `/student|parent/jahbadh-report-cards`.
+  - Left for later: secondary cover/guidance pages; absence pre-fill from attendance (stages have no dates).
+- 2026-10-20: **Jahbadh grades Phase 3 — analytics (B6-6 … B6-15)**.
+  - Engine `packages/shared-utils/src/jahbadh/analytics.ts` (+ `ideas.ts`), synced to backend/web: risk score, learning groups, item analysis (p, D 27%, alpha, SEM, Bloom — reproduces the prototype's sample exactly), measure analysis with bands/gender/comparison and automatic reading, gender-aware feedback, rubric marks. 13 new unit tests.
+  - Migration `backend/migrations/jahbadh_analytics.sql` (not run yet): `jg_test_analyses`, `jg_rubrics`.
+  - Backend: dashboard, student profile (+PDF), early warning, groups, subject analysis (+PDF), tests CRUD (+PDF), rubrics CRUD + copy marks into a component via the normal save. 18 jest tests in total.
+  - Web: 8 pages under `/admin|teacher/jahbadh-grades/*` (dashboard, student-profile, early-warning, groups, subject-analysis, test-analysis, rubrics, ideas) + class-home links + sidebar.
+  - App: `/admin/jahbadh/{dashboard,insights?view=profile|warning|groups|analysis,test-analysis,rubrics,ideas}` + teacher re-exports, menu routes and icons.
+- 2026-10-20: **Jahbadh Exam Control (brief Part C, phases 4–5) + QR payloads**.
+  - Engine `packages/shared-utils/src/jahbadh/control.ts`, synced to backend/web. It covers:
+    - seat numbers, the three secret modes (encrypted reproduces 6001→60078, 6002→67997) and Luhn;
+    - global order, committee fill, serpentine seating and A/B models;
+    - the fair invigilation rota;
+    - double-entry compare, the unmask gate, the seeded audit sample, marker bias, clustering and the honor board.
+  - Migration `backend/migrations/jahbadh_control.sql` (not run yet): 18 `jc_*` tables, with append-only triggers on the audit, appeals and unmask logs.
+  - Backend `/jahbadh-control` (63 routes, `services/jahbadh/control/*`):
+    - members with roles; blind entry enforced by the server; a different person for each entry;
+    - the four-condition unmask gate; appeals after unmasking;
+    - quality, results, second-round session, guardian messages, export to Grades (preview/commit);
+    - 18 Arabic A4 documents;
+    - signed digit-only QR (`JC_QR_SECRET`, falls back to `CREDENTIALS_ENCRYPTION_KEY`) and a `/scan` endpoint.
+    - 7 jest tests.
+  - api-client `jahbadhControlApi`, with `jcAreas` / `jcSteps` / `jcParseScore`; contract test registered (the router paths are written out in full so the test can read them).
+  - Web: `/admin|teacher/exam-control` (`components/jahbadh/control/*`): a session list and a workspace whose tabs follow the member's rights. `examControl` i18n namespace (EN/AR, 489 keys); sidebar entries.
+  - App: `/admin|teacher/exam-control/{index,session,setup,students,committees,planning,alerts,prints,examday,entry,quality,results,audit}`; menu routes and icon; `examControl` added to `sync-messages.mjs`.
+  - Next (final Jahbadh round): QR scanning screens (camera scan, envelope reconciliation, attendance/violations by scan) and the Exam Room Timer (Part D).
+- 2026-10-20: **Jahbadh final round: QR scanning screens (C7.4/C7.5) + Exam Room Timer (Part D)**.
+  - Engine:
+    - `control.ts`: `qrPrecheck` (the backend parser now reuses it) and `classifyEnvelope`;
+    - new `timer.ts`: countdown from the clock, schedule alignment, auto-start/finish, alerts with stale skip, exit rule, extra-time parsing, pasted timetables, PIN, minutes, restore;
+    - synced to backend/web; 11 timer tests plus 2 new control tests.
+  - Backend:
+    - unique 4-digit session codes (the earlier random default could collide inside a school);
+    - `POST /session-code` (chief, logged);
+    - stub scans need only the secret right; card scans can check the exam day;
+    - `POST /examday/:day/envelopes/check` (stateless reconciliation);
+    - `GET /timer-feed`;
+    - `GET/POST /examday/:day/timer-minutes` (kept in the append-only `jc_audit_log`, so no new migration).
+    - 9 control jest tests.
+  - Web:
+    - `ScanInput`: keyboard-wedge bursts, pre-check, flash and beep, BarcodeDetector camera;
+    - scanning in entry (subject lock), envelope receipt, door attendance, violations, stub check;
+    - regenerate code; Timer minutes tab;
+    - timer at `/admin|teacher/exam-timer` (`components/jahbadh/timer/*`); `examTimer` i18n namespace.
+  - App:
+    - `features/exam-control/scan.tsx` (scanner field and camera), with the same scanning screens;
+    - timer at `/admin|teacher/exam-timer` (+ `/settings`), state in `expo-sqlite/kv-store`, recorded clips in documents, noise meter via expo-audio metering.
+    - **New native deps `expo-speech`, `expo-keep-awake`: rebuild the dev apps** (older builds fall back to a beep and no keep-awake).
+
+- 2026-10-21: **Admin redesign, B3 (Academics + Grades) per-screen pass** (user: finish every admin module before other roles).
+  - New shared pieces in `components/app/layout.tsx`: `RowActions` (edit/delete round buttons), `HeaderButton` (header +/export), `UsageBar` (used-of-total bar), `CheckMark` (app check box). `Tick` (report-students) and the scheduling checklist use `CheckMark`.
+  - Shared pickers restyled (61 screens use them): `StudentChecklist` (count chip, round download, initials, tinted select-all row), `ReportStudents` (grade chips), `CoursePeriodPicker` (panel, tinted selection).
+  - Academics: overview (gradient hero with live counts, icon rows, setup steps), grade levels / sections / subjects (stat tiles, header +, grade chips, sort chips, card rows with chips, usage bars, `RowActions`).
+  - Grades: honor roll (list/certificates switch, high-honour/honour tiles, grouped initials rows, dashed frame upload), report-card comments (segmented tabs, header + per tab, icon rows), import grades (dashed file zone, stat-tile results, empty state), class ranks (rank badges, GPA chips, sort chips), teacher completion (initials, progress bar, done/total chip), history marking periods, comment codes.
+  - App-wide: uppercase section labels removed (39 files, the Figma style uses sentence case); last raw palette classes in shared components → tokens.
+  - Next admin modules: scheduling, timetable, attendance, discipline, entry-exit, staff absences, library, hostel, textbooks, resources, plugins (fina, hifzi, quiz, miqat, speed reading, qirtasi, inspections, performance), settings, events, reports, salary, activities, then exam control / timer / jahbadh polish.
+- 2026-10-21: **Admin redesign, B3–B4 continued**: scheduling, timetable, attendance, discipline, entry/exit, staff absences.
+  - Shared: `Breadcrumbs` (drill-down chips), `RowPill` (text action pill). App-wide codemods in `app/admin` + `features/admin`: 104 edit/delete icon buttons → round soft buttons (68 Pressable + 36 ghost Button), 10 inline check boxes + multi-select → `CheckMark`, 11 files' faint primary selection tints → info-soft + brand outline.
+  - Scheduling: dashboard (utilisation hero, stat tiles, MP chips), courses drill-down (breadcrumbs, titled level cards with numbered rows, seat chips, round actions), student schedule list (avatars), lesson plans (icon rows, entry chips), add/drop report (initials, enrolled/dropped chips, round download), requests report (segmented, tinted rows, initials), incomplete schedules, schedule report (breadcrumbs), lesson-plan editor (lesson tiles, file chips).
+  - Timetable: tools as the Figma tile grid, grade chips, segmented view/layout, section cards with chips, setup empty state; rooms (type icon rows, status chips, pill toggle); requirements (icon rows, empty state); generator result tiles = `StatTile`.
+  - Attendance admin (initials rows, rounded state chips, sticky update bar), teacher completion (initials, done/total chips, tinted period cells), ADA (icon rows, ADA % chip), duplicates; discipline list + referral-form fields; entry/exit evening leaves, exceptions, packages; staff absences list + fields.
+  - Next: library, hostel, textbooks, resources, plugins (fina, hifzi, quiz, miqat, speed reading, qirtasi, inspections, performance), settings, events, reports, salary, activities, then exam control / timer / jahbadh polish.
+- 2026-10-21: **Admin redesign, B4 continued**: library, hostel, textbooks, resources.
+  - Library: `features/admin/library-loans.tsx` (stat tiles, filter chips, icon rows, status chips), dashboard hero, books, fines, categories, document fields.
+  - Hostel: dashboard (occupancy hero, stat tiles, icon link rows, active-visitor initials rows), rooms (building chips, occupancy `UsageBar`, icon rows), assignments / visits / fees (building or status filter chips, initials rows, `StatusChip`; the fees stats are now stat tiles; `FEE_STATUS_TONE` removed).
+  - Textbooks: catalog (book icon rows, round restock / edit / delete), missing-books dashboard (stat tile per book, section rows with missing chips), delivery matrix and return mode (initials headers, empty / error states).
+  - Resources: links and embedded (category filter chips, icon rows, round open button), inventory snapshots (panels, item qty chips).
+  - App-wide: 11 more hand-built two-state chips → `StatusChip` (settings, entry/exit, training, library, activities, reports, timetable).
+  - Next: plugins (fina, hifzi, quiz, miqat, speed reading, qirtasi, inspections, performance), settings, events, reports, salary, activities, then exam control / timer / jahbadh polish.
+- 2026-10-21: **Admin redesign, plugin modules** (fina, hifzi, quiz, miqat, speed reading, qirtasi, inspections, performance).
+  - Dashboards: hifzi (gradient hero with circle count, toned icon rows), speed reading (stat tiles, icon rows, leaderboard panel with rank badges and level chips), inspections (stat tiles, empty state when no campus), miqat (attendance hero with progress bar, present/late/absent tiles, live tiles, live scans as icon rows with in/out chips).
+  - Row anatomy codemod (scratchpad `rowmod.py`): person rows get `Initials`, titles `text-sm font-semibold`, hand-made `bg-brand/10` icon circles → `IconTile round` (fina reports, hifzi students/attendance/gradebook, quiz list, miqat reports/devices/permissions, inspections visits/reports/assignments/training/appeals, performance log/catalog).
+  - Performance: type filter as chips, round delete. Hifzi compliance stats → stat tiles; Fina approval/media empty queues → `EmptyState`; speed-reading sessions with initials.
+  - Next: settings, events, reports, salary, activities, then exam control / timer / jahbadh polish, then the other roles.
+- 2026-10-21: **Admin redesign finished + app-wide codemods** (scripts in the session scratchpad: `palette.py`, `chipmod.py`, `rowmod.py`, `panelmod.py`).
+  - Raw Tailwind palette classes (616 uses across every role, features and components) → theme tokens (red→destructive, green/teal→success, amber/orange/yellow→warning, blue/indigo→brand/info-soft, purple/pink→chart-6, gray→muted, neutral-950→black); `dark:` palette duplicates dropped (tokens handle dark mode).
+  - `StatCard` replaced by `StatTile` everywhere; `components/app/stat-card.tsx` removed. 141 plain "no data" texts → `EmptyState`; remaining `Card py-0` lists → `Panel`; list titles `font-medium` → `text-sm font-semibold` (120 files); person rows get `Initials`; text-link row actions (approve, mark paid…) → soft pills; outlined mini tags and two-state chips → `StatusChip`; bare leading row icons → `IconTile`.
+  - Settings, events, reports, salary, activities, exam control / timer / jahbadh: covered by the codemods (they were already built on `FormSection` / `Panel`); the exam timer board keeps its own full-screen look.
+  - Other roles (teacher, student, parent, librarian, inspector, super admin): 154 screens without the new primitives are being restyled per the same guide.
+- 2026-10-21: **Every role redesigned** (same guide as admin: HeroCard / StatTiles / Panel + RowItem / Initials / IconTile / StatusChip / FilterChips / Segmented / FormSection / StickyActions / EmptyState).
+  - Teacher (48 screens), student (31), parent (22), librarian + inspector + super admin (29) restyled; layout/tab/wrapper files left as they were. Visual only: APIs, routes, keys, filters and permissions unchanged; no new i18n keys.
+  - Shared features (50): portal timetable / attendance report / fee timeline / print statements / embedded / marking periods / lesson plans / hifzi progress / activities / discipline, scheduling student-schedule + print-schedules, grievances (list, submit, thread), jitsi room + RoomCard, library pickers + e-library, admin pickers (student/borrower/loan/person search, link audience, table export presets, report views, custom fields, settings-ui `SettingsCard` → `FormSection`), fina post cards / comments / goals, weather card, page cards, worksheet library, sidebar editor, copy settings, session review, grade option forms.
+  - Behaviour-neutral UI moves to know about: list-filter pickers → chips, two-option toggles → `Segmented`, some submit/print buttons → sticky bar or header button, error views gain Retry (refetch only), super admin school edit groups contact fields together.
+  - Checks: mobile tsc 0 errors, eslint 0 errors (103 old warnings), root workspace tests 251/251, no colour literals or palette classes in `mobile/src`.
+- 2026-10-21: **Production readiness, phases A–D** (plan: `~/.claude/plans/merry-mixing-donut.md`; audit verdict: not production ready yet, waves parent+student → teacher → admin/staff → librarian/inspector, push in scope).
+  - A, backend security:
+    - teacher service no longer returns full profile rows (`SAFE_PROFILE_COLUMNS`); the profile-select test now also catches `profiles!fk(*)`;
+    - class attendance routes are scoped to the school family and teachers' own classes (`requireOwnClass`);
+    - speed-reading `school_id`/`campus_id` query params must be in the caller's family;
+    - teacher ownership on exams, assignments (+ grading), learning resources, class diary (entries, files, comment delete), and activities eligibility (`requireOwnRow`, `requireSelfTeacherId`, `requireOwnCoursePeriods`);
+    - gradebook config accepts secondary teachers; assignment-types/config reads are family-scoped;
+    - 2FA lookups fail closed (503 retryable);
+    - tests: `own-course-period.middleware.test.ts`; route fixtures updated.
+    - 7 unrelated suites were already failing (hadith-forty content/quiz, qaida x2, timetable solver/generation types, user-profiles seed).
+  - B, routes:
+    - `parent-agreement` mounted;
+    - rollover/enrollment mounted only for `/rollover` and `/enrollment` paths (a bare "/" mount made every later route require auth);
+    - api-client contract test now checks every router is mounted in `app.ts`; fixed the duplicate `portal`/`hifzi/compliance` keys; added app-config/auth/media.
+  - C, mobile silent failures:
+    - eligibility and final grades no longer show/save defaults when a load fails;
+    - attendance comments that fail stay for retry;
+    - diary file uploads report failures;
+    - Fina reactions roll back;
+    - combined loads (entry/exit roster, timetable generator pre-flight/review, inspector coaching/community, teacher community) show `ErrorState`; the generator refuses to start on a failed pre-flight.
+  - D, session/auth:
+    - sign-out uses scope `local` and clears the SWR cache (`clearDataCache`, also on any user change);
+    - role sections open only for the user's own role after every sign-in step (`useHomeGroup` in `app/_layout.tsx`; it closes on blocked or pending steps, so a deep link can't skip them);
+    - changing the password asks for the current one (except the forced first-login change; `features/auth/reauth.ts`);
+    - app-lock flag in SecureStore, with iOS app-switcher blur when the lock is on;
+    - WebView bridge accepts messages only from the website origin;
+    - teacher/librarian worksheet upload uses their own routes.
+- 2026-10-21: **Production readiness, phases E–G** (continued from A–D above).
+  - E, store compliance:
+    - in-app account deletion (`features/auth/delete-account.tsx`, password re-check; backend `POST /auth/delete-account` + `account-deletion.service.ts` + migration `account_deletion_requests.sql`; super admin excluded); Settings reachable from "Coming soon";
+    - website pages `/privacy`, `/terms`, `/delete-account` (EN/AR, `messages/*.json` → `legal`, needs legal review), used as default links by app-config and as the app's fallback;
+    - `app.json`: background audio off, when-in-use location only (no always/motion), camera prompt mentions QR, expo-camera plugin, Arabic permission prompts (`mobile/locales`).
+  - F, release plumbing:
+    - phone push (`expo-notifications` plugin; `features/push/*`: permission + token at home, tap opens the linked screen within the user's own section, Settings switch, unregister on sign-out; backend `POST/DELETE /push/devices`, `expo-push.service.ts`, every existing web push also goes to phones; migration `mobile_push_tokens.sql`);
+    - OTA + push need only `eas init` (`app.config.js` derives `updates.url`);
+    - release env check now also runs for preview builds;
+    - unhandled promise rejections reported in release;
+    - offline banner no longer claims cached data on an offline cold start.
+  - G, parity and polish:
+    - teacher salaries menu mapping fixed;
+    - staff "My payroll" (salaries, payments, statements) in the admin More tab (`app/admin/my-payroll/*`);
+    - 8 missing `common.*` keys + 1 Arabic key added on the web and synced;
+    - a11y labels on the remaining icon-only buttons and shared components;
+    - locale passed to all date formatting;
+    - last physical left/right classes in `components/ui` → start/end;
+    - dark variants for brand text;
+    - lint 0 errors on the whole mobile project (Node globals for config files);
+    - mobile vitest setup + `destination.test.ts`;
+    - CI workflow `.github/workflows/ci.yml`.
+  - Left open:
+    - teacher `/teacher/grades/gpa-rank-list` (no page on the website either; the GPA endpoint is admin-only);
+    - librarian `/librarian/settings` (the website's page calls an admin-only API);
+    - admin `fees/browse` and ID-card template builder (orphan web pages, no links);
+    - scanner role still a placeholder;
+    - 7 pre-existing failing backend suites (CI backend job is red until fixed or removed);
+    - Android app-switcher preview (FLAG_SECURE would block screenshots too).
+- 2026-10-21: **Two pages broken on the website too, now built (backend + web + app).**
+  - Teacher GPA / class rank list (`/teacher/grades/gpa-rank-list`):
+    - `GET /grades-reports/gpa-rank` now allows teachers and returns only students currently enrolled in their classes (main or secondary teacher), with ranks still relative to the whole grade (`gradesReportsService.studentsOfTeacher`);
+    - web page re-exports the admin class-ranks page; app `app/teacher/grades/gpa-rank-list.tsx` re-exports the admin screen; portal menu mapped.
+  - Library settings (`/librarian/settings`; the web page called the admin-only `/schools/settings`):
+    - new `GET/PUT /schools/settings/library` for admins and librarians (validated: fine 0–100, 1–20 books, 1–365 days; only the library policies change);
+    - web `LibrarySettings` uses it and is now translated (`library_settings` EN/AR; a saved fine of 0 no longer resets to 0.5);
+    - app: shared `features/library/library-settings.tsx`, routes `/librarian/library-settings` (More tab tile, menu mapping) and `/admin/library/settings` (gear in the library dashboard header);
+    - api-client `adminLibrary.settings/saveSettings`.
+  - Tests: `backend/src/controllers/library-settings-gpa.test.ts` (8).

@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { CheckMark } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminCourses, adminGrades, adminSchool } from '@/lib/api';
@@ -183,7 +184,7 @@ export default function MassCreateAssignments() {
               ) : (
                 <View className="flex-row flex-wrap gap-1.5">
                   {typeList.map((at) => (
-                    <Pressable key={at.id} onPress={() => setTypeId(at.id)} className={cn('rounded-md border px-3 py-1.5', activeType === at.id ? 'border-[#0369a1] bg-[#0369a1]' : 'border-border')}>
+                    <Pressable key={at.id} onPress={() => setTypeId(at.id)} className={cn('rounded-md border px-3 py-1.5', activeType === at.id ? 'border-brand-secondary bg-brand-secondary' : 'border-border')}>
                       <Text className={cn('text-sm', activeType === at.id && 'font-medium text-white')}>{at.title}</Text>
                     </Pressable>
                   ))}
@@ -198,7 +199,7 @@ export default function MassCreateAssignments() {
               {cps.isLoading ? <LoadingList rows={4} /> : !cpList.length ? <Text className="text-muted-foreground py-4 text-sm">{m('no_course_periods')}</Text> : null}
               {cpList.length ? (
                 <Pressable onPress={() => setSelected(allSel ? new Set() : new Set(cpList.map((c) => c.id)))} className="flex-row items-center gap-3 py-2.5">
-                  <View className={cn('size-5 items-center justify-center rounded border', allSel ? 'border-primary bg-primary' : 'border-border')}>{allSel ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>
+                  <CheckMark on={allSel} />
                   <Text className="text-sm font-semibold">{t('app.sc_select_all', { count: selected.size })}</Text>
                 </Pressable>
               ) : null}
@@ -208,7 +209,7 @@ export default function MassCreateAssignments() {
                   <View key={cp.id}>
                     <Separator />
                     <Pressable onPress={() => toggle(cp.id)} className="flex-row items-center gap-3 py-2.5" accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
-                      <View className={cn('size-5 items-center justify-center rounded border', on ? 'border-primary bg-primary' : 'border-border')}>{on ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>
+                      <CheckMark on={on} />
                       <View className="flex-1">
                         <Text className="text-sm font-medium">{cp.course?.title || m('unknown_course')}</Text>
                         <Text className="text-muted-foreground text-xs">

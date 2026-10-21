@@ -1,18 +1,19 @@
 import { Stack } from 'expo-router';
-import { Check, FileDown, Printer } from 'lucide-react-native';
+import { FileDown, Printer } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Panel } from '@/components/app/panel';
 import { Icon } from '@/components/ui/icon';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { CheckMark } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { NoChild, useChild } from '@/features/parent/child';
 import { usePortalAcademic } from '@/features/portal/academic';
@@ -22,7 +23,7 @@ import { useApi } from '@/lib/data';
 import { buildPrintHtml, escapeHtml, printHtml, sharePdf } from '@/lib/print';
 import { cn } from '@/lib/utils';
 
-const STYLES = `.class-page{padding:8px 0}.rh{display:flex;justify-content:space-between;font-weight:600;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px 8px}.role{font-size:11px;font-weight:700}.teacher{font-size:12px;font-weight:600;color:#b45309}.student{font-size:12px;font-weight:500;color:#1d4ed8}`;
+const STYLES = `.class-page{padding:8px 0}.rh{display:flex;justify-content:space-between;font-weight:600;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px 8px}.role{font-size:11px;font-weight:700}.teacher{font-size:12px;font-weight:600;color:${colors.warning}}.student{font-size:12px;font-weight:500;color:${colors.brand}}`;
 
 /** Class rosters (teacher + classmates) of the selected child's course periods (web: /parent/scheduling/print-class-pictures). */
 export default function ParentPrintClassPictures() {
@@ -105,35 +106,40 @@ export default function ParentPrintClassPictures() {
       <Stack.Screen options={{ title: p('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         {actions}
-        <View className="flex-row items-center gap-3">
+        <Panel className="flex-row items-center gap-3 px-4 py-3">
+          <Text className="flex-1 text-sm font-medium">{p('include_teacher')}</Text>
           <Switch checked={withTeacher} onCheckedChange={setWithTeacher} />
-          <Text className="flex-1 text-sm">{p('include_teacher')}</Text>
-        </View>
-        <Text className="text-muted-foreground text-sm">{p('found_cps', { count: shown.length })}</Text>
+        </Panel>
+        <Text className="text-muted-foreground text-xs font-medium">{p('found_cps', { count: shown.length })}</Text>
         <SearchBar value={q} onChangeText={setQ} placeholder={t('common.search')} />
         {schedule.isLoading || academic.isLoading ? (
           <LoadingList rows={5} />
         ) : (
-          <Card>
-            <CardContent className="py-1">
-              <Pressable onPress={() => setSelected(all ? new Set() : new Set([...selected, ...shown.map((c) => c.id)]))} className="flex-row items-center gap-3 py-2.5" accessibilityRole="checkbox" accessibilityState={{ checked: all }}>
-                <View className={cn('size-5 items-center justify-center rounded border', all ? 'border-primary bg-primary' : 'border-border')}>{all ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>
-                <Text className="text-sm font-semibold">{t('app.sc_select_all', { count: selected.size })}</Text>
-              </Pressable>
-              {!shown.length ? <Text className="text-muted-foreground py-4 text-center text-sm">{p('no_cps_found')}</Text> : null}
-              {shown.map((c) => (
-                <View key={c.id}>
-                  <Separator />
-                  <Pressable onPress={() => toggle(c.id)} className="flex-row items-center gap-3 py-2.5" accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(c.id) }}>
-                    <View className={cn('size-5 items-center justify-center rounded border', selected.has(c.id) ? 'border-primary bg-primary' : 'border-border')}>
-                      {selected.has(c.id) ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}
-                    </View>
-                    <Text className="flex-1 text-sm">{c.label}</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </CardContent>
-          </Card>
+          <Panel>
+            <Pressable
+              onPress={() => setSelected(all ? new Set() : new Set([...selected, ...shown.map((c) => c.id)]))}
+              className="border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3 active:opacity-70"
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: all }}>
+              <CheckMark on={all} />
+              <Text className="text-sm font-semibold">{t('app.sc_select_all', { count: selected.size })}</Text>
+            </Pressable>
+            {!shown.length ? <EmptyState title={p('no_cps_found')} /> : null}
+            {shown.map((c, i) => {
+              const on = selected.has(c.id);
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => toggle(c.id)}
+                  className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < shown.length - 1 && 'border-info-soft dark:border-border border-b', on && 'bg-info-soft')}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}>
+                  <CheckMark on={on} />
+                  <Text className={cn('flex-1 text-sm', on && 'font-semibold')}>{c.label}</Text>
+                </Pressable>
+              );
+            })}
+          </Panel>
         )}
         {actions}
       </ScrollView>

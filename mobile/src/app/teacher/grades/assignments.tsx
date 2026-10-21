@@ -1,20 +1,22 @@
 import type { CpAssignmentType, GradebookAssignment, GradebookAssignmentInput } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Award, Paperclip, Plus, X } from 'lucide-react-native';
+import { Award, ClipboardList, Layers, Paperclip, Plus, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
+import { FormSection, HeaderButton, IconTile, RowPill } from '@/components/app/layout';
+import { Panel, PanelTitle } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -162,7 +164,7 @@ export default function TeacherGradebookAssignments() {
           contentContainerClassName="gap-3 p-4 pb-10"
           keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([types.mutate(), items.mutate()])} />}>
-          <View className="flex-row gap-2">
+          <Panel className="flex-row gap-2 p-4">
             <View className="flex-1 gap-1">
               <Label>{k('coursePeriod')}</Label>
               <Picker
@@ -185,14 +187,10 @@ export default function TeacherGradebookAssignments() {
                 options={(mps.data ?? []).map((m) => ({ value: m.id, label: m.title }))}
               />
             </View>
-          </View>
+          </Panel>
 
           {typeForm ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{typeForm.title || k('newAssignmentType')}</CardTitle>
-              </CardHeader>
-              <CardContent className="gap-3">
+            <FormSection title={typeForm.title || k('newAssignmentType')} icon={Layers}>
                 <View className="gap-1.5">
                   <Label>{k('title')}</Label>
                   <Input value={typeForm.title} onChangeText={(v) => setTypeForm({ ...typeForm, title: v })} placeholder={k('title')} />
@@ -205,8 +203,8 @@ export default function TeacherGradebookAssignments() {
                   <View className="flex-1 gap-1.5">
                     <Label>{k('color')}</Label>
                     <View className="flex-row items-center gap-2">
-                      <View className="border-border size-8 rounded border" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(typeForm.color) ? typeForm.color : '#ffffff' }} />
-                      <Input className="flex-1" value={typeForm.color} onChangeText={(v) => setTypeForm({ ...typeForm, color: v })} autoCapitalize="none" placeholder="#ffffff" />
+                      <View className="border-info-soft dark:border-border size-9 rounded-full border" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(typeForm.color) ? typeForm.color : colors.white }} />
+                      <Input className="flex-1" value={typeForm.color} onChangeText={(v) => setTypeForm({ ...typeForm, color: v })} autoCapitalize="none" placeholder={colors.white} />
                     </View>
                   </View>
                 </View>
@@ -218,19 +216,18 @@ export default function TeacherGradebookAssignments() {
                     <Text>{k('save')}</Text>
                   </Button>
                 </View>
-              </CardContent>
-            </Card>
+            </FormSection>
           ) : null}
 
           {form ? (
-            <Card>
-              <CardHeader className="flex-row items-center justify-between gap-2">
-                <CardTitle className="flex-1">{form.data.title || k('newAssignment')}</CardTitle>
-                <Pressable onPress={() => setForm(null)} hitSlop={8} accessibilityLabel={t('common.close')}>
-                  <Icon as={X} className="text-muted-foreground size-5" />
+            <FormSection
+              title={form.data.title || k('newAssignment')}
+              icon={ClipboardList}
+              action={
+                <Pressable onPress={() => setForm(null)} hitSlop={4} accessibilityLabel={t('common.close')} className="bg-muted size-9 items-center justify-center rounded-full active:opacity-70">
+                  <Icon as={X} className="text-muted-foreground size-4" />
                 </Pressable>
-              </CardHeader>
-              <CardContent className="gap-3">
+              }>
                 <View className="gap-1.5">
                   <Label>{k('title')}</Label>
                   <Input value={form.data.title ?? ''} onChangeText={(v) => set({ title: v })} />
@@ -262,12 +259,12 @@ export default function TeacherGradebookAssignments() {
                     </Button>
                     {file ? (
                       <Pressable onPress={() => setFile(null)} hitSlop={8} accessibilityLabel={t('common.delete')}>
-                        <Icon as={X} className="size-4 text-red-500" />
+                        <Icon as={X} className="size-4 text-destructive" />
                       </Pressable>
                     ) : null}
                     {form.data.file_url ? (
                       <Pressable onPress={() => WebBrowser.openBrowserAsync(form.data.file_url as string)} accessibilityRole="link">
-                        <Text className="text-sm text-[#4A90E2]">{k('viewCurrentFile')}</Text>
+                        <Text className="text-sm text-brand-secondary">{k('viewCurrentFile')}</Text>
                       </Pressable>
                     ) : null}
                   </View>
@@ -275,97 +272,82 @@ export default function TeacherGradebookAssignments() {
                 <DateField label={k('assigned')} value={form.data.assigned_date?.slice(0, 10) ?? null} onChange={(v) => set({ assigned_date: v })} clearable />
                 {!form.id ? (
                   <View className="flex-row items-center gap-3">
-                    <Switch checked={allPeriods} onCheckedChange={setAllPeriods} />
-                    <Text className="flex-1 text-sm">
+                    <Text className="flex-1 text-sm font-medium">
                       {k('applyToAllPeriods')}
-                      {siblings.length > 1 ? <Text className="text-xs text-blue-600">{` ${k('periodsCount', { count: siblings.length })}`}</Text> : null}
+                      {siblings.length > 1 ? <Text className="text-xs text-brand dark:text-brand-secondary">{` ${k('periodsCount', { count: siblings.length })}`}</Text> : null}
                     </Text>
+                    <Switch checked={allPeriods} onCheckedChange={setAllPeriods} />
                   </View>
                 ) : null}
                 <DateField label={k('due')} value={form.data.due_date?.slice(0, 10) ?? null} onChange={(v) => set({ due_date: v })} clearable />
                 <View className="flex-row items-center gap-3">
+                  <Text className="flex-1 text-sm font-medium">{k('enableAssignmentSubmission')}</Text>
                   <Switch checked={!!form.data.enable_submission} onCheckedChange={(v) => set({ enable_submission: v })} />
-                  <Text className="flex-1 text-sm">{k('enableAssignmentSubmission')}</Text>
                 </View>
                 <View className="flex-row justify-end gap-2">
                   {form.id ? (
-                    <Button variant="outline" onPress={() => remove({ ...(form.data as GradebookAssignment), id: form.id as string })} disabled={saving}>
-                      <Text className="text-destructive">{k('delete')}</Text>
+                    <Button variant="destructive" onPress={() => remove({ ...(form.data as GradebookAssignment), id: form.id as string })} disabled={saving}>
+                      <Text>{k('delete')}</Text>
                     </Button>
                   ) : null}
                   <Button onPress={saveAssignment} disabled={saving}>
                     <Text>{k('save')}</Text>
                   </Button>
                 </View>
-              </CardContent>
-            </Card>
+            </FormSection>
           ) : null}
 
-          <Card>
-            <CardContent className="gap-1 pt-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-muted-foreground text-xs">{k('assignmentTypesFound', { count: typeList.length })}</Text>
-                <Pressable onPress={() => setTypeForm({ title: '', sort_order: '0', color: '#ffffff' })} hitSlop={8} accessibilityLabel={k('newAssignmentType')}>
-                  <Icon as={Plus} className="text-primary size-5" />
+          <Panel>
+            <PanelTitle title={k('assignmentTypesFound', { count: typeList.length })} trailing={<HeaderButton icon={Plus} label={k('newAssignmentType')} onPress={() => setTypeForm({ title: '', sort_order: '0', color: colors.white })} />} />
+            {cps.isLoading || types.isLoading ? (
+              <LoadingList rows={3} />
+            ) : (
+              typeList.map((x: CpAssignmentType, i) => (
+                <Pressable
+                  key={x.id}
+                  onPress={() => {
+                    setTypeId(x.id);
+                    setForm(null);
+                  }}
+                  onLongPress={() => setTypeForm({ id: x.id, title: x.title, sort_order: String(x.sort_order ?? 0), color: x.color ?? colors.white })}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: typeId === x.id }}
+                  className={cn('border-info-soft dark:border-border flex-row items-center gap-3 border-t px-4 py-3 active:opacity-70', typeId === x.id && 'bg-info-soft', i === typeList.length - 1 && 'rounded-b-2xl')}>
+                  <View className="border-info-soft dark:border-border size-4 rounded-full border" style={{ backgroundColor: x.color || colors.printBorder }} />
+                  <View className="flex-1">
+                    <Text className={cn('text-sm', typeId === x.id ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')}>{x.title}</Text>
+                    {x.sort_order != null ? <Text className="text-muted-foreground text-[11px]">{`${k('sortOrder')}: ${x.sort_order}`}</Text> : null}
+                  </View>
+                  <RowPill label={t('common.edit')} onPress={() => setTypeForm({ id: x.id, title: x.title, sort_order: String(x.sort_order ?? 0), color: x.color ?? colors.white })} />
                 </Pressable>
-              </View>
-              {cps.isLoading || types.isLoading ? (
+              ))
+            )}
+          </Panel>
+
+          {typeId ? (
+            <Panel>
+              <PanelTitle title={k('assignmentsFound', { count: shown.length })} trailing={<HeaderButton icon={Plus} label={k('newAssignment')} onPress={openAdd} />} />
+              {items.isLoading ? (
                 <LoadingList rows={3} />
               ) : (
-                typeList.map((x: CpAssignmentType) => (
+                shown.map((a, i) => (
                   <Pressable
-                    key={x.id}
+                    key={a.id}
                     onPress={() => {
-                      setTypeId(x.id);
-                      setForm(null);
+                      setFile(null);
+                      setForm({ id: a.id, data: { ...a } });
                     }}
-                    onLongPress={() => setTypeForm({ id: x.id, title: x.title, sort_order: String(x.sort_order ?? 0), color: x.color ?? '#ffffff' })}
                     accessibilityRole="button"
-                    accessibilityState={{ selected: typeId === x.id }}
-                    className={cn('border-border flex-row items-center gap-2 border-t py-2.5', typeId === x.id && 'bg-primary/10')}>
-                    <View className="size-3 rounded-full" style={{ backgroundColor: x.color || '#e5e7eb' }} />
-                    <Text className={cn('flex-1 text-sm text-[#4A90E2]', typeId === x.id && 'font-semibold')}>{x.title}</Text>
-                    <Text className="text-muted-foreground text-xs">{String(x.sort_order ?? '')}</Text>
-                    <Pressable onPress={() => setTypeForm({ id: x.id, title: x.title, sort_order: String(x.sort_order ?? 0), color: x.color ?? '#ffffff' })} hitSlop={6} className="px-1">
-                      <Text className="text-primary text-xs">{t('common.edit')}</Text>
-                    </Pressable>
+                    className={cn('border-info-soft dark:border-border flex-row items-center gap-3 border-t px-4 py-3 active:opacity-70', form?.id === a.id && 'bg-info-soft', i === shown.length - 1 && 'rounded-b-2xl')}>
+                    <IconTile icon={Award} size={36} />
+                    <Text className="flex-1 text-sm font-semibold">{a.title}</Text>
+                    <Text className="text-brand dark:text-brand-secondary text-sm font-bold">{String(a.points)}</Text>
                   </Pressable>
                 ))
               )}
-            </CardContent>
-          </Card>
-
-          {typeId ? (
-            <Card>
-              <CardContent className="gap-1 pt-3">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-muted-foreground text-xs">{k('assignmentsFound', { count: shown.length })}</Text>
-                  <Pressable onPress={openAdd} hitSlop={8} accessibilityLabel={k('newAssignment')}>
-                    <Icon as={Plus} className="text-primary size-5" />
-                  </Pressable>
-                </View>
-                {items.isLoading ? (
-                  <LoadingList rows={3} />
-                ) : (
-                  shown.map((a) => (
-                    <Pressable
-                      key={a.id}
-                      onPress={() => {
-                        setFile(null);
-                        setForm({ id: a.id, data: { ...a } });
-                      }}
-                      accessibilityRole="button"
-                      className={cn('border-border flex-row items-center gap-2 border-t py-2.5', form?.id === a.id && 'bg-primary/10')}>
-                      <Icon as={Award} className="size-4 text-[#4A90E2]" />
-                      <Text className="flex-1 text-sm">{a.title}</Text>
-                      <Text className="text-muted-foreground text-xs">{String(a.points)}</Text>
-                    </Pressable>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+            </Panel>
           ) : (
-            <Text className="text-muted-foreground text-center text-sm">{k('selectAssignmentTypeBelow')}</Text>
+            <EmptyState icon={Layers} title={k('selectAssignmentTypeBelow')} />
           )}
         </ScrollView>
       </KeyboardAvoidingView>

@@ -93,6 +93,11 @@ export interface Student {
   campus_id?: string               // returned when a student is assigned to a campus
   student_number: string
   grade_level: string | null
+  // Report-card fields (Jahbadh grades)
+  nationality?: string | null
+  mother_name?: string | null
+  place_of_birth?: string | null
+  registration_number?: string | null
   confidential_family_status?: ConfidentialFamilyStatus | null
   medical_info?: {
     id: string

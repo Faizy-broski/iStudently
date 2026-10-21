@@ -28,6 +28,11 @@ export interface Student {
   campus_id?: string
   student_number: string
   grade_level: string | null
+  /** Report-card fields (Jahbadh grades). */
+  nationality?: string | null
+  mother_name?: string | null
+  place_of_birth?: string | null
+  registration_number?: string | null
   grade_level_id?: string | null
   section_id?: string | null
   profile?: StudentProfile
@@ -84,6 +89,11 @@ export interface StudentInput {
   gender?: Gender
   date_of_birth?: string
   national_id?: string
+  /** Report-card fields (Jahbadh grades); '' clears on update. */
+  nationality?: string
+  mother_name?: string
+  place_of_birth?: string
+  registration_number?: string
   medical_info?: { blood_group?: string; allergies?: string[]; notes?: string; [key: string]: unknown }
   custom_fields?: Record<string, any>
 }
@@ -166,6 +176,9 @@ export function adminStudentsApi(api: ApiClient) {
       api.post<{ updated: number }>(`/students/bulk-status${qs({ campus_id: campusId })}`, { ...input, campus_id: campusId }),
     /** Current login username of a profile (web: EditCredentialsModal prefill). */
     username: (profileId: string) => api.get<{ username: string | null }>(`/credentials/${id(profileId)}/username`),
+    /** Login username + password per profile, created when missing (web advanced report: bulkGetOrCreateCredentials). */
+    bulkCredentials: (profileIds: string[]) =>
+      api.post<{ credentials: { id: string; username: string; password: string }[] }>('/credentials/bulk-get-or-create', { profile_ids: profileIds }, { timeout: 120_000 }),
     /**
      * Create many students, all in one grade/section or (no target) each in its own row's grade/section.
      * Each row makes an account, so the timeout grows with size.

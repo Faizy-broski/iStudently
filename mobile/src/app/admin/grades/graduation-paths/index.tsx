@@ -76,7 +76,7 @@ export default function GraduationPaths() {
               accessibilityRole="button"
               onPress={() => router.push({ pathname: '/admin/grades/graduation-paths/[id]', params: { id: x.id } })}>
               <View className="flex-1">
-                <Text className="font-medium">{x.title}</Text>
+                <Text className="text-sm font-semibold">{x.title}</Text>
                 <Text className="text-muted-foreground text-xs">
                   {[
                     gp('grade_levels_count', { count: x.grade_levels?.length ?? 0 }),
@@ -87,15 +87,14 @@ export default function GraduationPaths() {
                 {x.comment ? <Text className="text-muted-foreground text-xs mt-0.5">{x.comment}</Text> : null}
               </View>
               <Pressable
-                hitSlop={8}
                 accessibilityLabel={t('app.bl_delete')}
                 onPress={async () => {
                   if (!(await confirm({ title: t('app.bl_delete'), body: x.title, destructive: true, confirmLabel: t('app.bl_delete') }))) return;
                   const res = await adminGrades.deleteGraduationPath(x.id);
                   if (!res.success) return toast.error(res.error || t('app.bl_delete'));
                   paths.mutate();
-                }}>
-                <Icon as={Trash2} className="text-muted-foreground size-4" />
+                }} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
               <Icon as={ChevronRight} className="text-muted-foreground size-4" />
             </Pressable>
