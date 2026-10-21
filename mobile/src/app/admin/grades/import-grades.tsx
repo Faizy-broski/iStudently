@@ -1,19 +1,17 @@
 import { coursePeriodTeacherName } from '@studently/api-client';
-import { parseCsv } from '@studently/shared-utils';
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
 import { Stack } from 'expo-router';
-import { CheckCircle2, AlertCircle, FileSpreadsheet, RotateCcw, Upload } from 'lucide-react-native';
+import { CheckCircle2, AlertCircle, Columns3, FileSpreadsheet, RotateCcw, Upload } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
+import { FormSection, IconTile, StatTile, StatTiles } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -22,6 +20,7 @@ import { useCampus } from '@/features/campus/campus';
 import { useScopedCoursePeriods } from '@/features/teacher/course-periods';
 import { adminGrades } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { readSheetRows, SHEET_TYPES } from '@/lib/spreadsheet';
 
 /** A, B, … Z, AA, AB … */
 function colLetter(i: number) {
@@ -61,11 +60,11 @@ export default function ImportGrades() {
   const colOpts = [{ value: '', label: t('app.ig_select_column') }, ...cols];
 
   async function pick() {
-    const picked = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'application/csv'], copyToCacheDirectory: true });
+    const picked = await DocumentPicker.getDocumentAsync({ type: SHEET_TYPES, copyToCacheDirectory: true });
     if (picked.canceled || !picked.assets?.[0]) return;
     const asset = picked.assets[0];
     try {
-      const rows = parseCsv(await new File(asset.uri).text()).filter((r) => r.some((c) => c.trim() !== ''));
+      const rows = (await readSheetRows(asset)).filter((r) => r.some((c) => c.trim() !== ''));
       if (!rows.length) return toast.error(g('msg_parse_empty'));
       setFile({ name: asset.name, rows });
       setResult(null);
@@ -127,8 +126,7 @@ export default function ImportGrades() {
       <Stack.Screen options={{ title: mpTitle ? `${g('title')} - ${mpTitle}` : g('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10">
         <Text className="text-muted-foreground text-sm">{g('subtitle')}</Text>
-        <Card>
-          <CardContent className="gap-3 pt-4">
+        <FormSection title={g('title')} icon={FileSpreadsheet}>
             <View className="gap-1.5">
               <Label>{g('course_period_label')}</Label>
               {cps.isLoading ? (
@@ -151,23 +149,22 @@ export default function ImportGrades() {
             </View>
             <View className="gap-1.5">
               <Label>{g('upload_file_label')}</Label>
-              <Button variant="outline" onPress={pick}>
-                <Icon as={FileSpreadsheet} className="text-foreground size-4" />
-                <Text numberOfLines={1}>{file?.name || g('choose_file_placeholder')}</Text>
-              </Button>
-              <Text className="text-muted-foreground text-xs">{t('app.ig_csv_only')}</Text>
+              <Pressable onPress={pick} className="border-info-soft dark:border-border items-center gap-2 rounded-2xl border-2 border-dashed px-4 py-5 active:opacity-70" accessibilityRole="button">
+                <IconTile icon={Upload} round />
+                <Text className="text-brand dark:text-brand-secondary text-center text-sm font-semibold" numberOfLines={1}>
+                  {file?.name || g('choose_file_placeholder')}
+                </Text>
+                <Text variant="muted" className="text-[11px]">
+                  {t('app.ig_csv_only')}
+                </Text>
+              </Pressable>
             </View>
-          </CardContent>
-        </Card>
+        </FormSection>
 
         {file ? (
           <View className="gap-3">
             <View className="flex-row flex-wrap items-center gap-2">
-              <Badge variant="secondary">
-                <Text className="text-xs">
-                  {file.name}: {tc('rows_count', { count: file.rows.length })}
-                </Text>
-              </Badge>
+              <StatusChip label={`${file.name}: ${tc('rows_count', { count: file.rows.length })}`} tone="info" className="px-2.5 py-1" />
               <Button variant="ghost" size="sm" onPress={reset}>
                 <Icon as={RotateCcw} className="text-foreground size-4" />
                 <Text>{g('btn_reset')}</Text>
@@ -182,9 +179,7 @@ export default function ImportGrades() {
         ) : null}
 
         {file && cpId ? (
-          <Card>
-            <CardContent className="gap-3 pt-4">
-              <Text className="font-semibold">{g('fields_title')}</Text>
+          <FormSection title={g('fields_title')} icon={Columns3}>
               <View className="gap-1.5">
                 <Label>{g('identify_student_label')}</Label>
                 <Picker
@@ -213,7 +208,7 @@ export default function ImportGrades() {
                   <Picker value={numCol} onChange={setNumCol} options={colOpts} />
                 </View>
               )}
-              <Text className="pt-2 font-semibold">{g('assignments_title')}</Text>
+              <Text className="pt-2 text-sm font-semibold">{g('assignments_title')}</Text>
               {options.isLoading ? (
                 <LoadingList rows={3} />
               ) : !assignments.length ? (
@@ -229,30 +224,17 @@ export default function ImportGrades() {
                   </View>
                 ))
               )}
-            </CardContent>
-          </Card>
+          </FormSection>
         ) : null}
         {file && cpId ? importBtn : null}
 
         {result ? (
-          <Card>
-            <CardContent className="gap-3 pt-4">
-              <View className="flex-row items-center gap-2">
-                <Icon as={result.errors.length ? AlertCircle : CheckCircle2} className={result.errors.length ? 'size-5 text-amber-500' : 'size-5 text-green-600'} />
-                <Text className="font-semibold">{g('results_title')}</Text>
-              </View>
-              <View className="flex-row gap-2">
-                {[
-                  [result.imported, g('students_imported')],
-                  [result.skipped, g('skipped_count')],
-                  [result.errors.length, g('errors_count')],
-                ].map(([n, l]) => (
-                  <View key={String(l)} className="border-border flex-1 items-center rounded-lg border p-2">
-                    <Text className="text-xl font-bold">{n}</Text>
-                    <Text className="text-muted-foreground text-center text-xs">{l}</Text>
-                  </View>
-                ))}
-              </View>
+          <FormSection title={g('results_title')} icon={result.errors.length ? AlertCircle : CheckCircle2}>
+              <StatTiles>
+                <StatTile tone="success" label={g('students_imported')} value={String(result.imported)} />
+                <StatTile tone="warning" label={g('skipped_count')} value={String(result.skipped)} />
+                <StatTile tone={result.errors.length ? 'destructive' : 'muted'} label={g('errors_count')} value={String(result.errors.length)} />
+              </StatTiles>
               {result.errors.length ? (
                 <View className="gap-1">
                   <Text className="text-sm font-medium">{g('error_details_title')}</Text>
@@ -263,19 +245,10 @@ export default function ImportGrades() {
                   ))}
                 </View>
               ) : null}
-            </CardContent>
-          </Card>
+          </FormSection>
         ) : null}
 
-        {!file && !cps.isLoading ? (
-          <Card>
-            <CardContent className="items-center gap-2 pt-6 pb-6">
-              <Icon as={FileSpreadsheet} className="text-muted-foreground size-8" />
-              <Text className="font-medium">{g('empty_state_title')}</Text>
-              <Text className="text-muted-foreground text-center text-sm">{g('empty_state_desc')}</Text>
-            </CardContent>
-          </Card>
-        ) : null}
+        {!file && !cps.isLoading ? <EmptyState icon={FileSpreadsheet} title={g('empty_state_title')} body={g('empty_state_desc')} /> : null}
       </ScrollView>
     </View>
   );

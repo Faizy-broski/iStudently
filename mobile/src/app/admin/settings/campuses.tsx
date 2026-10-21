@@ -1,7 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { Building2, Mail, MapPin, Paintbrush, Pencil, Phone, Plus, Trash2, User } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, Pressable } from 'react-native';
 import { useSWRConfig } from 'swr';
 
 import { useConfirm } from '@/components/app/confirm';
@@ -11,10 +11,10 @@ import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { campuses as campusesApi } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { cn } from '@/lib/utils';
 
 /** The school's campuses: add, edit, delete, sidebar theme per campus (web: /admin/settings/campuses). */
 export default function Campuses() {
@@ -56,9 +56,7 @@ export default function Campuses() {
                   <SchoolLogo url={campus.logo_url} shape={campus.logo_shape ?? 'rounded'} size={44} />
                   <View className="flex-1 gap-1">
                     <Text className="text-lg font-semibold">{campus.name}</Text>
-                    <View className={cn('self-start rounded-full px-2 py-0.5', campus.status === 'active' ? 'bg-green-100' : 'bg-gray-100')}>
-                      <Text className={cn('text-xs', campus.status === 'active' ? 'text-green-700' : 'text-gray-600')}>{campus.status}</Text>
-                    </View>
+                    <StatusChip label={campus.status ?? '—'} tone={campus.status === 'active' ? 'success' : 'muted'} />
                   </View>
                 </View>
                 {campus.short_name ? <Text className="text-sm font-medium">{c('label_short')}: {campus.short_name}</Text> : null}
@@ -95,12 +93,12 @@ export default function Campuses() {
                     <Icon as={Paintbrush} className="text-foreground size-4" />
                     <Text>{t('app.cmp_sidebar')}</Text>
                   </Button>
-                  <Button size="icon" variant="ghost" onPress={() => router.push({ pathname: '/admin/settings/campus-form', params: { id: campus.id } })} accessibilityLabel={c('btn_edit')}>
-                    <Icon as={Pencil} className="text-foreground size-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onPress={() => remove(campus.id, campus.name)} accessibilityLabel={c('btn_delete')}>
+                  <Pressable onPress={() => router.push({ pathname: '/admin/settings/campus-form', params: { id: campus.id } })} accessibilityLabel={c('btn_edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                  </Pressable>
+                  <Pressable onPress={() => remove(campus.id, campus.name)} accessibilityLabel={c('btn_delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
-                  </Button>
+                  </Pressable>
                 </View>
               </CardContent>
             </Card>

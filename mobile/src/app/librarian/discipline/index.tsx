@@ -4,9 +4,10 @@ import { BookOpen, CheckCircle, Plus } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { IconTile, Initials } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { formatFieldValue, referralPersonName } from '@/features/admin/discipline';
@@ -36,49 +37,51 @@ export default function LibrarianDiscipline() {
     <>
       <Stack.Screen options={{ title: k('discipline_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        <View className="flex-row items-center gap-2">
-          <Icon as={BookOpen} className="size-6 text-[#022172] dark:text-blue-300" />
-          <Text variant="muted" className="flex-1">
+        <View className="flex-row items-center gap-3">
+          <IconTile icon={BookOpen} size={40} />
+          <Text variant="muted" className="flex-1 text-sm">
             {k('discipline_subtitle')}
           </Text>
         </View>
-        <Button className="self-start" onPress={() => router.push('/librarian/discipline/new')}>
+        <Button size="sm" className="self-start" onPress={() => router.push('/librarian/discipline/new')}>
           <Icon as={Plus} className="text-primary-foreground size-4" />
           <Text>{k('report_incident')}</Text>
         </Button>
         {res.isLoading ? (
           <LoadingList rows={4} />
         ) : res.error ? (
-          <Text className="text-destructive text-sm">{res.error.message}</Text>
+          <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : !list.length ? (
-          <Card>
-            <CardContent className="items-center py-14">
-              <Icon as={CheckCircle} className="mb-3 size-12 text-green-500" />
-              <Text className="text-lg font-semibold">{k('no_referrals')}</Text>
-              <Text className="text-muted-foreground mt-1 text-center">{k('no_referrals_desc')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={CheckCircle} title={k('no_referrals')} body={k('no_referrals_desc')} />
         ) : (
           <>
-            <Text className="text-muted-foreground text-sm">{k('referral_count', { count: list.length })}</Text>
-            {list.map((r) => (
-              <Card key={r.id}>
-                <CardHeader className="gap-0.5">
-                  <CardTitle className="text-base">{referralPersonName(r)}</CardTitle>
-                  <Text className="text-muted-foreground text-xs">{[r.students?.student_number, formatDate(r.incident_date), r.reporter?.full_name].filter(Boolean).join(' · ')}</Text>
-                </CardHeader>
-                <CardContent className="gap-1">
-                  {fieldList
-                    .filter((f) => r.field_values?.[f.id] !== undefined && r.field_values?.[f.id] !== '' && r.field_values?.[f.id] !== null)
-                    .map((f) => (
-                      <Text key={f.id} className="text-sm">
-                        <Text className="text-muted-foreground text-sm">{`${f.name}: `}</Text>
-                        {formatFieldValue(r.field_values?.[f.id])}
-                      </Text>
-                    ))}
-                </CardContent>
-              </Card>
-            ))}
+            <Text className="text-muted-foreground text-xs">{k('referral_count', { count: list.length })}</Text>
+            <Panel>
+              {list.map((r, i) => {
+                const values = fieldList.filter((f) => r.field_values?.[f.id] !== undefined && r.field_values?.[f.id] !== '' && r.field_values?.[f.id] !== null);
+                return (
+                  <View key={r.id} className={i < list.length - 1 ? 'border-info-soft dark:border-border gap-2 border-b px-4 py-3' : 'gap-2 px-4 py-3'}>
+                    <View className="flex-row items-center gap-3">
+                      <Initials name={referralPersonName(r) || '?'} size={40} />
+                      <View className="flex-1 gap-0.5">
+                        <Text className="text-sm font-semibold">{referralPersonName(r)}</Text>
+                        <Text className="text-muted-foreground text-xs">{[r.students?.student_number, formatDate(r.incident_date), r.reporter?.full_name].filter(Boolean).join(' · ')}</Text>
+                      </View>
+                    </View>
+                    {values.length ? (
+                      <View className="bg-muted/40 gap-1 rounded-xl p-3">
+                        {values.map((f) => (
+                          <Text key={f.id} className="text-sm">
+                            <Text className="text-muted-foreground text-sm">{`${f.name}: `}</Text>
+                            {formatFieldValue(r.field_values?.[f.id])}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </Panel>
           </>
         )}
       </ScrollView>

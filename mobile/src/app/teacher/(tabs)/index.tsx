@@ -1,15 +1,34 @@
-import { ArrowRight, BarChart3, BookOpen, Calendar, CheckCircle, ClipboardList, Clock, GraduationCap, LayoutGrid, MapPin, Play, SkipForward, TrendingDown, TrendingUp, UserCheck, Users, type LucideIcon } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
+import {
+  AlertTriangle,
+  Bell,
+  BookOpen,
+  CheckSquare,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ClipboardList,
+  FilePenLine,
+  FileText,
+  GraduationCap,
+  LayoutGrid,
+  NotebookPen,
+  PenLine,
+  Search,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthBackground } from '@/components/app/auth-background';
+import { BrandGradient } from '@/components/app/brand-gradient';
+import { Panel } from '@/components/app/panel';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatusChip, type ChipTone } from '@/components/app/status-chip';
+import { raised } from '@/components/app/tile-grid';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
@@ -19,20 +38,87 @@ import { usePortalAcademic } from '@/features/portal/academic';
 import { AcademicPickers } from '@/features/portal/academic-pickers';
 import { openPortalPage, usePortalPlugins, usePortalSettings } from '@/features/portal/menu';
 import { SetupAssistantPanel } from '@/features/setup-assistant/panel';
-import { adminPerformance, adminTimetable, adminWeather, teacher } from '@/lib/api';
+import { useTeacherExams } from '@/features/teacher/exams';
+import { adminPerformance, adminTimetable, adminWeather, homework, messaging, teacher } from '@/lib/api';
+import { useColors } from '@/lib/colors';
 import { useApi } from '@/lib/data';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import i18n from '@/i18n';
 
 type Status = 'completed' | 'in-progress' | 'upcoming';
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const hm = (v?: string | null) => (v ? v.slice(0, 5) : '');
+const go = (href: string) => router.push(href as Href);
+const initials = (a?: string | null, b?: string | null) => `${(a ?? '').charAt(0)}${(b ?? '').charAt(0)}`.toUpperCase() || '?';
 
-/** Today's classes with attendance state, performance score, the selected course period's roster (web: /teacher/dashboard). */
+function Section({ title, action, onAction, children }: { title: string; action?: string; onAction?: () => void; children: React.ReactNode }) {
+  return (
+    <View className="gap-2">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-base font-semibold">{title}</Text>
+        {action && onAction ? (
+          <Pressable onPress={onAction} hitSlop={8} accessibilityRole="link">
+            <Text className="text-brand-secondary text-sm font-medium">{action}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function RoundButton({ icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+  const c = useColors();
+  return (
+    <Pressable onPress={onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card size-10 items-center justify-center rounded-full border" accessibilityRole="button" accessibilityLabel={label}>
+      <Icon as={icon} className="text-brand dark:text-brand-secondary size-4" />
+    </Pressable>
+  );
+}
+
+function StatTile({ label, value, note, chip, chipTone = 'success', onPress }: { label: string; value: string; note?: string; chip?: string; chipTone?: ChipTone; onPress?: () => void }) {
+  const c = useColors();
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 gap-1 rounded-2xl border p-3 active:opacity-80" accessibilityRole={onPress ? 'button' : undefined}>
+      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+        {label}
+      </Text>
+      <Text className="text-brand dark:text-foreground text-xl font-bold" numberOfLines={1}>
+        {value}
+      </Text>
+      {chip ? <StatusChip label={chip} tone={chipTone} className="self-start px-2 py-0.5" /> : null}
+      {note ? (
+        <Text className="text-muted-foreground text-[11px]" numberOfLines={1}>
+          {note}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function QuickAction({ icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+  const c = useColors();
+  return (
+    <Pressable onPress={onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 items-center gap-2 rounded-2xl border px-1 py-3 active:opacity-80" accessibilityRole="button">
+      <Icon as={icon} strokeWidth={2.3} className="text-brand dark:text-brand-secondary size-5" />
+      <Text className="text-brand dark:text-brand-secondary text-center text-[11px] font-semibold" numberOfLines={2}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Teacher dashboard (Figma teacher home; web: /teacher/dashboard): attendance-to-mark banner, periods /
+ * attendance / performance tiles, today's schedule with attendance state, class attendance bars, homework
+ * awaiting review, upcoming exams, the selected course period's roster, recent messages, quick actions,
+ * Setup Assistant and weather.
+ */
 export default function TeacherDashboard() {
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`teacherPages.dashboard.${key}`, o);
+  const x = (key: string, o?: Record<string, unknown>) => t(`app.td_${key}`, o);
   const { me } = useSession();
   const profile = me.status === 'ready' ? me.me.profile : null;
   const staffId = profile?.staff_id ?? null;
@@ -43,12 +129,17 @@ export default function TeacherDashboard() {
   const settings = usePortalSettings();
   const plugins = usePortalPlugins();
   const [now, setNow] = useState(() => new Date());
+  const [rosterOpen, setRosterOpen] = useState(false);
   const today = ymd(now);
 
   const schedule = useApi(staffId ? ['teacher', 'schedule', staffId, today] : null, ([, , s, d]) => adminTimetable.teacherSchedule(s as string, d as string));
   const overview = useApi(staffId ? ['teacher', 'attendance-overview', staffId, today] : null, ([, , s, d]) => adminTimetable.teacherAttendanceOverview(s as string, d as string));
   const perf = useApi(staffId ? ['teacher', 'my-score'] : null, () => adminPerformance.myScore());
   const students = useApi(cpId ? ['teacher', 'cp-students', cpId] : null, ([, , c]) => teacher.myCoursePeriodStudents(c as string));
+  // Same keys as the submissions and inbox screens, so the caches are shared.
+  const hw = useApi(staffId ? ['teacher', 'homework-all', staffId] : null, ([, , s]) => homework.teacherList(s as string, { is_archived: false }));
+  const inbox = useApi(['messaging', 'list', 'inbox', '', 'desc'], () => messaging.listMessages('inbox', { page: 1, limit: 50, order: 'desc' }));
+  const exams = useTeacherExams();
   const weatherOn = plugins.includes('weather_alerts');
   const weather = useApi(weatherOn ? ['teacher', 'weather', campusId ?? 'school'] : null, () => adminWeather.widget(campusId));
   const open = (href: string, title: string) => openPortalPage('teacher', { href, title });
@@ -87,317 +178,337 @@ export default function TeacherDashboard() {
   const totalStudents = withAtt.reduce((s, c) => s + (c.att?.total ?? 0), 0);
   const totalPresent = withAtt.reduce((s, c) => s + (c.att?.present ?? 0) + (c.att?.late ?? 0), 0);
   const completed = classes.filter((c) => c.status === 'completed').length;
-  const stats = {
-    today: classes.length,
-    rate: totalStudents > 0 ? Math.round((totalPresent / totalStudents) * 100) : 0,
-    pending: Math.max(0, completed - withAtt.length),
-    remaining: classes.filter((c) => c.status === 'upcoming').length,
-  };
+  const rate = totalStudents > 0 ? Math.round((totalPresent / totalStudents) * 100) : 0;
+  const remaining = classes.filter((c) => c.status === 'upcoming').length;
+  // Classes that have started (finished or running) and have no attendance yet.
+  const toMark = classes.filter((c) => c.status !== 'upcoming' && !c.marked);
   const loc = i18n.language === 'ar' ? 'ar' : 'en';
   const score = perf.data;
-  const scoreTone = !score ? '' : score.score >= 80 ? 'text-green-600' : score.score >= 60 ? 'text-amber-600' : 'text-red-600';
+  const scoreTone: ChipTone = !score ? 'muted' : score.score >= 80 ? 'success' : score.score >= 60 ? 'warning' : 'destructive';
   const attendance = (classId?: string) => router.push(classId ? { pathname: '/teacher/attendance', params: { class: classId } } : '/teacher/attendance');
 
+  const subjects = [...new Set(classes.map((c) => c.subject_name).filter(Boolean))].slice(0, 2).join(' & ');
+  const fullName = `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim();
+  const dateLine = now.toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' });
+
+  const homeworkList = Array.isArray(hw.data) ? hw.data : (hw.data?.data ?? []);
+  const toReview = homeworkList
+    .filter((h) => h.is_published !== false && h.due_date && h.due_date.slice(0, 10) <= today)
+    .sort((a, b) => b.due_date.localeCompare(a.due_date))
+    .slice(0, 3);
+  const nowMs = now.getTime();
+  const upcomingExams = (exams.data ?? [])
+    .filter((e) => !e.is_completed && !!e.exam_date && new Date(e.exam_date).getTime() > nowMs)
+    .sort((a, b) => (a.exam_date ?? '').localeCompare(b.exam_date ?? ''))
+    .slice(0, 3);
+  const messages = (inbox.data ?? []).slice(0, 2);
+  const roster = students.data ?? [];
+
+  const refresh = () => {
+    setNow(new Date());
+    return Promise.all([schedule.mutate(), overview.mutate(), perf.mutate(), students.mutate(), hw.mutate(), inbox.mutate(), exams.mutate(), weather.mutate()]);
+  };
+
   return (
-    <ScrollView
-      className="bg-background flex-1"
-      contentContainerClassName="gap-4 p-4 pb-10"
-      refreshControl={
-        <RefreshControl
-          refreshing={false}
-          onRefresh={() => {
-            setNow(new Date());
-            return Promise.all([schedule.mutate(), overview.mutate(), perf.mutate(), students.mutate(), weather.mutate()]);
-          }}
-        />
-      }>
-      <View className="flex-row items-center gap-3">
-        <PersonAvatar url={profile.profile_photo_url} name={`${profile.first_name ?? ''} ${profile.last_name ?? ''}`} size={56} />
-        <View className="flex-1">
-          <Text className="text-xl font-bold text-[#022172] dark:text-white">{k('pageTitle')}</Text>
-          <Text className="text-muted-foreground text-sm">{k('welcomeBack', { name: `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() })}</Text>
-        </View>
-        <View className="items-end">
-          <Text className="text-2xl font-bold text-[#022172] dark:text-white">{now.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })}</Text>
-          <Text className="text-muted-foreground text-xs">{`${now.toLocaleDateString(loc, { weekday: 'long' })}, ${formatDate(today)}`}</Text>
-        </View>
-      </View>
-
-      <AcademicPickers coursePeriod />
-
-      <View className="flex-row flex-wrap gap-2">
-        <Stat icon={Calendar} tone="blue" value={String(stats.today)} label={k('todaysClasses')} />
-        <Stat icon={UserCheck} tone="green" value={`${stats.rate}%`} label={k('attendanceRate')} />
-        <Stat icon={ClipboardList} tone="orange" value={String(stats.pending)} label={k('pending')} />
-        <Stat icon={Clock} tone="purple" value={String(stats.remaining)} label={k('remaining')} />
-      </View>
-
-      {weatherOn ? <WeatherCard data={weather.data} loading={weather.isLoading} failed={!!weather.error} /> : null}
-
-      {score ? (
-        <Card className="border-[#022172]/20">
-          <CardContent className="gap-3 p-4">
-            <View className="flex-row items-center gap-4">
-              <View className="size-16 items-center justify-center">
-                <Svg width={64} height={64} viewBox="0 0 100 100" style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
-                  <Circle cx={50} cy={50} r={40} fill="none" stroke="#e5e7eb" strokeWidth={14} />
-                  <Circle
-                    cx={50}
-                    cy={50}
-                    r={40}
-                    fill="none"
-                    stroke={score.score >= 80 ? '#16a34a' : score.score >= 60 ? '#d97706' : '#dc2626'}
-                    strokeWidth={14}
-                    strokeDasharray={`${(score.score / 100) * 251.2} 251.2`}
-                    strokeLinecap="round"
-                  />
-                </Svg>
-                <Text className="text-sm font-bold">{String(score.score)}</Text>
-              </View>
-              <View className="flex-1 gap-0.5">
-                <View className="flex-row items-center gap-2">
-                  <Icon as={BarChart3} className="size-4 text-[#022172] dark:text-blue-400" />
-                  <Text className="font-semibold text-[#022172] dark:text-white">{k('myPerformance')}</Text>
-                </View>
-                <Text className={cn('text-sm font-medium', scoreTone)}>{score.score >= 80 ? k('excellent') : score.score >= 60 ? k('good') : k('needsImprovement')}</Text>
-                <View className="flex-row gap-3">
-                  {score.total_demerit > 0 ? (
-                    <View className="flex-row items-center gap-1">
-                      <Icon as={TrendingDown} className="size-3 text-red-500" />
-                      <Text className="text-xs text-red-500">{k('ptsNegative', { points: score.total_demerit })}</Text>
-                    </View>
-                  ) : null}
-                  {score.total_redemption > 0 ? (
-                    <View className="flex-row items-center gap-1">
-                      <Icon as={TrendingUp} className="size-3 text-green-500" />
-                      <Text className="text-xs text-green-500">{k('ptsPositive', { points: score.total_redemption })}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-            <Button variant="outline" size="sm" className="self-start" onPress={() => open('/teacher/performance', 'performance_efficiency')}>
-              <Text>{k('viewDetails')}</Text>
-              <Icon as={ArrowRight} className="size-4 rtl:rotate-180" />
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card className="border-[#022172]/20">
-        <CardHeader className="gap-1">
-          <View className="flex-row flex-wrap items-center gap-2">
-            <Icon as={Users} className="size-5 text-[#022172] dark:text-blue-400" />
-            <CardTitle className="text-[#022172] dark:text-white">{cp ? cp.short_name || cp.title || k('coursePeriod') : k('coursePeriod')}</CardTitle>
-            {cp && students.data ? (
-              <Badge variant="secondary">
-                <Text>{k('studentsCount', { count: students.data.length })}</Text>
-              </Badge>
-            ) : null}
-          </View>
-          {cp?.course?.title && cp.course.title !== (cp.short_name || cp.title) ? <Text className="text-muted-foreground text-sm">{cp.course.title}</Text> : null}
-          {cp?.section?.name ? <Text className="text-muted-foreground text-sm">{`${cp.section.name}${cp.section.grade_level?.name ? ` — ${cp.section.grade_level.name}` : ''}`}</Text> : null}
-          {cp ? (
-            <Button variant="outline" size="sm" className="mt-1 self-start" onPress={() => router.push('/teacher/attendance/take-attendance')}>
-              <Icon as={UserCheck} className="size-4" />
-              <Text>{k('takeAttendance')}</Text>
-            </Button>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          {!cp ? (
-            <View className="items-center py-8">
-              <Icon as={GraduationCap} className="text-muted-foreground/40 mb-2 size-10" />
-              <Text className="text-muted-foreground font-medium">{k('noCoursePeriodSelected')}</Text>
-              <Text className="text-muted-foreground mt-1 text-center text-sm">{t('app.te_pick_course_hint')}</Text>
-            </View>
-          ) : students.isLoading ? (
-            <LoadingList rows={3} />
-          ) : !students.data?.length ? (
-            <Text className="text-muted-foreground py-8 text-center text-sm">{k('noStudentsEnrolled')}</Text>
-          ) : (
-            <View className="border-border rounded-lg border">
-              {students.data.map((s, i) => (
-                <View key={s.id} className="border-border flex-row items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
-                  <View className="size-7 items-center justify-center rounded-full bg-[#022172]/10">
-                    <Text className="text-xs font-semibold text-[#022172] dark:text-blue-300">{String(i + 1)}</Text>
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium" numberOfLines={1}>{`${s.profile?.first_name ?? ''} ${s.profile?.last_name ?? ''}`}</Text>
-                    <Text className="text-muted-foreground text-xs">{s.student_number}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-        </CardContent>
-      </Card>
-
-      {current ? (
-        <Card className="overflow-hidden border-2 border-green-500">
-          <CardHeader className="flex-row items-center justify-between bg-green-50 dark:bg-green-950/30">
-            <View className="flex-row items-center gap-2">
-              <Icon as={Play} className="size-5 text-green-600" />
-              <CardTitle>{k('currentClass')}</CardTitle>
-            </View>
-            <Badge className="bg-green-600">
-              <Text className="text-white">{`● ${k('inProgress')}`}</Text>
-            </Badge>
-          </CardHeader>
-          <CardContent className="gap-3 pt-4">
-            <View>
-              <Text className="text-2xl font-bold text-[#022172] dark:text-white">{current.subject}</Text>
-              <Text className="text-muted-foreground">{`${current.section} • ${current.grade}`}</Text>
-            </View>
-            <View className="flex-row flex-wrap items-center gap-3">
-              <View className="flex-row items-center gap-1">
-                <Icon as={Clock} className="text-muted-foreground size-4" />
-                <Text className="text-sm font-medium">{`${hm(current.start_time)} – ${hm(current.end_time)}`}</Text>
-              </View>
-              <Badge variant="outline">
-                <Text>{k('periodLabel', { number: current.period_number })}</Text>
-              </Badge>
-              {current.room_number ? (
-                <View className="flex-row items-center gap-1">
-                  <Icon as={MapPin} className="text-muted-foreground size-4" />
-                  <Text className="text-sm">{k('roomLabel', { room: current.room_number })}</Text>
-                </View>
-              ) : null}
-            </View>
-            <Button className="bg-green-600" onPress={() => attendance(current.id)}>
-              <Icon as={UserCheck} className="size-5 text-white" />
-              <Text className="text-white">{k('markAttendance')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="bg-muted/30">
-          <CardContent className="items-center gap-1 p-4">
-            <Text className="text-muted-foreground">{k('noClassInProgress')}</Text>
-            <Text className="text-muted-foreground text-sm">{next ? k('nextClassAt', { subject: next.subject, time: hm(next.start_time) }) : k('noMoreClassesToday')}</Text>
-          </CardContent>
-        </Card>
-      )}
-
-      {next && current ? (
-        <Card className="border-blue-200">
-          <CardContent className="flex-row items-center gap-3 p-4">
-            <View className="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
-              <Icon as={SkipForward} className="size-5 text-blue-600" />
-            </View>
+    <AuthBackground>
+      <SafeAreaView edges={['top']} className="flex-1">
+        <ScrollView contentContainerClassName="gap-5 p-4 pb-8" refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}>
+          {/* Header */}
+          <View className="flex-row items-center gap-3">
+            <Pressable onPress={() => open('/teacher/settings', 'settings')} accessibilityRole="button" accessibilityLabel={fullName}>
+              <PersonAvatar url={profile.profile_photo_url} name={fullName} size={44} />
+            </Pressable>
             <View className="flex-1">
-              <Text className="text-muted-foreground text-sm">{k('nextClass')}</Text>
-              <Text className="text-lg font-bold">{next.subject}</Text>
-              <Text className="text-muted-foreground text-sm">{k('sectionStartsAt', { section: next.section, time: hm(next.start_time) })}</Text>
+              <Text className="text-brand dark:text-foreground text-lg font-bold" numberOfLines={1}>
+                {x('hello', { name: profile.first_name ?? '' })}
+              </Text>
+              <Text variant="muted" className="text-xs" numberOfLines={1}>
+                {[subjects, dateLine].filter(Boolean).join(' · ')}
+              </Text>
             </View>
-            <Badge variant="outline">
-              <Text>{k('periodLabel', { number: next.period_number })}</Text>
-            </Badge>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2">
-            <Icon as={Calendar} className="size-5" />
-            <CardTitle>{k('todaysSchedule')}</CardTitle>
+            <RoundButton icon={Search} label={t('app.ad_search_modules')} onPress={() => go('/teacher/more')} />
+            <RoundButton icon={Bell} label={t('app.pn_title')} onPress={() => go('/teacher/portal/notes')} />
           </View>
-          <Button variant="outline" size="sm" onPress={() => open('/teacher/timetable', 'my_timetable')}>
-            <Text>{k('fullTimetable')}</Text>
-          </Button>
-        </CardHeader>
-        <CardContent className="gap-2">
-          {!classes.length ? (
-            <Text className="text-muted-foreground py-6 text-center">{k('noClassesScheduled')}</Text>
-          ) : (
-            classes.map((c) => (
-              <Pressable
-                key={c.id}
-                onPress={() => attendance(c.id)}
-                accessibilityRole="button"
-                className={cn(
-                  'flex-row items-center gap-3 rounded-lg border-2 p-3',
-                  c.status === 'in-progress' ? 'border-green-500 bg-green-50 dark:bg-green-950/30' : c.status === 'completed' ? (c.marked ? 'border-border bg-muted/40' : 'border-orange-300 bg-orange-50 dark:bg-orange-950/20') : 'border-blue-200',
-                )}>
-                <View className={cn('size-12 items-center justify-center rounded-lg', c.status === 'in-progress' ? 'bg-green-600' : c.status === 'completed' ? 'bg-gray-500' : 'bg-blue-600')}>
-                  <Text className="text-xs text-white">P</Text>
-                  <Text className="text-lg font-bold text-white">{String(c.period_number)}</Text>
-                </View>
-                <View className="flex-1 gap-0.5">
-                  <View className="flex-row flex-wrap items-center gap-1.5">
-                    <Text className="font-semibold">{c.subject}</Text>
-                    {c.status === 'in-progress' ? (
-                      <Badge className="bg-green-600">
-                        <Text className="text-xs text-white">{`● ${k('now')}`}</Text>
-                      </Badge>
-                    ) : null}
-                    {c.status === 'completed' && !c.marked ? (
-                      <Badge variant="outline" className="border-orange-500">
-                        <Text className="text-xs text-orange-600">{k('attendancePending')}</Text>
-                      </Badge>
-                    ) : null}
-                    {c.marked ? (
-                      <Badge variant="outline" className="border-green-500">
-                        <Text className="text-xs text-green-600">{k('marked')}</Text>
-                      </Badge>
-                    ) : null}
-                  </View>
-                  <Text className="text-muted-foreground text-sm">{`${c.section} • ${c.grade}`}</Text>
-                  {c.att ? <Text className="text-xs text-green-600">{k('presentCount', { present: c.att.present + c.att.late, total: c.att.total, percentage: c.att.percentage })}</Text> : null}
-                </View>
-                <View className="items-end">
-                  <Text className="text-sm font-medium">{`${hm(c.start_time)} – ${hm(c.end_time)}`}</Text>
-                  {c.room_number ? <Text className="text-muted-foreground text-xs">{k('roomLabel', { room: c.room_number })}</Text> : null}
-                </View>
+
+          {/* Attendance to mark */}
+          {toMark.length ? (
+            <View className="bg-warning-soft flex-row items-center gap-3 rounded-2xl p-3">
+              <Icon as={AlertTriangle} className="text-warning size-5" />
+              <View className="flex-1">
+                <Text className="text-warning text-sm font-semibold" numberOfLines={1}>
+                  {x('to_mark', { count: toMark.length })}
+                </Text>
+                <Text className="text-warning text-[11px]" numberOfLines={1}>
+                  {`${toMark[0].subject} · ${toMark[0].section} · ${hm(toMark[0].start_time)}`}
+                </Text>
+              </View>
+              <Pressable onPress={() => attendance(toMark[0].id)} className="overflow-hidden rounded-full" accessibilityRole="button">
+                <BrandGradient variant="primary" style={{ paddingHorizontal: 18, paddingVertical: 9 }}>
+                  <Text className="text-white text-xs font-semibold">{x('mark')}</Text>
+                </BrandGradient>
               </Pressable>
-            ))
-          )}
-        </CardContent>
-      </Card>
+            </View>
+          ) : null}
 
-      <SetupAssistantPanel role="teacher" plugins={plugins} config={settings.data?.setup_assistant_config as Record<string, boolean> | null | undefined} onOpen={open} />
+          {/* Tiles */}
+          <View className="flex-row gap-2.5">
+            <StatTile label={k('todaysClasses')} value={String(classes.length)} note={x('done_remaining', { done: completed, remaining })} onPress={() => open('/teacher/timetable', 'my_timetable')} />
+            <StatTile label={k('attendanceRate')} value={`${rate}%`} note={toMark.length ? `${k('pending')}: ${toMark.length}` : undefined} onPress={() => attendance(current?.id ?? next?.id)} />
+            <StatTile
+              label={k('myPerformance')}
+              value={score ? String(score.score) : '—'}
+              chip={score ? (score.score >= 80 ? k('excellent') : score.score >= 60 ? k('good') : k('needsImprovement')) : undefined}
+              chipTone={scoreTone}
+              note={score && (score.total_demerit > 0 || score.total_redemption > 0) ? `−${score.total_demerit} / +${score.total_redemption}` : undefined}
+              onPress={() => open('/teacher/performance', 'performance_efficiency')}
+            />
+          </View>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{k('quickActions')}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-row flex-wrap gap-2">
-          <Quick icon={CheckCircle} label={k('markAttendance')} onPress={() => attendance(current?.id ?? next?.id)} />
-          <Quick icon={LayoutGrid} label={k('timetable')} onPress={() => open('/teacher/timetable', 'my_timetable')} />
-          <Quick icon={BookOpen} label={k('mySubjects')} onPress={() => open('/teacher/subjects', 'subjects')} />
-          <Quick icon={ClipboardList} label={k('assignments')} onPress={() => open('/teacher/assignments', 'assignments')} />
-        </CardContent>
-      </Card>
-    </ScrollView>
-  );
-}
+          <AcademicPickers coursePeriod />
 
-const TONES = {
-  blue: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 text-blue-700',
-  green: 'bg-green-50 border-green-200 dark:bg-green-950/30 text-green-700',
-  orange: 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 text-orange-700',
-  purple: 'bg-purple-50 border-purple-200 dark:bg-purple-950/30 text-purple-700',
-};
+          {/* Teaching schedule */}
+          <Section title={k('todaysSchedule')} action={k('fullTimetable')} onAction={() => open('/teacher/timetable', 'my_timetable')}>
+            {classes.length ? (
+              <Panel>
+                {classes.map((c, i) => {
+                  const live = c.status === 'in-progress';
+                  const done = c.status === 'completed';
+                  const [label, tone]: [string, ChipTone] = live
+                    ? [k('now'), 'warning']
+                    : done
+                      ? c.marked
+                        ? [k('marked'), 'success']
+                        : [k('attendancePending'), 'destructive']
+                      : c.id === next?.id
+                        ? [x('next'), 'info']
+                        : [k('periodLabel', { number: c.period_number }), 'muted'];
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => attendance(c.id)}
+                      accessibilityRole="button"
+                      className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', live && 'bg-info-soft/60', i < classes.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                      <View className="w-12">
+                        <Text className="text-sm font-bold">{hm(c.start_time)}</Text>
+                        <Text variant="muted" className="text-[11px]">
+                          {hm(c.end_time)}
+                        </Text>
+                      </View>
+                      <View className={cn('h-10 w-1 rounded-full', live ? 'bg-brand-accent' : done ? 'bg-muted' : 'bg-brand')} />
+                      <View className="flex-1">
+                        <Text className={cn('text-sm font-semibold', done && 'text-muted-foreground')} numberOfLines={1}>
+                          {`${c.subject} · ${c.section}`}
+                        </Text>
+                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                          {[c.grade, c.room_number ? k('roomLabel', { room: c.room_number }) : null, c.att ? k('presentCount', { present: c.att.present + c.att.late, total: c.att.total, percentage: c.att.percentage }) : null]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                      </View>
+                      <StatusChip label={label} tone={tone} className="px-2 py-0.5" />
+                    </Pressable>
+                  );
+                })}
+              </Panel>
+            ) : (
+              <Panel className="items-center p-6">
+                <Text variant="muted">{k('noClassesScheduled')}</Text>
+                <Text variant="muted" className="text-sm">
+                  {next ? k('nextClassAt', { subject: next.subject, time: hm(next.start_time) }) : k('noMoreClassesToday')}
+                </Text>
+              </Panel>
+            )}
+          </Section>
 
-function Stat({ icon, tone, value, label }: { icon: LucideIcon; tone: keyof typeof TONES; value: string; label: string }) {
-  const text = TONES[tone].split(' ')[3];
-  return (
-    <View className={cn('min-w-[45%] flex-1 flex-row items-center gap-3 rounded-xl border p-3', TONES[tone])}>
-      <Icon as={icon} className={cn('size-6', text)} />
-      <View>
-        <Text className={cn('text-2xl font-bold', text)}>{value}</Text>
-        <Text className={cn('text-xs', text)}>{label}</Text>
-      </View>
-    </View>
-  );
-}
+          {/* Class attendance overview */}
+          {withAtt.length ? (
+            <Section title={x('attendance_overview')}>
+              <Panel className="gap-3 p-4">
+                {withAtt.map((c) => {
+                  const pct = Math.round(c.att?.percentage ?? 0);
+                  const bar = pct >= 90 ? 'bg-brand-secondary' : pct >= 75 ? 'bg-brand-accent' : 'bg-destructive';
+                  return (
+                    <View key={c.id} className="flex-row items-center gap-3">
+                      <Text className="w-14 text-xs font-semibold" numberOfLines={1}>
+                        {c.section}
+                      </Text>
+                      <View className="bg-info-soft h-2 flex-1 overflow-hidden rounded-full">
+                        <View className={cn('h-full rounded-full', bar)} style={{ width: `${Math.min(100, pct)}%` }} />
+                      </View>
+                      <Text className="w-10 text-end text-xs font-bold">{`${pct}%`}</Text>
+                    </View>
+                  );
+                })}
+              </Panel>
+            </Section>
+          ) : null}
 
-function Quick({ icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
-  return (
-    <Button variant="outline" className="h-auto min-w-[45%] flex-1 flex-col gap-1 py-3" onPress={onPress}>
-      <Icon as={icon} className="size-5" />
-      <Text className="text-sm">{label}</Text>
-    </Button>
+          {/* Awaiting review */}
+          {toReview.length ? (
+            <Section title={x('awaiting_review')} action={t('app.sad_view_all')} onAction={() => go('/teacher/submissions')}>
+              <Panel>
+                {toReview.map((h, i) => (
+                  <Pressable
+                    key={h.id}
+                    onPress={() => router.push({ pathname: '/teacher/submissions', params: { assignment: h.id } })}
+                    className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < toReview.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                    <View className="bg-info-soft size-9 items-center justify-center rounded-full">
+                      <Icon as={FilePenLine} className="text-brand dark:text-brand-secondary size-4" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold" numberOfLines={1}>
+                        {h.title}
+                      </Text>
+                      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        {[h.section?.name, h.subject?.name, formatDate(h.due_date)].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                    <Icon as={ChevronRight} flipRtl className="text-muted-foreground size-4" />
+                  </Pressable>
+                ))}
+              </Panel>
+            </Section>
+          ) : null}
+
+          {/* Upcoming assessments */}
+          {upcomingExams.length ? (
+            <Section title={x('assessments')} action={t('app.sad_view_all')} onAction={() => go('/teacher/exams')}>
+              <Panel>
+                {upcomingExams.map((e, i) => (
+                  <Pressable
+                    key={e.id}
+                    onPress={() => router.push({ pathname: '/teacher/exams/[id]', params: { id: e.id } })}
+                    className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < upcomingExams.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                    <View className={cn('size-9 items-center justify-center rounded-xl', e.is_published ? 'bg-info-soft' : 'bg-warning-soft')}>
+                      <Icon as={FileText} className={cn('size-4', e.is_published ? 'text-brand dark:text-brand-secondary' : 'text-warning')} />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold" numberOfLines={1}>
+                        {[e.section?.name, e.exam_name].filter(Boolean).join(' ')}
+                      </Text>
+                      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        {[e.exam_date ? formatDate(e.exam_date) : null, e.subject?.name, e.exam_type?.name].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                    <StatusChip label={e.is_published ? x('ready') : x('draft')} tone={e.is_published ? 'success' : 'warning'} className="px-2 py-0.5" />
+                  </Pressable>
+                ))}
+              </Panel>
+            </Section>
+          ) : null}
+
+          {/* Class roster (selected course period) */}
+          <Section title={x('roster')} action={cp ? k('takeAttendance') : undefined} onAction={() => router.push('/teacher/attendance/take-attendance')}>
+            <Panel>
+              {!cp ? (
+                <View className="items-center p-6">
+                  <Icon as={GraduationCap} className="text-muted-foreground mb-2 size-8" />
+                  <Text className="text-muted-foreground font-medium">{k('noCoursePeriodSelected')}</Text>
+                  <Text variant="muted" className="mt-1 text-center text-sm">
+                    {t('app.te_pick_course_hint')}
+                  </Text>
+                </View>
+              ) : students.isLoading ? (
+                <View className="p-4">
+                  <LoadingList rows={2} />
+                </View>
+              ) : !roster.length ? (
+                <Text className="text-muted-foreground p-6 text-center text-sm">{k('noStudentsEnrolled')}</Text>
+              ) : (
+                <>
+                  <Pressable onPress={() => setRosterOpen((v) => !v)} className="flex-row items-center gap-3 px-4 py-3" accessibilityRole="button" accessibilityState={{ expanded: rosterOpen }}>
+                    <View className="flex-row">
+                      {roster.slice(0, 5).map((s, i) => (
+                        <View key={s.id} className={cn('border-card bg-success-soft size-9 items-center justify-center rounded-full border-2', i > 0 && '-ms-2.5')}>
+                          <Text className="text-success text-[11px] font-bold">{initials(s.profile?.first_name, s.profile?.last_name)}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold" numberOfLines={1}>
+                        {cp.short_name || cp.title || k('coursePeriod')}
+                      </Text>
+                      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        {[k('studentsCount', { count: roster.length }), cp.section?.name, cp.section?.grade_level?.name].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                    <Icon as={rosterOpen ? ChevronUp : ChevronDown} className="text-muted-foreground size-4" />
+                  </Pressable>
+                  {rosterOpen
+                    ? roster.map((s, i) => (
+                        <View key={s.id} className="border-info-soft dark:border-border flex-row items-center gap-3 border-t px-4 py-2.5">
+                          <View className="bg-info-soft size-7 items-center justify-center rounded-full">
+                            <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{String(i + 1)}</Text>
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-sm font-medium" numberOfLines={1}>{`${s.profile?.first_name ?? ''} ${s.profile?.last_name ?? ''}`}</Text>
+                            <Text variant="muted" className="text-[11px]">
+                              {s.student_number}
+                            </Text>
+                          </View>
+                        </View>
+                      ))
+                    : null}
+                </>
+              )}
+            </Panel>
+          </Section>
+
+          {/* Messages */}
+          {messages.length ? (
+            <Section title={x('messages')} action={t('app.sad_view_all')} onAction={() => open('/teacher/messaging', 'messaging')}>
+              <Panel>
+                {messages.map((m, i) => {
+                  const [first, ...rest] = (m.sender_name || '').split(' ');
+                  return (
+                    <Pressable
+                      key={m.id}
+                      onPress={() => open('/teacher/messaging', 'messaging')}
+                      className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < messages.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                      <View className="bg-success-soft size-9 items-center justify-center rounded-full">
+                        <Text className="text-success text-[11px] font-bold">{initials(first, rest.pop())}</Text>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold" numberOfLines={1}>
+                          {m.sender_name}
+                        </Text>
+                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                          {`${m.messages?.subject ?? ''} · ${m.messages?.created_at ? formatRelative(m.messages.created_at) : ''}`}
+                        </Text>
+                      </View>
+                      {m.status === 'unread' ? <View className="bg-brand size-2 rounded-full" /> : null}
+                    </Pressable>
+                  );
+                })}
+              </Panel>
+            </Section>
+          ) : null}
+
+          {/* Quick actions */}
+          <Section title={k('quickActions')}>
+            <View className="gap-2.5">
+              <View className="flex-row gap-2.5">
+                <QuickAction icon={CheckSquare} label={k('markAttendance')} onPress={() => attendance(current?.id ?? next?.id)} />
+                <QuickAction icon={PenLine} label={x('gradebook')} onPress={() => go('/teacher/grades/gradebook')} />
+                <QuickAction icon={ClipboardList} label={k('assignments')} onPress={() => open('/teacher/assignments', 'assignments')} />
+              </View>
+              <View className="flex-row gap-2.5">
+                <QuickAction icon={NotebookPen} label={x('lesson_plans')} onPress={() => open('/teacher/lesson-plans', 'lesson_plans')} />
+                <QuickAction icon={LayoutGrid} label={k('timetable')} onPress={() => open('/teacher/timetable', 'my_timetable')} />
+                <QuickAction icon={BookOpen} label={k('mySubjects')} onPress={() => open('/teacher/subjects', 'subjects')} />
+              </View>
+            </View>
+          </Section>
+
+          <SetupAssistantPanel role="teacher" plugins={plugins} config={settings.data?.setup_assistant_config as Record<string, boolean> | null | undefined} onOpen={open} />
+
+          {weatherOn ? <WeatherCard data={weather.data} loading={weather.isLoading} failed={!!weather.error} /> : null}
+
+          <View className="items-center">
+            <Text variant="muted" className="text-[11px]">{`${now.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })} · ${now.toLocaleDateString(loc, { weekday: 'long' })}, ${formatDate(today)}`}</Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </AuthBackground>
   );
 }

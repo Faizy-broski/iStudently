@@ -2,8 +2,9 @@ import type { AbsenceStatus } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { MultiSelect } from '@/components/app/multi-select';
 import { Picker } from '@/components/app/picker';

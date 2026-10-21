@@ -448,9 +448,9 @@ export default function ImportPeople() {
 
   function warning(title: string, body?: string, tone: 'amber' | 'blue' = 'amber') {
     return (
-      <Card className={cn('py-3', tone === 'amber' ? 'border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/10' : 'border-blue-300/60 bg-blue-50/60 dark:bg-blue-950/20')}>
+      <Card className={cn('py-3', tone === 'amber' ? 'border-warning bg-warning-soft ' : 'border-brand bg-info-soft ')}>
         <CardContent className="flex-row gap-2 px-4">
-          <Icon as={AlertTriangle} className={cn('mt-0.5 size-4', tone === 'amber' ? 'text-amber-600' : 'text-blue-700 dark:text-blue-300')} />
+          <Icon as={AlertTriangle} className={cn('mt-0.5 size-4', tone === 'amber' ? 'text-warning' : 'text-brand dark:text-brand-secondary ')} />
           <View className="flex-1 gap-0.5">
             <Text className="text-sm font-medium">{title}</Text>
             {body ? <Text className="text-muted-foreground text-xs">{body}</Text> : null}
@@ -473,11 +473,11 @@ export default function ImportPeople() {
             const active = step === n;
             return (
               <View key={label} className="flex-row items-center gap-1.5">
-                <View className={cn('size-6 items-center justify-center rounded-full', done ? 'bg-green-600' : active ? 'bg-primary' : 'bg-muted')}>
+                <View className={cn('size-6 items-center justify-center rounded-full', done ? 'bg-success' : active ? 'bg-primary' : 'bg-muted')}>
                   {done ? <Icon as={CheckCircle2} className="size-3.5 text-white" /> : <Text className={cn('text-xs font-semibold', active ? 'text-primary-foreground' : 'text-muted-foreground')}>{n}</Text>}
                 </View>
                 <Text className={cn('text-xs', active ? 'font-medium' : 'text-muted-foreground')}>{label}</Text>
-                {idx < steps.length - 1 ? <Icon as={ArrowRight} className="text-muted-foreground size-3 rtl:rotate-180" /> : null}
+                {idx < steps.length - 1 ? <Icon flipRtl as={ArrowRight} className="text-muted-foreground size-3" /> : null}
               </View>
             );
           })}
@@ -492,7 +492,7 @@ export default function ImportPeople() {
             <CardContent className="gap-3 px-4">
               <Pressable onPress={pickFile} className="border-muted-foreground/30 active:border-primary items-center gap-2 rounded-lg border-2 border-dashed p-8">
                 <Icon as={Upload} className="text-muted-foreground size-9" />
-                <Text className="font-medium">{t('app.im_pick_sheet')}</Text>
+                <Text className="text-sm font-semibold">{t('app.im_pick_sheet')}</Text>
                 <Text className="text-muted-foreground text-xs">{isStudent ? s('formats_hint') : b('supports')}</Text>
               </Pressable>
               <Text className="text-muted-foreground text-xs">
@@ -530,12 +530,12 @@ export default function ImportPeople() {
             </View>
             <View className="flex-row gap-2">
               <Button variant="outline" className="flex-1" onPress={reset}>
-                <Icon as={ArrowLeft} className="size-4 rtl:rotate-180" />
+                <Icon flipRtl as={ArrowLeft} className="size-4" />
                 <Text>{t('common.back')}</Text>
               </Button>
               <Button className="flex-1" onPress={applyMapping}>
                 <Text>{t('common.continue')}</Text>
-                <Icon as={ArrowRight} className="text-primary-foreground size-4 rtl:rotate-180" />
+                <Icon flipRtl as={ArrowRight} className="text-primary-foreground size-4" />
               </Button>
             </View>
 
@@ -552,7 +552,7 @@ export default function ImportPeople() {
                       onPress={() => setMode(m)}
                       accessibilityRole="radio"
                       accessibilityState={{ selected: mode === m }}
-                      className={cn('rounded-lg border-2 p-3', mode === m ? 'border-primary bg-primary/5' : 'border-muted-foreground/20')}>
+                      className={cn('rounded-lg border-2 p-3', mode === m ? 'border-brand-secondary bg-info-soft' : 'border-muted-foreground/20')}>
                       <Text className="text-sm font-medium">{s(m === 'single' ? 'mode_single_title' : 'mode_whole_school_title')}</Text>
                       <Text className="text-muted-foreground text-xs">{s(m === 'single' ? 'mode_single_desc' : 'mode_whole_school_desc')}</Text>
                     </Pressable>
@@ -650,7 +650,7 @@ export default function ImportPeople() {
             </View>
             <View className="flex-row gap-2">
               <Button variant="outline" className="flex-1" onPress={() => setStep(2)}>
-                <Icon as={ArrowLeft} className="size-4 rtl:rotate-180" />
+                <Icon flipRtl as={ArrowLeft} className="size-4" />
                 <Text>{isStudent ? s('btn_remap') : b('remap')}</Text>
               </Button>
               <Button className="flex-1" onPress={runImport} disabled={valid.length === 0}>
@@ -740,7 +740,7 @@ export default function ImportPeople() {
           <Card className="py-4">
             <CardContent className="items-center gap-3 px-4 py-12">
               <ActivityIndicator size="large" />
-              <Text className="font-medium">{isStudent ? s('msg_importing') : b('creatingAccounts')}</Text>
+              <Text className="text-sm font-semibold">{isStudent ? s('msg_importing') : b('creatingAccounts')}</Text>
               <Text className="text-muted-foreground text-center text-sm">
                 {isStudent ? s('msg_importing_desc', { count: valid.length }) : b('processingMembers', { count: valid.length })}
               </Text>

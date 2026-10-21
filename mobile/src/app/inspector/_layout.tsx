@@ -5,7 +5,7 @@ export { AppErrorBoundary as ErrorBoundary } from '@/components/app/error-bounda
 
 export default function InspectorLayout() {
   return (
-    <Stack>
+    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="visits/new" options={{ title: '' }} />
       <Stack.Screen name="visits/[id]/index" options={{ title: '' }} />

@@ -3,11 +3,12 @@ import { Stack } from 'expo-router';
 import { Building2, Pencil, Plus, Power, Trash2, UserCog, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
@@ -69,7 +71,7 @@ export default function InspectorAssignments() {
         <Card>
           <CardHeader className="gap-2">
             <View className="flex-row items-center gap-2">
-              <Icon as={UserCog} className="size-5 text-[#022172]" />
+              <Icon as={UserCog} className="size-5 text-brand dark:text-brand-secondary" />
               <CardTitle className="flex-1">{a('inspectors_title')}</CardTitle>
               <Button size="sm" onPress={() => setCreate(EMPTY)}>
                 <Icon as={Plus} className="text-primary-foreground size-4" />
@@ -82,13 +84,14 @@ export default function InspectorAssignments() {
             {inspectors.isLoading ? (
               <LoadingList rows={3} />
             ) : !list.length ? (
-              <Text variant="muted" className="py-6 text-center text-sm">{a('no_inspectors')}</Text>
+              <EmptyState title={a('no_inspectors')} />
             ) : (
               list.map((i) => (
-                <Pressable key={i.id} onPress={() => setSelectedId(i.id)} className={cn('border-border gap-2 rounded-lg border p-3', selectedId === i.id && 'border-primary bg-primary/5', !i.is_active && 'opacity-60')}>
-                  <View className="flex-row items-center gap-2">
+                <Pressable key={i.id} onPress={() => setSelectedId(i.id)} className={cn('border-border gap-2 rounded-lg border p-3', selectedId === i.id && 'border-brand-secondary bg-info-soft', !i.is_active && 'opacity-60')}>
+                  <View className="flex-row items-center gap-3">
+                    <Initials name={name(i) || '?'} />
                     <View className="flex-1">
-                      <Text className="font-medium">{name(i)}</Text>
+                      <Text className="text-sm font-semibold">{name(i)}</Text>
                       <Text className="text-muted-foreground text-xs">{[i.email, i.phone].filter(Boolean).join(' · ')}</Text>
                     </View>
                     {!i.is_active ? (
@@ -116,8 +119,7 @@ export default function InspectorAssignments() {
                           if (selectedId === i.id) setSelectedId(null);
                           inspectors.mutate();
                         });
-                      }}
-                      hitSlop={8}>
+                      }} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
                     </Pressable>
                   </View>
@@ -130,7 +132,7 @@ export default function InspectorAssignments() {
         <Card>
           <CardHeader className="gap-2">
             <View className="flex-row items-center gap-2">
-              <Icon as={Building2} className="size-5 text-[#022172]" />
+              <Icon as={Building2} className="size-5 text-brand dark:text-brand-secondary" />
               <CardTitle className="flex-1">{a('assignments_title')}</CardTitle>
               {selected ? (
                 <Button size="sm" variant="outline" onPress={() => setAssignOpen(true)} disabled={!available.length}>
@@ -143,14 +145,14 @@ export default function InspectorAssignments() {
           </CardHeader>
           <CardContent className="gap-2">
             {!selected ? (
-              <Text variant="muted" className="py-6 text-center text-sm">{a('select_inspector_prompt')}</Text>
+              <EmptyState title={a('select_inspector_prompt')} />
             ) : assignments.isLoading ? (
               <LoadingList rows={2} />
             ) : !(assignments.data ?? []).length ? (
-              <Text variant="muted" className="py-6 text-center text-sm">{a('no_assignments')}</Text>
+              <EmptyState title={a('no_assignments')} />
             ) : (
               (assignments.data ?? []).map((x) => (
-                <View key={x.id} className="border-border flex-row items-center gap-2 rounded-lg border p-3">
+                <View key={x.id} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border p-3">
                   <Text className="flex-1 text-sm">{x.school?.name ?? x.school_id}</Text>
                   <Pressable onPress={() => run(adminInspections.revokeCampus(x.id), 'msg_revoked', () => assignments.mutate())} hitSlop={8}>
                     <Icon as={X} className="text-destructive size-4" />

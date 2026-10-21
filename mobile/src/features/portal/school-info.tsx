@@ -48,7 +48,7 @@ export function SchoolInformationView({ campus, isLoading, refresh, who }: { cam
               {campus.logo_url ? <SchoolLogo url={campus.logo_url} shape={campus.logo_shape} size={64} /> : null}
               <View className="flex-1">
                 <View className="flex-row items-center gap-2">
-                  <Icon as={Building2} className="size-5 text-[#022172] dark:text-blue-400" />
+                  <Icon as={Building2} className="size-5 text-brand dark:text-brand-secondary " />
                   <CardTitle className="flex-1 text-base">{campus.name}</CardTitle>
                 </View>
                 {campus.short_name ? <CardDescription>{k('short_name', { name: campus.short_name })}</CardDescription> : null}
@@ -85,7 +85,7 @@ export function SchoolInformationView({ campus, isLoading, refresh, who }: { cam
                 <View className="flex-1">
                   <Text className="text-sm font-medium">{k('website')}</Text>
                   <Pressable onPress={() => WebBrowser.openBrowserAsync(site)} accessibilityRole="link">
-                    <Text className="text-sm text-blue-600">{campus.website}</Text>
+                    <Text className="text-sm text-brand dark:text-brand-secondary">{campus.website}</Text>
                   </Pressable>
                 </View>
               </View>

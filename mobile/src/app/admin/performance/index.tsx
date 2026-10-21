@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { FileText, Plus, Settings2, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
 import { MultiSelect } from '@/components/app/multi-select';
@@ -17,6 +18,8 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Initials } from '@/components/app/layout';
+import { FilterChips } from '@/components/app/filter-chips';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { shortName } from '@/features/admin/people';
@@ -130,7 +133,7 @@ export default function PerformanceLog() {
                 </Button>
               </View>
               <SearchBar value={search} onChangeText={setSearch} placeholder={p('search_staff')} />
-              <Picker
+              <FilterChips
                 value={type}
                 onChange={setType}
                 options={[
@@ -162,22 +165,23 @@ export default function PerformanceLog() {
             const f = effectiveFine(l);
             return (
               <View className="gap-1.5 px-4 py-3">
-                <View className="flex-row items-start gap-2">
+                <View className="flex-row items-start gap-3">
+                  <Initials name={logStaffName(l) || '?'} />
                   <View className="flex-1">
-                    <Text className="font-medium">{logStaffName(l)}</Text>
+                    <Text className="text-sm font-semibold">{logStaffName(l)}</Text>
                     <Text className="text-muted-foreground text-xs">{l.staff?.employee_number}</Text>
                   </View>
-                  {l.letter_generated ? <Icon as={FileText} className="size-4 text-orange-500" /> : null}
-                  <Pressable onPress={() => remove(l)} hitSlop={8}>
-                    <Icon as={Trash2} className="size-4 text-red-500" />
+                  {l.letter_generated ? <Icon as={FileText} className="size-4 text-warning" /> : null}
+                  <Pressable onPress={() => remove(l)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>
                 <Text className="text-sm">{actionName(l.action, i18n.language)}</Text>
                 <View className="flex-row flex-wrap items-center gap-2">
                   <TypePill demerit={demerit} />
                   <EscalationPill stage={l.action?.escalation_stage || 'none'} />
-                  <Text className={demerit ? 'font-semibold text-red-600' : 'font-semibold text-green-600'}>{`${demerit ? pts : `+${pts}`} pts`}</Text>
-                  {f !== 0 ? <Text className={demerit ? 'text-red-600' : 'text-green-600'}>{`${demerit ? '-' : '+'}${Math.abs(f)}`}</Text> : null}
+                  <Text className={demerit ? 'font-semibold text-destructive' : 'font-semibold text-success'}>{`${demerit ? pts : `+${pts}`} pts`}</Text>
+                  {f !== 0 ? <Text className={demerit ? 'text-destructive' : 'text-success'}>{`${demerit ? '-' : '+'}${Math.abs(f)}`}</Text> : null}
                 </View>
                 <Text className="text-muted-foreground text-xs">{`${l.created_at ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(l.created_at)) : '—'}${l.notes ? ` · ${l.notes}` : ''}`}</Text>
               </View>
@@ -195,8 +199,8 @@ export default function PerformanceLog() {
             <View className="gap-1.5">
               <Label>{`${p('staff_member')} *`}</Label>
               {staff ? (
-                <View className="border-border flex-row items-center gap-2 rounded-md border p-2">
-                  <Text className="flex-1 text-sm text-green-700">{`${staff.name} (${staff.number})`}</Text>
+                <View className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border p-2">
+                  <Text className="flex-1 text-sm text-success">{`${staff.name} (${staff.number})`}</Text>
                   <Pressable onPress={() => setStaff(null)} hitSlop={8}>
                     <Icon as={X} className="text-muted-foreground size-4" />
                   </Pressable>
@@ -209,7 +213,7 @@ export default function PerformanceLog() {
                       {i > 0 ? <Separator /> : null}
                       <Pressable className="px-2 py-2.5" onPress={() => setStaff({ id: s.id, name: shortName(s.profile) || s.employee_number, number: s.employee_number })}>
                         <Text className="text-sm">
-                          <Text className="font-medium">{shortName(s.profile) || s.employee_number}</Text>
+                          <Text className="font-semibold">{shortName(s.profile) || s.employee_number}</Text>
                           <Text className="text-muted-foreground">{`  #${s.employee_number}`}</Text>
                         </Text>
                       </Pressable>
@@ -233,7 +237,7 @@ export default function PerformanceLog() {
                   <TypePill demerit={action.action_type === 'violation_demerit'} />
                   <EscalationPill stage={action.escalation_stage} />
                 </View>
-                {['written_warning', 'final_warning'].includes(action.escalation_stage) ? <Text className="text-xs text-orange-600">{p('letter_will_generate')}</Text> : null}
+                {['written_warning', 'final_warning'].includes(action.escalation_stage) ? <Text className="text-xs text-warning">{p('letter_will_generate')}</Text> : null}
               </View>
             ) : null}
             <View className="flex-row gap-3">

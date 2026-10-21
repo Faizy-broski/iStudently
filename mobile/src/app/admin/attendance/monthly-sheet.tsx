@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { FileSpreadsheet, FileText, Info } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { monthNames } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
@@ -135,7 +136,7 @@ export default function MonthlySheet() {
                   <Picker value={sectionId} onChange={setSectionId} placeholder={gradeId ? m('selectSection') : m('selectGradeFirst')} options={sectionList.map((s) => ({ value: s.id, label: s.name }))} />,
                   gradeId && sections.data && sectionList.length === 0 ? (
                     <View className="gap-1">
-                      <Text className="text-xs text-amber-700">{m('noSectionsHint')}</Text>
+                      <Text className="text-xs text-warning">{m('noSectionsHint')}</Text>
                       <Button variant="link" size="sm" className="self-start px-0" onPress={() => setScope('grade')}>
                         <Text className="text-xs">{m('useWholeGrade')}</Text>
                       </Button>
@@ -183,9 +184,9 @@ export default function MonthlySheet() {
             {field(m('supervisor'), <Input value={supervisor} onChangeText={setSupervisor} placeholder={m('autoFilled')} maxLength={120} />)}
             {field(m('room'), <Input value={room} onChangeText={setRoom} placeholder={m('autoFilled')} maxLength={60} />)}
             {scope === 'staff' && mode === 'filled' ? (
-              <View className="flex-row gap-2 rounded-md border border-amber-300 bg-amber-50 p-3">
-                <Icon as={Info} className="size-4 text-amber-900" />
-                <Text className="flex-1 text-xs text-amber-900">{m('staffFilledNote')}</Text>
+              <View className="flex-row gap-2 rounded-xl border border-warning/30 bg-warning-soft p-3">
+                <Icon as={Info} className="size-4 text-warning" />
+                <Text className="flex-1 text-xs text-warning">{m('staffFilledNote')}</Text>
               </View>
             ) : null}
           </CardContent>

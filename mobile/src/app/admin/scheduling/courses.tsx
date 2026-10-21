@@ -1,21 +1,23 @@
 import { coursePeriodTeacherName, type Course, type CoursePeriod, type Subject } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
-import { ArrowDown, ArrowUp, ChevronRight, Pencil, Plus, Trash2, Video } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, BookOpen, ChevronRight, Clock, Layers, Plus, Video, type LucideIcon } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
+import { Breadcrumbs, HeaderButton, IconTile, RowActions, type Tone } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { useAcademicYears } from '@/features/admin/grades';
@@ -103,7 +105,7 @@ function SubjectDialog({ subject, onClose, onSaved }: { subject: Subject | null;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="w-[94vw] max-w-md">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <View className="gap-3">
             <DialogHeader>
               <DialogTitle>{subject ? c('dialog_subject_edit') : c('dialog_subject_add')}</DialogTitle>
@@ -167,7 +169,7 @@ function CourseDialog({ subject, course, onClose, onSaved }: { subject: Subject;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="w-[94vw] max-w-md">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <View className="gap-3">
             <DialogHeader>
               <DialogTitle>
@@ -278,7 +280,7 @@ function CpDialog({ course, cp, siblings, onClose, onSaved }: { course: Course; 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92%] w-[96vw] max-w-lg">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
             <DialogHeader>
               <DialogTitle>{cp ? c('dialog_cp_edit') : c('dialog_cp_add')}</DialogTitle>
@@ -382,6 +384,8 @@ function CpDialog({ course, cp, siblings, onClose, onSaved }: { course: Course; 
 /** One ordered list: rows, up/down reordering (web: drag), edit/delete and an add row. */
 function OrderedList<T extends { id: string; sort_order?: number }>({
   title,
+  icon,
+  tone = 'brand',
   items,
   loading,
   selectedId,
@@ -395,6 +399,8 @@ function OrderedList<T extends { id: string; sort_order?: number }>({
   action,
 }: {
   title: string;
+  icon: LucideIcon;
+  tone?: Tone;
   items: T[];
   loading: boolean;
   selectedId?: string | null;
@@ -410,51 +416,45 @@ function OrderedList<T extends { id: string; sort_order?: number }>({
 }) {
   const { t } = useTranslation();
   return (
-    <Card>
-      <CardContent className="gap-1 py-3">
-        <Text className="text-muted-foreground text-xs">{title}</Text>
-        {loading ? <LoadingList rows={2} /> : null}
-        {items.map((x, i) => (
-          <View key={x.id}>
-            {i > 0 ? <Separator /> : null}
-            <View className={cn('flex-row items-center gap-1 py-1.5', selectedId === x.id && 'bg-primary/10 rounded')}>
-              {onReorder ? (
-              <View>
-                <Pressable onPress={() => i > 0 && onReorder(i, i - 1)} disabled={i === 0} hitSlop={4} className={cn('px-1', i === 0 && 'opacity-30')} accessibilityLabel={t('app.sc_move_up')}>
-                  <Icon as={ArrowUp} className="text-muted-foreground size-3.5" />
-                </Pressable>
-                <Pressable onPress={() => i < items.length - 1 && onReorder(i, i + 1)} disabled={i === items.length - 1} hitSlop={4} className={cn('px-1', i === items.length - 1 && 'opacity-30')} accessibilityLabel={t('app.sc_move_down')}>
-                  <Icon as={ArrowDown} className="text-muted-foreground size-3.5" />
-                </Pressable>
-              </View>
-              ) : null}
-              <Pressable onPress={onSelect ? () => onSelect(x) : undefined} disabled={!onSelect} className="flex-1 flex-row items-center gap-2 py-1">
-                <Text className="text-muted-foreground w-5 text-xs">{i + 1}</Text>
-                <Text className={cn('flex-1 text-sm', selectedId === x.id && 'font-semibold')}>{label(x)}</Text>
-                {trailing ? <Text className="text-muted-foreground text-xs">{trailing(x)}</Text> : null}
-                {onSelect ? <Icon as={ChevronRight} className="text-muted-foreground size-4 rtl:rotate-180" /> : null}
+    <Panel>
+      <View className="flex-row items-center gap-3 px-4 pt-3 pb-2">
+        <IconTile icon={icon} tone={tone} />
+        <Text className="flex-1 text-sm font-semibold">{title}</Text>
+        {onAdd ? <HeaderButton icon={Plus} label={t('common.add')} onPress={onAdd} /> : null}
+      </View>
+      {loading ? (
+        <View className="px-4 pb-3">
+          <LoadingList rows={2} />
+        </View>
+      ) : null}
+      {items.map((x, i) => (
+        <View key={x.id} className={cn('border-info-soft dark:border-border flex-row items-center gap-2 border-t px-3 py-2', selectedId === x.id && 'bg-info-soft/70')}>
+          {onReorder ? (
+            <View>
+              <Pressable onPress={() => i > 0 && onReorder(i, i - 1)} disabled={i === 0} hitSlop={4} className={cn('px-1', i === 0 && 'opacity-30')} accessibilityLabel={t('app.sc_move_up')}>
+                <Icon as={ArrowUp} className="text-muted-foreground size-3.5" />
               </Pressable>
-              {action ? action(x) : null}
-              {onEdit ? (
-                <Pressable onPress={() => onEdit(x)} hitSlop={6} className="p-1.5">
-                  <Icon as={Pencil} className="text-muted-foreground size-3.5" />
-                </Pressable>
-              ) : null}
-              {onDelete ? (
-                <Pressable onPress={() => onDelete(x)} hitSlop={6} className="p-1.5">
-                  <Icon as={Trash2} className="text-destructive size-3.5" />
-                </Pressable>
-              ) : null}
+              <Pressable onPress={() => i < items.length - 1 && onReorder(i, i + 1)} disabled={i === items.length - 1} hitSlop={4} className={cn('px-1', i === items.length - 1 && 'opacity-30')} accessibilityLabel={t('app.sc_move_down')}>
+                <Icon as={ArrowDown} className="text-muted-foreground size-3.5" />
+              </Pressable>
             </View>
-          </View>
-        ))}
-        {onAdd ? (
-          <Pressable onPress={onAdd} className="mt-1 flex-row items-center justify-center gap-1 rounded-md border border-dashed py-2">
-            <Icon as={Plus} className="text-primary size-4" />
+          ) : null}
+          <Pressable onPress={onSelect ? () => onSelect(x) : undefined} disabled={!onSelect} className="flex-1 flex-row items-center gap-2.5 py-1 active:opacity-70">
+            <View className={cn('size-7 items-center justify-center rounded-full', selectedId === x.id ? 'bg-brand dark:bg-brand-secondary' : 'bg-muted')}>
+              <Text className={cn('text-[11px] font-bold', selectedId === x.id ? 'text-white' : 'text-muted-foreground')}>{i + 1}</Text>
+            </View>
+            <Text className={cn('flex-1 text-sm', selectedId === x.id ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')} numberOfLines={2}>
+              {label(x)}
+            </Text>
+            {trailing ? <StatusChip label={trailing(x)} tone="info" className="px-2 py-0.5" /> : null}
+            {onSelect ? <Icon flipRtl as={ChevronRight} className="text-muted-foreground size-4" /> : null}
           </Pressable>
-        ) : null}
-      </CardContent>
-    </Card>
+          <RowActions onEdit={onEdit ? () => onEdit(x) : undefined} onDelete={onDelete ? () => onDelete(x) : undefined}>
+            {action ? action(x) : null}
+          </RowActions>
+        </View>
+      ))}
+    </Panel>
   );
 }
 
@@ -530,22 +530,21 @@ export default function CoursesScreen() {
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: c('title') }} />
       <ScrollView contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => (subjectsRes.mutate(), coursesRes.mutate(), cpsRes.mutate())} />}>
-        <View className="flex-row flex-wrap items-center gap-1">
-          <Pressable
-            onPress={() => {
-              setSubjectId(null);
-              setCourseId(null);
-            }}>
-            <Text className="text-primary text-sm">{c('title')}</Text>
-          </Pressable>
-          {subject ? (
-            <Pressable onPress={() => setCourseId(null)}>
-              <Text className="text-primary text-sm"> › {subject.name}</Text>
-            </Pressable>
-          ) : null}
-          {course ? <Text className="text-sm"> › {course.title}</Text> : null}
-        </View>
+        <Breadcrumbs
+          items={[
+            {
+              label: c('title'),
+              onPress: () => {
+                setSubjectId(null);
+                setCourseId(null);
+              },
+            },
+            ...(subject ? [{ label: subject.name, onPress: () => setCourseId(null) }] : []),
+            ...(course ? [{ label: course.title }] : []),
+          ]}
+        />
         <OrderedList
+          icon={BookOpen}
           title={c('found_subjects', { count: subjects.length })}
           items={subjects}
           loading={subjectsRes.isLoading}
@@ -562,6 +561,8 @@ export default function CoursesScreen() {
         />
         {subject ? (
           <OrderedList
+            icon={Layers}
+            tone="success"
             title={c('found_courses', { count: courses.length })}
             items={courses}
             loading={coursesRes.isLoading}
@@ -574,13 +575,14 @@ export default function CoursesScreen() {
             onReorder={w ? (a, b) => reorder(courses, a, b, (id, o) => adminCourses.updateCourse(id, { sort_order: o }), () => coursesRes.mutate()) : undefined}
           />
         ) : (
-          <Text className="text-muted-foreground text-center text-sm">{c('empty_select_subject')}</Text>
+          <EmptyState icon={BookOpen} title={c('empty_select_subject')} />
         )}
         {course ? (
           <>
-            <Text className="text-muted-foreground text-xs">{c('th_available_seats')}</Text>
             <OrderedList
-              title={c('found_course_periods', { count: cps.length })}
+              icon={Clock}
+              tone="warning"
+              title={`${c('found_course_periods', { count: cps.length })} · ${c('th_available_seats')}`}
               items={cps}
               loading={cpsRes.isLoading}
               label={cpTitle}
@@ -593,17 +595,17 @@ export default function CoursesScreen() {
                 role.isTeacher && staffId && x.teacher_id === staffId ? (
                   <Pressable
                     onPress={() => router.push(role.href('/online-classes', { course_period_id: x.id, autostart: '1' }))}
-                    hitSlop={6}
-                    className="p-1.5"
+                    hitSlop={4}
+                    className="bg-success-soft size-9 items-center justify-center rounded-full active:opacity-70"
                     accessibilityLabel={c('btn_start_online_session')}>
-                    <Icon as={Video} className="size-3.5 text-green-600" />
+                    <Icon as={Video} className="text-success size-4" />
                   </Pressable>
                 ) : null
               }
             />
           </>
         ) : subject ? (
-          <Text className="text-muted-foreground text-center text-sm">{c('empty_select_course')}</Text>
+          <EmptyState icon={Layers} title={c('empty_select_course')} />
         ) : null}
       </ScrollView>
       {dialog?.kind === 'subject' ? <SubjectDialog subject={dialog.item} onClose={() => setDialog(null)} onSaved={() => subjectsRes.mutate()} /> : null}

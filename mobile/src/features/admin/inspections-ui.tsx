@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils';
 
 function cellCls(score: number | undefined) {
   if (score === undefined) return 'bg-muted text-muted-foreground';
-  if (score >= 80) return 'bg-green-100 text-green-800';
-  if (score >= 60) return 'bg-lime-100 text-lime-800';
-  if (score >= 40) return 'bg-amber-100 text-amber-800';
-  return 'bg-red-100 text-red-800';
+  if (score >= 80) return 'bg-success-soft text-success';
+  if (score >= 60) return 'bg-success-soft text-success';
+  if (score >= 40) return 'bg-warning-soft text-warning';
+  return 'bg-destructive-soft text-destructive';
 }
 
 /** Teacher × category average scores (web: ScoreHeatmap). */

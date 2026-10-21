@@ -1,19 +1,22 @@
 import { coursePeriodTeacherName, type CoursePeriod } from '@studently/api-client';
 import { toCsv } from '@studently/shared-utils';
 import { Stack } from 'expo-router';
-import { Check, Download, FileDown, Printer } from 'lucide-react-native';
+import { Download, FileDown, Printer } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { CheckMark } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { usePrintContext } from '@/features/admin/print-context';
 import { useCampus } from '@/features/campus/campus';
@@ -21,9 +24,8 @@ import { adminCourses, adminScheduling } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { buildPrintHtml, escapeHtml, printHtml, sharePdf } from '@/lib/print';
 import { shareTextFile } from '@/lib/share-file';
-import { cn } from '@/lib/utils';
 
-const STYLES = `.class-page{padding:8px 0}.rh{display:flex;justify-content:space-between;font-weight:600;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px 8px}.role{font-size:11px;font-weight:700}.teacher{font-size:12px;font-weight:600;color:#b45309}.student{font-size:12px;font-weight:500;color:#1d4ed8}`;
+const STYLES = `.class-page{padding:8px 0}.rh{display:flex;justify-content:space-between;font-weight:600;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px 8px}.role{font-size:11px;font-weight:700}.teacher{font-size:12px;font-weight:600;color:${colors.warning}}.student{font-size:12px;font-weight:500;color:${colors.brand}}`;
 
 /** Class rosters (teacher + students) per chosen course period, for photos (web: /admin/scheduling/print-class-pictures). */
 export default function PrintClassPictures() {
@@ -121,17 +123,15 @@ export default function PrintClassPictures() {
           <Card>
             <CardContent className="py-1">
               <Pressable onPress={() => setSelected(all ? new Set() : new Set([...selected, ...shown.map((c) => c.id)]))} className="flex-row items-center gap-3 py-2.5">
-                <View className={cn('size-5 items-center justify-center rounded border', all ? 'border-primary bg-primary' : 'border-border')}>{all ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>
+                <CheckMark on={all} />
                 <Text className="text-sm font-semibold">{t('app.sc_select_all', { count: selected.size })}</Text>
               </Pressable>
-              {!shown.length ? <Text className="text-muted-foreground py-4 text-center text-sm">{p('no_cps_found')}</Text> : null}
+              {!shown.length ? <EmptyState title={p('no_cps_found')} /> : null}
               {shown.map((cp) => (
                 <View key={cp.id}>
                   <Separator />
                   <Pressable onPress={() => toggle(cp.id)} className="flex-row items-center gap-3 py-2.5" accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(cp.id) }}>
-                    <View className={cn('size-5 items-center justify-center rounded border', selected.has(cp.id) ? 'border-primary bg-primary' : 'border-border')}>
-                      {selected.has(cp.id) ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}
-                    </View>
+                    <CheckMark on={selected.has(cp.id)} />
                     <Text className="flex-1 text-sm">{label(cp)}</Text>
                   </Pressable>
                 </View>

@@ -96,8 +96,8 @@ export default function RecordPayment() {
               {rows.length > 1 ? (
                 <View className="flex-row items-center justify-between">
                   <Text className="text-muted-foreground text-xs">{`#${i + 1}`}</Text>
-                  <Pressable onPress={() => setRows((list) => list.filter((x) => x.key !== r.key))} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={8}>
-                    <Icon as={Trash2} className="text-muted-foreground size-4" />
+                  <Pressable onPress={() => setRows((list) => list.filter((x) => x.key !== r.key))} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>
               ) : null}
@@ -126,7 +126,7 @@ export default function RecordPayment() {
               </View>
               <Label>{p('th_attachment')}</Label>
               {r.file ? (
-                <View className="border-border flex-row items-center gap-2 rounded-md border px-3 py-2">
+                <View className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border px-3 py-2">
                   <Icon as={Paperclip} className="text-muted-foreground size-4" />
                   <Text className="flex-1 text-sm" numberOfLines={1}>
                     {r.file.name}

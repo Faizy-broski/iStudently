@@ -1,13 +1,14 @@
 import { Stack } from 'expo-router';
-import { Download, Trophy } from 'lucide-react-native';
+import { BookOpenCheck, Download, Trophy } from 'lucide-react-native';
 import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
+import { IconTile, RowItem, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { MushafHeatmap, useHz } from '@/features/admin/hifzi';
@@ -64,37 +65,37 @@ export function HifziProgressView({ studentId, milestones }: { studentId: string
           <Icon as={Download} className="size-4" />
           <Text>{t('reports.downloadPdf')}</Text>
         </Button>
-        <Card>
-          <CardContent className="p-4">
-            <MushafHeatmap cells={heatmap.data ?? []} />
-          </CardContent>
-        </Card>
+        <Panel className="p-4">
+          <MushafHeatmap cells={heatmap.data ?? []} />
+        </Panel>
         {achievements.data?.length ? (
-          <View className="gap-2">
-            <Text className="text-lg font-semibold">{t('milestones.title')}</Text>
+          <Section title={t('milestones.title')}>
             <View className="flex-row flex-wrap gap-2">
               {achievements.data.map((m) => (
-                <Badge key={m.id} variant="secondary" className="flex-row items-center gap-1.5 px-3 py-1.5">
-                  <Icon as={Trophy} className="size-3.5 text-amber-500" />
-                  <Text>{t(`milestones.${m.milestoneType === 'syllabus_grade' ? 'syllabusGrade' : m.milestoneType}`, { n: m.unitNumber })}</Text>
-                </Badge>
+                <View key={m.id} className="bg-warning-soft flex-row items-center gap-1.5 rounded-full px-3 py-1.5">
+                  <Icon as={Trophy} className="text-warning size-3.5" />
+                  <Text className="text-warning text-xs font-semibold">{t(`milestones.${m.milestoneType === 'syllabus_grade' ? 'syllabusGrade' : m.milestoneType}`, { n: m.unitNumber })}</Text>
+                </View>
               ))}
             </View>
-          </View>
+          </Section>
         ) : null}
-        <Text className="text-lg font-semibold">{t('recitation.title')}</Text>
-        {(sessions.data ?? []).map((s) => (
-          <Card key={s.id} className="py-3">
-            <CardContent className="flex-row items-center justify-between px-3">
-              <Text className="text-muted-foreground text-sm">{formatDate(s.created_at)}</Text>
-              <Badge variant="secondary">
-                <Text>{s.grade_code ?? '—'}</Text>
-              </Badge>
-              <Text className="font-medium">{s.raw_score?.toFixed(2) ?? '—'}</Text>
-            </CardContent>
-          </Card>
-        ))}
-        <View />
+        <Section title={t('recitation.title')}>
+          {(sessions.data ?? []).length ? (
+            <Panel>
+              {(sessions.data ?? []).map((s, i, arr) => (
+                <RowItem
+                  key={s.id}
+                  leading={<IconTile icon={BookOpenCheck} size={36} />}
+                  title={s.raw_score?.toFixed(2) ?? '—'}
+                  meta={formatDate(s.created_at)}
+                  trailing={<StatusChip label={s.grade_code ?? '—'} tone="info" />}
+                  last={i === arr.length - 1}
+                />
+              ))}
+            </Panel>
+          ) : null}
+        </Section>
       </ScrollView>
     </>
   );

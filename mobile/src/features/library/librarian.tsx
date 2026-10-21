@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FormSection, Initials } from '@/components/app/layout';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
@@ -39,49 +39,48 @@ export function StudentSelectCard({
   const [q, setQ] = useState('');
   const term = useDebounced(q.trim(), 300);
   const res = useApi(term && !value ? ['librarian', 'student-search', term, campusId ?? 'school'] : null, ([, , s]) => adminLibrary.searchStudents(s as string, campusId ?? undefined));
-  const box = tone === 'green' ? 'border-green-200 bg-green-50 dark:bg-green-950/30' : 'border-orange-200 bg-orange-50 dark:bg-orange-950/30';
-  const ink = tone === 'green' ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200';
   return (
-    <Card>
-      <CardHeader className="flex-row items-center gap-2">
-        <Icon as={User} className="size-5" />
-        <CardTitle className="text-base">{k('select_student')}</CardTitle>
-      </CardHeader>
-      <CardContent className="gap-3">
-        {value ? (
-          <View className={cn('gap-1 rounded-lg border p-3', box)}>
-            <View className="flex-row items-center gap-2">
-              <Icon as={User} className={cn('size-4', ink)} />
-              <Text className={cn('flex-1 font-medium', ink)}>{k('selected_student')}</Text>
-              <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('app.ss_change')}>
-                <Icon as={X} className={cn('size-4', ink)} />
-              </Pressable>
-            </View>
-            <Text className={cn('text-sm', ink)}>{`${studentName(value)} (${value.admission_number})`}</Text>
+    <FormSection title={k('select_student')} icon={User}>
+      {value ? (
+        <View className="flex-row items-center gap-3">
+          <Initials name={studentName(value) || '?'} size={44} tone={tone === 'green' ? 'warning' : 'destructive'} />
+          <View className="flex-1 gap-0.5">
+            <Text className="font-semibold" numberOfLines={1}>
+              {studentName(value)}
+            </Text>
+            <Text variant="muted" className="text-xs" numberOfLines={1}>
+              {[value.class_name, value.admission_number].filter(Boolean).join(' · ')}
+            </Text>
             {extra}
           </View>
-        ) : (
-          <>
-            <SearchBar value={q} onChangeText={setQ} placeholder={k('student_search_placeholder')} />
-            {res.isLoading ? <Text className="text-muted-foreground text-sm">{k('searching')}</Text> : null}
-            {(res.data ?? []).map((s) => (
-              <Pressable
-                key={s.id}
-                onPress={() => {
-                  onChange(s);
-                  setQ('');
-                }}
-                accessibilityRole="button"
-                className="border-border rounded-lg border p-3">
-                <Text className="font-medium">{studentName(s)}</Text>
-                <Text className="text-muted-foreground text-sm">{`${k('id')}: ${s.admission_number}`}</Text>
-              </Pressable>
-            ))}
-            {term && !res.isLoading && !(res.data ?? []).length ? <Text className="text-muted-foreground text-sm">{k('no_students')}</Text> : null}
-          </>
-        )}
-      </CardContent>
-    </Card>
+          <Pressable onPress={() => onChange(null)} hitSlop={8} className="bg-muted size-9 items-center justify-center rounded-full active:opacity-70" accessibilityLabel={t('app.ss_change')}>
+            <Icon as={X} className="text-muted-foreground size-4" />
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <SearchBar value={q} onChangeText={setQ} placeholder={k('student_search_placeholder')} />
+          {res.isLoading ? <Text className="text-muted-foreground text-sm">{k('searching')}</Text> : null}
+          {(res.data ?? []).map((s) => (
+            <Pressable
+              key={s.id}
+              onPress={() => {
+                onChange(s);
+                setQ('');
+              }}
+              accessibilityRole="button"
+              className="border-info-soft dark:border-border flex-row items-center gap-3 rounded-xl border p-3 active:opacity-70">
+              <Initials name={studentName(s) || '?'} size={36} />
+              <View className="flex-1">
+                <Text className="text-sm font-semibold">{studentName(s)}</Text>
+                <Text className="text-muted-foreground text-xs">{`${k('id')}: ${s.admission_number}`}</Text>
+              </View>
+            </Pressable>
+          ))}
+          {term && !res.isLoading && !(res.data ?? []).length ? <Text className="text-muted-foreground text-sm">{k('no_students')}</Text> : null}
+        </>
+      )}
+    </FormSection>
   );
 }
 
@@ -105,50 +104,38 @@ export function ActiveLoansCard({
   const res = useApi(studentId ? ['librarian', 'active-loans', studentId] : null, ([, , s]) => adminLibrary.activeLoans(s as string));
   const loans = res.data ?? [];
   return (
-    <Card>
-      <CardHeader className="flex-row items-center gap-2">
-        <Icon as={BookOpen} className="size-5" />
-        <CardTitle className="text-base">{k('active_loans')}</CardTitle>
-      </CardHeader>
-      <CardContent className="gap-2">
-        {res.isLoading ? (
-          <LoadingList rows={2} />
-        ) : !loans.length ? (
-          <View className="items-center py-6">
-            <Icon as={BookOpen} className="text-muted-foreground mb-3 size-10" />
-            <Text className="text-muted-foreground">{k('no_active_loans')}</Text>
-            {studentId ? <Text className="text-muted-foreground mt-1 text-sm">{k('no_books_issued')}</Text> : null}
-          </View>
-        ) : (
-          loans.map((l) => {
-            const over = daysPast(l.due_date, now);
-            const f = fine?.(l) ?? 0;
-            return (
-              <Pressable
-                key={l.id}
-                onPress={() => onSelect(l)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected?.id === l.id }}
-                className={cn('gap-1 rounded-lg border p-3', selected?.id === l.id ? 'border-primary bg-primary/5' : 'border-border')}>
-                <View className="flex-row items-start justify-between gap-2">
-                  <View className="flex-1">
-                    <Text className="font-medium">{l.book_title}</Text>
-                    <Text className="text-muted-foreground text-xs">{`${k('copy')}: ${l.accession_number ?? '—'}`}</Text>
-                  </View>
-                  <Badge variant={over > 0 ? 'destructive' : 'secondary'}>
-                    <Text className="text-xs">{over > 0 ? k('overdue') : k('active')}</Text>
-                  </Badge>
+    <FormSection title={k('active_loans')} icon={BookOpen} className="gap-2">
+      {res.isLoading ? (
+        <LoadingList rows={2} />
+      ) : !loans.length ? (
+        <EmptyState icon={BookOpen} title={k('no_active_loans')} body={studentId ? k('no_books_issued') : undefined} />
+      ) : (
+        loans.map((l) => {
+          const over = daysPast(l.due_date, now);
+          const f = fine?.(l) ?? 0;
+          return (
+            <Pressable
+              key={l.id}
+              onPress={() => onSelect(l)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected?.id === l.id }}
+              className={cn('gap-1 rounded-xl border p-3 active:opacity-70', selected?.id === l.id ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border')}>
+              <View className="flex-row items-start justify-between gap-2">
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold">{l.book_title}</Text>
+                  <Text className="text-muted-foreground text-xs">{`${k('copy')}: ${l.accession_number ?? '—'}`}</Text>
                 </View>
-                <View className="flex-row flex-wrap gap-3">
-                  <Text className="text-muted-foreground text-xs">{`${k('due')}: ${formatDate(l.due_date)}`}</Text>
-                  {f > 0 ? <Text className="text-xs font-medium text-red-600">{k('fine_amount', { amount: f.toFixed(2) })}</Text> : null}
-                </View>
-              </Pressable>
-            );
-          })
-        )}
-      </CardContent>
-    </Card>
+                <StatusChip label={over > 0 ? k('overdue') : k('active')} tone={over > 0 ? 'destructive' : 'success'} />
+              </View>
+              <View className="flex-row flex-wrap gap-3">
+                <Text className="text-muted-foreground text-xs">{`${k('due')}: ${formatDate(l.due_date)}`}</Text>
+                {f > 0 ? <Text className="text-xs font-medium text-destructive">{k('fine_amount', { amount: f.toFixed(2) })}</Text> : null}
+              </View>
+            </Pressable>
+          );
+        })
+      )}
+    </FormSection>
   );
 }
 

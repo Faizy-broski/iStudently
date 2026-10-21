@@ -3,15 +3,17 @@ import { Stack } from 'expo-router';
 import { AlertCircle, ChevronDown, ChevronUp, HelpCircle, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { IconTile, RowPill } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
@@ -37,9 +39,7 @@ export default function TeacherQuiz() {
   const schoolId = me.status === 'ready' ? (me.me.profile.school_id ?? null) : null;
   const staffId = me.status === 'ready' ? (me.me.profile.staff_id ?? null) : null;
   const { campusId } = useCampus();
-  const quizzes = useApi(schoolId && staffId ? ['teacher', 'quizzes', schoolId, staffId, campusId ?? ''] : null, ([, , , s, c]) =>
-    adminQuiz.quizzes({ campus_id: (c as string) || null, created_by: s as string }),
-  );
+  const quizzes = useApi(schoolId && staffId ? ['teacher', 'quizzes', schoolId, staffId, campusId ?? ''] : null, ([, , , s, c]) => adminQuiz.quizzes({ campus_id: (c as string) || null, created_by: s as string }));
   const cps = useApi(schoolId ? ['teacher', 'quiz-cps', schoolId, campusId ?? ''] : null, ([, , s, c]) => adminQuiz.coursePeriodsForQuiz(s as string, (c as string) || null));
   const [open, setOpen] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
@@ -85,33 +85,21 @@ export default function TeacherQuiz() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => quizzes.mutate()} />}>
-        <Text variant="muted">{k('pageSubtitle')}</Text>
-        <Button className="self-start" onPress={() => setForm({ title: '', description: '', cp: '', answers: false, shuffle: false })}>
-          <Icon as={Plus} className="text-primary-foreground size-4" />
-          <Text>{k('newQuiz')}</Text>
-        </Button>
+        <View className="flex-row items-start gap-3">
+          <Text variant="muted" className="flex-1 text-sm">
+            {k('pageSubtitle')}
+          </Text>
+          <Button size="sm" className="rounded-full" onPress={() => setForm({ title: '', description: '', cp: '', answers: false, shuffle: false })}>
+            <Icon as={Plus} className="text-primary-foreground size-4" />
+            <Text>{k('newQuiz')}</Text>
+          </Button>
+        </View>
         {quizzes.isLoading ? (
           <LoadingList rows={4} />
         ) : !list.length ? (
-          <Card>
-            <CardContent className="items-center py-14">
-              <Icon as={HelpCircle} className="text-muted-foreground mb-3 size-12" />
-              <Text className="text-muted-foreground font-medium">{k('noQuizzesCreatedYet')}</Text>
-              <Text className="text-muted-foreground mt-1 text-sm">{k('createFirstQuiz')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={HelpCircle} title={k('noQuizzesCreatedYet')} body={k('createFirstQuiz')} />
         ) : (
-          list.map((q) => (
-            <QuizRow
-              key={q.id}
-              quiz={q}
-              expanded={open === q.id}
-              onToggle={() => setOpen(open === q.id ? null : q.id)}
-              onDelete={() => remove(q)}
-              deleting={deleting === q.id}
-              onAdd={() => setAdding(q.id)}
-            />
-          ))
+          list.map((q) => <QuizRow key={q.id} quiz={q} expanded={open === q.id} onToggle={() => setOpen(open === q.id ? null : q.id)} onDelete={() => remove(q)} deleting={deleting === q.id} onAdd={() => setAdding(q.id)} />)
         )}
       </ScrollView>
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
@@ -195,70 +183,59 @@ function QuizRow({ quiz, expanded, onToggle, onDelete, deleting, onAdd }: { quiz
   }
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded }} className="flex-row items-center gap-3 p-4">
-          <Icon as={HelpCircle} className="text-primary size-5" />
-          <View className="flex-1 gap-1">
-            <Text className="font-semibold">{quiz.title}</Text>
-            <View className="flex-row flex-wrap items-center gap-2">
-              {quiz.question_count != null ? <Text className="text-muted-foreground text-xs">{k('questionCountBadge', { count: quiz.question_count })}</Text> : null}
-              {quiz.show_correct_answers ? (
-                <Badge variant="secondary">
-                  <Text className="text-xs">{k('answersShown')}</Text>
-                </Badge>
-              ) : null}
-              {quiz.shuffle ? (
-                <Badge variant="secondary">
-                  <Text className="text-xs">{k('shuffled')}</Text>
-                </Badge>
-              ) : null}
-              <Text className="text-muted-foreground text-xs">{formatDate(quiz.created_at)}</Text>
-            </View>
+    <Panel>
+      <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded }} className="flex-row items-center gap-3 px-4 py-3 active:opacity-70">
+        <IconTile icon={HelpCircle} size={40} />
+        <View className="flex-1 gap-1">
+          <Text className="text-sm font-semibold">{quiz.title}</Text>
+          <View className="flex-row flex-wrap items-center gap-1.5">
+            {quiz.question_count != null ? <StatusChip label={k('questionCountBadge', { count: quiz.question_count })} tone="info" /> : null}
+            {quiz.show_correct_answers ? <StatusChip label={k('answersShown')} tone="success" /> : null}
+            {quiz.shuffle ? <StatusChip label={k('shuffled')} tone="warning" /> : null}
+            <Text variant="muted" className="text-[11px]">
+              {formatDate(quiz.created_at)}
+            </Text>
           </View>
-          <Pressable onPress={onDelete} disabled={deleting} hitSlop={8} accessibilityLabel={t('common.delete')} className="p-1">
-            <Icon as={Trash2} className="size-4 text-red-500" />
-          </Pressable>
-          <Icon as={expanded ? ChevronUp : ChevronDown} className="text-muted-foreground size-4" />
+        </View>
+        <Pressable onPress={onDelete} disabled={deleting} hitSlop={8} accessibilityLabel={t('common.delete')} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+          <Icon as={Trash2} className="text-destructive size-4" />
         </Pressable>
-        {expanded ? (
-          <View className="border-border gap-3 border-t px-4 pt-3 pb-4">
-            <View className="flex-row items-center justify-between gap-2">
-              <Text className="flex-1 text-sm font-medium">{`${k('questionsCount', { count: questions.length })}${total > 0 ? ` · ${k('ptsTotal', { points: total })}` : ''}`}</Text>
-              <Button size="sm" variant="outline" onPress={onAdd}>
-                <Icon as={Plus} className="size-3" />
-                <Text>{k('addQuestion')}</Text>
-              </Button>
-            </View>
-            {qs.isLoading ? (
-              <LoadingList rows={2} />
-            ) : !questions.length ? (
-              <Text className="text-muted-foreground py-4 text-center text-sm">{k('noQuestionsYet')}</Text>
-            ) : (
-              questions.map((m, i) => (
-                <View key={m.id} className="border-border bg-muted/30 flex-row items-start gap-2 rounded-lg border p-3">
-                  <Text className="text-muted-foreground w-5 text-xs">{`${i + 1}.`}</Text>
-                  <View className="flex-1 gap-1">
-                    <Text className="text-sm">{m.question?.title || k('unknownQuestion')}</Text>
-                    <View className="flex-row items-center gap-2">
-                      {m.question?.type ? (
-                        <Badge variant="outline">
-                          <Text className="text-xs">{t(`quiz.questionTypes.${m.question.type}`)}</Text>
-                        </Badge>
-                      ) : null}
-                      <Text className="text-muted-foreground text-xs">{k('ptsAbbrev', { count: m.points })}</Text>
-                    </View>
-                  </View>
-                  <Pressable onPress={() => removeQuestion(m.id)} hitSlop={8} accessibilityLabel={t('common.delete')}>
-                    <Icon as={Trash2} className="size-3.5 text-red-400" />
-                  </Pressable>
-                </View>
-              ))
-            )}
+        <Icon as={expanded ? ChevronUp : ChevronDown} className="text-muted-foreground size-4" />
+      </Pressable>
+      {expanded ? (
+        <View className="border-info-soft dark:border-border gap-3 border-t px-4 pb-4 pt-3">
+          <View className="flex-row items-center justify-between gap-2">
+            <Text className="flex-1 text-sm font-semibold">{`${k('questionsCount', { count: questions.length })}${total > 0 ? ` · ${k('ptsTotal', { points: total })}` : ''}`}</Text>
+            <RowPill icon={Plus} label={k('addQuestion')} onPress={onAdd} />
           </View>
-        ) : null}
-      </CardContent>
-    </Card>
+          {qs.isLoading ? (
+            <LoadingList rows={2} />
+          ) : !questions.length ? (
+            <EmptyState icon={HelpCircle} title={k('noQuestionsYet')} />
+          ) : (
+            questions.map((m, i) => (
+              <View key={m.id} className="bg-muted/40 flex-row items-start gap-3 rounded-xl p-3">
+                <View className="bg-info-soft size-7 items-center justify-center rounded-full">
+                  <Text className="text-brand dark:text-brand-secondary text-[11px] font-bold">{String(i + 1)}</Text>
+                </View>
+                <View className="flex-1 gap-1">
+                  <Text className="text-sm">{m.question?.title || k('unknownQuestion')}</Text>
+                  <View className="flex-row flex-wrap items-center gap-1.5">
+                    {m.question?.type ? <StatusChip label={t(`quiz.questionTypes.${m.question.type}`)} tone="info" /> : null}
+                    <Text variant="muted" className="text-[11px]">
+                      {k('ptsAbbrev', { count: m.points })}
+                    </Text>
+                  </View>
+                </View>
+                <Pressable onPress={() => removeQuestion(m.id)} hitSlop={8} accessibilityLabel={t('common.delete')} className="bg-destructive-soft size-8 items-center justify-center rounded-full active:opacity-70">
+                  <Icon as={Trash2} className="text-destructive size-3.5" />
+                </Pressable>
+              </View>
+            ))
+          )}
+        </View>
+      ) : null}
+    </Panel>
   );
 }
 
@@ -293,20 +270,19 @@ function AddQuestionDialog({ quizId, schoolId, staffId, campusId, onClose, onAdd
           {bank.isLoading ? (
             <LoadingList rows={2} />
           ) : !questions.length ? (
-            <View className="items-center py-4">
-              <Icon as={AlertCircle} className="text-muted-foreground mb-2 size-8" />
-              <Text className="text-muted-foreground text-sm">{k('noQuestionsInBank')}</Text>
-              <Text className="text-muted-foreground mt-1 text-xs">{k('createQuestionsInAdminFirst')}</Text>
+            <View className="items-center gap-1 py-4">
+              <View className="bg-muted mb-1 size-12 items-center justify-center rounded-full">
+                <Icon as={AlertCircle} className="text-muted-foreground size-5" />
+              </View>
+              <Text className="text-center text-sm font-semibold">{k('noQuestionsInBank')}</Text>
+              <Text variant="muted" className="text-center text-xs">
+                {k('createQuestionsInAdminFirst')}
+              </Text>
             </View>
           ) : (
             <View className="gap-1.5">
               <Label>{k('selectQuestion')}</Label>
-              <Picker
-                value={selected || null}
-                onChange={setSelected}
-                placeholder={k('chooseAQuestionPlaceholder')}
-                options={questions.map((q) => ({ value: q.id, label: `${q.title} (${t(`quiz.questionTypes.${q.type}`)})` }))}
-              />
+              <Picker value={selected || null} onChange={setSelected} placeholder={k('chooseAQuestionPlaceholder')} options={questions.map((q) => ({ value: q.id, label: `${q.title} (${t(`quiz.questionTypes.${q.type}`)})` }))} />
             </View>
           )}
           <View className="gap-1.5">

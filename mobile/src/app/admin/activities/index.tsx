@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
 import { SearchBar } from '@/components/app/search-bar';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAc } from '@/features/admin/activities';
 import { studentFullName } from '@/features/admin/scheduling-tools';
@@ -47,10 +48,15 @@ export default function ActivitiesStudentScreen() {
             onPress={() =>
               router.push({ pathname: '/admin/activities/student', params: { id: s.id, name: studentFullName(s.profile), number: s.student_number } })
             }>
-            <Text className="text-primary font-medium">{studentFullName(s.profile) || '—'}</Text>
-            <Text className="text-muted-foreground text-xs">
-              {a('studentTableId')}: {s.student_number} · {a('gradeLevel')}: {s.grade_level ?? '-'}
-            </Text>
+            <View className="flex-row items-center gap-3">
+              <Initials name={studentFullName(s.profile) || '?'} />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-sm font-semibold">{studentFullName(s.profile) || '—'}</Text>
+                <Text className="text-muted-foreground text-xs">
+                  {a('studentTableId')}: {s.student_number} · {a('gradeLevel')}: {s.grade_level ?? '-'}
+                </Text>
+              </View>
+            </View>
           </Pressable>
         )}
       />

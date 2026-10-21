@@ -70,7 +70,7 @@ export default function FeeStructures() {
             stickySectionHeadersEnabled={false}
             contentContainerClassName="pb-10"
             ListEmptyComponent={<EmptyState title={s('addNew')} body={s('subtitle')} />}
-            renderSectionHeader={({ section }) => <Text className="text-muted-foreground px-4 pt-5 pb-1 text-xs font-semibold uppercase">{section.title}</Text>}
+            renderSectionHeader={({ section }) => <Text className="text-muted-foreground px-4 pt-5 pb-1 text-sm font-semibold">{section.title}</Text>}
             ItemSeparatorComponent={() => <Separator className="ms-4" />}
             renderItem={({ item: x }) => (
               <ListRow

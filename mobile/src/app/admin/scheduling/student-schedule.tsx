@@ -1,10 +1,14 @@
 import type { Student } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
+import { PersonAvatar } from '@/components/app/person-avatar';
+import { StatusChip } from '@/components/app/status-chip';
+import { Icon } from '@/components/ui/icon';
 import { SearchBar } from '@/components/app/search-bar';
 import { Text } from '@/components/ui/text';
 import { studentFullName, useCampusStudents } from '@/features/admin/scheduling-tools';
@@ -33,17 +37,23 @@ export default function StudentScheduleList() {
         header={
           <View className="gap-2 px-4 pt-3 pb-1">
             <SearchBar value={q} onChangeText={setQ} placeholder={s('search_placeholder')} />
-            {res.data ? <Text className="text-muted-foreground text-sm">{s('found_students', { count: shown.length })}</Text> : null}
+            {res.data ? <StatusChip label={s('found_students', { count: shown.length })} tone="info" className="self-start px-2.5 py-1" /> : null}
           </View>
         }
         renderItem={(x: Student) => (
           <Pressable
-            className="gap-0.5 px-4 py-3"
+            className="flex-row items-center gap-3 px-4 py-3 active:opacity-70"
             onPress={() => router.push(role.href('/scheduling/student-schedule-detail', { id: x.id, name: studentFullName(x.profile), number: x.student_number, grade: x.grade_level ?? '' }))}>
-            <Text className="text-primary font-medium">{studentFullName(x.profile) || '—'}</Text>
-            <Text className="text-muted-foreground text-xs">
-              {s('th_student_number')}: {x.student_number} · {s('th_grade_level')}: {x.grade_level || '—'}
-            </Text>
+            <PersonAvatar url={x.profile?.profile_photo_url ?? x.profile?.avatar_url} name={studentFullName(x.profile) || x.student_number} size={40} />
+            <View className="flex-1 gap-0.5">
+              <Text className="text-sm font-semibold" numberOfLines={1}>
+                {studentFullName(x.profile) || '—'}
+              </Text>
+              <Text variant="muted" className="text-[11px]">
+                {[x.student_number, x.grade_level].filter(Boolean).join(' · ')}
+              </Text>
+            </View>
+            <Icon flipRtl as={ChevronRight} className="text-muted-foreground size-4" />
           </Pressable>
         )}
       />

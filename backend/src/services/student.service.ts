@@ -64,6 +64,24 @@ export async function getSiblingCountMap(schoolId: string): Promise<Map<string, 
   return result
 }
 
+const REPORT_CARD_FIELDS = ['nationality', 'mother_name', 'place_of_birth', 'registration_number'] as const
+
+/**
+ * Report-card fields (Jahbadh grades). Only keys the caller sent are written, so saving a student
+ * keeps working on a database where migrations/jahbadh_grades.sql has not been run yet.
+ * On update an empty string clears the field.
+ */
+function reportCardFields(data: Partial<Record<(typeof REPORT_CARD_FIELDS)[number], string | null>>, update = false) {
+  const out: Record<string, string | null> = {}
+  for (const k of REPORT_CARD_FIELDS) {
+    const v = data[k]
+    if (v === undefined) continue
+    const trimmed = typeof v === 'string' ? v.trim() : null
+    if (trimmed || update) out[k] = trimmed || null
+  }
+  return out
+}
+
 export type StudentSortKey = 'student_number' | 'name' | 'grade' | 'status' | 'contact'
 
 const studentSortCollator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
@@ -713,7 +731,8 @@ export class StudentService {
         section_id: studentData.section_id, // New: UUID reference (triggers auto-update)
         confidential_family_status: studentData.confidential_family_status || 'NONE',
         medical_info: studentData.medical_info || {},
-        custom_fields: studentData.custom_fields || {}
+        custom_fields: studentData.custom_fields || {},
+        ...reportCardFields(studentData),
       })
       .select(`
         *,
@@ -1123,6 +1142,7 @@ export class StudentService {
     if (updateData.section_id !== undefined) studentUpdates.section_id = updateData.section_id
     if (updateData.medical_info !== undefined) studentUpdates.medical_info = updateData.medical_info
     if (updateData.custom_fields !== undefined) studentUpdates.custom_fields = updateData.custom_fields
+    Object.assign(studentUpdates, reportCardFields(updateData, true))
     if (updateData.confidential_family_status !== undefined && canWriteConfidentialFamilyStatus(callerRole)) {
       studentUpdates.confidential_family_status = updateData.confidential_family_status
     }

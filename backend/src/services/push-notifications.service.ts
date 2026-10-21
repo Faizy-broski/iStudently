@@ -1,5 +1,6 @@
 import webpush from 'web-push'
 import { supabase } from '../config/supabase'
+import { isExpoPushToken, sendExpoPush } from './expo-push.service'
 
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
@@ -84,12 +85,49 @@ class PushNotificationsService {
       .in('profile_id', profileIds)
       .eq('is_active', true)
 
-    if (error) {
-      console.error('Failed to fetch push subscriptions:', error.message)
-      return
-    }
+    if (error) console.error('Failed to fetch push subscriptions:', error.message)
 
-    await this.dispatch(subscriptions || [], payload)
+    await Promise.all([this.dispatch(error ? [] : subscriptions || [], payload), this.dispatchToPhones(profileIds, payload)])
+  }
+
+  /** Registers (or re-activates) this phone's Expo push token for the signed-in user. */
+  async registerDevice(dto: { profileId: string; schoolId: string | null; token: string; platform: 'ios' | 'android'; deviceName?: string | null; appVersion?: string | null }): Promise<void> {
+    if (!isExpoPushToken(dto.token)) throw new Error('Invalid push token')
+    const { error } = await supabase.from('mobile_push_tokens').upsert(
+      {
+        profile_id: dto.profileId,
+        school_id: dto.schoolId,
+        token: dto.token,
+        platform: dto.platform,
+        device_name: dto.deviceName ?? null,
+        app_version: dto.appVersion ?? null,
+        is_active: true,
+        last_used_at: new Date().toISOString(),
+      },
+      // A token moves to whoever signs in on that phone.
+      { onConflict: 'token' },
+    )
+    if (error) throw new Error(`Failed to save push token: ${error.message}`)
+  }
+
+  /** Stops push to this phone for the user (sign-out, or push turned off in Settings). */
+  async unregisterDevice(profileId: string, token: string): Promise<void> {
+    const { error } = await supabase.from('mobile_push_tokens').update({ is_active: false }).eq('profile_id', profileId).eq('token', token)
+    if (error) throw new Error(`Failed to remove push token: ${error.message}`)
+  }
+
+  private async dispatchToPhones(profileIds: string[], payload: PushPayload): Promise<number> {
+    const { data, error } = await supabase.from('mobile_push_tokens').select('token').in('profile_id', profileIds).eq('is_active', true)
+    if (error) {
+      // Table not created yet (mobile_push_tokens.sql): phones simply get nothing.
+      if (error.code !== 'PGRST205' && error.code !== '42P01') console.error('Failed to fetch phone push tokens:', error.message)
+      return 0
+    }
+    const tokens = (data || []).map((r) => r.token as string)
+    if (!tokens.length) return 0
+    const dead = await sendExpoPush(tokens, { title: payload.title, body: payload.body, url: payload.url })
+    if (dead.length) await supabase.from('mobile_push_tokens').update({ is_active: false }).in('token', dead)
+    return tokens.length
   }
 
   /** Active subscription counts for a school (optionally scoped to a campus), broken down by role. */
@@ -125,14 +163,10 @@ class PushNotificationsService {
       .eq('is_active', true)
 
     if (error) throw new Error(`Failed to load subscriptions: ${error.message}`)
-    if (!subscriptions || subscriptions.length === 0) return { sent: 0 }
 
-    await this.dispatch(subscriptions, {
-      title: 'Test Notification',
-      body: 'This is a test push notification from Studently.',
-    })
-
-    return { sent: subscriptions.length }
+    const payload = { title: 'Test Notification', body: 'This is a test push notification from Studently.' }
+    const [, phones] = await Promise.all([this.dispatch(subscriptions || [], payload), this.dispatchToPhones([profileId], payload)])
+    return { sent: (subscriptions || []).length + phones }
   }
 
   /** Sends to every active subscription for a given role within a school. */

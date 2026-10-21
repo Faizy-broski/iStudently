@@ -1,8 +1,9 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
@@ -86,7 +87,7 @@ export default function TeacherHoursDetail() {
                     {i > 0 ? <Separator /> : null}
                     <View className="flex-row items-center gap-3 py-2">
                       <View className="flex-1">
-                        <Text className="font-medium">{e.subject_name}</Text>
+                        <Text className="text-sm font-semibold">{e.subject_name}</Text>
                         <Text className="text-muted-foreground text-xs">{`${e.period_name} · ${e.total_hours} h`}</Text>
                       </View>
                       <Input

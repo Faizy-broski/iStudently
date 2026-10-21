@@ -4,9 +4,10 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ExternalLink, FileText, Upload, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
@@ -444,7 +445,7 @@ export default function TrainingForm() {
                       </View>
                     </View>
                   ) : (
-                    <Text className="text-xs text-amber-600">{f('selectDaysHint')}</Text>
+                    <Text className="text-xs text-warning">{f('selectDaysHint')}</Text>
                   )}
                 </View>
                 <View className="gap-1.5">
@@ -496,7 +497,7 @@ export default function TrainingForm() {
                   {(['both', 'internal', 'external'] as const).map((a) => {
                     const key = a === 'both' ? 'audienceBoth' : a === 'internal' ? 'audienceInternal' : 'audienceExternal';
                     return (
-                      <Pressable key={a} onPress={() => set({ target_audience: a })} className={cn('rounded-lg border p-3', form.target_audience === a ? 'border-primary bg-primary/10' : 'border-border')}>
+                      <Pressable key={a} onPress={() => set({ target_audience: a })} className={cn('rounded-lg border p-3', form.target_audience === a ? 'border-brand-secondary bg-info-soft' : 'border-border')}>
                         <Text className="text-sm font-semibold">{f(key)}</Text>
                         <Text className="text-muted-foreground text-xs">{f(`${key}Desc`)}</Text>
                       </Pressable>
@@ -540,7 +541,7 @@ export default function TrainingForm() {
                     <View className="flex-row items-center gap-2">
                       <Icon as={FileText} className="text-primary size-4" />
                       <Text className="flex-1 text-sm">{f('syllabusFilename')}</Text>
-                      <Text className="text-xs text-green-600">{f('uploaded')}</Text>
+                      <Text className="text-xs text-success">{f('uploaded')}</Text>
                       <Button size="sm" variant="ghost" onPress={() => set({ syllabus_pdf_url: '' })}>
                         <Text>{f('removePdf')}</Text>
                       </Button>

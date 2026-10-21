@@ -82,7 +82,7 @@ export function HtmlEditorField({
         onSelectionChange={(e) => setSel(e.nativeEvent.selection)}
         onChangeText={(v) => (mode === 'html' ? onChange(v) : setFromText(v))}
       />
-      {mode === 'text' && RICH.test(value) ? <Text className="text-xs text-amber-700 dark:text-amber-400">{t('app.rt_formatting_note')}</Text> : null}
+      {mode === 'text' && RICH.test(value) ? <Text className="text-warning text-xs">{t('app.rt_formatting_note')}</Text> : null}
     </View>
   );
 }

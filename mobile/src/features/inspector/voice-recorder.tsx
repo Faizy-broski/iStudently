@@ -37,7 +37,7 @@ export default function VoiceRecorder({ onDone, disabled }: { onDone: (file: { u
         <Icon as={Square} className="size-4 text-white" />
         <Text className="text-white">{t('app.in_stop_recording')}</Text>
       </Button>
-      <Text className="text-sm text-red-600">{`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}</Text>
+      <Text className="text-sm text-destructive">{`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}</Text>
     </View>
   ) : (
     <Button size="sm" variant="outline" onPress={start} disabled={disabled}>

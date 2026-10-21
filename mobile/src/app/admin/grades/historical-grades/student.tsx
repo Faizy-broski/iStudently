@@ -3,12 +3,13 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { Plus, Save, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -165,11 +166,11 @@ function PeriodEditor({ studentId, mp, grades, onSaved, onRemoved }: { studentId
         <CardContent className="gap-3 pt-4">
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <Text className="text-muted-foreground text-xs uppercase">{h('mp_label')}</Text>
+              <Text className="text-muted-foreground text-xs">{h('mp_label')}</Text>
               <Text className="text-primary font-semibold">{mp.mp_name}</Text>
             </View>
             <View className="flex-1">
-              <Text className="text-muted-foreground text-xs uppercase">{h('school_year_label')}</Text>
+              <Text className="text-muted-foreground text-xs">{h('school_year_label')}</Text>
               <Text className="font-semibold">{mp.school_year || '—'}</Text>
             </View>
           </View>
@@ -200,7 +201,7 @@ function PeriodEditor({ studentId, mp, grades, onSaved, onRemoved }: { studentId
         <Card key={r.id}>
           <CardContent className="gap-2 pt-3">
             <View className="items-end">
-              <Pressable onPress={() => remove(r)} hitSlop={8} className="p-1" accessibilityLabel={t('common.delete')}>
+              <Pressable onPress={() => remove(r)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                 <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </View>
@@ -260,7 +261,7 @@ export default function StudentHistoricalGrades() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: h('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView
           contentContainerClassName="gap-3 p-4 pb-10"
           keyboardShouldPersistTaps="handled"
@@ -314,7 +315,7 @@ export default function StudentHistoricalGrades() {
           ) : mps.error ? (
             <ErrorState message={mps.error.message || h('msg_load_failed')} onRetry={() => mps.mutate()} />
           ) : !list.length ? (
-            <Text className="text-muted-foreground py-6 text-center text-sm">{h('no_historical_mps')}</Text>
+            <EmptyState title={h('no_historical_mps')} />
           ) : (
             <>
               <FilterChips value={activeId ?? ''} onChange={setPicked} options={list.map((m) => ({ value: m.mp_id, label: m.school_year ? `${m.mp_name} (${m.school_year})` : m.mp_name }))} />

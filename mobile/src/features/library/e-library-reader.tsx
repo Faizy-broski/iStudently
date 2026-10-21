@@ -4,8 +4,9 @@ import { AlertCircle, Bookmark, BookOpen, Download, Plus, Trash2, X } from 'luci
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Platform, ScrollView, View } from 'react-native';
+import { Modal, Platform, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { PublicWebView } from '@/components/app/web-session-view';
 import { useToast } from '@/components/app/toast';

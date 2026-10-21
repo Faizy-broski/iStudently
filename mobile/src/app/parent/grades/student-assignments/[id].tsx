@@ -1,11 +1,14 @@
 import { htmlToText } from '@studently/shared-utils';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Check, FileText } from 'lucide-react-native';
+import { Check, ClipboardList, FileText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { DetailHeader, Section } from '@/components/app/layout';
+import { ActionRow, Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useChildAssignments } from '@/features/parent/assignments';
@@ -25,7 +28,7 @@ export default function ParentAssignmentDetail() {
   if (q.isLoading) return <LoadingList rows={6} />;
   if (q.error) return <PortalError title={t('app.st_as_error', { message: q.error.message })} />;
   const a = q.all.find((x) => x.id === id);
-  if (!a) return <Text className="text-muted-foreground p-6 text-sm">{k('not_found')}</Text>;
+  if (!a) return <EmptyState icon={ClipboardList} title={k('not_found')} />;
   const sub = a.submission;
   const graded = sub?.status === 'graded';
   const rows: [string, string][] = [
@@ -42,68 +45,87 @@ export default function ParentAssignmentDetail() {
     <>
       <Stack.Screen options={{ title: a.title }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
-        {child ? <Text className="text-muted-foreground text-sm">{p('viewing_for', { name: `${child.first_name} ${child.last_name}` })}</Text> : null}
-        <View className="border-border bg-card rounded border">
+        <DetailHeader
+          icon={ClipboardList}
+          name={a.title}
+          subtitle={child ? p('viewing_for', { name: `${child.first_name} ${child.last_name}` }) : null}
+          chips={
+            graded ? (
+              <StatusChip label={k('graded', { marks: sub?.marks_obtained ?? 0, max: a.max_score })} tone="success" />
+            ) : sub ? (
+              <StatusChip label={t('app.st_as_submitted')} tone="info" />
+            ) : (
+              <StatusChip label={k('pending')} tone="warning" />
+            )
+          }
+        />
+        <Panel>
           {rows.map(([label, value]) => (
-            <View key={label} className="border-border flex-row gap-3 border-b px-4 py-2.5">
-              <Text className="text-muted-foreground w-28 text-sm">{label}</Text>
+            <View key={label} className="border-info-soft dark:border-border flex-row gap-3 border-b px-4 py-2.5">
+              <Text className="text-muted-foreground w-28 text-xs">{label}</Text>
               <Text className="flex-1 text-sm font-medium">{value}</Text>
             </View>
           ))}
-          <View className="flex-row gap-3 px-4 py-2.5">
-            <Text className="text-muted-foreground w-28 text-sm">{k('status')}</Text>
+          <View className="flex-row items-center gap-3 px-4 py-2.5">
+            <Text className="text-muted-foreground w-28 text-xs">{k('status')}</Text>
             {graded ? (
-              <Text className="flex-1 text-sm font-medium text-green-600">{k('graded', { marks: sub?.marks_obtained ?? 0, max: a.max_score })}</Text>
+              <Text className="flex-1 text-sm font-medium text-success">{k('graded', { marks: sub?.marks_obtained ?? 0, max: a.max_score })}</Text>
             ) : sub ? (
               <View className="flex-1 flex-row items-center gap-1">
-                <Icon as={Check} className="size-4 text-blue-600" />
-                <Text className="text-sm font-medium text-blue-600">{t('app.st_as_submitted')}</Text>
+                <Icon as={Check} className="size-4 text-brand dark:text-brand-secondary" />
+                <Text className="text-sm font-medium text-brand dark:text-brand-secondary">{t('app.st_as_submitted')}</Text>
               </View>
             ) : (
-              <Text className="flex-1 text-sm font-medium text-orange-600">{k('pending')}</Text>
+              <Text className="flex-1 text-sm font-medium text-warning">{k('pending')}</Text>
             )}
           </View>
-        </View>
+        </Panel>
 
-        {a.description ? <Text className="text-sm">{htmlToText(a.description)}</Text> : null}
+        {a.description ? (
+          <Panel className="p-4">
+            <Text className="text-sm leading-relaxed">{htmlToText(a.description)}</Text>
+          </Panel>
+        ) : null}
         {a.file_url ? (
-          <Pressable onPress={() => WebBrowser.openBrowserAsync(a.file_url as string)} className="flex-row items-center gap-2" accessibilityRole="link">
-            <Icon as={FileText} className="size-4 text-[#4A90E2]" />
-            <Text className="text-sm text-[#4A90E2]">{k('download')}</Text>
-          </Pressable>
+          <Panel>
+            <ActionRow icon={FileText} title={k('download')} onPress={() => WebBrowser.openBrowserAsync(a.file_url as string)} last />
+          </Panel>
         ) : null}
         {graded && sub?.feedback ? (
-          <View className="rounded-md bg-green-50 p-3 dark:bg-green-950/30">
-            <Text className="text-muted-foreground mb-1 text-xs font-medium uppercase">{k('feedback')}</Text>
+          <View className="bg-success-soft gap-1 rounded-2xl p-4">
+            <Text className="text-success text-xs font-semibold">{k('feedback')}</Text>
             <Text className="text-sm italic">{`"${sub.feedback}"`}</Text>
           </View>
         ) : null}
 
         {sub ? (
-          <View className="bg-muted/50 gap-3 rounded-md p-4">
-            <Text className="border-border border-b pb-2 text-sm font-semibold">{p('submission')}</Text>
-            {sub.attachments?.length ? (
-              <View className="gap-1">
-                <Text className="text-muted-foreground text-xs font-medium uppercase">{p('attached_files')}</Text>
-                {sub.attachments.map((att, i) => (
-                  <Pressable key={`${att.url}:${i}`} onPress={() => WebBrowser.openBrowserAsync(att.url)} className="flex-row items-center gap-2" accessibilityRole="link">
-                    <Icon as={FileText} className="size-3 text-[#4A90E2]" />
-                    <Text className="text-xs text-[#4A90E2]">{att.name}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-            {sub.submission_text ? (
-              <View className="gap-1">
-                <Text className="text-muted-foreground text-xs font-medium uppercase">{p('answer')}</Text>
-                <View className="border-border bg-card rounded border p-3">
-                  <Text className="text-sm">{htmlToText(sub.submission_text)}</Text>
+          <Section title={p('submission')}>
+            <Panel className="gap-3 p-4">
+              {sub.attachments?.length ? (
+                <View className="gap-2">
+                  <Text className="text-muted-foreground text-xs font-semibold">{p('attached_files')}</Text>
+                  {sub.attachments.map((att, i) => (
+                    <Pressable key={`${att.url}:${i}`} onPress={() => WebBrowser.openBrowserAsync(att.url)} className="bg-info-soft flex-row items-center gap-2 rounded-xl px-3 py-2 active:opacity-70" accessibilityRole="link">
+                      <Icon as={FileText} className="size-4 text-brand dark:text-brand-secondary" />
+                      <Text className="flex-1 text-xs font-medium text-brand dark:text-brand-secondary" numberOfLines={1}>
+                        {att.name}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
-              </View>
-            ) : null}
-            {!sub.attachments?.length && !sub.submission_text ? <Text className="text-muted-foreground text-sm italic">{p('nothing')}</Text> : null}
-            <Text className="text-muted-foreground text-xs">{p('submitted_on', { date: longDate(sub.submitted_at) })}</Text>
-          </View>
+              ) : null}
+              {sub.submission_text ? (
+                <View className="gap-1">
+                  <Text className="text-muted-foreground text-xs font-semibold">{p('answer')}</Text>
+                  <View className="bg-muted rounded-xl p-3">
+                    <Text className="text-sm">{htmlToText(sub.submission_text)}</Text>
+                  </View>
+                </View>
+              ) : null}
+              {!sub.attachments?.length && !sub.submission_text ? <Text className="text-muted-foreground text-sm italic">{p('nothing')}</Text> : null}
+              <Text className="text-muted-foreground text-xs">{p('submitted_on', { date: longDate(sub.submitted_at) })}</Text>
+            </Panel>
+          </Section>
         ) : null}
       </ScrollView>
     </>

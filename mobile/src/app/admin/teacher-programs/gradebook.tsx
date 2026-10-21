@@ -2,8 +2,9 @@ import { Stack } from 'expo-router';
 import { BookOpen, Plus, Save } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { Picker } from '@/components/app/picker';
@@ -26,7 +27,7 @@ const pointColor = (v: string, max: number) => {
   const n = parseFloat(v);
   if (!v || Number.isNaN(n)) return 'text-muted-foreground';
   const pct = (n / Math.max(1, max)) * 100;
-  return pct >= 90 ? 'text-green-700' : pct >= 80 ? 'text-blue-700' : pct >= 70 ? 'text-yellow-700' : 'text-red-700';
+  return pct >= 90 ? 'text-success' : pct >= 80 ? 'text-brand dark:text-brand-secondary' : pct >= 70 ? 'text-warning' : 'text-destructive';
 };
 
 /** A teacher's gradebook matrix, edited by an admin: points per student per assignment, add an assignment (web: /admin/teacher-programs/gradebook). */
@@ -88,7 +89,7 @@ export default function AdminGradebook() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: g('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">{g('subtitle')}</Text>
           <Card>
@@ -152,7 +153,7 @@ export default function AdminGradebook() {
                               <Text className="text-muted-foreground text-xs">{s.student_number}</Text>
                             </View>
                             <Input
-                              className={cn('w-20 text-center', isPending && 'border-amber-400 bg-amber-50 dark:bg-amber-950', pointColor(v, activeAssignment.points))}
+                              className={cn('w-20 text-center', isPending && 'border-warning bg-warning-soft ', pointColor(v, activeAssignment.points))}
                               value={v}
                               onChangeText={(x) => setPending((p) => ({ ...p, [keyOf(s.id, activeAssignment.id)]: x.replace(/[^\d.]/g, '') }))}
                               keyboardType="decimal-pad"

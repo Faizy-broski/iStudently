@@ -64,6 +64,10 @@ interface FormData {
   gender: string;
   dateOfBirth: string;
   nationalId: string;
+  nationality: string;
+  motherName: string;
+  placeOfBirth: string;
+  registrationNumber: string;
   address: string;
   studentPhoto: string;
   confidentialFamilyStatus: ConfidentialFamilyStatus;
@@ -235,6 +239,10 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
     dateOfBirth: (student.profile?.date_of_birth || student.custom_fields?.personal?.date_of_birth) ?
       new Date(student.profile?.date_of_birth || student.custom_fields?.personal?.date_of_birth).toISOString().split('T')[0] : '',
     nationalId: student.profile?.national_id || '',
+    nationality: student.nationality || '',
+    motherName: student.mother_name || '',
+    placeOfBirth: student.place_of_birth || '',
+    registrationNumber: student.registration_number || '',
     address: student.custom_fields?.personal?.address || '',
 studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo || '',
     confidentialFamilyStatus: (student.confidential_family_status as ConfidentialFamilyStatus) || 'NONE',
@@ -330,6 +338,11 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
         section_id: formData.sectionId || null,
         username: formData.username || undefined,
         national_id: formData.nationalId || undefined,
+        // Sent only when the form has them (empty string clears the field on the server).
+        nationality: formData.nationality,
+        mother_name: formData.motherName,
+        place_of_birth: formData.placeOfBirth,
+        registration_number: formData.registrationNumber,
         ...(canWriteConfidentialFamilyStatus(user?.role) ? {
           confidential_family_status: formData.confidentialFamilyStatus,
         } : {}),
@@ -503,6 +516,46 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                     value={formData.nationalId}
                     onChange={(e) => handleInputChange('nationalId', e.target.value)}
                     placeholder={tFields("national_id")}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nationality">{tFields("nationality")}</Label>
+                  <Input
+                    id="nationality"
+                    dir="auto"
+                    value={formData.nationality}
+                    onChange={(e) => handleInputChange('nationality', e.target.value)}
+                    placeholder={tFields("nationality")}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="motherName">{tFields("mother_name")}</Label>
+                  <Input
+                    id="motherName"
+                    dir="auto"
+                    value={formData.motherName}
+                    onChange={(e) => handleInputChange('motherName', e.target.value)}
+                    placeholder={tFields("mother_name")}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="placeOfBirth">{tFields("place_of_birth")}</Label>
+                  <Input
+                    id="placeOfBirth"
+                    dir="auto"
+                    value={formData.placeOfBirth}
+                    onChange={(e) => handleInputChange('placeOfBirth', e.target.value)}
+                    placeholder={tFields("place_of_birth")}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="registrationNumber">{tFields("registration_number")}</Label>
+                  <Input
+                    id="registrationNumber"
+                    dir="auto"
+                    value={formData.registrationNumber}
+                    onChange={(e) => handleInputChange('registrationNumber', e.target.value)}
+                    placeholder={tFields("registration_number")}
                   />
                 </div>
                 <div>

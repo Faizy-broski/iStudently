@@ -63,14 +63,14 @@ export default function CustomMenu() {
         <InfoBanner title={t('app.ps_how_it_works')}>
           <View className="gap-0.5">
             {[1, 2, 3, 4].map((n) => (
-              <Text key={n} className="text-sm text-blue-800 dark:text-blue-300">{`• ${t(`app.ps_cm_how${n}`)}`}</Text>
+              <Text key={n} className="text-sm text-brand dark:text-brand-secondary ">{`• ${t(`app.ps_cm_how${n}`)}`}</Text>
             ))}
           </View>
         </InfoBanner>
         <SettingsCard title={t('app.ps_cm_card')} description={t('app.ps_cm_card_desc')}>
           <FilterChips<CustomMenuRole> value={role} onChange={setRole} options={CUSTOM_MENU_ROLES.map((r) => ({ value: r, label: t(`app.role_${r}`) }))} />
           {order.map((title, i) => (
-            <View key={title} className="border-border bg-card flex-row items-center gap-2 rounded-lg border px-3 py-2.5">
+            <View key={title} className="border-info-soft dark:border-border bg-card flex-row items-center gap-2 rounded-xl border px-3 py-2.5">
               <Text className="text-muted-foreground w-6 text-xs">{i + 1}</Text>
               <Text className="flex-1 text-sm font-medium">{label(title)}</Text>
               <Pressable onPress={() => move(i, -1)} disabled={i === 0} accessibilityRole="button" accessibilityLabel={t('app.ps_move_up')} hitSlop={6} className={i === 0 ? 'opacity-30' : ''}>

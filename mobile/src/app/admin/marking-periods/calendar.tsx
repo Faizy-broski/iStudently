@@ -4,8 +4,9 @@ import Storage from 'expo-sqlite/kv-store';
 import { CalendarDays, Pencil, Printer, RotateCcw, Share2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { formatYmd } from '@/components/app/date-field';
 import { MultiChips } from '@/components/app/filter-chips';
 import { LoadingList } from '@/components/app/states';
@@ -203,7 +204,7 @@ export default function AcademicCalendar() {
               {editable.length === 0 ? (
                 <Text className="text-muted-foreground text-xs">{a('no_events')}</Text>
               ) : (
-                <View className="border-border rounded-md border">
+                <View className="border-info-soft dark:border-border rounded-xl border">
                   {editable.map((ev, i) => (
                     <View key={ev.id}>
                       {i > 0 ? <Separator /> : null}

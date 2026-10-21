@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase'
 import * as gradebookController from '../controllers/gradebook.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireTeacher, requireAdmin } from '../middlewares/role.middleware'
-import { requireBodyRowsInSchoolFamily, requireRowInSchoolFamily, requireStudentAccess } from '../middlewares/row-school-scope.middleware'
+import { requireBodyRowsInSchoolFamily, requireRequestSchoolsInFamily, requireRowInSchoolFamily, requireStudentAccess } from '../middlewares/row-school-scope.middleware'
 import { ownStudentsOr } from '../middlewares/student-access.middleware'
 import { coursePeriodOf, requireOwnCoursePeriods, requireOwnStaffQuery } from '../middlewares/own-course-period.middleware'
 
@@ -57,7 +57,7 @@ const bodyGradeStudents = requireBodyRowsInSchoolFamily('students', (b) => (Arra
 // ============================================================================
 
 // GET /gradebook/assignment-types?course_period_id=
-router.get('/assignment-types', gradebookController.getAssignmentTypes)
+router.get('/assignment-types', queryCp, gradebookController.getAssignmentTypes)
 
 // GET /gradebook/assignment-types/course/:courseId
 router.get('/assignment-types/course/:courseId', courseRow, gradebookController.getAssignmentTypesByCourse)
@@ -142,7 +142,7 @@ router.get('/anomalous', requireTeacher, queryCp, ownQueryCp, requireRowInSchool
 // ============================================================================
 
 // GET /gradebook/config?school_id=&course_period_id=
-router.get('/config', gradebookController.getConfig)
+router.get('/config', requireRequestSchoolsInFamily, queryCp, gradebookController.getConfig)
 
 // POST /gradebook/config (admin)
 router.post('/config', requireAdmin, gradebookController.setConfig)

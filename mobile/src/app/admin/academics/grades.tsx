@@ -1,19 +1,20 @@
 import type { GradeLevel } from '@studently/api-client';
 import { toCsv } from '@studently/shared-utils';
-import { Stack } from 'expo-router';
-import { BookOpen, FolderDown, GraduationCap, Pencil, Plus, Trash2, Users } from 'lucide-react-native';
+import { router, Stack } from 'expo-router';
+import { BookOpen, FolderDown, GitBranch, GraduationCap, Plus, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
+import { HeaderButton, RoundIcon, RowActions, StatTile, StatTiles } from '@/components/app/layout';
+import { CARD_LIST_PROPS, Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -87,23 +88,38 @@ export default function GradeLevels() {
     toast.success(g('export_success'));
   }
 
+  const active = grades.filter((x) => x.is_active !== false).length;
+  const sectionsTotal = grades.reduce((n, x) => n + (x.sections_count || 0), 0);
+  const subjectsTotal = grades.reduce((n, x) => n + (x.subjects_count || 0), 0);
+
   return (
     <>
-      <Stack.Screen options={{ title: g('title') }} />
+      <Stack.Screen
+        options={{
+          title: g('title'),
+          headerRight: () => (
+            <View className="flex-row items-center">
+              <HeaderButton icon={GitBranch} label={t('app.gp_open')} onPress={() => router.push('/admin/settings/grade-progression')} />
+              <HeaderButton icon={Plus} label={g('add_grade')} onPress={() => open()} />
+            </View>
+          ),
+        }}
+      />
       <View className="bg-background flex-1">
         <DataList
           header={
-            <View className="gap-3 p-4">
-              <Text variant="muted">{g('subtitle')}</Text>
-              <Button onPress={() => open()}>
-                <Icon as={Plus} className="text-primary-foreground size-4" />
-                <Text>{g('add_grade')}</Text>
-              </Button>
+            <View className="gap-3 px-4 pt-3 pb-3">
+              <Text variant="muted" className="text-sm">
+                {g('subtitle')}
+              </Text>
+              <StatTiles>
+                <StatTile icon={GraduationCap} label={g('title')} value={list.data ? String(grades.length) : '—'} note={`${g('active')}: ${active}`} />
+                <StatTile icon={Users} tone="success" label={g('sections')} value={list.data ? String(sectionsTotal) : '—'} />
+                <StatTile icon={BookOpen} tone="warning" label={g('subjects')} value={list.data ? String(subjectsTotal) : '—'} />
+              </StatTiles>
               <View className="flex-row items-center justify-between">
-                <Text className="font-medium">{grades.length === 1 ? g('found_singular') : g('found_plural', { count: grades.length })}</Text>
-                <Pressable onPress={exportCsv} hitSlop={8} accessibilityLabel={g('export_csv')}>
-                  <Icon as={FolderDown} className="size-7 text-yellow-500" />
-                </Pressable>
+                <StatusChip label={grades.length === 1 ? g('found_singular') : g('found_plural', { count: grades.length })} tone="info" className="px-2.5 py-1" />
+                <RoundIcon icon={FolderDown} label={g('export_csv')} onPress={exportCsv} />
               </View>
             </View>
           }
@@ -113,29 +129,27 @@ export default function GradeLevels() {
           onRefresh={() => list.mutate()}
           emptyTitle={g('no_grades')}
           keyExtractor={(x) => x.id}
+          {...CARD_LIST_PROPS}
           renderItem={(x) => (
-            <View className="gap-2 px-4 py-3">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-muted-foreground w-6 font-medium">{x.order_index}</Text>
-                <Icon as={GraduationCap} className="text-muted-foreground size-4" />
-                <Text className="flex-1 font-medium">{x.name}</Text>
-                <Badge variant={x.is_active !== false ? 'default' : 'secondary'}>
-                  <Text>{x.is_active !== false ? g('active') : g('inactive')}</Text>
-                </Badge>
-              </View>
-              <View className="flex-row flex-wrap items-center gap-3">
-                <Text className="text-muted-foreground text-xs">{`${g('capacity')}: ${x.capacity ?? '—'}`}</Text>
-                <View className="flex-row items-center gap-1">
-                  <Icon as={Users} className="text-muted-foreground size-3" />
-                  <Text className="text-muted-foreground text-xs">{`${g('sections')}: ${x.sections_count || 0}`}</Text>
+            <Panel className="gap-3 p-3">
+              <View className="flex-row items-center gap-3">
+                <View className="bg-info-soft size-10 items-center justify-center rounded-xl">
+                  <Text className="text-brand dark:text-brand-secondary text-sm font-bold">{String(x.order_index ?? '')}</Text>
                 </View>
-                <View className="flex-row items-center gap-1">
-                  <Icon as={BookOpen} className="text-muted-foreground size-3" />
-                  <Text className="text-muted-foreground text-xs">{`${g('subjects')}: ${x.subjects_count || 0}`}</Text>
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold" numberOfLines={1}>
+                    {x.name}
+                  </Text>
+                  <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                    {[`${g('capacity')} ${x.capacity ?? '—'}`, `${g('sections')} ${x.sections_count || 0}`, `${g('subjects')} ${x.subjects_count || 0}`].join(' · ')}
+                  </Text>
                 </View>
+                <StatusChip label={x.is_active !== false ? g('active') : g('inactive')} tone={x.is_active !== false ? 'success' : 'muted'} className="px-2 py-0.5" />
               </View>
               <View className="gap-1">
-                <Text className="text-muted-foreground text-xs">{g('next_grade')}</Text>
+                <Text variant="muted" className="text-[11px]">
+                  {g('next_grade')}
+                </Text>
                 <Picker
                   value={x.next_grade_id || 'graduate'}
                   onChange={(v) => patch(x.id, { next_grade_id: v === 'graduate' ? null : v }, 'next_grade_success')}
@@ -144,19 +158,14 @@ export default function GradeLevels() {
               </View>
               {groupsOn ? (
                 <View className="gap-1">
-                  <Text className="text-muted-foreground text-xs">{g('mp_group')}</Text>
+                  <Text variant="muted" className="text-[11px]">
+                    {g('mp_group')}
+                  </Text>
                   <Picker value={x.group_id ?? 'default'} onChange={(v) => patch(x.id, { group_id: v === 'default' ? null : v }, 'update_success')} options={[{ value: 'default', label: g('mp_group_default') }, ...(groups.data ?? []).map((y) => ({ value: y.id, label: y.name }))]} />
                 </View>
               ) : null}
-              <View className="flex-row justify-end gap-4">
-                <Pressable onPress={() => open(x)} hitSlop={8}>
-                  <Icon as={Pencil} className="text-muted-foreground size-4" />
-                </Pressable>
-                <Pressable onPress={() => remove(x)} hitSlop={8}>
-                  <Icon as={Trash2} className="text-destructive size-4" />
-                </Pressable>
-              </View>
-            </View>
+              <RowActions onEdit={() => open(x)} onDelete={() => remove(x)} editLabel={g('edit_title')} deleteLabel={g('delete')} />
+            </Panel>
           )}
         />
       </View>

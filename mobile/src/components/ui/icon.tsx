@@ -3,9 +3,12 @@ import { cn } from '@/lib/utils';
 import type { LucideIcon, LucideProps } from 'lucide-react-native';
 import { cssInterop } from 'nativewind';
 import * as React from 'react';
+import { I18nManager } from 'react-native';
 
 type IconProps = LucideProps & {
   as: LucideIcon;
+  /** Mirror the icon in right-to-left (Arabic), e.g. chevrons and arrows. */
+  flipRtl?: boolean;
 } & React.RefAttributes<LucideIcon>;
 
 function IconImpl({ as: IconComponent, ...props }: IconProps) {
@@ -34,7 +37,7 @@ cssInterop(IconImpl, {
  * import { ArrowRight } from 'lucide-react-native';
  * import { Icon } from '@/registry/components/ui/icon';
  *
- * <Icon as={ArrowRight} className="text-red-500" size={16} />
+ * <Icon as={ArrowRight} className="text-destructive" size={16} />
  * ```
  *
  * @param {LucideIcon} as - The Lucide icon component to render.
@@ -42,13 +45,16 @@ cssInterop(IconImpl, {
  * @param {number} size - Icon size (defaults to 14).
  * @param {...LucideProps} ...props - Additional Lucide icon props passed to the "as" icon.
  */
-function Icon({ as: IconComponent, className, size = 14, ...props }: IconProps) {
+function Icon({ as: IconComponent, className, size = 14, flipRtl, style, ...props }: IconProps) {
   const textClass = React.useContext(TextClassContext);
+  // NativeWind's `rtl:` variant applies in left-to-right too, so mirror by the real layout direction.
+  const flip = flipRtl && I18nManager.isRTL ? { transform: [{ scaleX: -1 }] } : null;
   return (
     <IconImpl
       as={IconComponent}
       className={cn('text-foreground', textClass, className)}
       size={size}
+      style={flip ? [style, flip] : style}
       {...props}
     />
   );

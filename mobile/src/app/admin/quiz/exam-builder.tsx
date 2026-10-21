@@ -4,13 +4,14 @@ import { Stack } from 'expo-router';
 import { Bold, CheckCircle2, FileDown, Image as ImageIcon, Italic, Plus, Printer, Trash2, Underline, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -82,13 +83,13 @@ function QuestionEditor({ q, index, onChange, onRemove }: { q: ExamItem; index: 
             <Picker value={q.type} onChange={(v) => onChange({ ...q, type: v })} options={TYPES.map((ty) => ({ value: ty, label: x(`type_${ty}`) }))} />
           </View>
           <Input className="w-16" value={String(q.allocated_marks)} onChangeText={(v) => onChange({ ...q, allocated_marks: Number(v.replace(/[^\d.]/g, '')) || 0 })} keyboardType="decimal-pad" />
-          <Pressable onPress={onRemove} hitSlop={6} className="p-1" accessibilityLabel={x('remove')}>
+          <Pressable onPress={onRemove} accessibilityLabel={x('remove')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
             <Icon as={Trash2} className="text-destructive size-4" />
           </Pressable>
         </View>
         <View className="flex-row flex-wrap gap-1">
           {(['b', 'i', 'u'] as const).map((tag) => (
-            <Pressable key={tag} onPress={() => wrap(tag)} className="border-border rounded border p-1.5">
+            <Pressable key={tag} onPress={() => wrap(tag)} className="border-border rounded border p-1.5" accessibilityLabel={t(tag === 'b' ? 'common.bold' : tag === 'i' ? 'common.italic' : 'common.underline')}>
               <Icon as={tag === 'b' ? Bold : tag === 'i' ? Italic : Underline} className="text-foreground size-3.5" />
             </Pressable>
           ))}
@@ -112,7 +113,7 @@ function QuestionEditor({ q, index, onChange, onRemove }: { q: ExamItem; index: 
           className="min-h-20"
         />
         {showImage || q.image_url ? (
-          <View className="border-border gap-2 rounded-md border p-2">
+          <View className="border-info-soft dark:border-border gap-2 rounded-xl border p-2">
             <View className="flex-row gap-2">
               <Button size="sm" variant="outline" className="flex-1" onPress={upload} disabled={uploading}>
                 <Text>{uploading ? x('uploading') : x('upload_image')}</Text>
@@ -141,7 +142,7 @@ function QuestionEditor({ q, index, onChange, onRemove }: { q: ExamItem; index: 
         {q.type === 'select' || q.type === 'multiple' ? (
           <View className="gap-2">
             <View className="flex-row items-center">
-              <Icon as={CheckCircle2} className="size-4 text-green-600" />
+              <Icon as={CheckCircle2} className="size-4 text-success" />
               <Text className="ms-1 flex-1 text-sm font-medium">{x('options_key')}</Text>
               <Button size="sm" variant="ghost" onPress={() => onChange({ ...q, answer_options: [...options, `Option ${options.length + 1}`] })}>
                 <Icon as={Plus} className="text-foreground size-3.5" />
@@ -150,7 +151,7 @@ function QuestionEditor({ q, index, onChange, onRemove }: { q: ExamItem; index: 
             </View>
             {options.map((o, i) => (
               <View key={i} className="flex-row items-center gap-2">
-                <Pressable onPress={() => toggleCorrect(o)} hitSlop={6} className={cn('size-5 items-center justify-center border', q.type === 'multiple' ? 'rounded' : 'rounded-full', isCorrect(o) ? 'border-green-600 bg-green-600' : 'border-border')}>
+                <Pressable onPress={() => toggleCorrect(o)} hitSlop={6} className={cn('size-5 items-center justify-center border', q.type === 'multiple' ? 'rounded' : 'rounded-full', isCorrect(o) ? 'border-success bg-success' : 'border-border')}>
                   {isCorrect(o) ? <Text className="text-[10px] text-white">✓</Text> : null}
                 </Pressable>
                 <Input className="flex-1" value={o} onChangeText={(v) => onChange({ ...q, answer_options: options.map((x2, j) => (j === i ? v : x2)) })} />
@@ -273,7 +274,7 @@ export default function ExamBuilder() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: x('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">{x('subtitle')}</Text>
           <FilterChips
@@ -386,10 +387,10 @@ export default function ExamBuilder() {
               {bank.isLoading ? (
                 <LoadingList rows={4} />
               ) : !available.length ? (
-                <Text className="text-muted-foreground py-4 text-center text-sm">{x('no_questions')}</Text>
+                <EmptyState title={x('no_questions')} />
               ) : (
                 available.slice(0, 80).map((b) => (
-                  <View key={b.id} className="border-border flex-row items-start gap-2 rounded-md border p-2">
+                  <View key={b.id} className="border-info-soft dark:border-border flex-row items-start gap-2 rounded-xl border p-2">
                     <View className="flex-1 gap-1">
                       <Text className="text-sm" numberOfLines={3}>
                         {b.title.replace(/<[^>]+>/g, '')}
@@ -429,8 +430,8 @@ export default function ExamBuilder() {
           {!items.length ? (
             <Card>
               <CardContent className="items-center gap-2 pt-6 pb-6">
-                <Text className="font-medium">{x('empty_title')}</Text>
-                <Text className="text-muted-foreground text-center text-sm">{x('empty_body')}</Text>
+                <Text className="text-sm font-semibold">{x('empty_title')}</Text>
+                <EmptyState title={x('empty_body')} />
               </CardContent>
             </Card>
           ) : (

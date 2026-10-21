@@ -1,12 +1,13 @@
 import { router, Stack } from 'expo-router';
-import { Check, ClipboardList, X } from 'lucide-react-native';
+import { AlertTriangle, Check, ClipboardList, Clock, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent } from '@/components/ui/card';
+import { IconTile, StatTile, StatTiles } from '@/components/app/layout';
+import { ListCard } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useChildAssignments } from '@/features/parent/assignments';
@@ -44,45 +45,37 @@ export default function ParentAssignments() {
         ListHeaderComponent={
           <View className="mb-2 gap-3">
             <Text variant="muted">{p('subtitle', { name: `${child.first_name} ${child.last_name}`, campus: child.campus_name })}</Text>
-            <View className="flex-row gap-2">
-              <Count value={q.todo.length} label={p('pending')} tone="text-orange-500" />
-              <Count value={q.done} label={p('submitted')} tone="text-green-600" />
-              <Count value={overdue} label={p('overdue')} tone="text-red-500" />
-            </View>
-            <View className="flex-row items-center gap-2">
-              <Icon as={ClipboardList} className="text-foreground size-4" />
-              <Text className="text-sm font-semibold">{p('all')}</Text>
-            </View>
+            <StatTiles>
+              <StatTile icon={Clock} tone="warning" label={p('pending')} value={String(q.todo.length)} />
+              <StatTile icon={Check} tone="success" label={p('submitted')} value={String(q.done)} />
+              <StatTile icon={AlertTriangle} tone="destructive" label={p('overdue')} value={String(overdue)} />
+            </StatTiles>
+            <Text className="text-base font-semibold">{p('all')}</Text>
             <SearchBar value={search} onChangeText={setSearch} placeholder={t('common.search')} />
           </View>
         }
-        ListEmptyComponent={<Text className="text-muted-foreground py-16 text-center">{q.all.length ? p('no_match') : k('empty')}</Text>}
+        ListEmptyComponent={<EmptyState icon={ClipboardList} title={q.all.length ? p('no_match') : k('empty')} />}
         ListFooterComponent={<Text className="text-muted-foreground mt-1 text-xs">{p('shown', { count: shown.length })}</Text>}
         renderItem={({ item: a }) => (
-          <Pressable
-            onPress={() => router.push({ pathname: '/parent/grades/student-assignments/[id]', params: { id: a.id } })}
-            accessibilityRole="button"
-            className="border-border bg-card gap-1.5 rounded-lg border p-3">
-            <View className="flex-row items-start gap-2">
-              <Text className="flex-1 font-medium text-[#4A90E2]">{a.title}</Text>
-              <Icon as={a.submission ? Check : X} className={a.submission ? 'size-5 text-green-600' : 'size-5 text-red-500'} accessibilityLabel={a.submission ? k('submitted') : k('not_submitted')} />
+          <ListCard onPress={() => router.push({ pathname: '/parent/grades/student-assignments/[id]', params: { id: a.id } })}>
+            <IconTile icon={ClipboardList} tone={a.submission ? 'success' : 'warning'} size={40} />
+            <View className="flex-1 gap-0.5">
+              <View className="flex-row items-start gap-2">
+                <Text className="flex-1 text-sm font-semibold" numberOfLines={2}>
+                  {a.title}
+                </Text>
+                <View
+                  className={a.submission ? 'bg-success-soft size-6 items-center justify-center rounded-full' : 'bg-destructive-soft size-6 items-center justify-center rounded-full'}
+                  accessibilityLabel={a.submission ? k('submitted') : k('not_submitted')}>
+                  <Icon as={a.submission ? Check : X} className={a.submission ? 'size-3.5 text-success' : 'size-3.5 text-destructive'} />
+                </View>
+              </View>
+              <Text className="text-muted-foreground text-[11px]">{`${k('course')}: ${a.subject?.name || '—'} · ${k('teacher')}: ${teacherOf(a)}`}</Text>
+              <Text className="text-muted-foreground text-[11px]">{`${k('due')}: ${longDate(a.due_date)} · ${k('assigned')}: ${longDate(a.assigned_date)}`}</Text>
             </View>
-            <Text className="text-muted-foreground text-xs">{`${k('course')}: ${a.subject?.name || '—'} · ${k('teacher')}: ${teacherOf(a)}`}</Text>
-            <Text className="text-muted-foreground text-xs">{`${k('due')}: ${longDate(a.due_date)} · ${k('assigned')}: ${longDate(a.assigned_date)}`}</Text>
-          </Pressable>
+          </ListCard>
         )}
       />
     </>
-  );
-}
-
-function Count({ value, label, tone }: { value: number; label: string; tone: string }) {
-  return (
-    <Card className="flex-1">
-      <CardContent className="items-center py-4">
-        <Text className={`text-2xl font-bold ${tone}`}>{String(value)}</Text>
-        <Text className="text-muted-foreground mt-1 text-xs">{label}</Text>
-      </CardContent>
-    </Card>
   );
 }

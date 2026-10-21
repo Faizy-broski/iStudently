@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as activitiesController from '../controllers/activities.controller';
 import { authenticate } from '../middlewares/auth.middleware';
+import { requireOwnCoursePeriods } from '../middlewares/own-course-period.middleware';
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware';
 import { requireBodyRowsInSchoolFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware';
 
@@ -54,10 +55,10 @@ router.delete('/activities/:id/students/:studentId', authenticate, requireAdmin,
 router.get('/activities/eligibility/student', authenticate, requireTeacher, queryStudent, activitiesController.getStudentEligibility);
 
 /** GET /api/activities/eligibility */
-router.get('/activities/eligibility', authenticate, requireTeacher, queryCp, activitiesController.getEligibility);
+router.get('/activities/eligibility', authenticate, requireTeacher, queryCp, requireOwnCoursePeriods((req) => req.query.course_period_id), activitiesController.getEligibility);
 
 /** POST /api/activities/eligibility */
-router.post('/activities/eligibility', authenticate, requireTeacher, bodyCp, bodyRecordStudents, activitiesController.saveEligibility);
+router.post('/activities/eligibility', authenticate, requireTeacher, bodyCp, requireOwnCoursePeriods((req) => req.body?.course_period_id), bodyRecordStudents, activitiesController.saveEligibility);
 
 // ============================================================================
 // SETTINGS

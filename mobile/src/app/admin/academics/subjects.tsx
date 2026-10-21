@@ -1,18 +1,20 @@
 import type { Subject, SubjectType } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { BookOpen, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
+import { FilterChips } from '@/components/app/filter-chips';
+import { HeaderButton, IconTile, RowActions, SortChips } from '@/components/app/layout';
+import { CARD_LIST_PROPS, Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
@@ -74,29 +76,33 @@ export default function Subjects() {
 
   const sortLabels: Record<SortField, string> = { name: s('name'), code: s('code'), grade_name: s('grade'), subject_type: s('type'), is_active: s('status') };
 
+  const add = () => {
+    setEditing(null);
+    setForm({ grade_level_id: grade !== 'all' ? grade : '', name: '', code: '', subject_type: 'theory' });
+  };
+  const typeTone = (x: Subject) => (x.subject_type === 'lab' ? ('success' as const) : x.subject_type === 'practical' ? ('warning' as const) : ('brand' as const));
+
   return (
     <>
-      <Stack.Screen options={{ title: s('title') }} />
+      <Stack.Screen options={{ title: s('title'), headerRight: () => <HeaderButton icon={Plus} label={s('add_subject')} onPress={add} /> }} />
       <View className="bg-background flex-1">
         <DataList
           header={
-            <View className="gap-3 p-4">
-              <Text variant="muted">{s('subtitle')}</Text>
-              <Button
-                onPress={() => {
-                  setEditing(null);
-                  setForm({ grade_level_id: grade !== 'all' ? grade : '', name: '', code: '', subject_type: 'theory' });
-                }}>
-                <Icon as={Plus} className="text-primary-foreground size-4" />
-                <Text>{s('add_subject')}</Text>
-              </Button>
-              <Picker value={grade} onChange={setGrade} options={[{ value: 'all', label: s('all_grades') }, ...active.map((x) => ({ value: x.id, label: x.name }))]} />
-              <View className="flex-row items-center gap-2">
-                <Picker className="flex-1" value={sortField} onChange={(v) => setSortField(v as SortField)} options={(Object.keys(sortLabels) as SortField[]).map((f) => ({ value: f, label: sortLabels[f] }))} />
-                <Pressable onPress={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))} className="border-border rounded-md border p-2.5" accessibilityRole="button">
-                  <Icon as={sortDir === 'asc' ? ArrowUp : ArrowDown} className="text-foreground size-4" />
-                </Pressable>
-              </View>
+            <View className="gap-3 px-4 pt-3 pb-3">
+              <Text variant="muted" className="text-sm">
+                {s('subtitle')}
+              </Text>
+              <FilterChips value={grade} onChange={setGrade} options={[{ value: 'all', label: s('all_grades') }, ...active.map((x) => ({ value: x.id, label: x.name }))]} />
+              <SortChips
+                options={(Object.keys(sortLabels) as SortField[]).map((f) => [f, sortLabels[f]] as [SortField, string])}
+                value={sortField}
+                dir={sortDir}
+                onChange={(k, d) => {
+                  setSortField(k);
+                  setSortDir(d);
+                }}
+              />
+              {list.data ? <StatusChip label={`${rows.length} ${s('title')}`} tone="info" className="self-start px-2.5 py-1" /> : null}
             </View>
           }
           items={list.data ? rows : undefined}
@@ -105,36 +111,34 @@ export default function Subjects() {
           onRefresh={() => list.mutate()}
           emptyTitle={s('no_subjects')}
           keyExtractor={(x) => x.id}
+          {...CARD_LIST_PROPS}
           renderItem={(x) => (
-            <View className="gap-1.5 px-4 py-3">
-              <View className="flex-row items-center gap-2">
-                <View className="flex-1">
-                  <Text className="font-medium">{x.name}</Text>
-                  <Text className="text-muted-foreground text-xs">{[x.code, x.grade_name].filter(Boolean).join(' · ')}</Text>
+            <Panel className="gap-2 p-3">
+              <View className="flex-row items-center gap-3">
+                <IconTile icon={BookOpen} tone={typeTone(x)} size={40} />
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold" numberOfLines={1}>
+                    {x.name}
+                  </Text>
+                  <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                    {[x.code, x.grade_name].filter(Boolean).join(' · ')}
+                  </Text>
                 </View>
-                {x.subject_type ? (
-                  <Badge variant={x.subject_type === 'theory' ? 'default' : x.subject_type === 'lab' ? 'secondary' : 'outline'}>
-                    <Text>{s(x.subject_type)}</Text>
-                  </Badge>
-                ) : null}
-                <Badge variant={x.is_active !== false ? 'default' : 'secondary'}>
-                  <Text>{x.is_active !== false ? s('active') : s('inactive')}</Text>
-                </Badge>
+                <View className="items-end gap-1">
+                  {x.subject_type ? <StatusChip label={s(x.subject_type)} tone={x.subject_type === 'lab' ? 'success' : x.subject_type === 'practical' ? 'warning' : 'info'} className="px-2 py-0.5" /> : null}
+                  {x.is_active === false ? <StatusChip label={s('inactive')} tone="muted" className="px-2 py-0.5" /> : null}
+                </View>
               </View>
-              <View className="flex-row justify-end gap-4">
-                <Pressable
-                  onPress={() => {
-                    setEditing(x);
-                    setForm({ grade_level_id: x.grade_level_id ?? '', name: x.name, code: x.code ?? '', subject_type: x.subject_type ?? 'theory' });
-                  }}
-                  hitSlop={8}>
-                  <Icon as={Pencil} className="text-muted-foreground size-4" />
-                </Pressable>
-                <Pressable onPress={() => remove(x)} hitSlop={8}>
-                  <Icon as={Trash2} className="text-destructive size-4" />
-                </Pressable>
-              </View>
-            </View>
+              <RowActions
+                onEdit={() => {
+                  setEditing(x);
+                  setForm({ grade_level_id: x.grade_level_id ?? '', name: x.name, code: x.code ?? '', subject_type: x.subject_type ?? 'theory' });
+                }}
+                onDelete={() => remove(x)}
+                editLabel={s('edit_title')}
+                deleteLabel={s('delete')}
+              />
+            </Panel>
           )}
         />
       </View>

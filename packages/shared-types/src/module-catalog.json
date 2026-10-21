@@ -1297,6 +1297,74 @@
         ]
       },
       {
+        "title": "jahbadh_class_home",
+        "hrefs": [
+          "/teacher/jahbadh-grades"
+        ]
+      },
+      {
+        "title": "jahbadh_report_cards",
+        "hrefs": [
+          "/teacher/jahbadh-grades/report-cards",
+          "/student/jahbadh-report-cards",
+          "/parent/jahbadh-report-cards"
+        ]
+      },
+      {
+        "title": "jahbadh_activities",
+        "hrefs": [
+          "/teacher/jahbadh-grades/activities"
+        ]
+      },
+      {
+        "title": "jahbadh_dashboard",
+        "hrefs": [
+          "/teacher/jahbadh-grades/dashboard"
+        ]
+      },
+      {
+        "title": "jahbadh_early_warning",
+        "hrefs": [
+          "/teacher/jahbadh-grades/early-warning"
+        ]
+      },
+      {
+        "title": "jahbadh_test_analysis",
+        "hrefs": [
+          "/teacher/jahbadh-grades/test-analysis"
+        ]
+      },
+      {
+        "title": "jahbadh_rubrics",
+        "hrefs": [
+          "/teacher/jahbadh-grades/rubrics"
+        ]
+      },
+      {
+        "title": "jahbadh_ideas",
+        "hrefs": [
+          "/teacher/jahbadh-grades/ideas"
+        ]
+      },
+      {
+        "title": "jahbadh_distribution",
+        "hrefs": [
+          "/teacher/jahbadh-grades/distribution"
+        ]
+      },
+      {
+        "title": "jahbadh_exam_control",
+        "hrefs": [
+          "/teacher/exam-control"
+        ]
+      },
+      {
+        "title": "jahbadh_exam_timer",
+        "hrefs": [
+          "/teacher/exam-timer"
+        ]
+      },
+      {
         "title": "assignments",
         "hrefs": [
           "/teacher/grades/assignments",
@@ -1341,6 +1409,83 @@
         "title": "quizzes",
         "hrefs": [
           "/student/quizzes"
+        ]
+      }
+    ]
+  },
+  {
+    "title": "jahbadh_grades",
+    "items": [
+      {
+        "title": "jahbadh_class_home",
+        "hrefs": [
+          "/admin/jahbadh-grades"
+        ]
+      },
+      {
+        "title": "jahbadh_report_cards",
+        "hrefs": [
+          "/admin/jahbadh-grades/report-cards"
+        ]
+      },
+      {
+        "title": "jahbadh_activities",
+        "hrefs": [
+          "/admin/jahbadh-grades/activities"
+        ]
+      },
+      {
+        "title": "jahbadh_dashboard",
+        "hrefs": [
+          "/admin/jahbadh-grades/dashboard"
+        ]
+      },
+      {
+        "title": "jahbadh_early_warning",
+        "hrefs": [
+          "/admin/jahbadh-grades/early-warning"
+        ]
+      },
+      {
+        "title": "jahbadh_test_analysis",
+        "hrefs": [
+          "/admin/jahbadh-grades/test-analysis"
+        ]
+      },
+      {
+        "title": "jahbadh_rubrics",
+        "hrefs": [
+          "/admin/jahbadh-grades/rubrics"
+        ]
+      },
+      {
+        "title": "jahbadh_ideas",
+        "hrefs": [
+          "/admin/jahbadh-grades/ideas"
+        ]
+      },
+      {
+        "title": "jahbadh_exam_control",
+        "hrefs": [
+          "/admin/exam-control"
+        ]
+      },
+      {
+        "title": "jahbadh_exam_timer",
+        "hrefs": [
+          "/admin/exam-timer"
+        ]
+      },
+      {
+        "title": "jahbadh_distribution",
+        "hrefs": [
+          "/admin/jahbadh-grades/distribution"
+        ]
+      },
+      {
+        "title": "jahbadh_setup",
+        "hrefs": [
+          "/admin/jahbadh-grades/setup"
         ]
       }
     ]

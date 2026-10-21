@@ -187,6 +187,22 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     sidebarInjections: [],
   },
 
+  // ── Jahbadh grades (official Libyan distribution) ─────────────────────────
+  // Standalone top-level admin group + teacher grade-entry pages in sidebar.ts
+  // (pluginRequired: 'jahbadh_grades'). `id` matches active_plugins.jahbadh_grades
+  // checked by backend/src/middlewares/jahbadh-grades-enabled.middleware.ts.
+  // Setup (copy the memo, link grade levels and subjects) is a prerequisite.
+  {
+    id: 'jahbadh_grades',
+    name: 'Jahbadh Grades',
+    description:
+      'Libyan official grade distribution (2024-2025 memo, grades 1–12 with tracks): per-component mark entry, automatic totals, results, second round with required scores, stage locks, audit log and printable Arabic result sheets.',
+    icon: ClipboardList,
+    category: 'Grades',
+    settingsHref: '/admin/jahbadh-grades/setup',
+    sidebarInjections: [],
+  },
+
   // ── Online Learning ───────────────────────────────────────────────────────
   // Single merged module (previously two: 'live_class' for ad-hoc Jitsi
   // rooms + 'online_classes' for course-bound request/approval sessions —

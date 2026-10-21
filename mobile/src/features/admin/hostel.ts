@@ -33,9 +33,3 @@ export function hostelCustomFields(defs: CustomFieldDefinition[] | undefined, ed
 
 export const ROOM_TYPES = ['standard', 'premium', 'suite', 'shared'] as const;
 
-export const FEE_STATUS_TONE: Record<string, string> = {
-  pending: 'bg-yellow-100 dark:bg-yellow-900/30',
-  paid: 'bg-emerald-100 dark:bg-emerald-900/30',
-  partial: 'bg-blue-100 dark:bg-blue-900/30',
-  waived: 'bg-gray-100 dark:bg-gray-900/30',
-};

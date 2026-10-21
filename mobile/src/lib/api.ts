@@ -13,7 +13,7 @@ import {
   platformApi,
   quizApi,
   studentDashboardApi,
-  type AccountGate, adminSchoolApi, campusesApi, schoolDashboardApi, twoFaApi, agreementApi, adminStudentsApi, adminAcademicsApi, adminParentsApi, adminCustomFieldsApi, adminEmployeesApi, adminFieldOrdersApi, adminSignupsApi, adminGroupAssignApi, adminMailApi, adminAnalyticsApi, adminDesignationsApi, adminFeesApi, adminBillingElementsApi, adminAccountingApi, adminSalaryApi, adminGradesApi, adminSchedulingApi, adminQuizApi, adminOnlineClassesApi, adminActivitiesApi, adminAttendanceApi, adminStaffAbsencesApi, adminDisciplineApi, adminEntryExitApi, adminMiqatApi, adminInspectionsApi, adminPerformanceApi, adminTimetableApi, adminPeriodsApi, adminCalendarsApi, adminGeneratorApi, adminPortalApi, adminRolloverApi, adminCalculationsApi, adminTrainingApi, adminWeatherApi, adminServicesApi, adminUserProfilesApi, adminPushApi, adminPublicPagesApi, adminHostelApi, adminLibraryApi, adminTextbooksApi, adminQirtasiApi, adminResourcesApi, adminVaultApi, adminHifziApi, quranApi, finaApi, adminSpeedReadingApi, hadithFortyApi, adminCoursesApi, adminTeacherProgramsApi, jitsiApi, adminHistoricalGradesApi, adminHumanResourcesApi, adminLetterTemplatesApi, portalApi, learningResourcesApi, teacherInspectionsApi, readingLogsApi, inspectorApi, librarianApi } from '@studently/api-client'
+  type AccountGate, adminSchoolApi, campusesApi, schoolDashboardApi, twoFaApi, agreementApi, adminStudentsApi, adminAcademicsApi, adminParentsApi, adminCustomFieldsApi, adminEmployeesApi, adminFieldOrdersApi, adminSignupsApi, adminSchoolDataImportApi, exportTemplatesApi, adminParentAgreementApi, adminGroupAssignApi, adminMailApi, adminAnalyticsApi, adminDesignationsApi, adminFeesApi, adminBillingElementsApi, adminAccountingApi, adminSalaryApi, adminGradesApi, adminSchedulingApi, adminQuizApi, adminOnlineClassesApi, adminActivitiesApi, adminAttendanceApi, adminStaffAbsencesApi, adminDisciplineApi, adminEntryExitApi, adminMiqatApi, adminInspectionsApi, adminPerformanceApi, adminTimetableApi, adminPeriodsApi, adminCalendarsApi, adminGeneratorApi, adminPortalApi, adminRolloverApi, adminCalculationsApi, adminTrainingApi, adminWeatherApi, adminServicesApi, adminUserProfilesApi, adminPushApi, adminPublicPagesApi, adminHostelApi, adminLibraryApi, adminTextbooksApi, adminQirtasiApi, adminResourcesApi, adminVaultApi, adminHifziApi, quranApi, finaApi, adminSpeedReadingApi, hadithFortyApi, adminCoursesApi, adminTeacherProgramsApi, jitsiApi, adminHistoricalGradesApi, adminHumanResourcesApi, adminLetterTemplatesApi, portalApi, learningResourcesApi, teacherInspectionsApi, readingLogsApi, inspectorApi, librarianApi, jahbadhGradesApi, jahbadhControlApi } from '@studently/api-client'
 import Constants from 'expo-constants'
 
 import i18n from '@/i18n'
@@ -68,6 +68,9 @@ export const platform = platformApi(api)
 
 // School admin (campus passed per call as campus_id)
 export const campuses = campusesApi(api)
+export const adminSchoolDataImport = adminSchoolDataImportApi(api)
+export const exportTemplates = exportTemplatesApi(api)
+export const adminParentAgreement = adminParentAgreementApi(api)
 export const schoolDashboard = schoolDashboardApi(api)
 export const adminSchool = adminSchoolApi(api)
 export const adminStudents = adminStudentsApi(api)
@@ -91,6 +94,8 @@ export const adminQuiz = adminQuizApi(api)
 export const adminOnlineClasses = adminOnlineClassesApi(api)
 export const adminActivities = adminActivitiesApi(api)
 export const adminHistoricalGrades = adminHistoricalGradesApi(api)
+export const jahbadhGrades = jahbadhGradesApi(api)
+export const jahbadhControl = jahbadhControlApi(api)
 export const adminHumanResources = adminHumanResourcesApi(api)
 export const adminLetterTemplates = adminLetterTemplatesApi(api)
 export const adminAttendance = adminAttendanceApi(api)

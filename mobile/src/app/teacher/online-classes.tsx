@@ -1,18 +1,20 @@
 import type { OnlineClassRequest, OnlineClassType } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { AlertTriangle, CalendarClock, Plus, RefreshCw, StopCircle, Users, Video, XCircle } from 'lucide-react-native';
+import { CalendarClock, Plus, StopCircle, Users, Video, XCircle } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
+import { IconTile, RowPill } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
+import { StatusChip, type ChipTone } from '@/components/app/status-chip';
 import { TimeField } from '@/components/app/time-field';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -25,13 +27,13 @@ import { adminOnlineClasses } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
-const STATUS: Record<string, string> = {
-  pending_review: 'bg-yellow-100 text-yellow-800',
-  approved: 'bg-blue-100 text-blue-800',
-  active: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  completed: 'bg-gray-100 text-gray-700',
-  cancelled: 'bg-gray-100 text-gray-500',
+const STATUS: Record<string, ChipTone> = {
+  pending_review: 'warning',
+  approved: 'info',
+  active: 'success',
+  rejected: 'destructive',
+  completed: 'muted',
+  cancelled: 'muted',
 };
 const DAYS = [
   ['M', 'day_mon'],
@@ -135,93 +137,79 @@ export default function TeacherOnlineClasses() {
     <>
       <Stack.Screen options={{ title: k('heading') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        <Text variant="muted">{k('teacher_subtitle')}</Text>
-        <Button className="self-start" onPress={() => setForm(EMPTY)}>
-          <Icon as={Plus} className="text-primary-foreground size-4" />
-          <Text>{k('new_online_class')}</Text>
-        </Button>
+        <View className="flex-row items-start gap-3">
+          <Text variant="muted" className="flex-1 text-sm">
+            {k('teacher_subtitle')}
+          </Text>
+          <Button size="sm" className="rounded-full" onPress={() => setForm(EMPTY)}>
+            <Icon as={Plus} className="text-primary-foreground size-4" />
+            <Text>{k('new_online_class')}</Text>
+          </Button>
+        </View>
         {autostarting ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <ActivityIndicator />
-              <Text className="text-muted-foreground mt-3">{`${k('start_now')}…`}</Text>
-            </CardContent>
-          </Card>
+          <Panel className="items-center gap-3 py-10">
+            <ActivityIndicator />
+            <Text variant="muted" className="text-sm">{`${k('start_now')}…`}</Text>
+          </Panel>
         ) : null}
         {res.isLoading ? (
           <LoadingList rows={3} />
         ) : res.error ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Icon as={AlertTriangle} className="text-destructive mb-3 size-10" />
-              <Text className="text-destructive font-medium">{res.error.message || k('network_error')}</Text>
-              <Button variant="outline" size="sm" className="mt-4" onPress={() => res.mutate()}>
-                <Icon as={RefreshCw} className="size-3.5" />
-                <Text>{k('retry')}</Text>
-              </Button>
-            </CardContent>
-          </Card>
+          <ErrorState message={res.error.message || k('network_error')} onRetry={() => res.mutate()} />
         ) : !list.length ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Icon as={Video} className="text-muted-foreground mb-3 size-10" />
-              <Text className="text-muted-foreground">{k('no_requests_yet')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={Video} title={k('no_requests_yet')} />
         ) : (
-          list.map((c) => {
-            const tone = STATUS[c.status] ?? STATUS.completed;
-            return (
-              <Card key={c.id}>
-                <CardContent className="gap-3 p-4">
-                  <View className="flex-row items-start justify-between gap-3">
-                    <View className="flex-1">
-                      <Text className="font-semibold">{c.title}</Text>
-                      <Text className="text-muted-foreground text-sm">{c.class_type === 'existing_course' ? k('mode_existing_title') : k('mode_external_title')}</Text>
+          list.map((c) => (
+            <Panel key={c.id} className="gap-3 p-4">
+              <View className="flex-row items-start gap-3">
+                <IconTile icon={Video} tone={c.status === 'active' ? 'success' : 'brand'} size={40} />
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold">{c.title}</Text>
+                  <Text variant="muted" className="text-xs">
+                    {c.class_type === 'existing_course' ? k('mode_existing_title') : k('mode_external_title')}
+                  </Text>
+                </View>
+                <StatusChip label={k(`status_${c.status}`, { defaultValue: c.status })} tone={STATUS[c.status] ?? 'muted'} />
+              </View>
+              {c.scheduled_days || c.class_type === 'external_open' ? (
+                <View className="flex-row flex-wrap gap-4">
+                  {c.scheduled_days ? (
+                    <View className="flex-row items-center gap-1">
+                      <Icon as={CalendarClock} className="text-muted-foreground size-3.5" />
+                      <Text variant="muted" className="text-xs">
+                        {c.scheduled_days}
+                      </Text>
                     </View>
-                    <Badge className={tone.split(' ')[0]}>
-                      <Text className={cn('text-xs', tone.split(' ')[1])}>{k(`status_${c.status}`, { defaultValue: c.status })}</Text>
-                    </Badge>
-                  </View>
-                  <View className="flex-row flex-wrap gap-4">
-                    {c.scheduled_days ? (
-                      <View className="flex-row items-center gap-1">
-                        <Icon as={CalendarClock} className="text-muted-foreground size-3.5" />
-                        <Text className="text-muted-foreground text-sm">{c.scheduled_days}</Text>
-                      </View>
-                    ) : null}
-                    {c.class_type === 'external_open' ? (
-                      <View className="flex-row items-center gap-1">
-                        <Icon as={Users} className="text-muted-foreground size-3.5" />
-                        <Text className="text-muted-foreground text-sm">{`${c.enrolled_count ?? 0}/${c.student_capacity ?? 0}`}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  {c.status === 'rejected' && c.review_note ? <Text className="text-destructive text-sm">{`${k('rejection_reason')}: ${c.review_note}`}</Text> : null}
-                  <View className="flex-row flex-wrap gap-2">
-                    {c.status === 'active' ? (
-                      <>
-                        <Button size="sm" onPress={() => act(c, 'start')} disabled={working === `start:${c.id}`}>
-                          <Icon as={Video} className="text-primary-foreground size-4" />
-                          <Text>{k('start_session')}</Text>
-                        </Button>
-                        <Button size="sm" variant="ghost" onPress={() => act(c, 'end')} disabled={working === `end:${c.id}`}>
-                          <Icon as={StopCircle} className="text-destructive size-4" />
-                          <Text className="text-destructive">{k('end_session')}</Text>
-                        </Button>
-                      </>
-                    ) : null}
-                    {c.status === 'pending_review' || c.status === 'approved' ? (
-                      <Button size="sm" variant="ghost" onPress={() => act(c, 'cancel')} disabled={working === `cancel:${c.id}`}>
-                        <Icon as={XCircle} className="text-destructive size-4" />
-                        <Text className="text-destructive">{k('cancel_request')}</Text>
+                  ) : null}
+                  {c.class_type === 'external_open' ? (
+                    <View className="flex-row items-center gap-1">
+                      <Icon as={Users} className="text-muted-foreground size-3.5" />
+                      <Text variant="muted" className="text-xs">{`${c.enrolled_count ?? 0}/${c.student_capacity ?? 0}`}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+              {c.status === 'rejected' && c.review_note ? (
+                <View className="bg-destructive-soft rounded-xl p-3">
+                  <Text className="text-destructive text-xs">{`${k('rejection_reason')}: ${c.review_note}`}</Text>
+                </View>
+              ) : null}
+              {c.status === 'active' || c.status === 'pending_review' || c.status === 'approved' ? (
+                <View className="border-info-soft dark:border-border flex-row flex-wrap justify-end gap-2 border-t pt-3">
+                  {c.status === 'active' ? (
+                    <>
+                      <Button size="sm" className="rounded-full" onPress={() => act(c, 'start')} disabled={working === `start:${c.id}`}>
+                        <Icon as={Video} className="text-primary-foreground size-4" />
+                        <Text>{k('start_session')}</Text>
                       </Button>
-                    ) : null}
-                  </View>
-                </CardContent>
-              </Card>
-            );
-          })
+                      <RowPill icon={StopCircle} tone="destructive" label={k('end_session')} onPress={() => (working === `end:${c.id}` ? undefined : act(c, 'end'))} />
+                    </>
+                  ) : null}
+                  {c.status === 'pending_review' || c.status === 'approved' ? <RowPill icon={XCircle} tone="destructive" label={k('cancel_request')} onPress={() => (working === `cancel:${c.id}` ? undefined : act(c, 'cancel'))} /> : null}
+                </View>
+              ) : null}
+            </Panel>
+          ))
         )}
       </ScrollView>
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
@@ -238,8 +226,8 @@ export default function TeacherOnlineClasses() {
                   onPress={() => set({ type })}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: form.type === type }}
-                  className={cn('rounded-lg border-2 p-3', form.type === type ? 'border-primary bg-primary/5' : 'border-border')}>
-                  <Text className="text-sm font-medium">{type === 'external_open' ? k('mode_external_title') : k('mode_existing_title')}</Text>
+                  className={cn('rounded-2xl border p-3', form.type === type ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border bg-card')}>
+                  <Text className="text-sm font-semibold">{type === 'external_open' ? k('mode_external_title') : k('mode_existing_title')}</Text>
                   <Text className="text-muted-foreground text-xs">{type === 'external_open' ? k('mode_external_desc') : k('mode_existing_desc')}</Text>
                 </Pressable>
               ))}
@@ -283,8 +271,8 @@ export default function TeacherOnlineClasses() {
                             accessibilityRole="checkbox"
                             accessibilityLabel={k(key)}
                             accessibilityState={{ checked: on }}
-                            className={cn('size-9 items-center justify-center rounded-full border-2', on ? 'border-primary bg-primary' : 'border-border')}>
-                            <Text className={cn('text-xs font-medium', on && 'text-primary-foreground')}>{k(key).slice(0, 1)}</Text>
+                            className={cn('size-9 items-center justify-center rounded-full border', on ? 'border-brand bg-brand dark:border-brand-secondary dark:bg-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
+                            <Text className={cn('text-xs font-semibold', on ? 'text-white' : 'text-muted-foreground')}>{k(key).slice(0, 1)}</Text>
                           </Pressable>
                         );
                       })}

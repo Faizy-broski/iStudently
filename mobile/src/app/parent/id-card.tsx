@@ -6,9 +6,11 @@ import { ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 import QRCode from 'react-qr-code';
 
+import { colors } from '@/lib/colors';
+import { HeroCard, Section } from '@/components/app/layout';
+import { EmptyState } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ChildSwitcher, useChild } from '@/features/parent/child';
@@ -25,11 +27,11 @@ export default function ParentIdCard() {
   function html() {
     if (!child) return '';
     const name = `${child.first_name} ${child.last_name}`;
-    const photo = child.profile_photo_url ? `<img src="${escapeHtml(child.profile_photo_url)}" style="width:80px;height:96px;object-fit:cover;border-radius:8px;background:#fff"/>` : '<div style="width:80px;height:96px;border-radius:8px;background:#fff"></div>';
-    const card = `<div style="width:340px;margin:24px auto;padding:24px;border-radius:12px;color:#fff;background:linear-gradient(135deg,#2563eb,#4338ca)">
+    const photo = child.profile_photo_url ? `<img src="${escapeHtml(child.profile_photo_url)}" style="width:80px;height:96px;object-fit:cover;border-radius:8px;background:${colors.white}"/>` : `<div style="width:80px;height:96px;border-radius:8px;background:${colors.white}"></div>`;
+    const card = `<div style="width:340px;margin:24px auto;padding:24px;border-radius:12px;color:${colors.white};background:linear-gradient(135deg,${colors.brand},${colors.chart6})">
       <div style="text-align:center;margin-bottom:16px"><div style="font-size:18px;font-weight:700">${escapeHtml(child.campus_name)}</div><div style="font-size:11px;opacity:.8">${escapeHtml(k('identity'))}</div></div>
       <div style="display:flex;gap:16px">${photo}<div><div style="font-size:18px;font-weight:700">${escapeHtml(name)}</div><div style="font-size:13px;opacity:.9">${escapeHtml(k('id', { v: child.student_number }))}<br/>${escapeHtml(k('grade', { v: child.grade_level }))}<br/>${escapeHtml(k('section', { v: child.section }))}</div></div></div>
-      <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.3);display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;opacity:.7">${escapeHtml(k('valid'))}</span><span style="background:#fff;padding:4px;border-radius:4px">${qrSvg(child.id, 2)}</span></div></div>`;
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid ${colors.overlayLightStrong};display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;opacity:.7">${escapeHtml(k('valid'))}</span><span style="background:${colors.white};padding:4px;border-radius:4px">${qrSvg(child.id, 2)}</span></div></div>`;
     return buildPrintHtml({ title: k('title'), school: { name: child.campus_name }, pages: [card], extraCss: '@page{margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}' });
   }
 
@@ -60,29 +62,16 @@ export default function ParentIdCard() {
         <ChildSwitcher />
         {child ? (
           <>
-            <Card>
-              <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
-                <CardTitle>{k('preview')}</CardTitle>
-                <View className="flex-row gap-2">
-                  <Button variant="outline" size="sm" onPress={download} disabled={busy}>
-                    <Icon as={Download} className="size-4" />
-                    <Text>{busy ? k('downloading') : k('download')}</Text>
-                  </Button>
-                  <Button variant="outline" size="sm" onPress={print}>
-                    <Icon as={Printer} className="size-4" />
-                    <Text>{k('print')}</Text>
-                  </Button>
-                </View>
-              </CardHeader>
-              <CardContent>
-                <View className="rounded-xl bg-indigo-700 p-5">
-                  <View className="mb-4 items-center">
+            <Section title={k('preview')}>
+              <View className="gap-3">
+                <HeroCard>
+                  <View className="mb-1 items-center">
                     <Text className="text-lg font-bold text-white">{child.campus_name}</Text>
                     <Text className="text-xs text-white/80">{k('identity')}</Text>
                   </View>
                   <View className="flex-row items-start gap-4">
                     <View className="h-24 w-20 items-center justify-center overflow-hidden rounded-lg bg-white">
-                      {child.profile_photo_url ? <Image source={{ uri: child.profile_photo_url }} style={{ width: 80, height: 96 }} contentFit="cover" /> : <Icon as={User} className="size-10 text-gray-400" />}
+                      {child.profile_photo_url ? <Image source={{ uri: child.profile_photo_url }} style={{ width: 80, height: 96 }} contentFit="cover" /> : <Icon as={User} className="size-10 text-muted-foreground" />}
                     </View>
                     <View className="flex-1 gap-0.5">
                       <Text className="text-lg font-bold text-white">{`${child.first_name} ${child.last_name}`}</Text>
@@ -91,27 +80,31 @@ export default function ParentIdCard() {
                       <Text className="text-sm text-white/90">{k('section', { v: child.section })}</Text>
                     </View>
                   </View>
-                  <View className="mt-4 flex-row items-center justify-between border-t border-white/30 pt-3">
+                  <View className="mt-1 flex-row items-center justify-between border-t border-white/30 pt-3">
                     <Text className="flex-1 text-xs text-white/70">{k('valid')}</Text>
                     <View className="rounded bg-white p-1">
                       <QRCode value={child.id} size={56} level="M" />
                     </View>
                   </View>
+                </HeroCard>
+                <View className="flex-row gap-2">
+                  <Button variant="outline" className="flex-1" onPress={download} disabled={busy}>
+                    <Icon as={Download} className="size-4" />
+                    <Text>{busy ? k('downloading') : k('download')}</Text>
+                  </Button>
+                  <Button className="flex-1" onPress={print}>
+                    <Icon as={Printer} className="text-primary-foreground size-4" />
+                    <Text>{k('print')}</Text>
+                  </Button>
                 </View>
-              </CardContent>
-            </Card>
-            <View className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
-              <Text className="text-sm text-blue-700 dark:text-blue-300">{k('note')}</Text>
+              </View>
+            </Section>
+            <View className="bg-info-soft rounded-2xl p-4">
+              <Text className="text-sm text-brand dark:text-brand-secondary">{k('note')}</Text>
             </View>
           </>
         ) : (
-          <Card>
-            <CardContent className="items-center p-10">
-              <Icon as={CreditCard} className="text-muted-foreground mb-3 size-16" />
-              <Text className="text-muted-foreground text-lg">{k('none')}</Text>
-              <Text className="text-muted-foreground text-sm">{k('none_body')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={CreditCard} title={k('none')} body={k('none_body')} />
         )}
       </ScrollView>
     </>

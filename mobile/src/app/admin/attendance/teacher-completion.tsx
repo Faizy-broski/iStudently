@@ -6,14 +6,17 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
+import { FilterChips } from '@/components/app/filter-chips';
+import { Initials } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { DateField, todayYmd } from '@/components/app/date-field';
-import { Picker } from '@/components/app/picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ALL, useAttendanceScope } from '@/features/admin/attendance';
 import { adminAcademics, adminAttendance } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { cn } from '@/lib/utils';
 
 type Cell = { period: string; teacher: string; courses: { subject_name: string; section_name: string }[] };
 
@@ -41,7 +44,7 @@ export default function TeacherCompletion() {
           header={
             <View className="gap-3 p-4">
               <DateField value={date} onChange={(d) => d && setDate(d)} />
-              <Picker value={period} onChange={setPeriod} options={[{ value: ALL, label: a('allStatus') }, ...active.map((p) => ({ value: p.id, label: p.period_name || `P${p.period_number}` }))]} />
+              <FilterChips value={period} onChange={setPeriod} options={[{ value: ALL, label: a('allStatus') }, ...active.map((p) => ({ value: p.id, label: p.period_name || `P${p.period_number}` }))]} />
             </View>
           }
           items={list.data}
@@ -52,8 +55,18 @@ export default function TeacherCompletion() {
           emptyTitle={a('completion_noTeachers')}
           keyExtractor={(x: TeacherCompletionStatus) => x.staff_id}
           renderItem={(x: TeacherCompletionStatus) => (
-            <View className="gap-2 px-4 py-3">
-              <Text className="font-medium">{x.staff_name}</Text>
+            <View className="gap-2.5 px-4 py-3">
+              <View className="flex-row items-center gap-3">
+                <Initials name={x.staff_name} />
+                <Text className="flex-1 text-sm font-semibold" numberOfLines={1}>
+                  {x.staff_name}
+                </Text>
+                {(() => {
+                  const assigned = x.periods.filter((p) => p.assigned);
+                  const done = assigned.filter((p) => p.completed).length;
+                  return <StatusChip label={`${done}/${assigned.length}`} tone={assigned.length && done === assigned.length ? 'success' : done ? 'warning' : 'muted'} className="px-2 py-0.5" />;
+                })()}
+              </View>
               <View className="flex-row flex-wrap gap-2">
                 {display.map((dp) => {
                   const p = x.periods.find((pp) => pp.period_id === dp.id);
@@ -63,14 +76,14 @@ export default function TeacherCompletion() {
                       key={dp.id}
                       disabled={!assigned}
                       onPress={() => setCell({ period: dp.name, teacher: x.staff_name, courses: p?.courses ?? [] })}
-                      className="border-border min-w-14 items-center gap-0.5 rounded-md border px-2 py-1">
+                      className={cn('min-w-14 items-center gap-0.5 rounded-xl px-2 py-1.5', !assigned ? 'bg-muted' : p?.completed ? 'bg-success-soft' : 'bg-destructive-soft')}>
                       <Text className="text-muted-foreground text-[10px]">{dp.name}</Text>
                       {!assigned ? (
                         <Text className="text-muted-foreground">—</Text>
                       ) : p?.completed ? (
-                        <Icon as={Check} className="size-5 text-green-600" />
+                        <Icon as={Check} className="size-5 text-success" />
                       ) : (
-                        <Icon as={X} className="size-5 text-red-500" />
+                        <Icon as={X} className="size-5 text-destructive" />
                       )}
                     </Pressable>
                   );

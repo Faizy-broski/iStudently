@@ -1,17 +1,16 @@
 import type { SchoolFieldDefinition } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowDown, ArrowUp, Plus } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, ListPlus, Plus } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
 import { FilterChips } from '@/components/app/filter-chips';
+import { HeaderButton, IconTile } from '@/components/app/layout';
 import { ListRow } from '@/components/app/list-row';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
-import { Text } from '@/components/ui/text';
 import { DEFAULT_TAB, fieldTabs } from '@/features/superadmin/fields';
 import { platform } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -51,11 +50,7 @@ export default function SchoolFields() {
       <Stack.Screen
         options={{
           title: name ? t('app.cf_title_for', { name }) : t('app.cf_title'),
-          headerRight: () => (
-            <Button size="sm" variant="ghost" onPress={() => openForm()} accessibilityLabel={t('app.cf_new')}>
-              <Icon as={Plus} className="size-5" />
-            </Button>
-          ),
+          headerRight: () => <HeaderButton icon={Plus} label={t('app.cf_new')} onPress={() => openForm()} />,
         }}
       />
       <View className="bg-background flex-1">
@@ -77,18 +72,25 @@ export default function SchoolFields() {
             <ListRow
               title={f.label}
               subtitle={[t(`app.cf_type_${f.type}`), t(`app.cf_scope_${f.campus_scope}`)].join(' · ')}
+              leading={<IconTile icon={ListPlus} size={40} />}
               trailing={
-                <View className="flex-row items-center gap-3">
-                  {f.required ? (
-                    <Badge variant="outline">
-                      <Text>{t('app.cf_required')}</Text>
-                    </Badge>
-                  ) : null}
-                  <Pressable onPress={() => move(f, -1)} disabled={i === 0} hitSlop={8} accessibilityLabel={t('app.ib_move_up')}>
-                    <Icon as={ArrowUp} className={i === 0 ? 'text-muted size-5' : 'text-muted-foreground size-5'} />
+                <View className="flex-row items-center gap-2">
+                  {f.required ? <StatusChip label={t('app.cf_required')} tone="warning" /> : null}
+                  <Pressable
+                    onPress={() => move(f, -1)}
+                    disabled={i === 0}
+                    hitSlop={8}
+                    accessibilityLabel={t('app.ib_move_up')}
+                    className={i === 0 ? 'bg-muted size-8 items-center justify-center rounded-full opacity-50' : 'bg-info-soft size-8 items-center justify-center rounded-full active:opacity-70'}>
+                    <Icon as={ArrowUp} className={i === 0 ? 'text-muted-foreground size-4' : 'text-brand dark:text-brand-secondary size-4'} />
                   </Pressable>
-                  <Pressable onPress={() => move(f, 1)} disabled={i === inTab.length - 1} hitSlop={8} accessibilityLabel={t('app.ib_move_down')}>
-                    <Icon as={ArrowDown} className={i === inTab.length - 1 ? 'text-muted size-5' : 'text-muted-foreground size-5'} />
+                  <Pressable
+                    onPress={() => move(f, 1)}
+                    disabled={i === inTab.length - 1}
+                    hitSlop={8}
+                    accessibilityLabel={t('app.ib_move_down')}
+                    className={i === inTab.length - 1 ? 'bg-muted size-8 items-center justify-center rounded-full opacity-50' : 'bg-info-soft size-8 items-center justify-center rounded-full active:opacity-70'}>
+                    <Icon as={ArrowDown} className={i === inTab.length - 1 ? 'text-muted-foreground size-4' : 'text-brand dark:text-brand-secondary size-4'} />
                   </Pressable>
                 </View>
               }

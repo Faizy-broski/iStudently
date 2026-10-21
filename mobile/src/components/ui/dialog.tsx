@@ -5,7 +5,8 @@ import * as DialogPrimitive from '@rn-primitives/dialog';
 import { X } from 'lucide-react-native';
 import * as React from 'react';
 import { Platform, Text, View, type GestureResponderEvent, type ViewProps } from 'react-native';
-import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, ReduceMotion, useAnimatedStyle } from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
 const Dialog = DialogPrimitive.Root;
@@ -39,11 +40,11 @@ function DialogOverlay({
     <FullWindowOverlay>
       <DialogPrimitive.Overlay
         className={cn(
-          'absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-black/50 p-2',
+          'absolute inset-0 flex items-center justify-center bg-black/50 p-2',
           Platform.select({
             web: 'animate-in fade-in-0 fixed cursor-default [&>*]:cursor-auto',
           }),
-          className
+          className,
         )}
         {...props}
         onPress={Platform.select({ web: onOverlayPress, native: onPress })}
@@ -70,34 +71,40 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   portalHost?: string;
 }) {
+  // Lift the centered dialog above the keyboard: a bottom margin equal to the keyboard height
+  // re-centers it in the space left above the keyboard (Android edge-to-edge and iOS).
+  const { height } = useReanimatedKeyboardAnimation();
+  const liftStyle = useAnimatedStyle(() => ({ marginBottom: -height.value }));
   return (
     <DialogPortal hostName={portalHost}>
       <DialogOverlay>
-        <DialogPrimitive.Content
-          className={cn(
-            'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
-            Platform.select({
-              web: 'animate-in fade-in-0 zoom-in-95 duration-200',
-            }),
-            className
-          )}
-          {...props}>
-          <>{children}</>
-          <DialogPrimitive.Close
+        <Animated.View style={liftStyle}>
+          <DialogPrimitive.Content
             className={cn(
-              'absolute right-4 top-4 rounded opacity-70 active:opacity-100',
+              'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 sm:max-w-lg',
               Platform.select({
-                web: 'ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2',
-              })
+                web: 'animate-in fade-in-0 zoom-in-95 duration-200',
+              }),
+              className,
             )}
-            hitSlop={12}>
-            <Icon
-              as={X}
-              className={cn('text-accent-foreground web:pointer-events-none size-4 shrink-0')}
-            />
-            <Text className="sr-only">Close</Text>
-          </DialogPrimitive.Close>
-        </DialogPrimitive.Content>
+            {...props}>
+            <>{children}</>
+            <DialogPrimitive.Close
+              className={cn(
+                'absolute end-4 top-4 rounded opacity-70 active:opacity-100',
+                Platform.select({
+                  web: 'ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2',
+                }),
+              )}
+              hitSlop={12}>
+              <Icon
+                as={X}
+                className={cn('text-accent-foreground web:pointer-events-none size-4 shrink-0')}
+              />
+              <Text className="sr-only">Close</Text>
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </Animated.View>
       </DialogOverlay>
     </DialogPortal>
   );
@@ -105,7 +112,7 @@ function DialogContent({
 
 function DialogHeader({ className, ...props }: ViewProps) {
   return (
-    <View className={cn('flex flex-col gap-2 text-center sm:text-left', className)} {...props} />
+    <View className={cn('flex flex-col gap-2 text-center sm:text-start', className)} {...props} />
   );
 }
 

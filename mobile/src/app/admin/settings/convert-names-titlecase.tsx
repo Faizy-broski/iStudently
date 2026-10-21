@@ -51,9 +51,9 @@ export default function ConvertNamesTitlecase() {
             <Text key={f} className="text-muted-foreground ps-3 text-sm">{`• ${t(`school.students.bulk_import.fields.${f}`)}`}</Text>
           ))}
           {result !== null ? (
-            <View className="flex-row items-center gap-2 rounded-md bg-green-50 p-2 dark:bg-green-950/30">
-              <Icon as={CheckCircle2} className="size-4 text-green-700 dark:text-green-400" />
-              <Text className="flex-1 text-sm text-green-800 dark:text-green-300">{result > 0 ? t('app.ps_cn_done', { count: result }) : t('app.ps_cn_nothing')}</Text>
+            <View className="flex-row items-center gap-2 rounded-md bg-success-soft p-2 ">
+              <Icon as={CheckCircle2} className="size-4 text-success " />
+              <Text className="flex-1 text-sm text-success ">{result > 0 ? t('app.ps_cn_done', { count: result }) : t('app.ps_cn_nothing')}</Text>
             </View>
           ) : null}
           <Button onPress={convert} disabled={busy}>

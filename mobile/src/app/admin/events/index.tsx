@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
@@ -15,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useAcademicYear } from '@/features/admin/use-academic-year';
 import { CATEGORY_ICONS, EVENT_CATEGORIES, EVENT_COLORS, EventLine, ymdOf } from '@/features/admin/events';
@@ -29,7 +31,7 @@ import { cn } from '@/lib/utils';
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-const SCHEDULE_PALETTE = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777', '#4f46e5', '#059669'];
+const SCHEDULE_PALETTE = [colors.brand, colors.success, colors.destructive, colors.chart6, colors.warning, colors.chart7, colors.warning, colors.chart8, colors.chart6, colors.success];
 const sectionColor = (id: string) => {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
@@ -244,14 +246,14 @@ export default function Events() {
           <View className="flex-row flex-wrap items-center gap-3">
             {scheduleActive ? (
               <Pressable onPress={() => setScheduleMode((v) => !v)} className="flex-row items-center gap-1">
-                <Icon as={CalendarDays} className="size-4 text-blue-600" />
-                <Text className="text-sm text-blue-600">{scheduleMode ? e('view_events_assignments') : e('view_schedule')}</Text>
+                <Icon as={CalendarDays} className="size-4 text-brand dark:text-brand-secondary" />
+                <Text className="text-sm text-brand dark:text-brand-secondary">{scheduleMode ? e('view_events_assignments') : e('view_schedule')}</Text>
               </Pressable>
             ) : null}
             {icalActive ? (
               <Pressable onPress={() => setIcalOpen(true)} className="flex-row items-center gap-1">
-                <Icon as={CalendarRange} className="size-4 text-green-700" />
-                <Text className="text-sm text-green-700">{e('ical_title')}</Text>
+                <Icon as={CalendarRange} className="size-4 text-success" />
+                <Text className="text-sm text-success">{e('ical_title')}</Text>
               </Pressable>
             ) : null}
             {scheduleMode && years.years.length ? (
@@ -277,12 +279,12 @@ export default function Events() {
               </View>
               {active ? (
                 <>
-                  <Button size="icon" variant="ghost" onPress={() => router.push({ pathname: '/admin/events/calendar-form', params: { id: active.id } })} accessibilityLabel={t('common.edit')}>
-                    <Icon as={Pencil} className="text-foreground size-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onPress={() => deleteCalendar(active)} accessibilityLabel={t('common.delete')}>
-                    <Icon as={Trash2} className="text-foreground size-4" />
-                  </Button>
+                  <Pressable onPress={() => router.push({ pathname: '/admin/events/calendar-form', params: { id: active.id } })} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                  </Pressable>
+                  <Pressable onPress={() => deleteCalendar(active)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Trash2} className="text-destructive size-4" />
+                  </Pressable>
                   <Button size="icon" variant="ghost" onPress={() => setInfo((v) => !v)} accessibilityLabel={e('tip_info_title')}>
                     <Icon as={Info} className="text-foreground size-4" />
                   </Button>
@@ -332,19 +334,19 @@ export default function Events() {
             </View>
             <View className="flex-row items-center justify-end gap-2">
               <Button size="sm" variant="outline" disabled={!canPrev} onPress={() => setMonth(prev)} accessibilityLabel={t('common.previous')}>
-                <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
+                <Icon flipRtl as={ChevronLeft} className="text-foreground size-4" />
               </Button>
               <Button size="sm" variant="outline" onPress={() => setMonth(new Date())}>
                 <Text>{a('today')}</Text>
               </Button>
               <Button size="sm" variant="outline" disabled={!canNext} onPress={() => setMonth(next)} accessibilityLabel={t('common.next')}>
-                <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
+                <Icon flipRtl as={ChevronRight} className="text-foreground size-4" />
               </Button>
               {evs.isValidating || days.isValidating ? <Text className="text-muted-foreground text-xs">{e('status_updating')}</Text> : null}
             </View>
 
             {calendars.isLoading ? (
-              <Text className="text-muted-foreground py-10 text-center">{e('loading_calendar')}</Text>
+              <EmptyState title={e('loading_calendar')} />
             ) : (
               <View>
                 <View className="flex-row">
@@ -373,10 +375,10 @@ export default function Events() {
                             cell.inMonth
                               ? school
                                 ? partial
-                                  ? 'border-indigo-200 bg-indigo-100 dark:border-indigo-800/50 dark:bg-indigo-900/30'
-                                  : 'border-green-200 bg-green-100 dark:border-green-800/50 dark:bg-green-900/30'
+                                  ? 'border-info-soft bg-info-soft  '
+                                  : 'border-success/30 bg-success-soft  '
                                 : holiday
-                                  ? 'border-red-200 bg-red-100 dark:border-red-800/50 dark:bg-red-900/30'
+                                  ? 'border-destructive/30 bg-destructive-soft  '
                                   : 'border-border bg-background'
                               : 'border-border bg-muted/30 opacity-50',
                             cell.today && 'border-primary border-2',
@@ -478,7 +480,7 @@ function DayDialog({
           {events.length ? <Text className="text-muted-foreground text-xs">{a('n_events', { count: events.length })}</Text> : null}
         </DialogHeader>
         <ScrollView className="max-h-96" contentContainerClassName="gap-3">
-          {calDay ? <Text className={cn('text-xs font-bold uppercase', calDay.is_school_day ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400')}>{calDay.is_school_day ? a('school_day') : a('holiday_day')}</Text> : null}
+          {calDay ? <Text className={cn('text-xs font-bold', calDay.is_school_day ? 'text-success ' : 'text-destructive ')}>{calDay.is_school_day ? a('school_day') : a('holiday_day')}</Text> : null}
           {classes ? (
             classes.length ? (
               classes.map((c) => (
@@ -501,7 +503,7 @@ function DayDialog({
             )
           ) : null}
           {events.length === 0 ? (
-            <Text className="text-muted-foreground py-4 text-center text-sm">{a('no_events_day')}</Text>
+            <EmptyState title={a('no_events_day')} />
           ) : (
             events.map((ev) => (
               <Pressable
@@ -510,7 +512,7 @@ function DayDialog({
                   onClose();
                   router.push({ pathname: '/admin/events/[id]', params: { id: ev.id } });
                 }}
-                className="border-border rounded-lg border p-3">
+                className="border-info-soft dark:border-border rounded-xl border p-3">
                 <EventLine event={ev} locale={i18n.language} />
               </Pressable>
             ))
@@ -589,7 +591,7 @@ function ICalDialog({ open, onClose, withSchedule, campusId }: { open: boolean; 
 
   const row = (type: ICalType, label: string) => (
     <View className="gap-1">
-      <Text className="text-muted-foreground text-xs font-medium uppercase">{label}</Text>
+      <Text className="text-muted-foreground text-xs font-medium">{label}</Text>
       <View className="flex-row items-center gap-1.5">
         <View className="border-border bg-muted/30 flex-1 rounded border px-2 py-1.5">
           <Text className="text-xs" numberOfLines={1}>
@@ -600,7 +602,7 @@ function ICalDialog({ open, onClose, withSchedule, campusId }: { open: boolean; 
           <Icon as={Download} className="text-foreground size-4" />
         </Button>
         <Button size="icon" variant="outline" onPress={() => copy(type)} accessibilityLabel={e('ical_tip_copy')}>
-          <Icon as={copied === type ? Check : Copy} className={copied === type ? 'size-4 text-green-600' : 'text-foreground size-4'} />
+          <Icon as={copied === type ? Check : Copy} className={copied === type ? 'size-4 text-success' : 'text-foreground size-4'} />
         </Button>
       </View>
     </View>

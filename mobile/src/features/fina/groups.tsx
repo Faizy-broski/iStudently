@@ -2,9 +2,10 @@ import type { FinaGroup } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { Plus, Users } from 'lucide-react-native';
 import { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { ScrollView } from '@/components/app/keyboard';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,6 +16,7 @@ import { useFn } from '@/features/admin/fina';
 import { useCampus } from '@/features/campus/campus';
 import { fina } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { IconTile } from '@/components/app/layout';
 
 /** Groups: create, join, leave (web: /admin/fina/groups). */
 export function FinaGroupsScreen({ canCreate }: { canCreate: boolean }) {
@@ -63,13 +65,13 @@ export function FinaGroupsScreen({ canCreate }: { canCreate: boolean }) {
         {res.isLoading ? (
           <LoadingList rows={3} />
         ) : !list.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{f('empty')}</Text>
+          <EmptyState title={f('empty')} />
         ) : (
           list.map((g) => (
             <Card key={g.id}>
               <CardContent className="flex-row items-center gap-3 pt-4">
-                <Icon as={Users} className="text-primary size-5" />
-                <Text className="flex-1 font-medium">{g.name}</Text>
+                <IconTile icon={Users} size={32} />
+                <Text className="flex-1 text-sm font-semibold">{g.name}</Text>
                 <Button size="sm" variant={g.isMember ? 'outline' : 'default'} onPress={() => toggle(g)} disabled={busy === g.id}>
                   <Text>{f(g.isMember ? 'leave_button' : 'join_button')}</Text>
                 </Button>

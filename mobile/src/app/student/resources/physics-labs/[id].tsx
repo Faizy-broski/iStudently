@@ -1,12 +1,14 @@
 import { PHYSICS_CATALOG } from '@studently/shared-utils';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Clock, ExternalLink, Send } from 'lucide-react-native';
+import { CheckCircle2, Clock, ExternalLink, FlaskConical, Send } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { KeyboardAvoidingView } from '@/components/app/keyboard';
+import { HeaderButton } from '@/components/app/layout';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { PublicWebView } from '@/components/app/web-session-view';
 import { Button } from '@/components/ui/button';
@@ -39,7 +41,7 @@ export default function StudentPhysicsLab() {
 
   if (labs.isLoading) return <LoadingList rows={3} />;
   const lab = (labs.data ?? []).find((l) => l.id === id);
-  if (!lab) return <Text className="text-muted-foreground p-6">{k('noLabsAssigned')}</Text>;
+  if (!lab) return <EmptyState icon={FlaskConical} title={k('noLabsAssigned')} />;
   const sim = PHYSICS_CATALOG.find((s) => s.key === lab.sim_key);
   const spent = Math.floor((now - started) / 1000);
   const labId = lab.id;
@@ -54,34 +56,35 @@ export default function StudentPhysicsLab() {
   }
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView className="bg-background flex-1" keyboardVerticalOffset={90}>
       <Stack.Screen
         options={{
           title: sim?.title || lab.sim_key,
           headerRight: () =>
-            sim?.url ? (
-              <Pressable onPress={() => WebBrowser.openBrowserAsync(sim.url)} hitSlop={8} accessibilityRole="button" accessibilityLabel={k('openSimulation')}>
-                <Icon as={ExternalLink} className="size-5" />
-              </Pressable>
-            ) : null,
+            sim?.url ? <HeaderButton icon={ExternalLink} label={k('openSimulation')} onPress={() => WebBrowser.openBrowserAsync(sim.url)} /> : null,
         }}
       />
-      <View className="border-border flex-row items-center justify-end gap-1 border-b px-4 py-1.5">
-        <Icon as={Clock} className="text-muted-foreground size-3.5" />
-        <Text className="text-muted-foreground text-xs">{fmt(done ? spent : spent)}</Text>
+      <View className="border-info-soft dark:border-border flex-row items-center justify-end border-b px-4 py-2">
+        <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
+          <Icon as={Clock} className="text-brand dark:text-brand-secondary size-3.5" />
+          <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{fmt(done ? spent : spent)}</Text>
+        </View>
       </View>
       {lab.custom_note ? (
-        <View className="border-border border-b bg-blue-50 px-4 py-2 dark:bg-blue-950/30">
-          <Text className="text-sm text-blue-800 dark:text-blue-300">
-            <Text className="text-sm font-medium text-blue-800 dark:text-blue-300">{k('instructionsLabel')}</Text>
+        <View className="border-info-soft dark:border-border bg-info-soft border-b px-4 py-2.5">
+          <Text className="text-brand dark:text-brand-secondary text-sm">
+            <Text className="text-brand dark:text-brand-secondary text-sm font-semibold">{k('instructionsLabel')}</Text>
             {lab.custom_note}
           </Text>
         </View>
       ) : null}
       <View className="flex-1">{sim?.url ? <PublicWebView url={sim.url} /> : null}</View>
-      <View className="border-border bg-card gap-2 border-t px-4 py-3">
+      <View className="border-info-soft dark:border-border bg-card gap-2 rounded-t-3xl border-t px-4 py-3">
         {done ? (
-          <Text className="py-1 text-center text-sm font-medium text-green-700">{k('submitted')}</Text>
+          <View className="bg-success-soft flex-row items-center justify-center gap-2 rounded-2xl py-2.5">
+            <Icon as={CheckCircle2} className="text-success size-4" />
+            <Text className="text-success text-sm font-semibold">{k('submitted')}</Text>
+          </View>
         ) : (
           <>
             <Label>{k('findingsLabel')}</Label>

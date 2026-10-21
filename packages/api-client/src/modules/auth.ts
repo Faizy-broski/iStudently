@@ -85,5 +85,10 @@ export function authApi(api: ApiClient) {
     /** Own profile fields (web: PUT /auth/profile). */
     updateProfile: (data: { first_name?: string; last_name?: string; phone?: string; avatar_url?: string; profile_photo_url?: string }) => api.put<unknown>('/auth/profile', data),
     changePassword: (newPassword: string) => api.post('/auth/change-password', { new_password: newPassword }),
+    /** The signed-in user deletes their own account (sign-in stops at once; the school erases the data). */
+    deleteAccount: (reason?: string) => api.post('/auth/delete-account', { reason }),
+    /** This phone's Expo push token for the signed-in user (router: push-notifications.routes.ts). */
+    registerPushDevice: (body: { token: string; platform: 'ios' | 'android'; device_name?: string | null; app_version?: string | null }) => api.post('/push/devices', body),
+    unregisterPushDevice: (token: string) => api.del('/push/devices', { body: { token } }),
   }
 }

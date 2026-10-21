@@ -117,8 +117,9 @@ export function adminSalaryApi(api: ApiClient) {
     approve: (scopeId: string, recordId: string) => api.put<SalaryRecord>(`/salary/records/${id(recordId)}/approve`, { school_id: scopeId }),
     markPaid: (scopeId: string, recordId: string, p: { payment_method?: string; payment_reference?: string } = {}) =>
       api.put<SalaryRecord>(`/salary/records/${id(recordId)}/paid`, { school_id: scopeId, ...p }),
-    generateBulk: (scopeId: string, month: number, year: number) =>
-      api.post<{ success: number; failed: number; errors: string[] }>('/salary/generate-bulk', { school_id: scopeId, month, year }),
+    /** Same body as the web: the main school plus the selected campus (the server uses campus_id first). */
+    generateBulk: (schoolId: string, month: number, year: number, campusId?: string | null) =>
+      api.post<{ success: number; failed: number; errors: string[] }>('/salary/generate-bulk', { school_id: schoolId, campus_id: campusId ?? undefined, month, year }),
 
     pendingAdvances: (scopeId: string) => api.get<SalaryAdvance[]>(`/salary/advances/pending${qs({ school_id: scopeId })}`),
     /** The approver is taken from the session on the server. */

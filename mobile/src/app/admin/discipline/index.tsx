@@ -3,19 +3,21 @@ import { router, Stack } from 'expo-router';
 import { Eye, Plus, RefreshCcw, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
 import { DateField, formatYmd } from '@/components/app/date-field';
 import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
+import { Initials, RowActions } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { GradeSectionPickers, useAttendanceScope, useGradeSection } from '@/features/admin/attendance';
 import { formatFieldValue, LibraryBadge, LibraryRelatedSwitch, referralPersonName } from '@/features/admin/discipline';
 import { useCampus } from '@/features/campus/campus';
@@ -104,9 +106,7 @@ export default function DisciplineReferrals() {
                 <DateField className="flex-1" label={d('to_date')} value={end} onChange={setEnd} clearable />
               </View>
               <View className="flex-row items-center justify-between">
-                <Badge variant="secondary">
-                  <Text>{d('totalCount', { count: total })}</Text>
-                </Badge>
+                <StatusChip label={d('totalCount', { count: total })} tone="info" className="px-2.5 py-1" />
                 <Button
                   size="sm"
                   variant="outline"
@@ -132,23 +132,25 @@ export default function DisciplineReferrals() {
           emptyTitle={`${d('no_referrals')}${start || end || q ? ` ${d('forSelectedFilters')}` : ''}`}
           keyExtractor={(r) => r.id}
           renderItem={(r) => (
-            <Pressable onPress={() => setView(r)} className="gap-1 px-4 py-3">
-              <View className="flex-row items-start gap-2">
-                <View className="flex-1">
-                  <Text className="font-medium">{referralPersonName(r)}</Text>
-                  <Text className="text-muted-foreground text-xs">{[r.students?.student_number, date(r.incident_date), r.reporter?.full_name].filter(Boolean).join(' · ')}</Text>
+            <Pressable onPress={() => setView(r)} className="gap-1.5 px-4 py-3 active:opacity-70">
+              <View className="flex-row items-center gap-3">
+                <Initials name={referralPersonName(r)} tone="warning" />
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold">{referralPersonName(r)}</Text>
+                  <Text variant="muted" className="text-[11px]">
+                    {[r.students?.student_number, date(r.incident_date), r.reporter?.full_name].filter(Boolean).join(' · ')}
+                  </Text>
                   {r.library_related ? <LibraryBadge /> : null}
                 </View>
-                <Pressable onPress={() => setView(r)} hitSlop={8} className="p-1">
-                  <Icon as={Eye} className="text-muted-foreground size-4" />
-                </Pressable>
-                <Pressable onPress={() => remove(r)} hitSlop={8} className="p-1">
-                  <Icon as={Trash2} className="text-destructive size-4" />
-                </Pressable>
+                <RowActions onDelete={() => remove(r)} deleteLabel={d('delete')}>
+                  <Pressable onPress={() => setView(r)} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70" accessibilityLabel={d('detail_title')}>
+                    <Icon as={Eye} className="text-brand dark:text-brand-secondary size-4" />
+                  </Pressable>
+                </RowActions>
               </View>
               {fieldList.slice(0, 3).map((f) => (
-                <Text key={f.id} className="text-sm" numberOfLines={1}>
-                  <Text className="text-muted-foreground text-sm">{`${f.name}: `}</Text>
+                <Text key={f.id} className="ps-12 text-xs" numberOfLines={1}>
+                  <Text className="text-muted-foreground text-xs">{`${f.name}: `}</Text>
                   {formatFieldValue(r.field_values?.[f.id])}
                 </Text>
               ))}
@@ -173,7 +175,7 @@ export default function DisciplineReferrals() {
                 ].map(([k, v]) => (
                   <View key={k} className="w-1/2 py-1.5">
                     <Text className="text-muted-foreground text-xs">{k}</Text>
-                    <Text className="font-medium">{v}</Text>
+                    <Text className="text-sm font-semibold">{v}</Text>
                   </View>
                 ))}
               </View>
@@ -184,7 +186,7 @@ export default function DisciplineReferrals() {
               ) : null}
               {fieldList.length ? (
                 <View className="border-border gap-3 border-t pt-3">
-                  <Text className="text-muted-foreground text-xs font-semibold uppercase">{d('referralDetails')}</Text>
+                  <Text className="text-muted-foreground text-sm font-semibold">{d('referralDetails')}</Text>
                   {fieldList.map((f) => {
                     const v = view.field_values?.[f.id];
                     if (v === null || v === undefined || v === '') return null;

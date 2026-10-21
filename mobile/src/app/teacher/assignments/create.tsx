@@ -1,10 +1,14 @@
 import { router, Stack } from 'expo-router';
+import { Calendar, ClipboardList, Paperclip } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
+import { FormSection, StickyActions } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { TimeField } from '@/components/app/time-field';
 import { useToast } from '@/components/app/toast';
@@ -86,66 +90,71 @@ export default function TeacherCreateHomework() {
   return (
     <>
       <Stack.Screen options={{ title: k('createNewAssignment') }} />
-      <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-          <View className="gap-1.5">
-            <Label>{`${k('gradeLevel')} *`}</Label>
-            <Picker value={f.grade || null} onChange={(v) => set({ grade: v, section: '', subject: '' })} placeholder={k('selectGrade')} options={grades.map(([id, name]) => ({ value: id, label: name }))} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{`${k('section')} *`}</Label>
-            <Picker value={f.section || null} onChange={(v) => set({ section: v, subject: '' })} placeholder={k('selectSection')} options={sections.map(([id, name]) => ({ value: id, label: name }))} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{`${k('subject')} *`}</Label>
-            <Picker value={f.subject || null} onChange={(v) => set({ subject: v })} placeholder={k('selectSubject')} options={subjectsFor.map(([id, name]) => ({ value: id, label: name }))} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{`${k('assignmentTitle')} *`}</Label>
-            <Input value={f.title} onChangeText={(v) => set({ title: v })} placeholder={k('titlePlaceholder')} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{k('description')}</Label>
-            <Textarea value={f.description} onChangeText={(v) => set({ description: v })} placeholder={k('descriptionPlaceholder')} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{k('instructionsRichText')}</Label>
-            <HtmlEditorField value={f.instructions} onChange={(v) => set({ instructions: v })} />
-          </View>
-          <View className="gap-1.5">
-            <Label>{k('attachments')}</Label>
+          <FormSection title={k('createNewAssignment')} icon={ClipboardList}>
+            <View className="gap-1.5">
+              <Label>{`${k('gradeLevel')} *`}</Label>
+              <Picker value={f.grade || null} onChange={(v) => set({ grade: v, section: '', subject: '' })} placeholder={k('selectGrade')} options={grades.map(([id, name]) => ({ value: id, label: name }))} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{`${k('section')} *`}</Label>
+              <Picker value={f.section || null} onChange={(v) => set({ section: v, subject: '' })} placeholder={k('selectSection')} options={sections.map(([id, name]) => ({ value: id, label: name }))} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{`${k('subject')} *`}</Label>
+              <Picker value={f.subject || null} onChange={(v) => set({ subject: v })} placeholder={k('selectSubject')} options={subjectsFor.map(([id, name]) => ({ value: id, label: name }))} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{`${k('assignmentTitle')} *`}</Label>
+              <Input value={f.title} onChangeText={(v) => set({ title: v })} placeholder={k('titlePlaceholder')} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{k('description')}</Label>
+              <Textarea value={f.description} onChangeText={(v) => set({ description: v })} placeholder={k('descriptionPlaceholder')} />
+            </View>
+            <View className="gap-1.5">
+              <Label>{k('instructionsRichText')}</Label>
+              <HtmlEditorField value={f.instructions} onChange={(v) => set({ instructions: v })} />
+            </View>
+          </FormSection>
+          <FormSection title={k('attachments')} icon={Paperclip}>
             <AttachmentField picked={files} onPick={(d) => setFiles((x) => [...x, ...d])} onRemove={(i) => setFiles((x) => x.filter((_, j) => j !== i))} />
-          </View>
-          <View className="flex-row gap-2">
-            <View className="flex-1">
-              <DateField label={`${k('dueDate')} *`} value={f.due || null} onChange={(v) => set({ due: v })} min={todayYmd()} />
+          </FormSection>
+          <FormSection title={k('dueDate')} icon={Calendar}>
+            <View className="flex-row gap-2">
+              <View className="flex-1">
+                <DateField label={`${k('dueDate')} *`} value={f.due || null} onChange={(v) => set({ due: v })} min={todayYmd()} />
+              </View>
+              <View className="flex-1 gap-1.5">
+                <Label>{k('dueTime')}</Label>
+                <TimeField value={f.time} onChange={(v) => set({ time: v })} />
+              </View>
             </View>
-            <View className="flex-1 gap-1.5">
-              <Label>{k('dueTime')}</Label>
-              <TimeField value={f.time} onChange={(v) => set({ time: v })} />
+            <View className="gap-1.5">
+              <Label>{k('maxScore')}</Label>
+              <Input value={f.max} onChangeText={(v) => set({ max: v.replace(/[^0-9]/g, '') })} keyboardType="number-pad" />
             </View>
-          </View>
-          <View className="gap-1.5">
-            <Label>{k('maxScore')}</Label>
-            <Input value={f.max} onChangeText={(v) => set({ max: v.replace(/[^0-9]/g, '') })} keyboardType="number-pad" />
-          </View>
-          <View className="flex-row items-center gap-3">
-            <Switch checked={f.graded} onCheckedChange={(v) => set({ graded: v })} />
-            <Text className="flex-1 text-sm">{k('gradedAssignment')}</Text>
-          </View>
-          <View className="flex-row items-center gap-3">
-            <Switch checked={f.late} onCheckedChange={(v) => set({ late: v })} />
-            <Text className="flex-1 text-sm">{k('allowLateSubmissions')}</Text>
-          </View>
-          <View className="flex-row gap-2">
-            <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={busy}>
-              <Text>{k('cancel')}</Text>
-            </Button>
-            <Button className="flex-1" onPress={create} disabled={busy}>
-              <Text>{busy ? k('creating') : k('createAssignment')}</Text>
-            </Button>
-          </View>
+          </FormSection>
+          <Panel>
+            <View className="border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3">
+              <Text className="flex-1 text-sm font-medium">{k('gradedAssignment')}</Text>
+              <Switch checked={f.graded} onCheckedChange={(v) => set({ graded: v })} />
+            </View>
+            <View className="flex-row items-center gap-3 px-4 py-3">
+              <Text className="flex-1 text-sm font-medium">{k('allowLateSubmissions')}</Text>
+              <Switch checked={f.late} onCheckedChange={(v) => set({ late: v })} />
+            </View>
+          </Panel>
         </ScrollView>
+        <StickyActions>
+          <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={busy}>
+            <Text>{k('cancel')}</Text>
+          </Button>
+          <Button className="flex-1" onPress={create} disabled={busy}>
+            <Text>{busy ? k('creating') : k('createAssignment')}</Text>
+          </Button>
+        </StickyActions>
       </KeyboardAvoidingView>
     </>
   );

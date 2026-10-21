@@ -2,12 +2,14 @@ import { router } from 'expo-router';
 import { Megaphone, MessageSquare, Pin, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { ScrollView } from '@/components/app/keyboard';
+import { IconTile, RowItem, RowPill } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
@@ -19,7 +21,6 @@ import { PillPicker } from '@/features/inspector/ui';
 import { inspector, teacherInspections } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDateTime } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
 type Draft = { kind: 'broadcast' | 'thread'; title: string; body: string; targets: string[] };
 
@@ -34,6 +35,8 @@ export default function InspectorCommunity() {
   const schoolId = picked ?? list[0]?.id ?? null;
   const feed = useApi(schoolId ? ['inspector', 'community', schoolId] : null, async ([, , s]) => {
     const [b, th] = await Promise.all([teacherInspections.broadcastsForSchool(s as string), teacherInspections.threadsForSchool(s as string)]);
+    if (!b.success) return { ...b, data: undefined };
+    if (!th.success) return { ...th, data: undefined };
     return { success: true as const, data: { broadcasts: b.data ?? [], threads: th.data ?? [] } };
   });
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -57,73 +60,60 @@ export default function InspectorCommunity() {
   return (
     <>
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => feed.mutate()} />}>
-        <Text variant="muted">{k('inspector_subtitle')}</Text>
+        <Text variant="muted" className="text-sm">
+          {k('inspector_subtitle')}
+        </Text>
         {!list.length ? (
-          <Card>
-            <CardContent className="py-10">
-              <Text className="text-muted-foreground text-center text-sm">{k('no_assigned_campuses')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={MessageSquare} title={k('no_assigned_campuses')} />
         ) : (
           <>
             <PillPicker items={list.map((s) => ({ value: s.id, label: s.name }))} value={schoolId} onChange={setPicked} />
-            <Card>
-              <CardHeader className="flex-row items-center justify-between gap-2">
-                <View className="flex-row items-center gap-2">
-                  <Icon as={Megaphone} className="size-4 text-[#022172] dark:text-blue-300" />
-                  <CardTitle className="text-base">{k('broadcasts_title')}</CardTitle>
-                </View>
-                <Button size="sm" variant="outline" onPress={() => setDraft({ kind: 'broadcast', title: '', body: '', targets: [] })}>
-                  <Icon as={Plus} className="size-3.5" />
-                  <Text>{k('btn_new_broadcast')}</Text>
-                </Button>
-              </CardHeader>
-              <CardContent className="gap-2">
-                {feed.isLoading ? (
+            <Panel>
+              <View className="flex-row items-center gap-2.5 px-4 pb-2 pt-4">
+                <IconTile icon={Megaphone} size={32} />
+                <Text className="flex-1 text-base font-semibold">{k('broadcasts_title')}</Text>
+                <RowPill icon={Plus} label={k('btn_new_broadcast')} onPress={() => setDraft({ kind: 'broadcast', title: '', body: '', targets: [] })} />
+              </View>
+              {feed.isLoading ? (
+                <View className="px-4 pb-4">
                   <LoadingList rows={2} />
-                ) : !broadcasts.length ? (
-                  <Text className="text-muted-foreground text-sm">{k('no_broadcasts')}</Text>
-                ) : (
-                  broadcasts.map((b) => (
-                    <View key={b.id} className="border-border rounded-md border p-2.5">
-                      <Text className="text-sm font-medium">{b.title}</Text>
-                      <Text className="text-muted-foreground text-xs">{b.body}</Text>
-                      <Text className="text-muted-foreground mt-1 text-[11px]">{`${b.inspector ? `${b.inspector.first_name} ${b.inspector.last_name} · ` : ''}${formatDateTime(b.created_at)}`}</Text>
-                    </View>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex-row items-center justify-between gap-2">
-                <View className="flex-row items-center gap-2">
-                  <Icon as={MessageSquare} className="size-4 text-[#022172] dark:text-blue-300" />
-                  <CardTitle className="text-base">{k('forum_title')}</CardTitle>
                 </View>
-                <Button size="sm" variant="outline" onPress={() => setDraft({ kind: 'thread', title: '', body: '', targets: [] })}>
-                  <Icon as={Plus} className="size-3.5" />
-                  <Text>{k('btn_new_thread')}</Text>
-                </Button>
-              </CardHeader>
-              <CardContent className="p-0">
-                {feed.isLoading ? null : !threads.length ? (
-                  <Text className="text-muted-foreground px-4 pb-4 text-sm">{k('no_threads')}</Text>
-                ) : (
-                  threads.map((th, i) => (
-                    <Pressable
-                      key={th.id}
-                      onPress={() => router.push({ pathname: '/inspector/community/[threadId]', params: { threadId: th.id } })}
-                      accessibilityRole="button"
-                      className={cn('flex-row items-center gap-2 px-4 py-3', i > 0 && 'border-border border-t')}>
-                      {th.is_pinned ? <Icon as={Pin} className="size-3.5 text-amber-500" /> : null}
-                      <Text className="flex-1 text-sm" numberOfLines={1}>
-                        {th.title}
-                      </Text>
-                    </Pressable>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+              ) : feed.error ? (
+                <View className="px-4 pb-4">
+                  <ErrorState message={feed.error.message} onRetry={() => feed.mutate()} />
+                </View>
+              ) : !broadcasts.length ? (
+                <Text className="text-muted-foreground px-4 pb-4 text-sm">{k('no_broadcasts')}</Text>
+              ) : (
+                broadcasts.map((b, i) => (
+                  <View key={b.id} className={i < broadcasts.length - 1 ? 'border-info-soft dark:border-border gap-0.5 border-b px-4 py-3' : 'gap-0.5 px-4 py-3'}>
+                    <Text className="text-sm font-semibold">{b.title}</Text>
+                    <Text className="text-muted-foreground text-xs">{b.body}</Text>
+                    <Text className="text-muted-foreground mt-1 text-[11px]">{`${b.inspector ? `${b.inspector.first_name} ${b.inspector.last_name} · ` : ''}${formatDateTime(b.created_at)}`}</Text>
+                  </View>
+                ))
+              )}
+            </Panel>
+            <Panel>
+              <View className="flex-row items-center gap-2.5 px-4 pb-2 pt-4">
+                <IconTile icon={MessageSquare} tone="success" size={32} />
+                <Text className="flex-1 text-base font-semibold">{k('forum_title')}</Text>
+                <RowPill icon={Plus} label={k('btn_new_thread')} onPress={() => setDraft({ kind: 'thread', title: '', body: '', targets: [] })} />
+              </View>
+              {feed.isLoading || feed.error ? null : !threads.length ? (
+                <Text className="text-muted-foreground px-4 pb-4 text-sm">{k('no_threads')}</Text>
+              ) : (
+                threads.map((th, i) => (
+                  <RowItem
+                    key={th.id}
+                    title={th.title}
+                    leading={th.is_pinned ? <Icon as={Pin} className="size-3.5 text-warning" /> : null}
+                    onPress={() => router.push({ pathname: '/inspector/community/[threadId]', params: { threadId: th.id } })}
+                    last={i === threads.length - 1}
+                  />
+                ))
+              )}
+            </Panel>
           </>
         )}
       </ScrollView>

@@ -1,12 +1,14 @@
 import { Stack } from 'expo-router';
-import { DollarSign, Receipt, ReceiptText } from 'lucide-react-native';
-import { useState } from 'react';
+import { AlertTriangle, Calendar, CircleCheck, DollarSign, Receipt, ReceiptText, Wallet } from 'lucide-react-native';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { FilterChips } from '@/components/app/filter-chips';
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Segmented } from '@/components/app/segmented';
+import { HeroCard, IconTile, Initials, RowItem, Section, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { NoChild, useChild } from '@/features/parent/child';
@@ -30,8 +32,8 @@ export default function ParentFees() {
       <Stack.Screen options={{ title: k('title') }} />
       <View className="bg-background flex-1">
         <View className="gap-3 px-4 pt-4">
-          <Text variant="muted">{t('app.pa_fees_subtitle')}</Text>
-          <FilterChips<Tab>
+          <Text variant="muted" className="text-sm">{t('app.pa_fees_subtitle')}</Text>
+          <Segmented<Tab>
             value={tab}
             onChange={setTab}
             options={[
@@ -71,96 +73,82 @@ function SelectedChild() {
       className="flex-1"
       contentContainerClassName="gap-3 p-4 pb-10"
       refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([fees.mutate(), elements.mutate(), status.mutate()])} />}>
-      {fs ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{p('summary')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-row flex-wrap gap-y-4">
-            <Stat label={p('total_due')} value={money(fs.total_due)} tone="text-red-600" />
-            <Stat label={p('overdue_amount')} value={money(fs.overdue_amount)} tone="text-orange-600" />
-            <Stat label={p('next_due_date')} value={fs.next_due_date ? formatDate(fs.next_due_date) : '—'} />
-            <Stat label={p('next_due_amount')} value={fs.next_due_amount !== undefined && fs.next_due_amount !== null ? money(fs.next_due_amount) : '—'} />
-          </CardContent>
-        </Card>
-      ) : null}
-      <Card>
-        <CardContent className="p-4">
-          <Text className="text-muted-foreground mb-1 text-sm">{p('outstanding')}</Text>
-          <Text className={cn('text-3xl font-bold', due > 0 && 'text-red-600')}>{money(due)}</Text>
-          {overdue > 0 ? <Text className="mt-1 text-xs text-red-500">{k('overdue_count', { count: overdue })}</Text> : null}
-        </CardContent>
-      </Card>
-      <View className="flex-row gap-3">
-        <Card className="flex-1">
-          <CardContent className="p-4">
-            <Text className="text-muted-foreground mb-1 text-sm">{k('total_paid')}</Text>
-            <Text className="text-2xl font-bold text-green-600">{money(paid)}</Text>
-          </CardContent>
-        </Card>
-        <Card className="flex-1">
-          <CardContent className="p-4">
-            <Text className="text-muted-foreground mb-1 text-sm">{k('total_invoices')}</Text>
-            <Text className="text-2xl font-bold">{String(list.length)}</Text>
-          </CardContent>
-        </Card>
-      </View>
-      <Card>
-        <CardHeader className="flex-row items-center gap-2">
-          <Icon as={Receipt} className="size-5" />
-          <CardTitle>{k('fee_invoices')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {list.length === 0 ? (
-            <View className="items-center py-10">
-              <Icon as={DollarSign} className="text-muted-foreground mb-3 size-12" />
-              <Text className="text-muted-foreground">{k('no_records')}</Text>
+      <HeroCard>
+        <View className="flex-row items-center gap-3">
+          <View className="size-12 items-center justify-center rounded-full bg-white/15">
+            <Icon as={Wallet} className="size-6 text-white" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-semibold text-white/85">{p('outstanding')}</Text>
+            <Text className="text-3xl font-bold text-white" numberOfLines={1} adjustsFontSizeToFit>
+              {money(due)}
+            </Text>
+          </View>
+        </View>
+        {overdue > 0 ? (
+          <View className="flex-row">
+            <View className="rounded-full bg-white/15 px-3 py-1">
+              <Text className="text-xs font-semibold text-white">{k('overdue_count', { count: overdue })}</Text>
             </View>
-          ) : (
-            list.map((f) => (
-              <View key={f.id} className="border-border gap-1.5 border-t py-3 first:border-t-0">
-                <View className="flex-row items-start justify-between gap-2">
-                  <View className="flex-1">
-                    <Text className="font-medium">{f.fee_name}</Text>
-                    <Text className="text-muted-foreground text-xs">{f.academic_year}</Text>
-                  </View>
-                  <FeeStatus status={f.status} />
-                </View>
-                <Text className="text-muted-foreground text-xs">{`${k('col_due_date')}: ${f.due_date ? formatDate(f.due_date) : '—'}`}</Text>
-                <View className="flex-row justify-between">
+          </View>
+        ) : null}
+      </HeroCard>
+      <StatTiles>
+        <StatTile icon={CircleCheck} tone="success" label={k('total_paid')} value={money(paid)} />
+        <StatTile icon={Receipt} label={k('total_invoices')} value={String(list.length)} />
+      </StatTiles>
+      {fs ? (
+        <Section title={p('summary')}>
+          <StatTiles>
+            <StatTile tone="destructive" label={p('total_due')} value={money(fs.total_due)} />
+            <StatTile tone="warning" label={p('overdue_amount')} value={money(fs.overdue_amount)} />
+            <StatTile icon={Calendar} label={p('next_due_date')} value={fs.next_due_date ? formatDate(fs.next_due_date) : '—'} />
+            <StatTile label={p('next_due_amount')} value={fs.next_due_amount !== undefined && fs.next_due_amount !== null ? money(fs.next_due_amount) : '—'} />
+          </StatTiles>
+        </Section>
+      ) : null}
+      <Section title={k('fee_invoices')}>
+        {list.length === 0 ? (
+          <EmptyState icon={DollarSign} title={k('no_records')} />
+        ) : (
+          <Panel>
+            {list.map((f, i) => (
+              <RowItem
+                key={f.id}
+                leading={<IconTile icon={Receipt} size={40} />}
+                title={f.fee_name}
+                meta={[f.academic_year, `${k('col_due_date')}: ${f.due_date ? formatDate(f.due_date) : '—'}`].filter(Boolean).join(' · ')}
+                trailing={<FeeStatus status={f.status} />}
+                last={i === list.length - 1}>
+                <Amounts>
                   <Amount label={k('col_amount')} value={money(f.final_amount)} />
-                  <Amount label={k('col_paid')} value={money(f.amount_paid)} tone="text-green-600" />
-                  <Amount label={k('col_balance')} value={money(f.balance)} tone="font-semibold text-red-600" />
-                </View>
-              </View>
-            ))
-          )}
-        </CardContent>
-      </Card>
-      {extra.length ? (
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={ReceiptText} className="size-5" />
-            <CardTitle>{k('additional_charges')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {extra.map((el) => (
-              <View key={el.id} className="border-border gap-1.5 border-t py-3 first:border-t-0">
-                <View className="flex-row items-start justify-between gap-2">
-                  <View className="flex-1">
-                    <Text className="font-medium">{el.element_title}</Text>
-                    {el.category_title ? <Text className="text-muted-foreground text-xs">{el.category_title}</Text> : null}
-                  </View>
-                  <FeeStatus status={el.status} />
-                </View>
-                <View className="flex-row gap-6">
-                  <Amount label={k('col_amount')} value={money(el.amount)} />
-                  <Amount label={k('col_paid')} value={money(el.amount_paid)} tone="text-green-600" />
-                </View>
-              </View>
+                  <Amount label={k('col_paid')} value={money(f.amount_paid)} tone="text-success" />
+                  <Amount label={k('col_balance')} value={money(f.balance)} tone="font-semibold text-destructive" />
+                </Amounts>
+              </RowItem>
             ))}
-          </CardContent>
-        </Card>
+          </Panel>
+        )}
+      </Section>
+      {extra.length ? (
+        <Section title={k('additional_charges')}>
+          <Panel>
+            {extra.map((el, i) => (
+              <RowItem
+                key={el.id}
+                leading={<IconTile icon={ReceiptText} tone="warning" size={40} />}
+                title={el.element_title}
+                meta={el.category_title || null}
+                trailing={<FeeStatus status={el.status} />}
+                last={i === extra.length - 1}>
+                <Amounts>
+                  <Amount label={k('col_amount')} value={money(el.amount)} />
+                  <Amount label={k('col_paid')} value={money(el.amount_paid)} tone="text-success" />
+                </Amounts>
+              </RowItem>
+            ))}
+          </Panel>
+        </Section>
       ) : null}
     </ScrollView>
   );
@@ -180,56 +168,44 @@ function AllChildren() {
   return (
     <ScrollView className="flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
       {data.children.length === 0 ? (
-        <Card>
-          <CardContent className="items-center py-12">
-            <Icon as={DollarSign} className="text-muted-foreground mb-3 size-12" />
-            <Text className="text-muted-foreground">{p('no_children')}</Text>
-          </CardContent>
-        </Card>
+        <EmptyState icon={DollarSign} title={p('no_children')} />
       ) : (
         <>
-          <View className="flex-row gap-3">
-            <Card className="flex-1">
-              <CardContent className="p-4">
-                <Text className="text-muted-foreground mb-1 text-sm">{p('all_due')}</Text>
-                <Text className="text-2xl font-bold text-red-600">{money(data.totalDue)}</Text>
-              </CardContent>
-            </Card>
-            <Card className="flex-1">
-              <CardContent className="p-4">
-                <Text className="text-muted-foreground mb-1 text-sm">{p('all_overdue')}</Text>
-                <Text className="text-2xl font-bold text-orange-600">{money(data.totalOverdue)}</Text>
-              </CardContent>
-            </Card>
-          </View>
+          <StatTiles>
+            <StatTile icon={Wallet} tone="destructive" label={p('all_due')} value={money(data.totalDue)} />
+            <StatTile icon={AlertTriangle} tone="warning" label={p('all_overdue')} value={money(data.totalOverdue)} />
+          </StatTiles>
           {data.children.map((c) => {
             const childDue = c.fees.filter((f) => f.status !== 'paid').reduce((s, f) => s + (f.balance || 0), 0);
+            const title = `${c.name || p('student')}${c.grade_level ? ` — ${c.grade_level}` : ''}`;
             return (
-              <Card key={c.id}>
-                <CardHeader className="flex-row items-center justify-between gap-2">
-                  <CardTitle className="flex-1">{`${c.name || p('student')}${c.grade_level ? ` — ${c.grade_level}` : ''}`}</CardTitle>
-                  <Text className="font-semibold text-red-600">{p('due', { amount: money(childDue) })}</Text>
-                </CardHeader>
-                <CardContent>
-                  {c.fees.length === 0 ? (
-                    <Text className="text-muted-foreground py-4 text-sm">{k('no_records')}</Text>
-                  ) : (
-                    c.fees.map((f) => (
-                      <View key={f.id} className="border-border gap-1.5 border-t py-3 first:border-t-0">
-                        <View className="flex-row items-center justify-between gap-2">
-                          <Text className="text-muted-foreground text-sm">{f.due_date ? formatDate(f.due_date) : '—'}</Text>
-                          <FeeStatus status={f.status} />
-                        </View>
-                        <View className="flex-row justify-between">
-                          <Amount label={k('col_amount')} value={money(f.final_amount || 0)} />
-                          <Amount label={k('col_paid')} value={money(f.amount_paid || 0)} tone="text-green-600" />
-                          <Amount label={k('col_balance')} value={money(f.balance || 0)} tone="font-semibold text-red-600" />
-                        </View>
-                      </View>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
+              <Panel key={c.id}>
+                <View className="border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3">
+                  <Initials name={c.name || p('student')} size={40} />
+                  <Text className="flex-1 text-sm font-semibold" numberOfLines={2}>
+                    {title}
+                  </Text>
+                  <StatusChip label={p('due', { amount: money(childDue) })} tone={childDue > 0 ? 'destructive' : 'success'} />
+                </View>
+                {c.fees.length === 0 ? (
+                  <Text className="text-muted-foreground px-4 py-4 text-sm">{k('no_records')}</Text>
+                ) : (
+                  c.fees.map((f, i) => (
+                    <RowItem
+                      key={f.id}
+                      leading={<IconTile icon={Calendar} size={36} />}
+                      title={f.due_date ? formatDate(f.due_date) : '—'}
+                      trailing={<FeeStatus status={f.status} />}
+                      last={i === c.fees.length - 1}>
+                      <Amounts>
+                        <Amount label={k('col_amount')} value={money(f.final_amount || 0)} />
+                        <Amount label={k('col_paid')} value={money(f.amount_paid || 0)} tone="text-success" />
+                        <Amount label={k('col_balance')} value={money(f.balance || 0)} tone="font-semibold text-destructive" />
+                      </Amounts>
+                    </RowItem>
+                  ))
+                )}
+              </Panel>
             );
           })}
         </>
@@ -238,19 +214,14 @@ function AllChildren() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <View className="w-1/2 pe-2">
-      <Text className="text-muted-foreground mb-1 text-sm">{label}</Text>
-      <Text className={cn('text-xl font-bold', tone)}>{value}</Text>
-    </View>
-  );
+function Amounts({ children }: { children: ReactNode }) {
+  return <View className="bg-muted/60 flex-row justify-between gap-2 rounded-xl px-3 py-2">{children}</View>;
 }
 
 function Amount({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <View>
-      <Text className="text-muted-foreground text-[11px] uppercase">{label}</Text>
+      <Text className="text-muted-foreground text-[11px]">{label}</Text>
       <Text className={cn('text-sm font-medium', tone)}>{value}</Text>
     </View>
   );

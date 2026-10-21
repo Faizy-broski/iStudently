@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
+import { hasSeenOnboarding } from '@/features/onboarding/seen';
 import { StatusScreen } from '@/components/status-screen';
 import { resolveDestination } from '@/features/auth/destination';
 import { useSession } from '@/features/auth/session';
@@ -10,7 +11,7 @@ export default function Index() {
   const { t } = useTranslation();
   const { session, me, refreshMe, signOut } = useSession();
 
-  if (!session) return <Redirect href="/sign-in" />;
+  if (!session) return <Redirect href={hasSeenOnboarding() ? '/sign-in' : '/onboarding'} />;
 
   if (me.status === 'loading') return <StatusScreen busy body={t('app.loading_account')} />;
 

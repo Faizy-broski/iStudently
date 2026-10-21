@@ -3,7 +3,7 @@ import type { GlobalPageRole, GlobalPageType } from '@studently/api-client';
 import { v } from '@studently/shared-utils';
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ImagePlus, Trash2 } from 'lucide-react-native';
+import { CalendarRange, FileText, ImagePlus, Trash2, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips, MultiChips } from '@/components/app/filter-chips';
 import { FormError, SwitchField, TextField } from '@/components/app/form';
+import { FormSection } from '@/components/app/layout';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -123,39 +124,41 @@ export default function PublicPageForm() {
     <>
       <Stack.Screen options={{ title: editing ? page?.title ?? '' : t('app.pp_new') }} />
       <Screen scroll edges={['bottom']}>
-        <TextField control={control} name="title" label={t('app.pp_page_title')} />
-        <Label>{t('app.pp_type')}</Label>
-        <FilterChips<GlobalPageType> value={type} onChange={(v) => setValue('page_type', v, { shouldDirty: true })} options={TYPES.map((x) => ({ value: x, label: t(`app.pp_type_${x}`) }))} />
-        {type === 'url' || type === 'embed' ? (
-          <TextField control={control} name="url" label={t('app.pp_url')} keyboardType="url" autoCapitalize="none" placeholder="https://" />
-        ) : null}
-        {type === 'text' ? <TextField control={control} name="content" label={t('app.pp_content')} hint={t('app.pp_content_hint')} multiline numberOfLines={10} className="min-h-48" /> : null}
-        {type === 'image' ? (
-          <View className="gap-2">
-            <Label>{t('app.pp_image')}</Label>
-            {imageUrl ? <Image source={{ uri: imageUrl }} style={{ width: '100%', height: 180, borderRadius: 8 }} contentFit="contain" /> : null}
-            <Button variant="outline" size="sm" onPress={uploadImage} disabled={uploading}>
-              <Icon as={ImagePlus} className="size-4" />
-              <Text>{uploading ? t('app.ob_uploading') : imageUrl ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
-            </Button>
-            <FormError message={formState.errors.image_url?.message} />
-          </View>
-        ) : null}
+        <FormSection title={t('app.sa_details')} icon={FileText}>
+          <TextField control={control} name="title" label={t('app.pp_page_title')} />
+          <Label>{t('app.pp_type')}</Label>
+          <FilterChips<GlobalPageType> value={type} onChange={(v) => setValue('page_type', v, { shouldDirty: true })} options={TYPES.map((x) => ({ value: x, label: t(`app.pp_type_${x}`) }))} />
+          {type === 'url' || type === 'embed' ? (
+            <TextField control={control} name="url" label={t('app.pp_url')} keyboardType="url" autoCapitalize="none" placeholder="https://" />
+          ) : null}
+          {type === 'text' ? <TextField control={control} name="content" label={t('app.pp_content')} hint={t('app.pp_content_hint')} multiline numberOfLines={10} className="min-h-48" /> : null}
+          {type === 'image' ? (
+            <View className="gap-2">
+              <Label>{t('app.pp_image')}</Label>
+              {imageUrl ? <Image source={{ uri: imageUrl }} style={{ width: '100%', height: 180, borderRadius: 16 }} contentFit="contain" /> : null}
+              <Button variant="outline" size="sm" onPress={uploadImage} disabled={uploading}>
+                <Icon as={ImagePlus} className="size-4" />
+                <Text>{uploading ? t('app.ob_uploading') : imageUrl ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
+              </Button>
+              <FormError message={formState.errors.image_url?.message} />
+            </View>
+          ) : null}
+        </FormSection>
 
-        <View className="gap-1.5">
-          <Label>{t('app.pp_roles')}</Label>
+        <FormSection title={t('app.pp_roles')} description={t('app.pp_roles_hint')} icon={Users}>
           <Controller
             control={control}
             name="visible_to_roles"
             render={({ field }) => <MultiChips<GlobalPageRole> value={field.value} onChange={field.onChange} options={ROLES.map((r) => ({ value: r, label: t(`app.pp_role_${r}`) }))} />}
           />
-          <Text variant="muted">{t('app.pp_roles_hint')}</Text>
-        </View>
+        </FormSection>
 
-        <SwitchField control={control} name="isActive" label={t('app.pp_active')} />
-        <SwitchField control={control} name="is_template" label={t('app.pp_draft')} />
-        <TextField control={control} name="start_date" label={t('app.pp_start')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
-        <TextField control={control} name="end_date" label={t('app.pp_end')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
+        <FormSection title={t('app.bl_status')} icon={CalendarRange}>
+          <SwitchField control={control} name="isActive" label={t('app.pp_active')} />
+          <SwitchField control={control} name="is_template" label={t('app.pp_draft')} />
+          <TextField control={control} name="start_date" label={t('app.pp_start')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
+          <TextField control={control} name="end_date" label={t('app.pp_end')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
+        </FormSection>
 
         <Button onPress={onSubmit} disabled={save.running || uploading}>
           <Text>{t('app.bl_save')}</Text>
@@ -163,6 +166,7 @@ export default function PublicPageForm() {
         {editing && page ? (
           <Button
             variant="ghost"
+            className="bg-destructive-soft rounded-full"
             onPress={async () => {
               const ok = await confirm({ title: t('app.pp_delete_title', { title: page.title }), destructive: true, confirmLabel: t('app.bl_delete') });
               if (ok && (await remove.run(page.id)).ok) {

@@ -2,9 +2,10 @@ import type { UploadFile } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FileText, UploadCloud, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -29,7 +30,7 @@ function FileSlot({ label, hint, file, onPick, onClear }: { label: string; hint:
   return (
     <View className="gap-1.5">
       <Label>{label}</Label>
-      <Pressable onPress={onPick} className="border-border flex-row items-center gap-2 rounded-md border border-dashed p-3">
+      <Pressable onPress={onPick} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border border-dashed p-3">
         <Icon as={file ? FileText : UploadCloud} className={cn('size-4', file ? 'text-primary' : 'text-muted-foreground')} />
         <Text className={cn('flex-1 text-sm', !file && 'text-muted-foreground')} numberOfLines={1}>
           {file ? file.name : hint}
@@ -142,7 +143,7 @@ export default function WorksheetForm() {
   const disabled = (on: boolean) => ({ pointerEvents: on ? ('none' as const) : ('auto' as const), style: { opacity: on ? 0.5 : 1 } });
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: wid ? tt('Edit Worksheet', 'تعديل ورقة العمل') : tt('Upload Worksheet', 'رفع ورقة عمل') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Card>
@@ -157,7 +158,7 @@ export default function WorksheetForm() {
           <CardContent className="gap-3 pt-4">
             <Text className="font-semibold">{tt('Curriculum placement', 'التصنيف المنهجي')}</Text>
             {!grades.isLoading && !(grades.data ?? []).length ? (
-              <Text className="text-xs text-amber-700 dark:text-amber-400">
+              <Text className="text-xs text-warning ">
                 {tt(
                   'No curriculum data exists yet. Ask an admin to add at least one grade and subject in Curriculum Manager before uploading.',
                   'لا توجد بيانات منهج حتى الآن. اطلب من المسؤول إضافة صف ومادة واحدة على الأقل في إدارة المنهج قبل الرفع.',

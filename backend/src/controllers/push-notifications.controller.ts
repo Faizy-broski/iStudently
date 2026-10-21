@@ -1,5 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
+import { isExpoPushToken } from '../services/expo-push.service'
 import { pushNotificationsService } from '../services/push-notifications.service'
 
 export class PushNotificationsController {
@@ -56,6 +57,41 @@ export class PushNotificationsController {
    * DELETE /api/push/subscribe
    * Body: { endpoint }
    */
+  /**
+   * POST /api/push/devices  { token, platform, device_name?, app_version? }
+   * Registers this phone (Expo push token) for the signed-in user.
+   */
+  async registerDevice(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      if (!profileId) return res.status(401).json({ success: false, error: 'Authentication required' })
+      const { token, platform, device_name, app_version } = req.body ?? {}
+      if (!isExpoPushToken(token) || (platform !== 'ios' && platform !== 'android')) {
+        return res.status(400).json({ success: false, error: 'A valid Expo push token and platform are required' })
+      }
+      await pushNotificationsService.registerDevice({ profileId, schoolId: req.profile?.school_id ?? null, token, platform, deviceName: device_name, appVersion: app_version })
+      res.json({ success: true })
+    } catch (error: any) {
+      console.error('Push device register error:', error)
+      res.status(500).json({ success: false, error: 'Failed to register device' })
+    }
+  }
+
+  /** DELETE /api/push/devices  { token } — stop push to this phone. */
+  async unregisterDevice(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      if (!profileId) return res.status(401).json({ success: false, error: 'Authentication required' })
+      const { token } = req.body ?? {}
+      if (!isExpoPushToken(token)) return res.status(400).json({ success: false, error: 'token is required' })
+      await pushNotificationsService.unregisterDevice(profileId, token)
+      res.json({ success: true })
+    } catch (error: any) {
+      console.error('Push device unregister error:', error)
+      res.status(500).json({ success: false, error: 'Failed to remove device' })
+    }
+  }
+
   async unsubscribe(req: AuthRequest, res: Response) {
     try {
       const profileId = req.profile?.id

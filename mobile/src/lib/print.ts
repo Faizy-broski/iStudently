@@ -73,3 +73,11 @@ export function qrSvg(value: string, cellSize = 6) {
   qr.make();
   return qr.createSvgTag({ cellSize, margin: 2, scalable: true });
 }
+
+/** QR code as a GIF image (base64, no data: prefix), e.g. to save or share like the web's PNG download. */
+export function qrGifBase64(value: string, cellSize = 8) {
+  const qr = qrcode(0, 'M');
+  qr.addData(value);
+  qr.make();
+  return qr.createDataURL(cellSize, 4).replace(/^data:image\/gif;base64,/, '');
+}

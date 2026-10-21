@@ -1,14 +1,19 @@
-import type { AdminTimetableEntry, BellPeriod } from '@studently/api-client';
+import type { AdminTimetableEntry } from '@studently/api-client';
 import { toCsv } from '@studently/shared-utils';
 import { router, Stack } from 'expo-router';
-import { Calendar, ChevronLeft, ChevronRight, Copy, DoorOpen, Download, Eraser, FileText, ListChecks, Lock, Plus, RefreshCw, Settings, Sparkles, Trash2, Unlock, Upload, User, X } from 'lucide-react-native';
+import { Calendar, ChevronLeft, ChevronRight, DoorOpen, Download, FileText, ListChecks, Plus, RefreshCw, Settings, Sparkles, Upload, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { colors } from '@/lib/colors';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
+import { IconTile } from '@/components/app/layout';
+import { Segmented } from '@/components/app/segmented';
+import { StatusChip } from '@/components/app/status-chip';
+import { Tile, TileGrid } from '@/components/app/tile-grid';
 import { Picker } from '@/components/app/picker';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -122,8 +127,8 @@ export default function Timetable() {
         return `<h3>Section: ${escapeHtml(s.name)}</h3><table class="tt">${head}${body}</table>`;
       })
       .join('');
-    const body = `<h2 style="text-align:center;color:#022172">${escapeHtml(title)}</h2><p style="text-align:center;color:#666">${escapeHtml(`${tt('filter_year')}: ${yearName}`)}</p>${tables}`;
-    const css = `.tt{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:10px}.tt th{background:#022172;color:#fff;padding:5px}.tt td{border:1px solid #ccc;padding:5px;text-align:center;vertical-align:middle}.tt td:first-child{width:80px}.muted{color:#666}h3{color:#022172;margin:10px 0 4px}`;
+    const body = `<h2 style="text-align:center;color:${colors.brand}">${escapeHtml(title)}</h2><p style="text-align:center;color:${colors.printMuted}">${escapeHtml(`${tt('filter_year')}: ${yearName}`)}</p>${tables}`;
+    const css = `.tt{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:10px}.tt th{background:${colors.brand};color:${colors.white};padding:5px}.tt td{border:1px solid ${colors.printBorder};padding:5px;text-align:center;vertical-align:middle}.tt td:first-child{width:80px}.muted{color:${colors.printMuted}}h3{color:${colors.brand};margin:10px 0 4px}`;
     try {
       const landscape = mode === 'grid' && list.length > 1;
       await sharePdf(
@@ -138,60 +143,45 @@ export default function Timetable() {
   }
 
   const loading = grades.isLoading || periodsRes.isLoading || years.years.length === 0;
-  const linkBtn = (label: string, icon: typeof Settings, href: Parameters<typeof router.push>[0], primary = false) => (
-    <Button size="sm" variant={primary ? 'default' : 'outline'} onPress={() => router.push(href)}>
-      <Icon as={icon} className={primary ? 'text-primary-foreground size-4' : 'text-foreground size-4'} />
-      <Text>{label}</Text>
-    </Button>
-  );
-
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: tt('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10">
         <Text className="text-muted-foreground text-sm">{tt('subtitle')}</Text>
-        <View className="flex-row flex-wrap gap-2">
-          <Button size="sm" variant="outline" onPress={downloadPdf} disabled={!gradeId || !sections.length}>
+        <TileGrid>
+          <Tile icon={Sparkles} label={a('auto_generate')} onPress={() => router.push('/admin/timetable/generate')} />
+          <Tile icon={ListChecks} label={a('requirements')} onPress={() => router.push('/admin/timetable/requirements')} />
+          <Tile icon={DoorOpen} label={a('rooms')} onPress={() => router.push('/admin/timetable/rooms')} />
+          <Tile icon={Settings} label={tt('btn_manage_periods')} onPress={() => router.push('/admin/periods')} />
+          <Tile icon={Upload} label={a('import')} onPress={() => router.push('/admin/timetable/import')} />
+          <Tile icon={RefreshCw} label={tt('btn_refresh')} onPress={reload} />
+        </TileGrid>
+        <View className="flex-row gap-2">
+          <Button className="flex-1" size="sm" variant="outline" onPress={downloadPdf} disabled={!gradeId || !sections.length}>
             <Icon as={FileText} className="text-foreground size-4" />
             <Text>{tt('btn_pdf')}</Text>
           </Button>
-          <Button size="sm" variant="outline" onPress={downloadCsv} disabled={!gradeId || !sections.length}>
+          <Button className="flex-1" size="sm" variant="outline" onPress={downloadCsv} disabled={!gradeId || !sections.length}>
             <Icon as={Download} className="text-foreground size-4" />
             <Text>{tt('btn_csv')}</Text>
-          </Button>
-          {linkBtn(tt('btn_manage_periods'), Settings, '/admin/periods')}
-          {linkBtn(a('rooms'), DoorOpen, '/admin/timetable/rooms')}
-          {linkBtn(a('requirements'), ListChecks, '/admin/timetable/requirements')}
-          {linkBtn(a('import'), Upload, '/admin/timetable/import')}
-          {linkBtn(a('auto_generate'), Sparkles, '/admin/timetable/generate', true)}
-          <Button size="sm" variant="outline" onPress={reload} disabled={entriesRes.isValidating}>
-            <Icon as={RefreshCw} className="text-foreground size-4" />
-            <Text>{tt('btn_refresh')}</Text>
           </Button>
         </View>
 
         <Card>
           <CardContent className="gap-3 pt-4">
-            <View className="flex-row gap-2">
-              <View className="flex-1 gap-1">
-                <Text className="text-sm font-medium">{tt('filter_year')}</Text>
-                <Picker value={yearId ?? ''} onChange={years.pick} placeholder={tt('placeholder_year')} options={years.years.map((y) => ({ value: y.id, label: `${y.name}${y.is_current ? ` ${tt('current_label')}` : ''}` }))} />
-              </View>
-              <View className="flex-1 gap-1">
-                <Text className="text-sm font-medium">{tt('filter_grade')}</Text>
-                <Picker
-                  value={gradeId}
-                  onChange={(v) => {
-                    setGradeId(v);
-                    setExpanded(null);
-                  }}
-                  placeholder={tt('placeholder_grade')}
-                  options={gradeList.map((g) => ({ value: g.id, label: g.name }))}
-                />
-              </View>
-            </View>
-            <Text className="text-sm font-medium">{tt('filter_view_mode')}</Text>
+            <Text className="text-sm font-medium">{tt('filter_year')}</Text>
+            <Picker value={yearId ?? ''} onChange={years.pick} placeholder={tt('placeholder_year')} options={years.years.map((y) => ({ value: y.id, label: `${y.name}${y.is_current ? ` ${tt('current_label')}` : ''}` }))} />
+            <Text className="text-sm font-medium">{tt('filter_grade')}</Text>
             <FilterChips
+              value={gradeId ?? ''}
+              onChange={(v) => {
+                setGradeId(v);
+                setExpanded(null);
+              }}
+              options={gradeList.map((g) => ({ value: g.id, label: g.name }))}
+            />
+            <Text className="text-sm font-medium">{tt('filter_view_mode')}</Text>
+            <Segmented
               value={mode}
               onChange={setMode}
               options={[
@@ -200,7 +190,7 @@ export default function Timetable() {
               ]}
             />
             <Text className="text-sm font-medium">{tt('filter_layout')}</Text>
-            <FilterChips
+            <Segmented
               value={orientation}
               onChange={setOrientation}
               options={[
@@ -209,7 +199,7 @@ export default function Timetable() {
               ]}
             />
             <Text className="text-muted-foreground text-xs">{orientation === 'vertical' ? tt('layout_vertical_tip') : tt('layout_horizontal_tip')}</Text>
-            {gradeId ? <Text className="text-sm">{tt('sections_count', { count: sections.length })}</Text> : null}
+            {gradeId ? <StatusChip label={tt('sections_count', { count: sections.length })} tone="info" className="self-start px-2.5 py-1" /> : null}
           </CardContent>
         </Card>
 
@@ -220,18 +210,10 @@ export default function Timetable() {
         ) : !gradeId ? (
           <EmptyState icon={Calendar} title={tt('no_grade_title')} body={tt('no_grade_desc')} />
         ) : sections.length === 0 ? (
-          <Card>
-            <CardContent className="items-center gap-3 py-8">
-              <Icon as={Calendar} className="text-muted-foreground/40 size-14" />
-              <Text className="text-muted-foreground text-lg font-medium">{tt('no_sections_title')}</Text>
-              <Text className="text-muted-foreground text-center text-sm">{tt('no_sections_desc', { grade: gradeName })}</Text>
-              <Button onPress={setupGrade} disabled={settingUp}>
-                <Icon as={Calendar} className="text-primary-foreground size-4" />
-                <Text>{tt('btn_setup_grade_timetable', { grade: gradeName ?? '' })}</Text>
-              </Button>
-              <Text className="text-muted-foreground text-center text-xs">{tt('setup_grade_hint')}</Text>
-            </CardContent>
-          </Card>
+          <View className="gap-2">
+            <EmptyState icon={Calendar} title={tt('no_sections_title')} body={tt('no_sections_desc', { grade: gradeName })} actionLabel={settingUp ? undefined : tt('btn_setup_grade_timetable', { grade: gradeName ?? '' })} onAction={settingUp ? undefined : setupGrade} />
+            <Text className="text-muted-foreground text-center text-xs">{tt('setup_grade_hint')}</Text>
+          </View>
         ) : periods.length === 0 ? (
           <EmptyState icon={Settings} title={tt('no_periods_title')} body={tt('no_periods_desc')} actionLabel={tt('btn_configure_periods')} onAction={() => router.push('/admin/periods')} />
         ) : mode === 'grid' ? (
@@ -242,9 +224,10 @@ export default function Timetable() {
               return (
                 <Card key={s.id}>
                   <CardContent className="gap-2 pt-4">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="font-semibold">{s.name}</Text>
-                      <Text className="text-muted-foreground text-xs">{tt('classes_count', { count: list.length })}</Text>
+                    <View className="flex-row items-center gap-3">
+                      <IconTile icon={Calendar} />
+                      <Text className="flex-1 font-semibold">{s.name}</Text>
+                      <StatusChip label={tt('classes_count', { count: list.length })} tone="info" className="px-2 py-0.5" />
                     </View>
                     {entriesRes.isLoading ? (
                       <LoadingList rows={3} />
@@ -258,7 +241,7 @@ export default function Timetable() {
                           return (
                             <Pressable
                               onPress={() => setSlot({ sectionId: s.id, sectionName: s.name, gradeId, gradeName, dayIdx, period: p, existing: e })}
-                              className={cn('min-h-12 justify-center p-1', e && 'bg-blue-50 dark:bg-blue-950/20')}>
+                              className={cn('min-h-12 justify-center p-1', e && 'bg-info-soft ')}>
                               {e ? (
                                 <View>
                                   <View className="flex-row items-start justify-between gap-1">
@@ -290,14 +273,14 @@ export default function Timetable() {
           <View className="gap-3">
             <Text className="text-lg font-semibold">{tt('grade_all_sections', { grade: gradeName })}</Text>
             <View className="flex-row items-center gap-2">
-              <Button size="icon" variant="outline" disabled={currentIdx <= 0} onPress={() => setExpanded(sections[currentIdx - 1].id)}>
-                <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
+              <Button size="icon" variant="outline" disabled={currentIdx <= 0} onPress={() => setExpanded(sections[currentIdx - 1].id)} accessibilityLabel={t('common.previous')}>
+                <Icon flipRtl as={ChevronLeft} className="text-foreground size-4" />
               </Button>
               <View className="flex-1">
                 <Picker value={currentId ?? ''} onChange={setExpanded} placeholder={tt('placeholder_select_section')} options={sections.map((s) => ({ value: s.id, label: `${s.name} (${tt('classes_count', { count: (entries[s.id] ?? []).length })})` }))} />
               </View>
               <Button size="icon" variant="outline" disabled={currentIdx >= sections.length - 1} onPress={() => setExpanded(sections[currentIdx + 1].id)}>
-                <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
+                <Icon flipRtl as={ChevronRight} className="text-foreground size-4" />
               </Button>
             </View>
             {currentId && yearId ? (

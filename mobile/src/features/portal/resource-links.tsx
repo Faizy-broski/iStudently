@@ -4,7 +4,7 @@ import { ExternalLink, Link2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -31,13 +31,13 @@ export function ResourceLinksScreen() {
             {links.isLoading ? (
               <LoadingList rows={3} />
             ) : list.length === 0 ? (
-              <Text className="text-muted-foreground py-6 text-center">{k('empty')}</Text>
+              <EmptyState title={k('empty')} />
             ) : (
               list.map((l) => (
-                <Pressable key={l.id} onPress={() => WebBrowser.openBrowserAsync(l.url)} accessibilityRole="link" className="border-border flex-row items-center gap-3 rounded-lg border p-3">
-                  <Icon as={Link2} className="size-5 text-[#008B8B]" />
+                <Pressable key={l.id} onPress={() => WebBrowser.openBrowserAsync(l.url)} accessibilityRole="link" className="border-info-soft dark:border-border flex-row items-center gap-3 rounded-xl border p-3">
+                  <Icon as={Link2} className="size-5 text-chart-7" />
                   <View className="flex-1">
-                    <Text className="font-medium text-blue-600">{l.title}</Text>
+                    <Text className="font-medium text-brand dark:text-brand-secondary">{l.title}</Text>
                     <Text className="text-muted-foreground text-xs" numberOfLines={1}>
                       {l.url}
                     </Text>

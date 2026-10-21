@@ -2,8 +2,9 @@ import { Stack } from 'expo-router';
 import { Bell, CalendarDays, Clock, Info, Mail, Save, Send } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { TimeField } from '@/components/app/time-field';
 import { useToast } from '@/components/app/toast';
@@ -18,6 +19,7 @@ import { CheckRow } from '@/features/admin/attendance';
 import { useSession } from '@/features/auth/session';
 import { adminSchool } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { IconTile } from '@/components/app/layout';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -86,7 +88,7 @@ export default function EmailRemindersSettings() {
   const title = (icon: typeof Bell, text: string, desc: string) => (
     <View className="gap-1">
       <View className="flex-row items-center gap-2">
-        <Icon as={icon} className="text-primary size-5" />
+        <IconTile icon={icon} size={32} />
         <Text className="font-semibold">{text}</Text>
       </View>
       <Text className="text-muted-foreground text-sm">{desc}</Text>
@@ -98,20 +100,20 @@ export default function EmailRemindersSettings() {
       <Stack.Screen options={{ title: e('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-28" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{e('subtitle')}</Text>
-        <View className="flex-row gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
-          <Icon as={Info} className="mt-0.5 size-5 text-blue-600 dark:text-blue-400" />
+        <View className="flex-row gap-3 rounded-xl border border-info-soft bg-info-soft p-3">
+          <Icon as={Info} className="mt-0.5 size-5 text-brand dark:text-brand-secondary " />
           <View className="flex-1">
-            <Text className="text-sm font-medium text-blue-800 dark:text-blue-300">{e('info_title')}</Text>
-            <Text className="mt-1 text-sm text-blue-800 dark:text-blue-300">{e('info_desc')}</Text>
+            <Text className="text-sm font-medium text-brand dark:text-brand-secondary ">{e('info_title')}</Text>
+            <Text className="mt-1 text-sm text-brand dark:text-brand-secondary ">{e('info_desc')}</Text>
           </View>
         </View>
 
         <Card>
           <CardContent className="gap-4 pt-4">
             {title(Mail, e('card_diary_title'), e('card_diary_subtitle'))}
-            <View className="border-border flex-row items-center gap-3 rounded-lg border p-3">
+            <View className="border-info-soft dark:border-border flex-row items-center gap-3 rounded-xl border p-3">
               <View className="flex-1">
-                <Text className="font-medium">{e('label_enable')}</Text>
+                <Text className="text-sm font-semibold">{e('label_enable')}</Text>
                 <Text className="text-muted-foreground text-sm">{e('desc_enable')}</Text>
               </View>
               <Switch checked={enabled} onCheckedChange={setEnabled} />

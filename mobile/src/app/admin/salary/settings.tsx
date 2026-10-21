@@ -113,12 +113,11 @@ export default function SalarySettings() {
                   </View>
                 </Pressable>
                 <Pressable
-                  hitSlop={8}
                   accessibilityLabel={s('deletePolicy')}
                   onPress={async () => {
                     if (await confirm({ title: s('deletePolicyTitle', { name: g.name }), body: s('deletePolicyDesc'), destructive: true, confirmLabel: s('deletePolicy') })) remove.run(g.id);
-                  }}>
-                  <Icon as={Trash2} className="text-muted-foreground size-4" />
+                  }} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                  <Icon as={Trash2} className="text-destructive size-4" />
                 </Pressable>
               </View>
             </CardContent>

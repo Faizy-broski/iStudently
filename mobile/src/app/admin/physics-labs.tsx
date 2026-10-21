@@ -4,14 +4,15 @@ import { Stack } from 'expo-router';
 import { FlaskConical, Pencil, Play, Plus, Trash2, Users, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { Modal, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { PublicWebView } from '@/components/app/web-session-view';
 import { Button } from '@/components/ui/button';
@@ -31,13 +32,13 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_TONE: Record<SimCategory, string> = {
-  Pendulums: 'bg-blue-100',
-  Springs: 'bg-green-100',
-  Collisions: 'bg-red-100',
-  'Roller Coasters': 'bg-orange-100',
-  Orbital: 'bg-purple-100',
-  Waves: 'bg-cyan-100',
-  Other: 'bg-gray-100',
+  Pendulums: 'bg-info-soft',
+  Springs: 'bg-success-soft',
+  Collisions: 'bg-destructive-soft',
+  'Roller Coasters': 'bg-warning-soft',
+  Orbital: 'bg-chart-6/10',
+  Waves: 'bg-info-soft',
+  Other: 'bg-muted',
 };
 
 /** Assign MyPhysicsLab simulations to grades/sections, edit, remove, read submissions (web: /admin/physics-labs). */
@@ -198,12 +199,12 @@ export default function PhysicsLabs() {
               const names = mine.map((l) => (!l.grade_id ? p('allGrades') : l.section_id ? `${gradeName(l.grade_id)} — ${sectionName(l.section_id)}` : gradeName(l.grade_id))).filter(Boolean) as string[];
               const txt = sim(s);
               return (
-                <Card key={s.key} className={mine.length ? 'border-green-300 dark:border-green-800' : ''}>
+                <Card key={s.key} className={mine.length ? 'border-success ' : ''}>
                   <CardContent className="gap-2 pt-4">
                     <View className="flex-row items-start gap-2">
                       <Text className="flex-1 font-semibold">{txt.title}</Text>
                       <View className={cn('rounded-full px-2 py-0.5', CATEGORY_TONE[s.category])}>
-                        <Text className="text-[11px] text-gray-800">{txt.category}</Text>
+                        <Text className="text-[11px] text-muted-foreground">{txt.category}</Text>
                       </View>
                     </View>
                     <Text className="text-muted-foreground text-sm">{txt.description}</Text>
@@ -215,7 +216,7 @@ export default function PhysicsLabs() {
                       ))}
                     </View>
                     {names.map((n) => (
-                      <Text key={n} className="text-xs text-green-700 dark:text-green-400">
+                      <Text key={n} className="text-xs text-success ">
                         ✓ {n}
                       </Text>
                     ))}
@@ -238,7 +239,7 @@ export default function PhysicsLabs() {
         ) : !assigned.length ? (
           <View className="items-center gap-2 py-12">
             <Icon as={FlaskConical} className="text-muted-foreground size-10" />
-            <Text className="text-muted-foreground text-center">{p('emptyAssigned')}</Text>
+            <EmptyState title={p('emptyAssigned')} />
           </View>
         ) : (
           assigned.map((l) => {
@@ -252,7 +253,7 @@ export default function PhysicsLabs() {
                     <Text className="font-semibold">{s ? sim(s).title : l.sim_key}</Text>
                     {s ? (
                       <View className={cn('rounded-full px-2 py-0.5', CATEGORY_TONE[s.category])}>
-                        <Text className="text-[11px] text-gray-800">{sim(s).category}</Text>
+                        <Text className="text-[11px] text-muted-foreground">{sim(s).category}</Text>
                       </View>
                     ) : null}
                     {!l.is_active ? (
@@ -268,12 +269,12 @@ export default function PhysicsLabs() {
                     <Button size="icon" variant="ghost" onPress={() => setSubsLab(l)} accessibilityLabel={p('viewSubmissions')}>
                       <Icon as={Users} className="text-foreground size-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" onPress={() => openEdit(l)} accessibilityLabel={t('common.edit')}>
-                      <Icon as={Pencil} className="text-foreground size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onPress={() => remove(l)} accessibilityLabel={p('deleteDialog.confirm')}>
+                    <Pressable onPress={() => openEdit(l)} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                      <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                    </Pressable>
+                    <Pressable onPress={() => remove(l)} accessibilityLabel={p('deleteDialog.confirm')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
-                    </Button>
+                    </Pressable>
                   </View>
                 </CardContent>
               </Card>
@@ -380,9 +381,9 @@ export default function PhysicsLabs() {
                 const name = x.profiles ? `${x.profiles.first_name ?? ''} ${x.profiles.last_name ?? ''}`.trim() || 'Student' : 'Student';
                 const mins = x.time_spent_s ? Math.round(x.time_spent_s / 60) : null;
                 return (
-                  <View key={x.id} className="border-border gap-1 rounded-md border p-2">
+                  <View key={x.id} className="border-info-soft dark:border-border gap-1 rounded-xl border p-2">
                     <View className="flex-row flex-wrap items-center gap-2">
-                      <Text className="font-medium">{name}</Text>
+                      <Text className="text-sm font-semibold">{name}</Text>
                       {x.profiles?.grade_levels?.name ? <Text className="text-muted-foreground text-xs">{x.profiles.grade_levels.name}</Text> : null}
                       {mins !== null ? <Text className="text-muted-foreground text-xs">{p('submissionsDialog.minLabel', { count: mins })}</Text> : null}
                       <Text className="text-muted-foreground text-xs">{new Date(x.submitted_at).toLocaleDateString(i18n.language)}</Text>

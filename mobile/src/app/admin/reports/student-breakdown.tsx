@@ -6,9 +6,9 @@ import { ScrollView, View } from 'react-native';
 
 import { BarChart, ChartLegend, PieChart } from '@/components/app/charts';
 import { FilterChips } from '@/components/app/filter-chips';
-import { StatCard } from '@/components/app/stat-card';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminStudents } from '@/lib/api';
@@ -97,8 +97,8 @@ export default function StudentBreakdown() {
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
         <FilterChips<Field> value={field} onChange={setField} options={FIELDS.map((f) => ({ value: f.id, label: b(f.key) }))} />
         <View className="flex-row gap-3">
-          <StatCard icon={Users} label={b('total_students')} value={formatNumber(total)} />
-          <StatCard icon={Users} label={b('categories')} value={formatNumber(rows.length)} detail={rows[0] ? `${b('largest_group')}: ${rows[0].name}` : undefined} />
+          <StatTile icon={Users} label={b('total_students')} value={formatNumber(total)} />
+          <StatTile icon={Users} label={b('categories')} value={formatNumber(rows.length)} note={rows[0] ? `${b('largest_group')}: ${rows[0].name}` : undefined} />
         </View>
         {rows.length > 1 ? <Text className="text-muted-foreground text-xs">{`${b('smallest_group')}: ${rows[rows.length - 1].name} (${rows[rows.length - 1].count})`}</Text> : null}
         <View>

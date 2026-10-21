@@ -1,18 +1,23 @@
 import { coursePeriodTeacherName, type StudentScheduleEntry } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Lock, Plus, Printer } from 'lucide-react-native';
+import { BookOpen, ClipboardList, Lock, Plus, Printer } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField, todayYmd } from '@/components/app/date-field';
-import { Picker } from '@/components/app/picker';
+import { FilterChips } from '@/components/app/filter-chips';
+import { FormSection, IconTile, PersonHero, RowPill } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { Segmented } from '@/components/app/segmented';
 import { SearchBar } from '@/components/app/search-bar';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -65,55 +70,48 @@ function StudentRequests({ studentId, yearId, campusId, canManage, onChanged }: 
   }
 
   return (
-    <Card>
-      <CardContent className="gap-3 pt-4">
-        <Text className="text-lg font-bold">{r('title')}</Text>
-        {(requests.data ?? []).length ? (
-          <View>
-            <Text className="pb-1 text-sm font-semibold">{r('found_requests', { count: requests.data?.length ?? 0 })}</Text>
-            {(requests.data ?? []).map((x) => (
-              <View key={x.id}>
-                <Separator />
-                <View className="flex-row items-center gap-2 py-2">
-                  <View className="flex-1">
-                    <Text className="text-sm">{x.course?.title || '—'}</Text>
-                    <Text className="text-muted-foreground text-xs">
-                      {t(`common.status.${x.status}`, { defaultValue: x.status })} · {r('th_priority')}: {x.priority}
-                    </Text>
-                  </View>
-                  {canManage ? (
-                    <Button size="sm" variant="ghost" onPress={() => remove(x.id)}>
-                      <Text className="text-destructive text-xs">{r('btn_remove')}</Text>
-                    </Button>
-                  ) : null}
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : !requests.isLoading ? (
-          <Text className="text-sm font-semibold">{r('no_requests_found')}</Text>
-        ) : null}
-        <Picker value={subject} onChange={setSubject} options={[{ value: 'all', label: r('all_subjects') }, ...(subjects.data ?? []).map((x) => ({ value: x.id, label: x.name }))]} />
-        <Input value={title} onChangeText={setTitle} placeholder={r('course_title')} />
+    <FormSection title={r('title')} icon={ClipboardList}>
+      {(requests.data ?? []).length ? (
         <View>
-          {shown.map((c) => (
-            <View key={c.id}>
+          <Text className="pb-1 text-sm font-semibold">{r('found_requests', { count: requests.data?.length ?? 0 })}</Text>
+          {(requests.data ?? []).map((x) => (
+            <View key={x.id}>
               <Separator />
               <View className="flex-row items-center gap-2 py-2">
-                <Text className="flex-1 text-sm">{c.title}</Text>
-                {requested.has(c.id) ? (
-                  <Text className="text-muted-foreground text-xs">{r('already_requested')}</Text>
-                ) : (
-                  <Button size="sm" variant="outline" disabled={busy} onPress={() => add(c.id)}>
-                    <Text className="text-xs">{r('btn_add_request')}</Text>
-                  </Button>
-                )}
+                <View className="flex-1">
+                  <Text className="text-sm">{x.course?.title || '—'}</Text>
+                  <Text className="text-muted-foreground text-xs">
+                    {t(`common.status.${x.status}`, { defaultValue: x.status })} · {r('th_priority')}: {x.priority}
+                  </Text>
+                </View>
+                {canManage ? <RowPill label={r('btn_remove')} tone="destructive" onPress={() => remove(x.id)} /> : null}
               </View>
             </View>
           ))}
         </View>
-      </CardContent>
-    </Card>
+      ) : !requests.isLoading ? (
+        <Text className="text-sm font-semibold">{r('no_requests_found')}</Text>
+      ) : null}
+      <FilterChips value={subject} onChange={setSubject} options={[{ value: 'all', label: r('all_subjects') }, ...(subjects.data ?? []).map((x) => ({ value: x.id, label: x.name }))]} />
+      <Input value={title} onChangeText={setTitle} placeholder={r('course_title')} />
+      <View>
+        {shown.map((c) => (
+          <View key={c.id}>
+            <Separator />
+            <View className="flex-row items-center gap-2 py-2">
+              <Text className="flex-1 text-sm">{c.title}</Text>
+              {requested.has(c.id) ? (
+                <StatusChip label={r('already_requested')} tone="muted" />
+              ) : (
+                <View pointerEvents={busy ? 'none' : 'auto'} style={{ opacity: busy ? 0.5 : 1 }}>
+                  <RowPill icon={Plus} label={r('btn_add_request')} onPress={() => add(c.id)} />
+                </View>
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+    </FormSection>
   );
 }
 
@@ -216,10 +214,10 @@ export function StudentScheduleView({
     const heads = [s('th_course'), s('th_period_info'), s('th_room'), s('th_term'), s('th_enrolled'), s('th_dropped')];
     const body =
       format === 'table'
-        ? `<table style="width:100%;border-collapse:collapse"><tr>${heads.map((h) => `<th style="text-align:start;padding:6px;border-bottom:2px solid #ccc;font-size:11px">${escapeHtml(h)}</th>`).join('')}</tr>${rows
-            .map((r) => `<tr>${r.map((c) => `<td style="padding:6px;border-bottom:1px solid #eee">${escapeHtml(c)}</td>`).join('')}</tr>`)
+        ? `<table style="width:100%;border-collapse:collapse"><tr>${heads.map((h) => `<th style="text-align:start;padding:6px;border-bottom:2px solid ${colors.printBorder};font-size:11px">${escapeHtml(h)}</th>`).join('')}</tr>${rows
+            .map((r) => `<tr>${r.map((c) => `<td style="padding:6px;border-bottom:1px solid ${colors.printBorder}">${escapeHtml(c)}</td>`).join('')}</tr>`)
             .join('')}</table>`
-        : rows.map((r) => `<div style="padding:8px 0;border-bottom:1px solid #eee">${r.map((c, i) => `<div><b>${escapeHtml(heads[i])}:</b> ${escapeHtml(c)}</div>`).join('')}</div>`).join('');
+        : rows.map((r) => `<div style="padding:8px 0;border-bottom:1px solid ${colors.printBorder}">${r.map((c, i) => `<div><b>${escapeHtml(heads[i])}:</b> ${escapeHtml(c)}</div>`).join('')}</div>`).join('');
     try {
       await printHtml(
         buildPrintHtml({
@@ -249,31 +247,23 @@ export function StudentScheduleView({
             }}
           />
         }>
-        <Text className="text-lg font-semibold">
-          {name || '—'}
-          {number ? <Text className="text-muted-foreground text-sm font-normal"> #{number}</Text> : null}
-        </Text>
-        <DateField value={date} onChange={setDate} />
-        <View className="flex-row items-center gap-3">
-          <Switch checked={inactive} onCheckedChange={setInactive} />
-          <Text className="flex-1 text-sm">{s('include_inactive')}</Text>
-        </View>
+        <PersonHero name={name || '—'} subtitle={number ? `#${number}` : null} />
+        <Panel className="gap-3 p-4">
+          <DateField value={date} onChange={setDate} />
+          <View className="flex-row items-center gap-3">
+            <Text className="flex-1 text-sm font-medium">{s('include_inactive')}</Text>
+            <Switch checked={inactive} onCheckedChange={setInactive} />
+          </View>
+        </Panel>
         {printable ? (
           <View className="gap-2">
-            <Button variant="link" size="sm" className="self-start px-0" onPress={print}>
-              <Icon as={Printer} className="text-primary size-3.5" />
-              <Text className="text-primary text-sm">{s('btn_print')}</Text>
-            </Button>
-            <View className="flex-row flex-wrap items-center gap-2">
-              {(['table', 'list'] as const).map((f) => (
-                <Button key={f} size="sm" variant={format === f ? 'default' : 'outline'} onPress={() => setFormat(f)}>
-                  <Text>{s(`format_${f}`)}</Text>
-                </Button>
-              ))}
-              <View className="flex-row items-center gap-2">
-                <Switch checked={horizontal} onCheckedChange={setHorizontal} />
-                <Text className="text-sm">{s('format_horizontal')}</Text>
-              </View>
+            <View className="self-start">
+              <RowPill icon={Printer} label={s('btn_print')} onPress={print} />
+            </View>
+            <Segmented value={format} onChange={setFormat} options={(['table', 'list'] as const).map((f) => ({ value: f, label: s(`format_${f}`) }))} />
+            <View className="flex-row items-center gap-3">
+              <Text className="flex-1 text-sm">{s('format_horizontal')}</Text>
+              <Switch checked={horizontal} onCheckedChange={setHorizontal} />
             </View>
           </View>
         ) : null}
@@ -283,21 +273,22 @@ export function StudentScheduleView({
         ) : schedule.error ? (
           <ErrorState message={schedule.error.message} onRetry={() => schedule.mutate()} />
         ) : (
-          <Card>
-            <CardContent className="pt-3">
-              <Text className="text-muted-foreground pb-2 text-sm">{s('found_courses', { count: shown.length })}</Text>
-              {!shown.length ? <Text className="text-muted-foreground py-4 text-center text-sm">{s('no_courses_found')}</Text> : null}
-              {shown.map((x) => {
+          <View className="gap-2">
+              <Text className="text-muted-foreground text-xs">{s('found_courses', { count: shown.length })}</Text>
+              {!shown.length ? <EmptyState icon={BookOpen} title={s('no_courses_found')} /> : null}
+              {shown.length ? (
+              <Panel>
+              {shown.map((x, i) => {
                 const cp = x.course_period;
                 const teacher = cp?.teacher ? coursePeriodTeacherName(cp) : '—';
                 const shortName = x.course?.short_name || x.course?.title?.substring(0, 6) || '—';
                 const days = Array.isArray(cp?.days) ? cp?.days.join(',') : cp?.days || '—';
                 return (
-                  <View key={x.id}>
-                    <Separator />
-                    <View className="gap-1 py-2.5">
+                  <View key={x.id} className={i < shown.length - 1 ? 'border-info-soft dark:border-border flex-row gap-3 border-b px-4 py-3' : 'flex-row gap-3 px-4 py-3'}>
+                    <IconTile icon={BookOpen} size={40} />
+                    <View className="flex-1 gap-1">
                       <View className="flex-row items-center gap-1.5">
-                        <Text className="flex-1 font-medium">{x.course?.title || 'Unknown Course'}</Text>
+                        <Text className="flex-1 text-sm font-semibold">{x.course?.title || 'Unknown Course'}</Text>
                         {x.scheduler_lock ? <Icon as={Lock} className="text-muted-foreground size-3.5" /> : null}
                       </View>
                       <Text className="text-muted-foreground text-xs">
@@ -311,16 +302,17 @@ export function StudentScheduleView({
                         {x.end_date ? ` · ${s('th_dropped')}: ${longDate(x.end_date, i18n.language)}` : ''}
                       </Text>
                       {canManage && !x.end_date ? (
-                        <Button size="sm" variant="outline" className="self-start" onPress={() => drop(x)}>
-                          <Text className="text-destructive text-xs">{s('tip_set_drop_date')}</Text>
-                        </Button>
+                        <View className="self-start pt-1">
+                          <RowPill label={s('tip_set_drop_date')} tone="destructive" onPress={() => drop(x)} />
+                        </View>
                       ) : null}
                     </View>
                   </View>
                 );
               })}
-            </CardContent>
-          </Card>
+              </Panel>
+              ) : null}
+          </View>
         )}
         {canManage ? (
           <Button variant="outline" onPress={() => setAdding((v) => !v)} disabled={!yearId}>
@@ -337,8 +329,7 @@ export function StudentScheduleView({
           </View>
         ) : null}
         {showRequests ? (
-          <Card>
-            <CardContent className="gap-2 pt-4">
+          <Panel className="gap-2 p-4">
               {unfilled.isLoading ? (
                 <LoadingList rows={1} />
               ) : !(unfilled.data ?? []).length ? (
@@ -353,8 +344,7 @@ export function StudentScheduleView({
                   ))}
                 </>
               )}
-            </CardContent>
-          </Card>
+          </Panel>
         ) : null}
         {showRequests && studentId && yearId ? <StudentRequests studentId={studentId} yearId={yearId} campusId={campusId} canManage={canManage} onChanged={() => unfilled.mutate()} /> : null}
       </ScrollView>

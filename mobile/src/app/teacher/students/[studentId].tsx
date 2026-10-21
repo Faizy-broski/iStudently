@@ -1,14 +1,12 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { GraduationCap, Mail, Phone, User, type LucideIcon } from 'lucide-react-native';
+import { GraduationCap, Mail, Phone, User } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, RefreshControl, ScrollView } from 'react-native';
 
-import { PersonAvatar } from '@/components/app/person-avatar';
+import { DetailHeader } from '@/components/app/layout';
+import { InfoRow, Panel } from '@/components/app/panel';
 import { EmptyState, LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
-import { Text } from '@/components/ui/text';
+import { StatusChip } from '@/components/app/status-chip';
 import { CustomFieldValues } from '@/features/admin/custom-field-values';
 import { ConfidentialBadge } from '@/features/admin/people-extras';
 import { useCampus } from '@/features/campus/campus';
@@ -35,47 +33,27 @@ export default function TeacherStudentDetail() {
     <>
       <Stack.Screen options={{ title: name }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([mine.mutate(), full.mutate()])} />}>
-        <Card>
-          <CardContent className="gap-4 p-4">
-            <View className="flex-row items-start gap-4">
-              <PersonAvatar url={full.data?.profile?.profile_photo_url ?? null} name={name} size={64} />
-              <View className="flex-1 gap-1.5">
-                <View className="flex-row flex-wrap items-center gap-2">
-                  <Text className="text-xl font-bold text-[#022172] dark:text-white">{name}</Text>
-                  <ConfidentialBadge status={full.data?.confidential_family_status ?? s.confidential_family_status} />
-                </View>
-                <View className="flex-row flex-wrap gap-1.5">
-                  {s.grade_level ? (
-                    <Badge variant="secondary">
-                      <Text className="text-xs">{s.grade_level}</Text>
-                    </Badge>
-                  ) : null}
-                  <Badge>
-                    <Text className="text-xs">{k('active')}</Text>
-                  </Badge>
-                </View>
-                <Text className="text-muted-foreground text-sm">{k('idLabel', { id: s.student_number })}</Text>
-              </View>
-            </View>
-            {s.profile?.email ? <Tile icon={Mail} label={k('email')} value={s.profile.email} onPress={() => Linking.openURL(`mailto:${s.profile?.email}`)} /> : null}
-            {s.profile?.phone ? <Tile icon={Phone} label={k('phone')} value={s.profile.phone} onPress={() => Linking.openURL(`tel:${s.profile?.phone}`)} /> : null}
-            {father ? <Tile icon={User} label={k('fathersName')} value={father} /> : null}
-          </CardContent>
-        </Card>
+        <DetailHeader
+          name={name}
+          photo={full.data?.profile?.profile_photo_url ?? null}
+          subtitle={k('idLabel', { id: s.student_number })}
+          chips={
+            <>
+              {s.grade_level ? <StatusChip label={s.grade_level} tone="info" /> : null}
+              <StatusChip label={k('active')} tone="success" />
+              <ConfidentialBadge status={full.data?.confidential_family_status ?? s.confidential_family_status} />
+            </>
+          }
+        />
+        {s.profile?.email || s.profile?.phone || father ? (
+          <Panel>
+            <InfoRow icon={Mail} label={k('email')} value={s.profile?.email} onPress={() => Linking.openURL(`mailto:${s.profile?.email}`)} last={!s.profile?.phone && !father} />
+            <InfoRow icon={Phone} label={k('phone')} value={s.profile?.phone} onPress={() => Linking.openURL(`tel:${s.profile?.phone}`)} last={!father} />
+            <InfoRow icon={User} label={k('fathersName')} value={father} last />
+          </Panel>
+        ) : null}
         <CustomFieldValues defs={defs.data} values={full.data?.custom_fields} hideEmpty />
       </ScrollView>
     </>
-  );
-}
-
-function Tile({ icon, label, value, onPress }: { icon: LucideIcon; label: string; value: string; onPress?: () => void }) {
-  return (
-    <Pressable disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'link' : undefined} className="bg-muted/40 flex-row items-center gap-3 rounded-lg p-3">
-      <Icon as={icon} className="size-4 text-blue-600" />
-      <View className="flex-1">
-        <Text className="text-muted-foreground text-xs">{label}</Text>
-        <Text className={onPress ? 'text-sm font-medium text-blue-600' : 'text-sm font-medium'}>{value}</Text>
-      </View>
-    </Pressable>
   );
 }

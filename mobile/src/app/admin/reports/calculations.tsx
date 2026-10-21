@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Calculator, Delete, Pencil, Play, Save, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
@@ -127,7 +128,7 @@ export default function Calculations() {
   }
 
   const chip = (label: string, onPress: () => void, active = false) => (
-    <Pressable key={label} onPress={onPress} className={cn('border-border min-w-10 items-center rounded-md border px-2.5 py-1.5', active && 'border-primary bg-primary/10')}>
+    <Pressable key={label} onPress={onPress} className={cn('border-border min-w-10 items-center rounded-md border px-2.5 py-1.5', active && 'border-brand-secondary bg-info-soft')}>
       <Text className="font-mono text-sm">{label}</Text>
     </Pressable>
   );
@@ -153,7 +154,7 @@ export default function Calculations() {
 
         <Card>
           <CardContent className="gap-2 pt-4">
-            <Text className="text-muted-foreground text-xs font-semibold uppercase">{c('functions_operators')}</Text>
+            <Text className="text-muted-foreground text-sm font-semibold">{c('functions_operators')}</Text>
             <Text className="text-muted-foreground text-xs">{c('functions')}</Text>
             <View className="flex-row flex-wrap gap-1.5">{FUNCTIONS.map((fn) => chip(fn, () => setPendingFn(fn), pendingFn === fn))}</View>
             <Text className="text-muted-foreground text-xs">{c('operators')}</Text>
@@ -162,7 +163,7 @@ export default function Calculations() {
         </Card>
         <Card>
           <CardContent className="gap-2 pt-4">
-            <Text className="text-muted-foreground text-xs font-semibold uppercase">{c('fields')}</Text>
+            <Text className="text-muted-foreground text-sm font-semibold">{c('fields')}</Text>
             <Text className="text-muted-foreground text-xs">{c('time_values')}</Text>
             <View className="flex-row flex-wrap gap-1.5">{TIME_FIELDS.map((f) => chip(f, () => field(f)))}</View>
             <Text className="text-muted-foreground text-xs">{c('istudently_fields')}</Text>
@@ -174,7 +175,7 @@ export default function Calculations() {
 
         <Card>
           <CardContent className="gap-3 pt-4">
-            <Text className="text-muted-foreground text-xs font-semibold uppercase">{c('equation')}</Text>
+            <Text className="text-muted-foreground text-sm font-semibold">{c('equation')}</Text>
             <Input value={title} onChangeText={setTitle} placeholder={c('title_placeholder')} />
             <Picker value={breakdown || 'none'} onChange={(v) => setBreakdown(v === 'none' ? '' : v)} options={BREAKDOWNS.map((b) => ({ value: b || 'none', label: b ? c(`breakdown_options.${b}`) : c('breakdown_options.none') }))} />
             {editingId ? (
@@ -183,7 +184,7 @@ export default function Calculations() {
                 <Text>{c('cancel_edit')}</Text>
               </Button>
             ) : null}
-            <View className="border-border bg-muted/30 min-h-12 justify-center rounded-md border p-3">
+            <View className="border-info-soft dark:border-border bg-muted/30 min-h-12 justify-center rounded-xl border p-3">
               {formula ? <Text className="font-mono">{formula}</Text> : <Text className="text-muted-foreground">{c('formula_placeholder')}</Text>}
             </View>
             <View className="flex-row gap-2">
@@ -258,7 +259,7 @@ export default function Calculations() {
                 <View key={calc.id}>
                   {i > 0 ? <Separator /> : null}
                   <View className={cn('gap-1 py-2.5', editingId === calc.id && 'bg-primary/5')}>
-                    <Text className="font-medium">{calc.title}</Text>
+                    <Text className="text-sm font-semibold">{calc.title}</Text>
                     <Text className="bg-muted self-start rounded px-1 font-mono text-xs">{calc.formula}</Text>
                     <View className="flex-row items-center gap-1">
                       {calc.breakdown ? (
@@ -283,9 +284,9 @@ export default function Calculations() {
                       <Button size="icon" variant="ghost" disabled={running && runFor === calc.id} onPress={() => run(calc.id)} accessibilityLabel={c('run')}>
                         <Icon as={Play} className="text-foreground size-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onPress={() => remove(calc)} accessibilityLabel={t('common.delete')}>
+                      <Pressable onPress={() => remove(calc)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                         <Icon as={Trash2} className="text-destructive size-4" />
-                      </Button>
+                      </Pressable>
                     </View>
                   </View>
                 </View>

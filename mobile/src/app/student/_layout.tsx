@@ -14,7 +14,7 @@ export default function StudentLayout() {
     <CampusProvider>
       <PortalAcademicProvider>
         <View style={{ flex: 1 }}>
-          <Stack>
+          <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="module" options={{ title: '' }} />
             <Stack.Screen name="fina/notifications" options={{ title: '' }} />

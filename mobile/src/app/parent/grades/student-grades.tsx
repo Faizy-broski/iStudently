@@ -2,13 +2,15 @@ import { Stack } from 'expo-router';
 import { GraduationCap } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { IconTile, Initials, RowItem } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { NoChild, useChild } from '@/features/parent/child';
 import { adminGrades } from '@/lib/api';
@@ -51,41 +53,38 @@ export default function ParentStudentGrades() {
         contentContainerClassName="gap-3 p-4 pb-10"
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([grades.mutate(), mps.mutate()])} />}>
-        <View className="flex-row items-center gap-2">
-          <Icon as={GraduationCap} className="size-6 text-[#57A3CC]" />
-          <Text className="flex-1 text-sm">
-            {`${child.first_name} ${child.last_name}`}
-            <Text className="text-sm font-medium">{` — ${child.campus_name}`}</Text>
-          </Text>
-        </View>
+        <Panel>
+          <RowItem leading={<IconTile icon={GraduationCap} size={40} />} title={`${child.first_name} ${child.last_name}`} meta={child.campus_name} last />
+        </Panel>
         <Picker value={mp} onChange={setMp} options={[{ value: 'all', label: k('all_mps') }, ...(mps.data ?? []).map((m) => ({ value: m.id, label: m.title }))]} />
         <SearchBar value={search} onChangeText={setSearch} placeholder={k('search')} />
-        <Text className="text-sm font-medium text-[#0369a1]">{k('found', { count: rows.length })}</Text>
+        <Text className="text-muted-foreground text-xs font-medium">{k('found', { count: rows.length })}</Text>
         {grades.isLoading ? (
           <LoadingList rows={4} />
         ) : !rows.length ? (
-          <Text className="text-muted-foreground py-10 text-center">{k('none')}</Text>
+          <EmptyState icon={GraduationCap} title={k('none')} />
         ) : (
-          <Card>
-            <CardContent className="px-4 py-1">
-              {rows.map((g) => (
-                <View key={g.id} className="border-border gap-1 border-b py-3 last:border-b-0">
-                  <View className="flex-row items-start justify-between gap-2">
-                    <View className="flex-1">
-                      <Text className="font-medium">{g.course}</Text>
-                      <Text className="text-muted-foreground text-xs">{g.teacher || '—'}</Text>
-                    </View>
-                    <Text className="text-primary text-lg font-semibold">{g.letter || '—'}</Text>
+          <Panel>
+            {rows.map((g, i) => (
+              <RowItem
+                key={g.id}
+                leading={<Initials name={g.course} size={40} />}
+                title={g.course}
+                meta={g.teacher || '—'}
+                trailing={
+                  <View className="bg-info-soft min-w-11 items-center rounded-xl px-2 py-1.5">
+                    <Text className="text-brand dark:text-brand-secondary text-base font-bold">{g.letter || '—'}</Text>
                   </View>
-                  <View className="flex-row gap-4">
-                    <Text className="text-xs">{`%: ${g.percent != null ? `${g.percent.toFixed(1)}%` : '—'}`}</Text>
-                    <Text className="text-xs">{`${k('gpa_points')}: ${g.points != null ? g.points.toFixed(2) : '—'}`}</Text>
-                  </View>
-                  {g.comment ? <Text className="text-muted-foreground text-sm">{g.comment}</Text> : null}
+                }
+                last={i === rows.length - 1}>
+                <View className="flex-row flex-wrap gap-1.5">
+                  <StatusChip label={`%: ${g.percent != null ? `${g.percent.toFixed(1)}%` : '—'}`} tone="muted" />
+                  <StatusChip label={`${k('gpa_points')}: ${g.points != null ? g.points.toFixed(2) : '—'}`} tone="muted" />
                 </View>
-              ))}
-            </CardContent>
-          </Card>
+                {g.comment ? <Text className="text-muted-foreground text-xs">{g.comment}</Text> : null}
+              </RowItem>
+            ))}
+          </Panel>
         )}
       </ScrollView>
     </>

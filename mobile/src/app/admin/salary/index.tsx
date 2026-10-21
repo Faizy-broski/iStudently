@@ -8,10 +8,10 @@ import { Pressable, View } from 'react-native';
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
 import { FilterChips } from '@/components/app/filter-chips';
-import { StatCard } from '@/components/app/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { StatTile, Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { MonthYearPicker, SALARY_STATUS_VARIANT, monthLabel, staffName } from '@/features/admin/salary';
 import { useCurrency } from '@/features/admin/use-currency';
@@ -61,18 +61,18 @@ export default function SalaryRecords() {
         }}
       />
       <View className="flex-row gap-3">
-        <StatCard icon={Banknote} label={s('stats.total_payroll')} value={money(stats.data?.total_payroll ?? 0)} />
-        <StatCard icon={CircleCheck} label={s('stats.paid')} value={money(stats.data?.total_paid ?? 0)} detail={s('stats.staff_count', { count: counts?.paid ?? 0 })} />
+        <StatTile icon={Banknote} label={s('stats.total_payroll')} value={money(stats.data?.total_payroll ?? 0)} />
+        <StatTile icon={CircleCheck} label={s('stats.paid')} value={money(stats.data?.total_paid ?? 0)} note={s('stats.staff_count', { count: counts?.paid ?? 0 })} />
       </View>
       <View className="flex-row gap-3">
-        <StatCard
+        <StatTile
           icon={Clock}
           label={s('stats.pending')}
           value={money(stats.data?.total_pending ?? 0)}
-          detail={s('stats.staff_count', { count: (counts?.pending ?? 0) + (counts?.approved ?? 0) })}
+          note={s('stats.staff_count', { count: (counts?.pending ?? 0) + (counts?.approved ?? 0) })}
         />
         <Pressable className="flex-1" onPress={() => router.push('/admin/salary/advances')} accessibilityRole="button">
-          <StatCard icon={HandCoins} label={s('stats.advance_requests')} value={String(advances.data?.length ?? 0)} detail={s('stats.awaiting_approval')} tone={advances.data?.length ? 'warning' : undefined} />
+          <StatTile icon={HandCoins} label={s('stats.advance_requests')} value={String(advances.data?.length ?? 0)} note={s('stats.awaiting_approval')} tone={advances.data?.length ? 'warning' : undefined} />
         </Pressable>
       </View>
       <View className="flex-row gap-2">
@@ -129,8 +129,9 @@ export default function SalaryRecords() {
               className="gap-1 px-4 py-3"
               accessibilityRole="button"
               onPress={() => router.push({ pathname: '/admin/salary/payslip', params: { staffId: r.staff_id, month: String(r.month), year: String(r.year) } })}>
-              <View className="flex-row items-center justify-between gap-3">
-                <Text className="flex-1 font-medium" numberOfLines={1}>
+              <View className="flex-row items-center gap-3">
+                <Initials name={(staffName(r)) || '?'} />
+                <Text className="flex-1 text-sm font-semibold" numberOfLines={1}>
                   {staffName(r)}
                 </Text>
                 <Badge variant={SALARY_STATUS_VARIANT[r.status]}>
@@ -147,22 +148,22 @@ export default function SalaryRecords() {
               {isAdmin && r.status !== 'paid' ? (
                 <View className="flex-row gap-4 pt-1">
                   {r.status === 'pending' ? (
-                    <Pressable
+                    <Pressable className="bg-info-soft rounded-full px-3 py-1.5 active:opacity-70"
                       hitSlop={8}
                       disabled={approve.running}
                       onPress={async () => {
                         if (await confirm({ title: t('app.sl_approve_title'), body: `${staffName(r)} · ${money(r.net_salary)}`, confirmLabel: t('app.sl_approve') })) approve.run(r);
                       }}>
-                      <Text className="text-primary text-sm">{t('app.sl_approve')}</Text>
+                      <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{t('app.sl_approve')}</Text>
                     </Pressable>
                   ) : null}
-                  <Pressable
+                  <Pressable className="bg-info-soft rounded-full px-3 py-1.5 active:opacity-70"
                     hitSlop={8}
                     disabled={markPaid.running}
                     onPress={async () => {
                       if (await confirm({ title: t('app.sl_paid_title'), body: `${staffName(r)} · ${money(r.net_salary)}`, confirmLabel: t('app.sl_mark_paid') })) markPaid.run(r);
                     }}>
-                    <Text className="text-primary text-sm">{t('app.sl_mark_paid')}</Text>
+                    <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{t('app.sl_mark_paid')}</Text>
                   </Pressable>
                 </View>
               ) : null}

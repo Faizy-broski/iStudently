@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { Eye, LayoutDashboard, Plus, Settings, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View, Pressable } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -13,6 +14,7 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Panel } from '@/components/app/panel';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminResources } from '@/lib/api';
@@ -61,13 +63,13 @@ export default function ResourceDashboards() {
         {res.isLoading ? (
           <LoadingList />
         ) : (
-          <Card className="py-0">
+          <Panel>
             {list.map((x, i) => (
               <View key={x.id}>
                 {i > 0 ? <Separator /> : null}
                 <View className="flex-row items-center gap-1 px-3 py-2">
                   <Icon as={LayoutDashboard} className="text-primary size-4" />
-                  <Text className="flex-1 font-medium" onPress={() => router.push({ pathname: '/admin/resources/dashboards/[id]', params: { id: x.id } })}>
+                  <Text className="flex-1 text-sm font-semibold" onPress={() => router.push({ pathname: '/admin/resources/dashboards/[id]', params: { id: x.id } })}>
                     {x.title}
                   </Text>
                   <Button size="sm" variant="ghost" onPress={() => router.push({ pathname: '/admin/resources/dashboards/configure', params: { id: x.id } })}>
@@ -77,9 +79,9 @@ export default function ResourceDashboards() {
                   <Button size="icon" variant="ghost" onPress={() => router.push({ pathname: '/admin/resources/dashboards/[id]', params: { id: x.id } })} accessibilityLabel={d('btn_view')}>
                     <Icon as={Eye} className="text-foreground size-4" />
                   </Button>
-                  <Button size="icon" variant="ghost" onPress={() => remove(x)} accessibilityLabel={d('btn_delete')}>
+                  <Pressable onPress={() => remove(x)} accessibilityLabel={d('btn_delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
-                  </Button>
+                  </Pressable>
                 </View>
               </View>
             ))}
@@ -90,7 +92,7 @@ export default function ResourceDashboards() {
                 <Icon as={Plus} className="text-primary-foreground size-4" />
               </Button>
             </View>
-          </Card>
+          </Panel>
         )}
       </ScrollView>
     </View>

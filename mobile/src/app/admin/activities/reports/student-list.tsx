@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -88,7 +88,7 @@ export default function ActivityStudentList() {
                 {heading} <Text className="text-muted-foreground text-sm font-normal">({a('studentsCount', { count: rows.length })})</Text>
               </Text>
               <PrintButtons title={heading} fileName="activity-student-list.pdf" body={printBody} />
-              {!rows.length ? <Text className="text-muted-foreground py-6 text-center text-sm">{a('noStudentsEnrolled')}</Text> : null}
+              {!rows.length ? <EmptyState title={a('noStudentsEnrolled')} /> : null}
               {rows.map((r, i) => (
                 <View key={r.student?.id ?? i}>
                   <Separator />

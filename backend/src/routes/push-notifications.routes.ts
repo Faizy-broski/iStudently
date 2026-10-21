@@ -11,6 +11,10 @@ router.get('/vapid-public-key', (req, res) => pushNotificationsController.getPub
 router.post('/subscribe', (req, res) => pushNotificationsController.subscribe(req, res))
 router.delete('/subscribe', (req, res) => pushNotificationsController.unsubscribe(req, res))
 
+// Phones (iStudent app): Expo push tokens
+router.post('/devices', (req, res) => pushNotificationsController.registerDevice(req, res))
+router.delete('/devices', (req, res) => pushNotificationsController.unregisterDevice(req, res))
+
 router.get('/stats', requireAdmin, (req, res) => pushNotificationsController.getStats(req, res))
 router.post('/test', requireAdmin, (req, res) => pushNotificationsController.sendTest(req, res))
 

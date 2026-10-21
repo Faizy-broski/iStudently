@@ -2,14 +2,16 @@ import type { HifziAttendanceStatus } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { CheckCheck, Save } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { CirclePicker, enrollmentName, NoCircles, NoRoster, useHifziCircles, useHifziRoster, useHz } from '@/features/admin/hifzi';
 import { useCampus } from '@/features/campus/campus';
@@ -19,12 +21,12 @@ import { cn } from '@/lib/utils';
 
 const STATUSES: HifziAttendanceStatus[] = ['present', 'late', 'absent_excused', 'absent_unexcused', 'permitted', 'on_leave'];
 const STATUS_COLORS: Record<HifziAttendanceStatus, string> = {
-  present: 'bg-green-100 border-green-300 dark:bg-green-950 dark:border-green-700',
-  late: 'bg-yellow-100 border-yellow-300 dark:bg-yellow-950 dark:border-yellow-700',
-  absent_excused: 'bg-blue-100 border-blue-300 dark:bg-blue-950 dark:border-blue-700',
-  absent_unexcused: 'bg-red-100 border-red-300 dark:bg-red-950 dark:border-red-700',
-  permitted: 'bg-purple-100 border-purple-300 dark:bg-purple-950 dark:border-purple-700',
-  on_leave: 'bg-gray-100 border-gray-300 dark:bg-gray-800 dark:border-gray-600',
+  present: 'bg-success-soft border-success  ',
+  late: 'bg-warning-soft border-warning  ',
+  absent_excused: 'bg-info-soft border-brand  ',
+  absent_unexcused: 'bg-destructive-soft border-destructive  ',
+  permitted: 'bg-chart-6/10 border-chart-6  ',
+  on_leave: 'bg-muted border-border  ',
 };
 
 /** Mark a circle's attendance for a day; re-opening a past date edits what was saved (web: /admin/hifzi/attendance). */
@@ -93,12 +95,15 @@ export default function HifziAttendance() {
                     <Icon as={CheckCheck} className="text-foreground size-4" />
                     <Text>{h('markAll')}</Text>
                   </Button>
-                  {savedRows.length ? <Text className="text-xs text-amber-600">{h('alreadyRecorded')}</Text> : null}
+                  {savedRows.length ? <Text className="text-xs text-warning">{h('alreadyRecorded')}</Text> : null}
                 </View>
                 {rows.map((e) => (
                   <Card key={e.id}>
                     <CardContent className="gap-2 pt-3 pb-3">
-                      <Text className="font-medium">{enrollmentName(e)}</Text>
+                      <View className="flex-row items-center gap-3">
+                        <Initials name={enrollmentName(e) || '?'} />
+                        <Text className="flex-1 text-sm font-semibold">{enrollmentName(e)}</Text>
+                      </View>
                       <View className="flex-row flex-wrap gap-1.5">
                         {STATUSES.map((s) => {
                           const on = status(e.student_id) === s;

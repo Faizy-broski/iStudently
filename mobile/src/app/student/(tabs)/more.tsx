@@ -1,40 +1,28 @@
-import { router } from 'expo-router';
-import { Settings as SettingsIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
 
-import { ListRow } from '@/components/app/list-row';
-import { SearchBar } from '@/components/app/search-bar';
-import { Icon } from '@/components/ui/icon';
-import { Separator } from '@/components/ui/separator';
+import { MoreFrame, MoreHeader, OpenWebsiteCard, useAccountTiles } from '@/features/menu/more-layout';
 import { PortalModuleList } from '@/features/portal/portal-module-list';
 import { STUDENT_TAB_GROUPS } from '@/features/portal/student-tabs';
 
 const ON_TABS = new Set(Object.values(STUDENT_TAB_GROUPS).flat());
 
-/** Every other student page, search across all of them, and the app settings. */
+/** Every other student page (tile grid), search, and the app settings. (Figma "More Menu") */
 export default function StudentMore() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const accountTiles = useAccountTiles();
   return (
-    <View className="bg-background flex-1">
-      <View className="px-4 pt-3 pb-1">
-        <SearchBar value={query} onChangeText={setQuery} placeholder={t('app.ad_search_modules')} />
-      </View>
+    <MoreFrame>
       <PortalModuleList
         role="student"
         query={query}
         filter={query ? undefined : (title) => !ON_TABS.has(title) && title !== 'dashboard'}
-        header={
-          query ? undefined : (
-            <>
-              <ListRow title={t('app.set_title')} leading={<Icon as={SettingsIcon} className="text-muted-foreground size-5" />} onPress={() => router.push('/settings')} />
-              <Separator />
-            </>
-          )
-        }
+        header={<MoreHeader search={{ value: query, onChange: setQuery, placeholder: t('app.ad_search_modules') }} />}
+        groupTiles
+        extraTiles={accountTiles}
+        footer={query ? undefined : <OpenWebsiteCard />}
       />
-    </View>
+    </MoreFrame>
   );
 }

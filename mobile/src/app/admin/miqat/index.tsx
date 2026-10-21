@@ -1,30 +1,19 @@
 import { Stack } from 'expo-router';
-import { AlertTriangle, CheckCircle2, Clock, LogIn, LogOut, Radio, XCircle, type LucideIcon } from 'lucide-react-native';
+import { AlertTriangle, CheckCircle2, Clock, LogIn, LogOut, Radio, XCircle } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
 import { todayYmd } from '@/components/app/date-field';
+import { HeroCard, IconTile, StatTile, StatTiles } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminMiqat } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { cn } from '@/lib/utils';
 
 const LIVE_POLL_MS = 15_000;
-
-function Tile({ label, value, icon, tone }: { label: string; value: string | number; icon?: LucideIcon; tone?: string }) {
-  return (
-    <View className="border-border bg-card rounded-xl border p-4" style={{ width: '47.5%' }}>
-      <View className="flex-row items-center gap-1.5">
-        {icon ? <Icon as={icon} className={cn('size-4', tone)} /> : null}
-        <Text className="text-muted-foreground text-xs">{label}</Text>
-      </View>
-      <Text className="mt-1 text-3xl font-bold">{value}</Text>
-    </View>
-  );
-}
 
 /** Miqat dashboard: today's rollup, live counts and live scans every 15s (web: /admin/miqat/dashboard). */
 export default function MiqatDashboard() {
@@ -52,35 +41,43 @@ export default function MiqatDashboard() {
         <DataList
           header={
             <View className="gap-4 p-4">
-              <View className="flex-row flex-wrap gap-3">
-                <Tile label={m('attendanceToday')} value={summary.isLoading ? '—' : `${pct}%`} />
-                <Tile label={m('present')} value={present} icon={CheckCircle2} tone="text-green-600" />
-                <Tile label={m('late')} value={late} icon={Clock} tone="text-amber-600" />
-                <Tile label={m('absent')} value={absent} icon={XCircle} tone="text-red-600" />
-              </View>
+              <HeroCard>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm font-semibold text-white/85">{m('attendanceToday')}</Text>
+                  <Text className="text-2xl font-bold text-white">{summary.isLoading ? '—' : `${pct}%`}</Text>
+                </View>
+                <View className="h-2.5 overflow-hidden rounded-full bg-white/20">
+                  <View className="h-2.5 rounded-full bg-white" style={{ width: `${Math.min(pct, 100)}%` }} />
+                </View>
+              </HeroCard>
+              <StatTiles>
+                <StatTile label={m('present')} value={String(present)} icon={CheckCircle2} tone="success" />
+                <StatTile label={m('late')} value={String(late)} icon={Clock} tone="warning" />
+                <StatTile label={m('absent')} value={String(absent)} icon={XCircle} tone="destructive" />
+              </StatTiles>
               {unclosed > 0 ? (
-                <View className="flex-row items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
-                  <Icon as={AlertTriangle} className="size-4 text-amber-800" />
-                  <Text className="flex-1 text-sm text-amber-800">{m('unclosedWarning', { count: unclosed })}</Text>
+                <View className="flex-row items-center gap-2 rounded-xl border border-warning/30 bg-warning-soft p-3">
+                  <Icon as={AlertTriangle} className="size-4 text-warning" />
+                  <Text className="flex-1 text-sm text-warning">{m('unclosedWarning', { count: unclosed })}</Text>
                 </View>
               ) : null}
               {!summary.isLoading && total === 0 ? <Text variant="muted" className="text-sm">{m('noData')}</Text> : null}
               {live.data ? (
                 <View className="gap-2">
                   <View className="flex-row items-center gap-2">
-                    <Icon as={Radio} className="size-4 text-emerald-600" />
-                    <Text className="text-sm font-medium">{m('liveSoFar')}</Text>
+                    <Icon as={Radio} className="size-4 text-success" />
+                    <Text className="text-base font-semibold">{m('liveSoFar')}</Text>
                   </View>
-                  <View className="flex-row gap-3">
-                    <Tile label={m('livePresent')} value={live.data.present} icon={CheckCircle2} tone="text-green-600" />
-                    <Tile label={m('liveLate')} value={live.data.late} icon={Clock} tone="text-amber-600" />
-                  </View>
+                  <StatTiles>
+                    <StatTile label={m('livePresent')} value={String(live.data.present)} icon={CheckCircle2} tone="success" />
+                    <StatTile label={m('liveLate')} value={String(live.data.late)} icon={Clock} tone="warning" />
+                  </StatTiles>
                 </View>
               ) : null}
               <View className="gap-1">
                 <View className="flex-row items-center gap-2">
-                  <Icon as={Radio} className="size-4 text-emerald-600" />
-                  <Text className="font-semibold">{m('liveActivity')}</Text>
+                  <Icon as={Radio} className="size-4 text-success" />
+                  <Text className="text-base font-semibold">{m('liveActivity')}</Text>
                 </View>
                 <Text className="text-muted-foreground text-xs">{m('liveActivityHint')}</Text>
               </View>
@@ -100,11 +97,13 @@ export default function MiqatDashboard() {
           renderItem={(e) => {
             const inn = e.event_type === 'check_in';
             return (
-              <View className="flex-row items-center gap-2 px-4 py-2.5">
-                <Icon as={inn ? LogIn : LogOut} className={cn('size-4', inn ? 'text-green-600' : 'text-amber-600')} />
-                <Text className="flex-1 text-sm">{`${e.profiles?.first_name ?? ''} ${e.profiles?.last_name ?? ''}`}</Text>
-                <Text className="text-muted-foreground text-xs">{inn ? m('liveCheckIn') : m('liveCheckOut')}</Text>
-                <Text className="text-muted-foreground text-xs">{time(e.device_time)}</Text>
+              <View className="flex-row items-center gap-3 px-4 py-3">
+                <IconTile icon={inn ? LogIn : LogOut} tone={inn ? 'success' : 'warning'} round />
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold">{`${e.profiles?.first_name ?? ''} ${e.profiles?.last_name ?? ''}`}</Text>
+                  <Text className="text-muted-foreground text-xs">{time(e.device_time)}</Text>
+                </View>
+                <StatusChip label={inn ? m('liveCheckIn') : m('liveCheckOut')} tone={inn ? 'success' : 'warning'} />
               </View>
             );
           }}

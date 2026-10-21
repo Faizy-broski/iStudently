@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { Check, ChevronDown, ChevronUp, Eye, EyeOff, Lock, Paperclip, Pencil, Plus, Settings2, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField, formatYmd, parseYmd } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -51,7 +52,7 @@ function Sheet({ open, onClose, title, description, children }: { open: boolean;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
@@ -146,7 +147,7 @@ function ManageFields({ open, onClose, category, fieldDefs, onChanged }: { open:
         <View className="gap-1.5">
           {!shown.length ? <Text className="text-muted-foreground text-sm">{v('noFieldsMatch', { search })}</Text> : null}
           {shown.map((f) => (
-            <View key={f.id} className="border-border flex-row items-center gap-2 rounded-md border p-2">
+            <View key={f.id} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border p-2">
               <View className="min-w-0 flex-1">
                 <Text className="text-sm font-medium" numberOfLines={1}>
                   {f.label_en} <Text className="text-muted-foreground text-xs">({f.field_key})</Text>
@@ -157,7 +158,7 @@ function ManageFields({ open, onClose, category, fieldDefs, onChanged }: { open:
                   {f.is_required ? ' · required' : ''}
                 </Text>
               </View>
-              <Pressable onPress={() => remove(f)} hitSlop={6} className="p-1" accessibilityLabel={v('deleteRecordConfirm')}>
+              <Pressable onPress={() => remove(f)} accessibilityLabel={v('deleteRecordConfirm')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                 <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </View>
@@ -375,7 +376,7 @@ function RecordCard({ record, fieldDefs, onDeleted }: { record: VaultRecord; fie
               ) : null}
             </View>
           </View>
-          <Pressable onPress={remove} hitSlop={6} className="p-1" accessibilityLabel={v('deleteRecordConfirm')}>
+          <Pressable onPress={remove} accessibilityLabel={v('deleteRecordConfirm')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
             <Icon as={Trash2} className="text-destructive size-4" />
           </Pressable>
         </View>
@@ -492,7 +493,7 @@ function ManageCategories({ open, onClose, categories, onChanged }: { open: bool
         <View className="gap-1.5">
           <Text className="text-muted-foreground text-xs font-medium">{a('vt_categories')}</Text>
           {categories.map((c) => (
-            <View key={c.id} className="border-border gap-2 rounded-md border p-2">
+            <View key={c.id} className="border-info-soft dark:border-border gap-2 rounded-xl border p-2">
               {editingId === c.id ? (
                 <>
                   <Text className="text-muted-foreground font-mono text-xs">{c.id}</Text>
@@ -523,12 +524,10 @@ function ManageCategories({ open, onClose, categories, onChanged }: { open: bool
                       setEditEn(c.label_en);
                       setEditAr(c.label_ar);
                     }}
-                    hitSlop={6}
-                    className="p-1"
-                    accessibilityLabel={a('vt_edit')}>
-                    <Icon as={Pencil} className="text-muted-foreground size-4" />
+                    accessibilityLabel={a('vt_edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                   </Pressable>
-                  <Pressable onPress={() => remove(c)} disabled={busy} hitSlop={6} className="p-1" accessibilityLabel={a('vt_delete')}>
+                  <Pressable onPress={() => remove(c)} disabled={busy} accessibilityLabel={a('vt_delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>

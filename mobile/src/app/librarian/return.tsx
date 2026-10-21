@@ -4,14 +4,15 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, BookOpen, Calendar } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
+import { FormSection } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { isLibraryKey } from '@/features/admin/library';
@@ -54,7 +55,9 @@ export default function LibrarianReturn() {
     <>
       <Stack.Screen options={{ title: k('return_book') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        <Text variant="muted">{k('return_subtitle')}</Text>
+        <Text variant="muted" className="text-sm">
+          {k('return_subtitle')}
+        </Text>
         <StudentSelectCard
           value={student}
           onChange={(s) => {
@@ -63,49 +66,41 @@ export default function LibrarianReturn() {
           }}
           extra={
             student ? (
-              <Badge variant="outline" className="mt-1 self-start">
-                <Text className="text-xs">{k('active_loan_count', { count: (loans.data ?? []).length })}</Text>
-              </Badge>
+              <StatusChip label={k('active_loan_count', { count: (loans.data ?? []).length })} tone="info" className="mt-1 self-start" />
             ) : null
           }
         />
         <ActiveLoansCard studentId={studentId} selected={loan} onSelect={setLoan} now={now} fine={fine} />
         {loan ? (
-          <Card>
-            <CardHeader className="flex-row items-center gap-2">
-              <Icon as={Calendar} className="size-5" />
-              <CardTitle className="text-base">{k('return_details')}</CardTitle>
-            </CardHeader>
-            <CardContent className="gap-3">
-              <DateField label={k('return_date')} value={date} onChange={setDate} />
-              {over > 0 ? (
-                <View className="gap-1 rounded-lg border border-red-200 bg-red-50 p-3 dark:bg-red-950/30">
-                  <View className="flex-row items-center gap-2">
-                    <Icon as={AlertTriangle} className="size-4 text-red-600" />
-                    <Text className="font-medium text-red-800 dark:text-red-200">{k('overdue_book')}</Text>
-                  </View>
-                  <Text className="text-sm text-red-700 dark:text-red-300">{k('days_overdue_text', { count: over })}</Text>
-                  <Text className="text-sm font-medium text-red-800 dark:text-red-200">{k('fine_amount', { amount: fine(loan).toFixed(2) })}</Text>
+          <FormSection title={k('return_details')} icon={Calendar}>
+            <DateField label={k('return_date')} value={date} onChange={setDate} />
+            {over > 0 ? (
+              <View className="bg-destructive-soft gap-1 rounded-2xl p-3.5">
+                <View className="flex-row items-center gap-2">
+                  <Icon as={AlertTriangle} className="size-4 text-destructive" />
+                  <Text className="font-medium text-destructive">{k('overdue_book')}</Text>
                 </View>
-              ) : (
-                <View className="gap-1 rounded-lg border border-green-200 bg-green-50 p-3 dark:bg-green-950/30">
-                  <View className="flex-row items-center gap-2">
-                    <Icon as={BookOpen} className="size-4 text-green-600" />
-                    <Text className="font-medium text-green-800 dark:text-green-200">{k('on_time')}</Text>
-                  </View>
-                  <Text className="text-sm text-green-700 dark:text-green-300">{k('on_time_desc')}</Text>
-                </View>
-              )}
-              <View className="flex-row gap-2">
-                <Button variant="outline" className="flex-1" onPress={() => setLoan(null)}>
-                  <Text>{t('common.cancel')}</Text>
-                </Button>
-                <Button className="flex-1" onPress={doReturn} disabled={busy}>
-                  <Text>{busy ? k('returning') : k('return_book')}</Text>
-                </Button>
+                <Text className="text-sm text-destructive">{k('days_overdue_text', { count: over })}</Text>
+                <Text className="text-sm font-medium text-destructive">{k('fine_amount', { amount: fine(loan).toFixed(2) })}</Text>
               </View>
-            </CardContent>
-          </Card>
+            ) : (
+              <View className="bg-success-soft gap-1 rounded-2xl p-3.5">
+                <View className="flex-row items-center gap-2">
+                  <Icon as={BookOpen} className="size-4 text-success" />
+                  <Text className="font-medium text-success">{k('on_time')}</Text>
+                </View>
+                <Text className="text-sm text-success">{k('on_time_desc')}</Text>
+              </View>
+            )}
+            <View className="flex-row gap-2">
+              <Button variant="outline" className="flex-1" onPress={() => setLoan(null)}>
+                <Text>{t('common.cancel')}</Text>
+              </Button>
+              <Button className="flex-1" onPress={doReturn} disabled={busy}>
+                <Text>{busy ? k('returning') : k('return_book')}</Text>
+              </Button>
+            </View>
+          </FormSection>
         ) : null}
       </ScrollView>
     </>

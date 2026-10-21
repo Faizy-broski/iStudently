@@ -2,14 +2,16 @@ import type { StaffPerformanceLog } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { CountsBreakdown } from '@/features/admin/report-views';
 import { useCampus } from '@/features/campus/campus';
@@ -78,7 +80,7 @@ export default function PerformanceByStaffField() {
             </CardHeader>
             <CardContent>
               {!data.length ? (
-                <Text variant="muted" className="py-8 text-center">{p('no_logs_filters')}</Text>
+                <EmptyState title={p('no_logs_filters')} />
               ) : (
                 <CountsBreakdown data={data} nameHeader={label} valueHeader={p('number_of_logs')} labels={{ column: p('column'), pie: p('pie'), list: p('list'), total: p('total') }} />
               )}

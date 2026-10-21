@@ -2,12 +2,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { BillingCycle, BillingRecordInput, PaymentStatus } from '@studently/api-client';
 import { dueDateFor, planPrice, todayIso, v, vBilling } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { CircleCheck, DollarSign, FileText, StickyNote } from 'lucide-react-native';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import { NumberField, TextField } from '@/components/app/form';
+import { FormSection } from '@/components/app/layout';
 import { SelectField } from '@/components/app/picker';
 import { Screen } from '@/components/app/screen';
 import { LoadingList } from '@/components/app/states';
@@ -150,32 +152,40 @@ export default function RecordForm() {
     <>
       <Stack.Screen options={{ title: editing ? record.data?.invoice_number ?? '' : t('app.bl_new_invoice') }} />
       <Screen scroll edges={['bottom']}>
-        <SelectField control={control} name="school_id" label={t('app.bl_school')} options={schoolOptions} placeholder={t('app.bl_pick_school')} />
-        <SelectField control={control} name="billing_plan_id" label={t('app.bl_plan')} options={planOptions} placeholder={t('app.bl_pick_plan')} />
-        <SelectField
-          control={control}
-          name="billing_cycle"
-          label={t('app.bl_cycle')}
-          options={CYCLES.map((c) => ({ value: c, label: t(`app.bl_cycle_${c}`) }))}
-        />
-        <NumberField control={control} name="amount" label={t('app.bl_amount')} />
-        <TextField control={control} name="currency" label={t('app.bl_currency')} autoCapitalize="characters" maxLength={3} />
-        <TextField control={control} name="start_date" label={t('app.bl_start_date')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
-        <TextField control={control} name="due_date" label={t('app.bl_due_date')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
-        <SelectField
-          control={control}
-          name="payment_status"
-          label={t('app.bl_status')}
-          options={STATUSES.map((s) => ({ value: s, label: t(`app.sa_pay_status_${s}`) }))}
-        />
-        {status === 'paid' ? (
-          <>
-            <TextField control={control} name="payment_date" label={t('app.bl_payment_date')} placeholder={todayIso()} keyboardType="numbers-and-punctuation" />
-            <TextField control={control} name="payment_method" label={t('app.bl_payment_method')} />
-            <TextField control={control} name="transaction_id" label={t('app.bl_transaction_id')} autoCapitalize="none" />
-          </>
-        ) : null}
-        <TextField control={control} name="notes" label={t('app.bl_notes')} multiline />
+        <FormSection title={t('app.bl_invoice')} icon={FileText}>
+          <SelectField control={control} name="school_id" label={t('app.bl_school')} options={schoolOptions} placeholder={t('app.bl_pick_school')} />
+          <SelectField control={control} name="billing_plan_id" label={t('app.bl_plan')} options={planOptions} placeholder={t('app.bl_pick_plan')} />
+          <SelectField
+            control={control}
+            name="billing_cycle"
+            label={t('app.bl_cycle')}
+            options={CYCLES.map((c) => ({ value: c, label: t(`app.bl_cycle_${c}`) }))}
+          />
+        </FormSection>
+        <FormSection title={t('app.bl_amount')} icon={DollarSign}>
+          <NumberField control={control} name="amount" label={t('app.bl_amount')} />
+          <TextField control={control} name="currency" label={t('app.bl_currency')} autoCapitalize="characters" maxLength={3} />
+          <TextField control={control} name="start_date" label={t('app.bl_start_date')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
+          <TextField control={control} name="due_date" label={t('app.bl_due_date')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
+        </FormSection>
+        <FormSection title={t('app.bl_status')} icon={CircleCheck}>
+          <SelectField
+            control={control}
+            name="payment_status"
+            label={t('app.bl_status')}
+            options={STATUSES.map((s) => ({ value: s, label: t(`app.sa_pay_status_${s}`) }))}
+          />
+          {status === 'paid' ? (
+            <>
+              <TextField control={control} name="payment_date" label={t('app.bl_payment_date')} placeholder={todayIso()} keyboardType="numbers-and-punctuation" />
+              <TextField control={control} name="payment_method" label={t('app.bl_payment_method')} />
+              <TextField control={control} name="transaction_id" label={t('app.bl_transaction_id')} autoCapitalize="none" />
+            </>
+          ) : null}
+        </FormSection>
+        <FormSection title={t('app.bl_notes')} icon={StickyNote}>
+          <TextField control={control} name="notes" label={t('app.bl_notes')} multiline />
+        </FormSection>
         <Button onPress={onSubmit} disabled={save.running}>
           <Text>{t('app.bl_save')}</Text>
         </Button>

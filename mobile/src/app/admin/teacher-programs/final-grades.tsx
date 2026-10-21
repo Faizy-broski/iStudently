@@ -2,10 +2,11 @@ import { Stack } from 'expo-router';
 import { Save } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,6 +47,8 @@ export default function AdminFinalGrades() {
   const data = useApi(cpId && mpId ? ['admin', 'tp-final-grades', cpId, mpId, inactive ? 1 : 0] : null, async ([, , c, m]) => {
     const [list, grades] = await Promise.all([adminScheduling.classListForPeriod(c as string), adminTeacherPrograms.finalGrades(c as string, m as string)]);
     if (!list.success) return { ...list, data: undefined };
+    // A failed grades load must not show (and then save over) existing grades as blank.
+    if (!grades.success) return { ...grades, data: undefined };
     const byStudent = new Map((grades.data ?? []).map((g) => [g.student_id, g]));
     const rows: Row[] = (list.data?.students ?? [])
       .filter((s) => inactive || !s.end_date)
@@ -117,7 +120,7 @@ export default function AdminFinalGrades() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: f('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Card>
             <CardContent className="gap-3 pt-4">
@@ -147,11 +150,13 @@ export default function AdminFinalGrades() {
             </CardContent>
           </Card>
           {!cp ? (
-            <Text className="text-muted-foreground py-8 text-center text-sm">{f('selectPrompt')}</Text>
+            <EmptyState title={f('selectPrompt')} />
           ) : data.isLoading ? (
             <LoadingList rows={5} />
+          ) : data.error ? (
+            <ErrorState message={data.error.message} onRetry={() => data.mutate()} />
           ) : !rows.length ? (
-            <Text className="text-muted-foreground py-8 text-center text-sm">{f('noStudents')}</Text>
+            <EmptyState title={f('noStudents')} />
           ) : (
             <Card>
               <CardContent className="py-1">
@@ -159,7 +164,7 @@ export default function AdminFinalGrades() {
                   <View key={r.student_id}>
                     {i > 0 ? <Separator /> : null}
                     <View className="gap-2 py-2.5">
-                      <Text className="font-medium">{r.name}</Text>
+                      <Text className="text-sm font-semibold">{r.name}</Text>
                       <View className="flex-row gap-2">
                         <View className="flex-1">
                           <Picker value={r.letter} onChange={(v) => setLetter(r, v)} options={[{ value: 'N/A', label: 'N/A' }, ...scaleGrades.map((g) => ({ value: g.title, label: g.title }))]} />

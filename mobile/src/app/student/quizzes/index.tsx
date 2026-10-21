@@ -1,12 +1,14 @@
 import type { StudentQuizListItem } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
-import { AlertCircle, CheckCircle2, ChevronRight, Clock, HelpCircle, XCircle } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, ChevronRight, Clock, HelpCircle, ListTodo, XCircle } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent } from '@/components/ui/card';
+import { IconTile, Section, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { quiz as quizApi } from '@/lib/api';
@@ -25,9 +27,9 @@ function countdown(ms: number) {
 
 function Pill({ label, box, text, icon }: { label: string; box: string; text: string; icon?: typeof Clock }) {
   return (
-    <View className={cn('flex-row items-center gap-1 rounded-full px-2 py-0.5', box)}>
+    <View className={cn('flex-row items-center gap-1 rounded-full px-2.5 py-1', box)}>
       {icon ? <Icon as={icon} className={cn('size-3', text)} /> : null}
-      <Text className={cn('text-xs font-medium', text)}>{label}</Text>
+      <Text className={cn('text-[11px] font-semibold', text)}>{label}</Text>
     </View>
   );
 }
@@ -56,39 +58,35 @@ function QuizCard({ q }: { q: StudentQuizListItem }) {
   const overdue = !!due && new Date(due) < new Date();
 
   return (
-    <Pressable onPress={() => clickable && router.push({ pathname: '/student/quizzes/[id]', params: { id: q.id } })} disabled={!clickable} accessibilityRole="button">
-      <Card className={cn('py-4', !clickable && 'opacity-90')}>
-        <CardContent className="flex-row items-start gap-3 px-4">
-          <View className={cn('rounded-lg p-2', q.submitted ? 'bg-green-100' : lockedOut ? 'bg-red-100' : 'bg-primary/10')}>
-            <Icon as={q.submitted ? CheckCircle2 : lockedOut ? XCircle : HelpCircle} className={cn('size-5', q.submitted ? 'text-green-600' : lockedOut ? 'text-red-600' : 'text-primary')} />
-          </View>
-          <View className="flex-1">
-            <Text className="font-semibold" numberOfLines={1}>
-              {q.title}
+    <Pressable onPress={() => clickable && router.push({ pathname: '/student/quizzes/[id]', params: { id: q.id } })} disabled={!clickable} accessibilityRole="button" className="active:opacity-80">
+      <Panel className={cn('flex-row items-start gap-3 p-4', !clickable && 'opacity-90')}>
+        <IconTile icon={q.submitted ? CheckCircle2 : lockedOut ? XCircle : HelpCircle} tone={q.submitted ? 'success' : lockedOut ? 'destructive' : 'brand'} size={40} />
+        <View className="flex-1 gap-0.5">
+          <Text className="text-sm font-semibold" numberOfLines={1}>
+            {q.title}
+          </Text>
+          {q.description ? (
+            <Text className="text-muted-foreground text-xs" numberOfLines={2}>
+              {q.description}
             </Text>
-            {q.description ? (
-              <Text className="text-muted-foreground mt-0.5 text-sm" numberOfLines={2}>
-                {q.description}
-              </Text>
-            ) : null}
-            <View className="mt-2 flex-row flex-wrap items-center gap-2">
-              {q.submitted ? (
-                <Pill label={k('submitted')} box="bg-green-100" text="text-green-700" />
-              ) : lockedOut ? (
-                <Pill label={k('locked')} box="bg-red-100" text="text-red-700" />
-              ) : beforeStart ? (
-                <Pill label={k('starts_in', { time: countdown(startMs - now) })} box="bg-amber-100" text="text-amber-700" icon={Clock} />
-              ) : (
-                <Pill label={k('not_started')} box="bg-blue-100" text="text-blue-700" />
-              )}
-              {due ? <Pill label={overdue ? k('overdue', { date: formatDate(due) }) : k('due', { date: formatDate(due) })} box="border border-border" text={overdue ? 'text-red-600' : 'text-foreground'} icon={Clock} /> : null}
-              {q.assignment?.points ? <Pill label={k('pts', { count: q.assignment.points })} box="border border-border" text="text-foreground" /> : null}
-            </View>
-            {beforeStart && q.start_time ? <Text className="text-muted-foreground mt-2 text-xs">{k('unlocks', { date: formatDateTime(q.start_time) })}</Text> : null}
+          ) : null}
+          <View className="mt-1.5 flex-row flex-wrap items-center gap-1.5">
+            {q.submitted ? (
+              <StatusChip label={k('submitted')} tone="success" />
+            ) : lockedOut ? (
+              <StatusChip label={k('locked')} tone="destructive" />
+            ) : beforeStart ? (
+              <Pill label={k('starts_in', { time: countdown(startMs - now) })} box="bg-warning-soft" text="text-warning" icon={Clock} />
+            ) : (
+              <StatusChip label={k('not_started')} tone="info" />
+            )}
+            {due ? <Pill label={overdue ? k('overdue', { date: formatDate(due) }) : k('due', { date: formatDate(due) })} box={overdue ? 'bg-destructive-soft' : 'bg-muted'} text={overdue ? 'text-destructive' : 'text-muted-foreground'} icon={Clock} /> : null}
+            {q.assignment?.points ? <StatusChip label={k('pts', { count: q.assignment.points })} tone="muted" /> : null}
           </View>
-          {clickable ? <Icon as={ChevronRight} className="text-muted-foreground mt-1 size-5 rtl:rotate-180" /> : null}
-        </CardContent>
-      </Card>
+          {beforeStart && q.start_time ? <Text className="text-muted-foreground mt-1.5 text-xs">{k('unlocks', { date: formatDateTime(q.start_time) })}</Text> : null}
+        </View>
+        {clickable ? <Icon flipRtl as={ChevronRight} className="text-muted-foreground mt-1 size-4" /> : null}
+      </Panel>
     </Pressable>
   );
 }
@@ -107,58 +105,37 @@ export default function StudentQuizzes() {
   return (
     <>
       <Stack.Screen options={{ title: k('title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => list.mutate()} />}>
-        <Text variant="muted">{k('subtitle')}</Text>
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => list.mutate()} />}>
+        <Text className="text-muted-foreground text-sm">{k('subtitle')}</Text>
         {list.error ? (
-          <View className="flex-row items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:bg-red-950/30">
-            <Icon as={AlertCircle} className="size-5 text-red-600" />
-            <Text className="flex-1 text-sm text-red-700">{list.error.message}</Text>
+          <View className="border-destructive/30 bg-destructive-soft flex-row items-center gap-2 rounded-2xl border p-3">
+            <Icon as={AlertCircle} className="text-destructive size-5" />
+            <Text className="text-destructive flex-1 text-sm">{list.error.message}</Text>
           </View>
         ) : null}
         {all.length ? (
-          <View className="flex-row gap-2">
-            <Stat value={all.length} label={k('total')} />
-            <Stat value={done.length} label={k('submitted')} tone="text-green-600" />
-            <Stat value={pending.length} label={k('pending')} tone="text-blue-600" />
-          </View>
+          <StatTiles>
+            <StatTile icon={HelpCircle} label={k('total')} value={String(all.length)} />
+            <StatTile icon={CheckCircle2} tone="success" label={k('submitted')} value={String(done.length)} />
+            <StatTile icon={ListTodo} tone="warning" label={k('pending')} value={String(pending.length)} />
+          </StatTiles>
         ) : null}
         {pending.length ? (
-          <View className="gap-2">
-            <Text className="text-lg font-semibold">{k('pending')}</Text>
+          <Section title={k('pending')}>
             {pending.map((q) => (
               <QuizCard key={q.id} q={q} />
             ))}
-          </View>
+          </Section>
         ) : null}
         {done.length ? (
-          <View className="gap-2">
-            <Text className="text-lg font-semibold">{k('submitted')}</Text>
+          <Section title={k('submitted')}>
             {done.map((q) => (
               <QuizCard key={q.id} q={q} />
             ))}
-          </View>
+          </Section>
         ) : null}
-        {!all.length && !list.error ? (
-          <Card>
-            <CardContent className="items-center p-10">
-              <Icon as={HelpCircle} className="text-muted-foreground mb-3 size-12" />
-              <Text className="mb-1 text-lg font-semibold">{k('empty')}</Text>
-              <Text className="text-muted-foreground text-center text-sm">{k('empty_body')}</Text>
-            </CardContent>
-          </Card>
-        ) : null}
+        {!all.length && !list.error ? <EmptyState icon={HelpCircle} title={k('empty')} body={k('empty_body')} /> : null}
       </ScrollView>
     </>
-  );
-}
-
-function Stat({ value, label, tone }: { value: number; label: string; tone?: string }) {
-  return (
-    <Card className="flex-1 py-3">
-      <CardContent className="items-center px-2">
-        <Text className={cn('text-2xl font-bold', tone)}>{String(value)}</Text>
-        <Text className="text-muted-foreground mt-1 text-center text-xs">{label}</Text>
-      </CardContent>
-    </Card>
   );
 }

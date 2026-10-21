@@ -1,13 +1,16 @@
 import { HISTORY_MP_TYPES, historySchoolYears, type HistoryMarkingPeriod, type HistoryMPType } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Plus, Save, Trash2 } from 'lucide-react-native';
+import { CalendarRange, Plus, Save } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { ErrorState, LoadingList } from '@/components/app/states';
+import { IconTile, RowActions } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -97,7 +100,9 @@ function Editor({ initial }: { initial: HistoryMarkingPeriod[] }) {
   return (
     <>
       <View className="flex-row items-center gap-2">
-        <Text className="text-muted-foreground flex-1 text-sm">{h('marking_periods_count', { count: visible.length })}</Text>
+        <View className="flex-1 flex-row">
+          <StatusChip label={h('marking_periods_count', { count: visible.length })} tone="info" className="px-2.5 py-1" />
+        </View>
         <Button size="sm" onPress={save} disabled={!dirty || saving}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{t('school.grades_module.common.save')}</Text>
@@ -106,18 +111,21 @@ function Editor({ initial }: { initial: HistoryMarkingPeriod[] }) {
       {visible.map((r) => (
         <Card key={r.id}>
           <CardContent className="gap-2 pt-4">
-            <View className="flex-row items-center">
-              <Text className="flex-1 font-semibold">{r.name || '—'}</Text>
-              <Pressable onPress={() => remove(r)} hitSlop={8} className="p-1" accessibilityLabel={t('common.delete')}>
-                <Icon as={Trash2} className="text-destructive size-4" />
-              </Pressable>
+            <View className="flex-row items-center gap-3">
+              <IconTile icon={CalendarRange} />
+              <Text className="flex-1 text-sm font-semibold">{r.name || '—'}</Text>
+              <RowActions onDelete={() => remove(r)} deleteLabel={t('common.delete')} />
             </View>
             <RowFields value={r} onChange={(p) => update(r.id, p)} />
           </CardContent>
         </Card>
       ))}
-      <Card>
+      <Card className="border-dashed">
         <CardContent className="gap-3 pt-4">
+          <View className="flex-row items-center gap-3">
+            <IconTile icon={Plus} tone="success" />
+            <Text className="flex-1 text-sm font-semibold">{t('common.add')}</Text>
+          </View>
           <RowFields value={draft} onChange={(p) => setDraft({ ...draft, ...p })} />
           <Button variant="outline" onPress={add}>
             <Icon as={Plus} className="text-foreground size-4" />
@@ -138,7 +146,7 @@ export default function HistoryMarkingPeriods() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: h('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">{h('subtitle')}</Text>
           {res.isLoading ? (

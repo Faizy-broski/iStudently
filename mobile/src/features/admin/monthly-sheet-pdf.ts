@@ -1,11 +1,12 @@
 import type { MonthlySheetModel } from '@studently/api-client';
 
+import { colors as themeColors } from '@/lib/colors';
 import { escapeHtml, sharePdf } from '@/lib/print';
 
 // Same model, colors and labels as the web's jsPDF renderer (frontend/src/lib/utils/monthlySheetPdf.ts).
-const NON_WORKING = '#e0e0e0';
-const HEADER_BG = '#d9e1f2';
-const CODE_COLORS: Record<string, string> = { P: '#c6efce', A: '#ffc7ce', EA: '#ffe0b2', L: '#fff2cc', HD: '#ddebf7' };
+const NON_WORKING = themeColors.printBorder;
+const HEADER_BG = themeColors.infoSoft;
+const CODE_COLORS: Record<string, string> = { P: themeColors.successSoft, A: themeColors.destructiveSoft, EA: themeColors.warningSoft, L: themeColors.warningSoft, HD: themeColors.infoSoft };
 
 const LABELS = {
   en: {
@@ -52,7 +53,7 @@ function sheetHtml(model: MonthlySheetModel) {
     })
     .join('');
   const legend = model.legend
-    .map((it) => `<span class="lg" style="background:${CODE_COLORS[it.code] ?? '#fff'}">${escapeHtml(it.code)} — ${escapeHtml(model.locale === 'ar' ? it.ar : it.en)}</span>`)
+    .map((it) => `<span class="lg" style="background:${CODE_COLORS[it.code] ?? themeColors.white}">${escapeHtml(it.code)} — ${escapeHtml(model.locale === 'ar' ? it.ar : it.en)}</span>`)
     .join('');
   const sign = (title: string, hint: string) => `<div class="sign"><div class="st">${escapeHtml(title)}</div><div class="sb">${escapeHtml(hint)}</div></div>`;
   return `<section class="sheet">
@@ -76,18 +77,18 @@ function sheetHtml(model: MonthlySheetModel) {
 export async function shareMonthlySheetPdf(models: MonthlySheetModel[], baseName: string) {
   if (!models.length) throw new Error('Nothing to export');
   const rtl = models[0].locale === 'ar';
-  const css = `@page{size:A4 landscape;margin:7mm}*{box-sizing:border-box}body{font-family:-apple-system,Roboto,"Noto Sans Arabic",Arial,sans-serif;margin:0;color:#141414}
+  const css = `@page{size:A4 landscape;margin:7mm}*{box-sizing:border-box}body{font-family:-apple-system,Roboto,"Noto Sans Arabic",Arial,sans-serif;margin:0;color:${themeColors.printText}}
   .sheet{page-break-after:always}.sheet:last-child{page-break-after:auto}
   .hdr{position:relative;text-align:center;margin-bottom:6px}.logo{position:absolute;top:0;${rtl ? 'right' : 'left'}:0;width:70px;height:60px;object-fit:contain}
-  .school{font-size:17px;font-weight:600}.addr{font-size:10px;color:#5a5a5a}.title{font-size:14px;color:#8b0000;margin-top:4px}.meta{font-size:10px;margin-top:2px}
-  table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px}th,td{border:0.5px solid #808080;padding:1px 2px;overflow:hidden;white-space:nowrap}
+  .school{font-size:17px;font-weight:600}.addr{font-size:10px;color:${themeColors.printMuted}}.title{font-size:14px;color:${themeColors.destructive};margin-top:4px}.meta{font-size:10px;margin-top:2px}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px}th,td{border:0.5px solid ${themeColors.printMuted};padding:1px 2px;overflow:hidden;white-space:nowrap}
   thead th{background:${HEADER_BG};font-weight:400;text-align:center}thead{display:table-header-group}tr{page-break-inside:avoid}
   .no{width:18px}.id{width:52px}.name{width:150px}.tot{width:36px}.dayname{height:52px;vertical-align:middle}
   .vert{display:inline-block;writing-mode:vertical-rl;transform:rotate(180deg);font-size:7px}
   .c{text-align:center}.nm{text-align:start;text-overflow:ellipsis}
   .foot{page-break-inside:avoid;margin-top:8px}.legend{font-size:9px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
-  .lg{border:0.5px solid #808080;padding:2px 6px}.signs{display:flex;gap:16px;margin-top:8px}
-  .sign{flex:1;border:0.5px solid #808080}.st{background:${HEADER_BG};text-align:center;font-size:10px;padding:3px;border-bottom:0.5px solid #808080}.sb{height:52px;display:flex;align-items:flex-end;justify-content:center;font-size:9px;color:#787878;padding-bottom:3px}`;
+  .lg{border:0.5px solid ${themeColors.printMuted};padding:2px 6px}.signs{display:flex;gap:16px;margin-top:8px}
+  .sign{flex:1;border:0.5px solid ${themeColors.printMuted}}.st{background:${HEADER_BG};text-align:center;font-size:10px;padding:3px;border-bottom:0.5px solid ${themeColors.printMuted}}.sb{height:52px;display:flex;align-items:flex-end;justify-content:center;font-size:9px;color:${themeColors.printMuted};padding-bottom:3px}`;
   const html = `<!DOCTYPE html><html dir="${rtl ? 'rtl' : 'ltr'}" lang="${rtl ? 'ar' : 'en'}"><head><meta charset="utf-8"><style>${css}</style></head><body>${models.map(sheetHtml).join('')}</body></html>`;
   await sharePdf(html, `${baseName}.pdf`, { width: 842, height: 595 });
 }

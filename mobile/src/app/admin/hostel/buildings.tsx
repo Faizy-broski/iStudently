@@ -2,7 +2,7 @@ import type { HostelBuilding } from '@studently/shared-types';
 import { router, Stack } from 'expo-router';
 import { Building2, MapPin, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View, Pressable } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { EmptyState, LoadingList } from '@/components/app/states';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { StatusChip } from '@/components/app/status-chip';
 import { scopeKey, useHostelScope } from '@/features/admin/hostel';
 import { adminHostel } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -56,12 +57,12 @@ export default function HostelBuildings() {
                 <View className="flex-row items-center gap-2">
                   <Icon as={Building2} className="text-primary size-5" />
                   <Text className="flex-1 text-base font-semibold">{x.name}</Text>
-                  <Button size="icon" variant="ghost" onPress={() => router.push({ pathname: '/admin/hostel/building-form', params: { id: x.id } })} accessibilityLabel={t('common.edit')}>
-                    <Icon as={Pencil} className="text-foreground size-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onPress={() => remove(x)} accessibilityLabel={t('common.delete')}>
+                  <Pressable onPress={() => router.push({ pathname: '/admin/hostel/building-form', params: { id: x.id } })} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                  </Pressable>
+                  <Pressable onPress={() => remove(x)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
-                  </Button>
+                  </Pressable>
                 </View>
                 {x.address ? (
                   <View className="flex-row items-center gap-1.5">
@@ -80,9 +81,7 @@ export default function HostelBuildings() {
                       {x.room_count ?? 0} {b('unit_rooms')}
                     </Text>
                   </View>
-                  <View className={`rounded-full px-2 py-0.5 ${x.is_active ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-destructive'}`}>
-                    <Text className={`text-xs ${x.is_active ? 'text-emerald-700 dark:text-emerald-400' : 'text-white'}`}>{x.is_active ? b('status_active') : b('status_inactive')}</Text>
-                  </View>
+                  <StatusChip label={x.is_active ? b('status_active') : b('status_inactive')} tone={x.is_active ? 'success' : 'destructive'} className="px-2 py-0.5" />
                 </View>
                 {x.description ? <Text className="text-muted-foreground text-sm">{x.description}</Text> : null}
               </CardContent>

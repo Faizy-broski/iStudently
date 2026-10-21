@@ -65,6 +65,12 @@ function parseFlags(raw: string | undefined): Record<string, boolean> {
   }
 }
 
+/** A page of the website (FRONTEND_URL), only when that is an https URL. */
+function sitePage(env: NodeJS.ProcessEnv, path: string): string | null {
+  const base = env.FRONTEND_URL?.trim().replace(/\/+$/, '')
+  return base ? httpsUrl(`${base}/${path}`) : null
+}
+
 export function readAppConfig(env: NodeJS.ProcessEnv = process.env, now: Date = new Date()): AppConfig {
   return {
     ios: {
@@ -83,9 +89,11 @@ export function readAppConfig(env: NodeJS.ProcessEnv = process.env, now: Date = 
     },
     flags: parseFlags(env.MOBILE_FLAGS),
     links: {
-      privacy_url: httpsUrl(env.MOBILE_PRIVACY_URL),
-      terms_url: httpsUrl(env.MOBILE_TERMS_URL),
-      account_deletion_url: httpsUrl(env.MOBILE_ACCOUNT_DELETION_URL),
+      // Default to the website's own pages (frontend/src/app/{privacy,terms,delete-account}) when the
+      // site is served over https.
+      privacy_url: httpsUrl(env.MOBILE_PRIVACY_URL) ?? sitePage(env, 'privacy'),
+      terms_url: httpsUrl(env.MOBILE_TERMS_URL) ?? sitePage(env, 'terms'),
+      account_deletion_url: httpsUrl(env.MOBILE_ACCOUNT_DELETION_URL) ?? sitePage(env, 'delete-account'),
       support_email: email(env.MOBILE_SUPPORT_EMAIL),
     },
     server_time: now.toISOString(),

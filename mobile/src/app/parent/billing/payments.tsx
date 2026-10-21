@@ -3,9 +3,10 @@ import { CreditCard } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HeroCard, IconTile, RowItem, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { NoChild, useChild } from '@/features/parent/child';
@@ -35,49 +36,48 @@ export default function ParentPayments() {
     <>
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
-        <Text variant="muted">{t('app.pa_pay_subtitle')}</Text>
-        <Card>
-          <CardContent className="flex-row items-center gap-4 p-4">
-            <Icon as={CreditCard} className="size-10 text-green-500" />
-            <View>
-              <Text className="text-muted-foreground text-sm">{k('total_payments_made')}</Text>
-              <Text className="text-3xl font-bold text-green-600">{money(total)}</Text>
-              <Text className="text-muted-foreground text-xs">{k('transactions_count', { count: list.length })}</Text>
+        <HeroCard>
+          <View className="flex-row items-center gap-3">
+            <View className="size-12 items-center justify-center rounded-full bg-white/15">
+              <Icon as={CreditCard} className="size-6 text-white" />
             </View>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={CreditCard} className="size-5" />
-            <CardTitle>{k('payment_history')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {list.length === 0 ? (
-              <View className="items-center py-10">
-                <Icon as={CreditCard} className="text-muted-foreground mb-3 size-12" />
-                <Text className="text-muted-foreground">{k('no_payments')}</Text>
-              </View>
-            ) : (
-              list.map((p) => (
-                <View key={p.id} className="border-border gap-1 border-t py-3 first:border-t-0">
-                  <View className="flex-row items-center justify-between gap-2">
-                    <Text className="flex-1 text-sm font-medium" numberOfLines={1}>
-                      {p.fee_name || '—'}
-                    </Text>
-                    <Text className="font-semibold text-green-600">{money(p.amount)}</Text>
-                  </View>
-                  <View className="flex-row flex-wrap items-center gap-2">
-                    <Text className="text-muted-foreground text-xs">{p.payment_date ? formatDate(p.payment_date) : '—'}</Text>
-                    <Badge variant="outline">
-                      <Text className="text-xs">{p.payment_method || '—'}</Text>
-                    </Badge>
-                    <Text className="text-muted-foreground text-xs">{`${k('col_reference')}: ${p.payment_reference || '—'}`}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-white/85">{k('total_payments_made')}</Text>
+              <Text className="text-3xl font-bold text-white" numberOfLines={1} adjustsFontSizeToFit>
+                {money(total)}
+              </Text>
+            </View>
+          </View>
+          <View className="flex-row flex-wrap gap-2">
+            <View className="rounded-full bg-white/15 px-3 py-1">
+              <Text className="text-xs font-semibold text-white">{k('transactions_count', { count: list.length })}</Text>
+            </View>
+          </View>
+          <Text className="text-xs text-white/80">{t('app.pa_pay_subtitle')}</Text>
+        </HeroCard>
+        <Section title={k('payment_history')}>
+          {list.length === 0 ? (
+            <EmptyState icon={CreditCard} title={k('no_payments')} />
+          ) : (
+            <Panel>
+              {list.map((p, i) => (
+                <RowItem
+                  key={p.id}
+                  leading={<IconTile icon={CreditCard} tone="success" size={40} />}
+                  title={p.fee_name || '—'}
+                  meta={[p.payment_date ? formatDate(p.payment_date) : '—', `${k('col_reference')}: ${p.payment_reference || '—'}`].join(' · ')}
+                  trailing={
+                    <View className="items-end gap-1">
+                      <Text className="text-sm font-bold text-success">{money(p.amount)}</Text>
+                      <StatusChip label={p.payment_method || '—'} tone="muted" />
+                    </View>
+                  }
+                  last={i === list.length - 1}
+                />
+              ))}
+            </Panel>
+          )}
+        </Section>
       </ScrollView>
     </>
   );

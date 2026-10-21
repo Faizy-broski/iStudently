@@ -5,15 +5,17 @@ import { AlignLeft, BookOpen, ExternalLink, FileText, Link2, Video } from 'lucid
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { learningResources } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 const ICON = { video: Video, link: Link2, book: BookOpen, post: AlignLeft } as const;
 
@@ -37,60 +39,50 @@ export default function StudentSyllabus() {
   return (
     <>
       <Stack.Screen options={{ title: k('title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
-        <Text variant="muted">{k('subtitle')}</Text>
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
+        <Text className="text-muted-foreground text-sm">{k('subtitle')}</Text>
         {!sectionId ? (
-          <Card>
-            <CardContent className="items-center py-10">
-              <Icon as={BookOpen} className="text-muted-foreground mb-2 size-10" />
-              <Text className="text-muted-foreground">{k('no_section')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={BookOpen} title={k('no_section')} />
         ) : data.isLoading ? (
           <LoadingList rows={5} />
         ) : subjects.length === 0 ? (
-          <Card>
-            <CardContent className="items-center py-10">
-              <Icon as={BookOpen} className="text-muted-foreground mb-2 size-10" />
-              <Text className="text-muted-foreground font-medium">{k('empty')}</Text>
-              <Text className="text-muted-foreground mt-1 text-sm">{k('empty_body')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={BookOpen} title={k('empty')} body={k('empty_body')} />
         ) : (
           subjects.map((s) => (
-            <Card key={s.name}>
-              <CardHeader className="flex-row flex-wrap items-center gap-2">
-                <Icon as={BookOpen} className="text-primary size-4" />
-                <CardTitle className="text-base">{s.name}</CardTitle>
-                <Badge variant="secondary">
-                  <Text className="text-xs">{k('items', { count: s.items.length })}</Text>
-                </Badge>
-              </CardHeader>
-              <CardContent className="gap-2">
-                {s.items.map((r) => {
-                  const url = r.url || r.file_urls?.[0];
-                  return (
-                    <View key={r.id} className="border-border flex-row items-start gap-3 rounded-lg border p-3">
-                      <Icon as={ICON[r.resource_type as keyof typeof ICON] ?? FileText} className="text-muted-foreground mt-0.5 size-4" />
-                      <View className="flex-1">
-                        <Text className="text-sm font-medium">{r.title}</Text>
-                        {r.description ? (
-                          <Text className="text-muted-foreground mt-0.5 text-xs" numberOfLines={1}>
-                            {r.description}
-                          </Text>
-                        ) : null}
-                        <Text className="text-muted-foreground mt-0.5 text-xs">{formatDate(r.created_at)}</Text>
-                      </View>
-                      {url ? (
-                        <Pressable onPress={() => WebBrowser.openBrowserAsync(url)} hitSlop={8} accessibilityRole="link" accessibilityLabel={k('open', { title: r.title })}>
-                          <Icon as={ExternalLink} className="size-4" />
-                        </Pressable>
+            <Panel key={s.name}>
+              <View className="border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3">
+                <IconTile icon={BookOpen} size={40} />
+                <Text className="flex-1 text-base font-semibold">{s.name}</Text>
+                <StatusChip label={k('items', { count: s.items.length })} tone="info" />
+              </View>
+              {s.items.map((r, i) => {
+                const url = r.url || r.file_urls?.[0];
+                return (
+                  <View key={r.id} className={cn('flex-row items-center gap-3 px-4 py-3', i < s.items.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                    <IconTile icon={ICON[r.resource_type as keyof typeof ICON] ?? FileText} tone="muted" size={36} round />
+                    <View className="flex-1 gap-0.5">
+                      <Text className="text-sm font-semibold">{r.title}</Text>
+                      {r.description ? (
+                        <Text className="text-muted-foreground text-xs" numberOfLines={1}>
+                          {r.description}
+                        </Text>
                       ) : null}
+                      <Text className="text-muted-foreground text-[11px]">{formatDate(r.created_at)}</Text>
                     </View>
-                  );
-                })}
-              </CardContent>
-            </Card>
+                    {url ? (
+                      <Pressable
+                        onPress={() => WebBrowser.openBrowserAsync(url)}
+                        hitSlop={4}
+                        accessibilityRole="link"
+                        accessibilityLabel={k('open', { title: r.title })}
+                        className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                        <Icon as={ExternalLink} className="text-brand dark:text-brand-secondary size-4" />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </Panel>
           ))
         )}
       </ScrollView>

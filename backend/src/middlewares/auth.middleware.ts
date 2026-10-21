@@ -389,8 +389,10 @@ export const authenticate = async (
         }
       }
     } catch (twoFAErr) {
-      // Fail open — don't block authenticated requests on 2FA lookup errors
-      console.error('⚠️ 2FA check error (failing open):', twoFAErr)
+      // Fail closed: this block only does lookups for users who must use 2FA, so an error here
+      // must not let an unverified session through. 503 + retryable lets clients retry.
+      console.error('⚠️ 2FA check error (failing closed):', twoFAErr)
+      return res.status(503).json({ success: false, retryable: true, error: 'Could not verify two-factor authentication' })
     }
     // ── End 2FA enforcement ──────────────────────────────────────────────────
 
@@ -496,6 +498,7 @@ export const requireTwoFA = async (
     next()
   } catch (error) {
     console.error('requireTwoFA error:', error)
-    next() // fail open — don't block requests on internal errors
+    // Fail closed (see the 2FA block in authenticate): never pass an unverified session on errors.
+    res.status(503).json({ success: false, retryable: true, error: 'Could not verify two-factor authentication' })
   }
 }

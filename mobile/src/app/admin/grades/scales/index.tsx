@@ -96,7 +96,7 @@ export default function GradingScales() {
           renderItem={(x) => (
             <Pressable className="gap-1 px-4 py-3" accessibilityRole="button" onPress={() => router.push({ pathname: '/admin/grades/scales/[id]', params: { id: x.id } })}>
               <View className="flex-row items-center gap-2">
-                <Text className="flex-1 font-medium">{x.title}</Text>
+                <Text className="flex-1 text-sm font-semibold">{x.title}</Text>
                 {x.is_default ? (
                   <Badge>
                     <Text>{s('default_badge')}</Text>
@@ -118,8 +118,8 @@ export default function GradingScales() {
                   .join(' · ')}
               </Text>
               <View className="flex-row gap-5 pt-1">
-                <Pressable hitSlop={8} onPress={() => edit(x)} accessibilityLabel={t('app.bl_edit')}>
-                  <Icon as={Pencil} className="text-muted-foreground size-4" />
+                <Pressable onPress={() => edit(x)} accessibilityLabel={t('app.bl_edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                  <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                 </Pressable>
                 <Pressable
                   hitSlop={8}

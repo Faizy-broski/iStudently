@@ -1,13 +1,14 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, ChevronRight, Mail, Pencil, Phone } from 'lucide-react-native';
+import { Mail, Pencil, Phone } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import { useSWRConfig } from 'swr';
 import { Linking, RefreshControl, ScrollView, View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { InfoCard, InfoRow } from '@/components/app/info';
-import { PersonAvatar } from '@/components/app/person-avatar';
+import { PersonHero } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { ErrorState, LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -44,6 +45,15 @@ export default function EmployeeDetail() {
     const next = ordered[i]?.id;
     if (next) router.replace({ pathname: '/admin/employees/[id]', params: { id: next, kind } });
   };
+  // Web: DELETE /staff/:id removes the staff member and their account (staff only; teachers are deactivated).
+  const { mutate } = useSWRConfig();
+  const remove = useAction(() => adminEmployees.remove('staff', id), {
+    success: t('staff.toasts.deleted'),
+    onSuccess: () => {
+      mutate((k) => (typeof k === 'string' && k.includes('admin-employees:staff')) || (Array.isArray(k) && k[0] === 'admin' && k[1] === 'employee-roster'));
+      router.back();
+    },
+  });
   const setActive = useAction((active: boolean) => adminEmployees.update(kind, id, { is_active: active }), { success: t('app.saved'), onSuccess: () => emp.mutate() });
 
   if (emp.isLoading) return <LoadingList rows={6} />;
@@ -67,44 +77,22 @@ export default function EmployeeDetail() {
         }}
       />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={emp.isValidating && !emp.isLoading} onRefresh={() => emp.mutate()} />}>
-        <View className="items-center gap-2 py-2">
-          <PersonAvatar url={e.profile?.profile_photo_url ?? e.profile?.avatar_url} name={name} size={80} />
-          <Text variant="h4" className="text-center">
-            {name}
-          </Text>
-          <Text variant="muted">{[e.employee_number, e.title].filter(Boolean).join(' · ')}</Text>
-          <Badge variant={e.is_active ? 'default' : 'secondary'}>
-            <Text>{e.is_active ? t(`${ns}.active`) : t(`${ns}.inactive`)}</Text>
-          </Badge>
-          <View className="flex-row gap-2 pt-1">
-            {phone ? (
-              <Button size="sm" variant="outline" onPress={() => Linking.openURL(`tel:${phone}`)}>
-                <Icon as={Phone} className="size-4" />
-                <Text>{f('phoneNumber')}</Text>
-              </Button>
-            ) : null}
-            {email ? (
-              <Button size="sm" variant="outline" onPress={() => Linking.openURL(`mailto:${email}`)}>
-                <Icon as={Mail} className="size-4" />
-                <Text>{f('email')}</Text>
-              </Button>
-            ) : null}
-          </View>
-        </View>
+        <PersonHero
+          name={name}
+          photo={e.profile?.profile_photo_url ?? e.profile?.avatar_url}
+          subtitle={[e.employee_number, e.title, e.department].filter(Boolean).join(' · ')}
+          chips={<StatusChip label={e.is_active ? t(`${ns}.active`) : t(`${ns}.inactive`)} tone={e.is_active ? 'success' : 'muted'} className="px-2.5 py-0.5" />}
+          actions={[
+            ...(phone ? [{ icon: Phone, label: f('phoneNumber'), onPress: () => Linking.openURL(`tel:${phone}`) }] : []),
+            ...(email ? [{ icon: Mail, label: f('email'), onPress: () => Linking.openURL(`mailto:${email}`) }] : []),
+            { icon: Pencil, label: t(kind === 'teacher' ? 'teachers.editTeacher' : 'staff.editStaff'), onPress: () => router.push({ pathname: '/admin/employees/form', params: { id, kind } }) },
+          ]}
+          {...(ordered.length > 1 && at >= 0 ? { onPrev: at > 0 ? () => go(at - 1) : null, onNext: at < ordered.length - 1 ? () => go(at + 1) : null } : {})}
+          prevLabel={t('teachers.previous')}
+          nextLabel={t('teachers.next')}
+        />
 
         {e.profile_id ? <VerifyQr profileId={e.profile_id} label={name} /> : null}
-        {ordered.length > 1 && at >= 0 ? (
-          <View className="flex-row gap-2">
-            <Button size="sm" variant="outline" className="flex-1" onPress={() => go(at - 1)} disabled={at <= 0}>
-              <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
-              <Text>{t('teachers.previous')}</Text>
-            </Button>
-            <Button size="sm" variant="outline" className="flex-1" onPress={() => go(at + 1)} disabled={at >= ordered.length - 1}>
-              <Text>{t('teachers.next')}</Text>
-              <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
-            </Button>
-          </View>
-        ) : null}
 
         <InfoCard title={t('teachers.tabs.personalInformation')}>
           <InfoRow label={f('firstName')} value={e.profile?.first_name} />
@@ -180,6 +168,16 @@ export default function EmployeeDetail() {
           }}>
           <Text className={e.is_active ? 'text-destructive' : undefined}>{e.is_active ? t('teachers.deactivate') : t('app.ppl_activate')}</Text>
         </Button>
+        {kind === 'staff' ? (
+          <Button
+            variant="destructive"
+            disabled={remove.running}
+            onPress={async () => {
+              if (await confirm({ title: t('common.delete'), body: `${t('staff.confirmDelete')}\n${name}`, destructive: true, confirmLabel: t('common.delete') })) remove.run();
+            }}>
+            <Text>{t('common.delete')}</Text>
+          </Button>
+        ) : null}
       </ScrollView>
     </>
   );

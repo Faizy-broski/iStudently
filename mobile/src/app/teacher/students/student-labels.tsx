@@ -1,14 +1,16 @@
 import { Stack } from 'expo-router';
-import { FileDown, Printer } from 'lucide-react-native';
+import { FileDown, Printer, Tag, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
+import { FormSection, StickyActions } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
@@ -49,7 +51,7 @@ export default function TeacherStudentLabels() {
             .join('')
             .toUpperCase()
             .slice(0, 2);
-          return `<div style="width:${width}%;box-sizing:border-box;padding:8px;display:inline-block;vertical-align:top"><div style="border:2px dashed #d1d5db;border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;page-break-inside:avoid"><div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#57A3CC,#022172);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0">${escapeHtml(initials)}</div><div style="min-width:0"><p style="font-weight:600;font-size:13px;margin:0">${escapeHtml(name)}</p><p style="font-size:11px;color:#6b7280;margin:2px 0 0">#${escapeHtml(s.student_number)}</p>${s.grade_level ? `<p style="font-size:11px;color:#6b7280;margin:0">${escapeHtml(s.grade_level)}</p>` : ''}</div></div></div>`;
+          return `<div style="width:${width}%;box-sizing:border-box;padding:8px;display:inline-block;vertical-align:top"><div style="border:2px dashed ${colors.printBorder};border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;page-break-inside:avoid"><div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,${colors.brandSecondary},${colors.brand});display:flex;align-items:center;justify-content:center;color:${colors.white};font-weight:700;font-size:13px;flex-shrink:0">${escapeHtml(initials)}</div><div style="min-width:0"><p style="font-weight:600;font-size:13px;margin:0">${escapeHtml(name)}</p><p style="font-size:11px;color:${colors.printMuted};margin:2px 0 0">#${escapeHtml(s.student_number)}</p>${s.grade_level ? `<p style="font-size:11px;color:${colors.printMuted};margin:0">${escapeHtml(s.grade_level)}</p>` : ''}</div></div></div>`;
         })
         .join('');
       const html = buildPrintHtml({ title: k('studentLabels'), pages: [`<div style="font-size:0">${labels}</div>`], school: ctx.school, layout: ctx.layout, withHeader: false });
@@ -66,56 +68,46 @@ export default function TeacherStudentLabels() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        <Text variant="muted">{k('pageSubtitle')}</Text>
-        <Card>
-          <CardHeader>
-            <CardTitle>{k('labelSettings')}</CardTitle>
-            <Text className="text-muted-foreground text-sm">{k('labelSettingsDescription')}</Text>
-          </CardHeader>
-          <CardContent className="gap-3">
-            <Label>{k('columnsPerRow')}</Label>
-            <FilterChips value={cols} onChange={setCols} options={['2', '3', '4'].map((c) => ({ value: c, label: k('columns', { count: Number(c) }) }))} />
-            <Text className="text-muted-foreground text-xs">{`${k('eachLabelIncludes')} ${k('studentFullName')}, ${k('studentIdNumber')}, ${k('gradeLevel')}`}</Text>
-            <Text className="text-sm font-medium">{k('studentsSelected', { count: selected.size })}</Text>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{k('selectStudents')}</CardTitle>
-            <Text className="text-muted-foreground text-sm">{k('selectStudentsDescription')}</Text>
-          </CardHeader>
-          <CardContent className="gap-3">
-            <View className="flex-row gap-2">
-              <View className="flex-1 gap-1">
-                <Label>{k('gradeLevel')}</Label>
-                <Picker
-                  value={grade}
-                  onChange={(v) => {
-                    setGrade(v);
-                    setSection('all');
-                  }}
-                  options={[{ value: 'all', label: k('allGrades') }, ...grades.map((g) => ({ value: g, label: g }))]}
-                />
-              </View>
-              <View className="flex-1 gap-1">
-                <Label>{k('section')}</Label>
-                <Picker value={section} onChange={setSection} options={[{ value: 'all', label: k('allSections') }, ...sections.map(([id, name]) => ({ value: id, label: name }))]} />
-              </View>
+        <Text variant="muted" className="text-sm">
+          {k('pageSubtitle')}
+        </Text>
+        <FormSection title={k('labelSettings')} description={k('labelSettingsDescription')} icon={Tag}>
+          <Label>{k('columnsPerRow')}</Label>
+          <FilterChips value={cols} onChange={setCols} options={['2', '3', '4'].map((c) => ({ value: c, label: k('columns', { count: Number(c) }) }))} />
+          <Text variant="muted" className="text-xs">{`${k('eachLabelIncludes')} ${k('studentFullName')}, ${k('studentIdNumber')}, ${k('gradeLevel')}`}</Text>
+          <StatusChip label={k('studentsSelected', { count: selected.size })} tone={selected.size ? 'info' : 'muted'} className="self-start" />
+        </FormSection>
+        <FormSection title={k('selectStudents')} description={k('selectStudentsDescription')} icon={Users}>
+          <View className="flex-row gap-2">
+            <View className="flex-1 gap-1">
+              <Label>{k('gradeLevel')}</Label>
+              <Picker
+                value={grade}
+                onChange={(v) => {
+                  setGrade(v);
+                  setSection('all');
+                }}
+                options={[{ value: 'all', label: k('allGrades') }, ...grades.map((g) => ({ value: g, label: g }))]}
+              />
             </View>
-            <StudentChecklist students={shown} loading={res.isLoading} selected={selected} onChange={setSelected} countKey="common.found_students" />
-          </CardContent>
-        </Card>
-        <View className="flex-row gap-2">
-          <Button className="flex-1" variant="outline" onPress={() => run('pdf')} disabled={busy || !selected.size}>
-            <Icon as={FileDown} className="size-4" />
-            <Text>PDF</Text>
-          </Button>
-          <Button className="flex-1" onPress={() => run('print')} disabled={busy || !selected.size}>
-            <Icon as={Printer} className="text-primary-foreground size-4" />
-            <Text>{busy ? k('generating') : k('printLabelsCount', { count: selected.size })}</Text>
-          </Button>
-        </View>
+            <View className="flex-1 gap-1">
+              <Label>{k('section')}</Label>
+              <Picker value={section} onChange={setSection} options={[{ value: 'all', label: k('allSections') }, ...sections.map(([id, name]) => ({ value: id, label: name }))]} />
+            </View>
+          </View>
+          <StudentChecklist students={shown} loading={res.isLoading} selected={selected} onChange={setSelected} countKey="common.found_students" />
+        </FormSection>
       </ScrollView>
+      <StickyActions>
+        <Button className="flex-1" variant="outline" onPress={() => run('pdf')} disabled={busy || !selected.size}>
+          <Icon as={FileDown} className="text-brand dark:text-brand-secondary size-4" />
+          <Text>PDF</Text>
+        </Button>
+        <Button className="flex-1" onPress={() => run('print')} disabled={busy || !selected.size}>
+          <Icon as={Printer} className="text-primary-foreground size-4" />
+          <Text>{busy ? k('generating') : k('printLabelsCount', { count: selected.size })}</Text>
+        </Button>
+      </StickyActions>
     </>
   );
 }

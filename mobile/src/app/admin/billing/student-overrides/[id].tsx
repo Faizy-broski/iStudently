@@ -102,11 +102,11 @@ export default function StudentFeeOverrides() {
           <Text className="text-lg font-semibold">{name || '—'}</Text>
           {grade ? <Text className="text-muted-foreground text-sm">{grade}</Text> : null}
         </View>
-        <View className="flex-row gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-          <Icon as={AlertCircle} className="mt-0.5 size-4 text-blue-600 dark:text-blue-400" />
+        <View className="flex-row gap-3 rounded-xl border border-info-soft bg-info-soft p-3">
+          <Icon as={AlertCircle} className="mt-0.5 size-4 text-brand dark:text-brand-secondary " />
           <View className="flex-1">
-            <Text className="text-sm font-medium text-blue-700 dark:text-blue-300">{t('app.fr_ov_info_title')}</Text>
-            <Text className="text-xs text-blue-600 dark:text-blue-400">{t('app.fr_ov_info_body')}</Text>
+            <Text className="text-sm font-medium text-brand dark:text-brand-secondary ">{t('app.fr_ov_info_title')}</Text>
+            <Text className="text-xs text-brand dark:text-brand-secondary ">{t('app.fr_ov_info_body')}</Text>
           </View>
         </View>
 
@@ -130,7 +130,7 @@ export default function StudentFeeOverrides() {
               <CardContent className="flex-row items-start gap-3 px-4">
                 <View className="flex-1 gap-0.5">
                   <View className="flex-row flex-wrap items-center gap-2">
-                    <Text className="font-medium">{o.fee_categories?.name ?? '—'}</Text>
+                    <Text className="text-sm font-semibold">{o.fee_categories?.name ?? '—'}</Text>
                     {!o.is_active ? (
                       <Badge variant="secondary">
                         <Text>{t('common.inactive')}</Text>
@@ -141,15 +141,15 @@ export default function StudentFeeOverrides() {
                   {o.reason ? <Text className="text-muted-foreground text-xs">{o.reason}</Text> : null}
                 </View>
                 <View className="items-end gap-2">
-                  <Text className="font-semibold text-emerald-600 dark:text-emerald-400">{money(o.override_amount)}</Text>
+                  <Text className="font-semibold text-success ">{money(o.override_amount)}</Text>
                   <View className="flex-row gap-3">
-                    <Pressable onPress={() => openEdit(o)} accessibilityRole="button" accessibilityLabel={t('common.edit')} hitSlop={8}>
-                      <Icon as={Pencil} className="text-muted-foreground size-4" />
+                    <Pressable onPress={() => openEdit(o)} accessibilityRole="button" accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                      <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                     </Pressable>
                     <Pressable onPress={() => toggle(o)} accessibilityRole="button" accessibilityLabel={t(o.is_active ? 'app.fr_ov_deactivate' : 'app.fr_ov_activate')} hitSlop={8}>
                       <Icon as={o.is_active ? EyeOff : Eye} className="text-muted-foreground size-4" />
                     </Pressable>
-                    <Pressable onPress={() => remove(o)} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={8}>
+                    <Pressable onPress={() => remove(o)} accessibilityRole="button" accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
                     </Pressable>
                   </View>

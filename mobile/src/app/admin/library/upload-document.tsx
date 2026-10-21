@@ -2,9 +2,10 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FileText, Save, Upload, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -19,6 +20,7 @@ import { DocumentFieldInput, isLibraryKey, useLibraryCategories } from '@/featur
 import { adminLibrary, media } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { pickDocuments, type PickedDocument } from '@/lib/upload';
+import { IconTile } from '@/components/app/layout';
 
 const MAX_FILE = 50 * 1024 * 1024;
 const size = (b?: number) => (!b ? '' : b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`);
@@ -103,7 +105,7 @@ export default function LibraryUploadDocument() {
   );
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: t('app.lb_upload_document') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{t('app.lb_upload_desc')}</Text>
@@ -126,10 +128,10 @@ export default function LibraryUploadDocument() {
 
         <Card>
           <CardContent className="gap-3 pt-4">
-            <Text className="font-medium">{t('app.lb_attach_file')}</Text>
+            <Text className="text-sm font-semibold">{t('app.lb_attach_file')}</Text>
             {file ? (
-              <View className="border-border flex-row items-center gap-3 rounded-md border p-3">
-                <Icon as={FileText} className="text-primary size-5" />
+              <View className="border-info-soft dark:border-border flex-row items-center gap-3 rounded-xl border p-3">
+                <IconTile icon={FileText} size={32} />
                 <View className="flex-1">
                   <Text className="text-sm font-medium">{file.name}</Text>
                   <Text className="text-muted-foreground text-xs">{size(file.size)}</Text>
@@ -139,7 +141,7 @@ export default function LibraryUploadDocument() {
                 </Pressable>
               </View>
             ) : (
-              <Pressable onPress={choose} className="border-border items-center gap-1 rounded-lg border border-dashed p-5">
+              <Pressable onPress={choose} className="border-info-soft dark:border-border items-center gap-1 rounded-xl border border-dashed p-5">
                 <Icon as={Upload} className="text-muted-foreground size-6" />
                 <Text className="text-muted-foreground text-center text-xs">{t('app.lb_doc_drop')}</Text>
               </Pressable>

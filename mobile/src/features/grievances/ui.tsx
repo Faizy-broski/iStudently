@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { colors as themeColors } from '@/lib/colors';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
@@ -11,35 +12,35 @@ export const STATUS_KEYS: GrievanceStatus[] = ['submitted', 'pending_review', 'a
 export const PRIORITIES: GrievancePriority[] = ['low', 'normal', 'high', 'urgent', 'critical'];
 
 const STATUS_CLS: Record<GrievanceStatus, [string, string]> = {
-  submitted: ['bg-blue-100', 'text-blue-800'],
-  pending_review: ['bg-amber-100', 'text-amber-800'],
-  assigned: ['bg-purple-100', 'text-purple-800'],
-  under_investigation: ['bg-purple-100', 'text-purple-800'],
-  awaiting_info: ['bg-amber-100', 'text-amber-800'],
-  resolved: ['bg-green-100', 'text-green-800'],
-  closed: ['bg-gray-100', 'text-gray-800'],
-  reopened: ['bg-orange-100', 'text-orange-800'],
-  escalated: ['bg-red-100', 'text-red-800'],
-  rejected: ['bg-gray-100', 'text-gray-800'],
+  submitted: ['bg-info-soft', 'text-brand dark:text-brand-secondary'],
+  pending_review: ['bg-warning-soft', 'text-warning'],
+  assigned: ['bg-chart-6/10', 'text-chart-6'],
+  under_investigation: ['bg-chart-6/10', 'text-chart-6'],
+  awaiting_info: ['bg-warning-soft', 'text-warning'],
+  resolved: ['bg-success-soft', 'text-success'],
+  closed: ['bg-muted', 'text-muted-foreground'],
+  reopened: ['bg-warning-soft', 'text-warning'],
+  escalated: ['bg-destructive-soft', 'text-destructive'],
+  rejected: ['bg-muted', 'text-muted-foreground'],
 };
 
 const PRIORITY_CLS: Record<string, [string, string]> = {
-  low: ['bg-gray-100', 'text-gray-700'],
-  normal: ['bg-blue-100', 'text-blue-700'],
-  high: ['bg-amber-100', 'text-amber-700'],
-  urgent: ['bg-orange-100', 'text-orange-700'],
-  critical: ['bg-red-100', 'text-red-700'],
+  low: ['bg-muted', 'text-muted-foreground'],
+  normal: ['bg-info-soft', 'text-brand dark:text-brand-secondary'],
+  high: ['bg-warning-soft', 'text-warning'],
+  urgent: ['bg-warning-soft', 'text-warning'],
+  critical: ['bg-destructive-soft', 'text-destructive'],
 };
 
 /** Hex colors used by the web's priority pie chart. */
-export const PRIORITY_HEX: Record<string, string> = { low: '#94a3b8', normal: '#3b82f6', high: '#f59e0b', urgent: '#fb923c', critical: '#ef4444' };
+export const PRIORITY_HEX: Record<string, string> = { low: themeColors.printMuted, normal: themeColors.brandSecondary, high: themeColors.brandAccent, urgent: themeColors.warning, critical: themeColors.destructive };
 
 export const isOverdue = (g: Pick<Grievance, 'due_date' | 'status'>) => !!g.due_date && new Date(g.due_date) < new Date() && !['resolved', 'closed', 'rejected'].includes(g.status);
 
 function Pill({ cls, label }: { cls: [string, string]; label: string }) {
   return (
-    <View className={cn('rounded-full px-2 py-0.5', cls[0])}>
-      <Text className={cn('text-xs font-medium', cls[1])}>{label}</Text>
+    <View className={cn('rounded-full px-2.5 py-1', cls[0])}>
+      <Text className={cn('text-[11px] font-semibold', cls[1])}>{label}</Text>
     </View>
   );
 }
@@ -56,8 +57,8 @@ export function PriorityPill({ priority }: { priority: GrievancePriority }) {
 
 export function OutlinePill({ label }: { label: string }) {
   return (
-    <View className="border-border rounded-full border px-2 py-0.5">
-      <Text className="text-xs">{label}</Text>
+    <View className="bg-muted rounded-full px-2.5 py-1">
+      <Text className="text-muted-foreground text-[11px] font-semibold">{label}</Text>
     </View>
   );
 }
@@ -65,9 +66,9 @@ export function OutlinePill({ label }: { label: string }) {
 export function OverduePill() {
   const { t } = useTranslation();
   return (
-    <View className="flex-row items-center gap-1 rounded-full bg-red-100 px-2 py-0.5">
-      <Icon as={AlertTriangle} className="size-3 text-red-800" />
-      <Text className="text-xs font-medium text-red-800">{t('grievances.list.overdue')}</Text>
+    <View className="bg-destructive-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
+      <Icon as={AlertTriangle} className="text-destructive size-3" />
+      <Text className="text-destructive text-[11px] font-semibold">{t('grievances.list.overdue')}</Text>
     </View>
   );
 }

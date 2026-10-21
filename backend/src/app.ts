@@ -22,6 +22,8 @@ import textbookDeliveriesRoutes from "./routes/textbook-deliveries.routes";
 import qirtasiCurriculumRoutes from "./routes/qirtasi/curriculum.routes";
 import qirtasiFacetsRoutes from "./routes/qirtasi/facets.routes";
 import qirtasiWorksheetsRoutes from "./routes/qirtasi/worksheets.routes";
+import jahbadhGradesRoutes from "./routes/jahbadh-grades.routes";
+import jahbadhControlRoutes from "./routes/jahbadh-control.routes";
 import academicsRoutes from "./routes/academics.routes";
 import teacherRoutes from "./routes/teacher.routes";
 import timetableRoutes from "./routes/timetable.routes";
@@ -60,6 +62,7 @@ import resourceLinksRoutes from "./routes/resource-links.routes";
 import resourceLinkCategoriesRoutes from "./routes/resource-link-categories.routes";
 import attendanceCalendarsRoutes from "./routes/attendance-calendars.routes";
 import rolloverRoutes from "./routes/rollover.routes";
+import parentAgreementRoutes from "./routes/parent-agreement.routes";
 import gradingScalesRoutes from "./routes/grading-scales.routes";
 import coursesRoutes from "./routes/courses.routes";
 import coursePeriodsFlatRoutes from "./routes/course-periods-flat.routes";
@@ -344,6 +347,8 @@ registerRoutes("/textbook-deliveries", textbookDeliveriesRoutes);
 registerRoutes("/qirtasi/curriculum", qirtasiCurriculumRoutes);
 registerRoutes("/qirtasi/facets", qirtasiFacetsRoutes);
 registerRoutes("/qirtasi/worksheets", qirtasiWorksheetsRoutes);
+registerRoutes("/jahbadh-grades", jahbadhGradesRoutes);
+registerRoutes("/jahbadh-control", jahbadhControlRoutes);
 registerRoutes("/academics", academicsRoutes);
 registerRoutes("/teachers", teacherRoutes);
 registerRoutes("/timetable", timetableRoutes);
@@ -531,6 +536,16 @@ registerRoutes("/hadith-forty", hadithFortyProgressRoutes);
 registerRoutes("/hadith-forty/quiz", hadithFortyQuizRoutes);
 registerRoutes("/hadith-forty/class", hadithFortyClassRoutes);
 registerRoutes("/hadith-forty/content", hadithFortyContentRoutes);
+
+// Parent agreement: sign-in gate for parents/students and the admin setting.
+registerRoutes("/parent-agreement", parentAgreementRoutes);
+
+// Rollover + enrollment history. The router's paths carry their own /rollover and /enrollment
+// prefixes and it runs authenticate on every request, so it only receives requests under those
+// prefixes (mounted bare at "/", it made every later route, including the 404, require auth).
+const rolloverOnly = (req: Request, res: Response, next: NextFunction) =>
+  /^\/(rollover|enrollment)(\/|$)/.test(req.path) ? rolloverRoutes(req, res, next) : next();
+registerRoutes("", rolloverOnly);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

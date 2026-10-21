@@ -2,9 +2,10 @@ import type { FinaPost } from '@studently/api-client';
 import { router, Stack, type Href } from 'expo-router';
 import { Newspaper, PenSquare } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

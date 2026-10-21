@@ -4,17 +4,19 @@ import { AlertCircle, FileText, Printer } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { colors } from '@/lib/colors';
+import { HeaderButton, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { student } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { buildPrintHtml, escapeHtml, printHtml } from '@/lib/print';
+import { cn } from '@/lib/utils';
 
 const hm = (v?: string) => (v ? v.slice(0, 5) : '—');
 const teacherOf = (e: TodayClass) => (e.teacher?.profile ? `${e.teacher.profile.first_name} ${e.teacher.profile.last_name}` : '—');
@@ -37,9 +39,9 @@ export default function StudentPrintSchedules() {
     const body = days
       .map(
         ([n, list]) =>
-          `<h3 style="text-transform:uppercase;color:#666;font-size:12px;margin:16px 0 6px">${escapeHtml(dayName(n))}</h3>` +
+          `<h3 style="text-transform:uppercase;color:${colors.printMuted};font-size:12px;margin:16px 0 6px">${escapeHtml(dayName(n))}</h3>` +
           list
-            .map((e) => `<div style="display:flex;gap:16px;border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:4px"><span style="width:110px;color:#666">${hm(e.start_time)} – ${hm(e.end_time)}</span><span style="flex:1;font-weight:600">${escapeHtml(e.subject?.name || '—')}${e.subject?.code ? ` <small>(${escapeHtml(e.subject.code)})</small>` : ''}</span><span style="color:#666">${escapeHtml(teacherOf(e))}</span></div>`)
+            .map((e) => `<div style="display:flex;gap:16px;border:1px solid ${colors.printBorder};border-radius:8px;padding:8px;margin-bottom:4px"><span style="width:110px;color:${colors.printMuted}">${hm(e.start_time)} – ${hm(e.end_time)}</span><span style="flex:1;font-weight:600">${escapeHtml(e.subject?.name || '—')}${e.subject?.code ? ` <small>(${escapeHtml(e.subject.code)})</small>` : ''}</span><span style="color:${colors.printMuted}">${escapeHtml(teacherOf(e))}</span></div>`)
             .join(''),
       )
       .join('');
@@ -55,68 +57,46 @@ export default function StudentPrintSchedules() {
   if (week.error) {
     return (
       <View className="bg-background flex-1 p-4">
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-          <CardContent className="flex-row items-center gap-3 p-4">
-            <Icon as={AlertCircle} className="size-8 text-red-600" />
-            <View className="flex-1">
-              <Text className="font-semibold text-red-900 dark:text-red-200">{k('error')}</Text>
-              <Text className="text-sm text-red-700 dark:text-red-300">{week.error.message}</Text>
-            </View>
-          </CardContent>
-        </Card>
+        <View className="border-destructive/30 bg-destructive-soft flex-row items-center gap-3 rounded-2xl border p-4">
+          <Icon as={AlertCircle} className="text-destructive size-8" />
+          <View className="flex-1">
+            <Text className="text-destructive font-semibold">{k('error')}</Text>
+            <Text className="text-destructive text-sm">{week.error.message}</Text>
+          </View>
+        </View>
       </View>
     );
   }
 
   return (
     <>
-      <Stack.Screen options={{ title: k('title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => week.mutate()} />}>
-        <View className="flex-row items-center justify-between gap-2">
-          <Text variant="muted" className="flex-1">
-            {k('subtitle')}
-          </Text>
-          <Button variant="outline" onPress={print}>
-            <Icon as={Printer} className="size-4" />
-            <Text>{k('print')}</Text>
-          </Button>
-        </View>
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={FileText} className="size-5" />
-            <CardTitle>{k('weekly')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-4">
-            {days.length === 0 ? (
-              <View className="items-center py-10">
-                <Icon as={FileText} className="text-muted-foreground mb-3 size-12" />
-                <Text className="text-muted-foreground">{k('empty')}</Text>
-              </View>
-            ) : (
-              days.map(([n, list]) => (
-                <View key={n} className="gap-1">
-                  <Text className="text-muted-foreground mb-1 text-sm font-semibold uppercase">{dayName(n)}</Text>
-                  {list.map((e) => (
-                    <View key={e.id} className="border-border bg-card gap-1 rounded-lg border p-3">
-                      <View className="flex-row items-center gap-2">
-                        <Text className="flex-1 font-medium">{e.subject?.name || '—'}</Text>
-                        {e.subject?.code ? (
-                          <Badge variant="outline">
-                            <Text className="text-xs">{e.subject.code}</Text>
-                          </Badge>
-                        ) : null}
-                      </View>
-                      <View className="flex-row justify-between">
-                        <Text className="text-muted-foreground text-sm">{`${hm(e.start_time)} – ${hm(e.end_time)}`}</Text>
-                        <Text className="text-muted-foreground text-sm">{teacherOf(e)}</Text>
-                      </View>
+      <Stack.Screen options={{ title: k('title'), headerRight: () => <HeaderButton icon={Printer} label={k('print')} onPress={print} /> }} />
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => week.mutate()} />}>
+        <Text className="text-muted-foreground text-sm">{k('subtitle')}</Text>
+        <Text className="text-base font-semibold">{k('weekly')}</Text>
+        {days.length === 0 ? (
+          <EmptyState icon={FileText} title={k('empty')} />
+        ) : (
+          days.map(([n, list]) => (
+            <Section key={n} title={dayName(n)}>
+              <Panel>
+                {list.map((e, i) => (
+                  <View key={e.id} className={cn('flex-row items-center gap-3 px-4 py-3', i < list.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                    <View className="bg-info-soft min-w-[64px] items-center rounded-xl px-2 py-1.5">
+                      <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{hm(e.start_time)}</Text>
+                      <Text className="text-muted-foreground text-[10px]">{hm(e.end_time)}</Text>
                     </View>
-                  ))}
-                </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                    <View className="flex-1 gap-0.5">
+                      <Text className="text-sm font-semibold">{e.subject?.name || '—'}</Text>
+                      <Text className="text-muted-foreground text-xs">{teacherOf(e)}</Text>
+                    </View>
+                    {e.subject?.code ? <StatusChip label={e.subject.code} tone="muted" className="px-2 py-0.5" /> : null}
+                  </View>
+                ))}
+              </Panel>
+            </Section>
+          ))
+        )}
       </ScrollView>
     </>
   );

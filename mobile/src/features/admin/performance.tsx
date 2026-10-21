@@ -9,10 +9,10 @@ import { cn } from '@/lib/utils';
 
 export const ESCALATIONS: EscalationStage[] = ['none', 'verbal_alert', 'written_warning', 'final_warning'];
 const ESCALATION_CLS: Record<string, [string, string]> = {
-  none: ['bg-gray-100', 'text-gray-700'],
-  verbal_alert: ['bg-yellow-100', 'text-yellow-700'],
-  written_warning: ['bg-orange-100', 'text-orange-700'],
-  final_warning: ['bg-red-100', 'text-red-800'],
+  none: ['bg-muted', 'text-muted-foreground'],
+  verbal_alert: ['bg-warning-soft', 'text-warning'],
+  written_warning: ['bg-warning-soft', 'text-warning'],
+  final_warning: ['bg-destructive-soft', 'text-destructive'],
 };
 
 export function EscalationPill({ stage }: { stage: string }) {
@@ -28,9 +28,9 @@ export function EscalationPill({ stage }: { stage: string }) {
 export function TypePill({ demerit }: { demerit: boolean }) {
   const { t } = useTranslation();
   return (
-    <View className={cn('flex-row items-center gap-1 rounded-full px-2 py-0.5', demerit ? 'bg-red-100' : 'bg-green-100')}>
-      <Icon as={demerit ? TrendingDown : TrendingUp} className={cn('size-3', demerit ? 'text-red-800' : 'text-green-800')} />
-      <Text className={cn('text-xs font-medium', demerit ? 'text-red-800' : 'text-green-800')}>{demerit ? t('app.pe_violation') : t('app.pe_reward')}</Text>
+    <View className={cn('flex-row items-center gap-1 rounded-full px-2 py-0.5', demerit ? 'bg-destructive-soft' : 'bg-success-soft')}>
+      <Icon as={demerit ? TrendingDown : TrendingUp} className={cn('size-3', demerit ? 'text-destructive' : 'text-success')} />
+      <Text className={cn('text-xs font-medium', demerit ? 'text-destructive' : 'text-success')}>{demerit ? t('app.pe_violation') : t('app.pe_reward')}</Text>
     </View>
   );
 }

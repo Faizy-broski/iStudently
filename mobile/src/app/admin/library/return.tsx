@@ -3,9 +3,10 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { AlertTriangle, DollarSign } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ export default function LibraryReturn() {
   const od = loan ? daysOverdue(loan.due_date) : 0;
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: t('app.lb_return_book') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{t('app.lb_return_desc')}</Text>
@@ -78,13 +79,13 @@ export default function LibraryReturn() {
               </CardContent>
             </Card>
             {od > 0 ? (
-              <View className="flex-row gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 dark:bg-amber-950/30">
-                <Icon as={AlertTriangle} className="size-4 text-amber-600" />
+              <View className="flex-row gap-2 rounded-xl border border-warning/30 bg-warning-soft p-3">
+                <Icon as={AlertTriangle} className="size-4 text-warning" />
                 <View className="flex-1">
-                  <Text className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  <Text className="text-sm font-medium text-warning ">
                     {t('app.lb_overdue_by', { count: od })} · {t('app.lb_fine')}: {money(od * 0.5)}
                   </Text>
-                  <Text className="text-xs text-amber-800 dark:text-amber-300">{t('app.lb_overdue_fine_note')}</Text>
+                  <Text className="text-xs text-warning ">{t('app.lb_overdue_fine_note')}</Text>
                 </View>
               </View>
             ) : null}

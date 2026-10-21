@@ -1,9 +1,10 @@
 import type { AdminQuestionType, AdminQuizQuestion, DifficultyLevel } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { WebSessionView } from '@/components/app/web-session-view';
@@ -122,7 +123,7 @@ function Form({ question, defaultCategoryId }: { question: AdminQuizQuestion | n
           <Label>{q('answerInput.correctAnswer')}</Label>
           <Text className="text-muted-foreground text-xs">{q('anatomyOnWeb', { defaultValue: 'Pick the correct marker on the 3D model below (website view), then save there.' })}</Text>
           {question ? (
-            <View className="border-border h-[480px] overflow-hidden rounded-md border">
+            <View className="border-info-soft dark:border-border h-[480px] overflow-hidden rounded-xl border">
               <WebSessionView path="/admin/quiz/questions" campusId={campusId} />
             </View>
           ) : null}
@@ -157,7 +158,7 @@ export default function QuestionForm() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: qid ? q('editQuestion') : q('newQuestion') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="p-4 pb-10" keyboardShouldPersistTaps="handled">
           {qid && res.isLoading ? (
             <LoadingList rows={4} />

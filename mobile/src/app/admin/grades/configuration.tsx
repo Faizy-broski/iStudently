@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Save } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -88,7 +89,7 @@ function Form({ config, periods }: { config: GradebookConfig; periods: GroupedMa
   const totalBadge = (keys: string[]) => {
     const sum = total(keys);
     const ok = Math.abs(sum - 100) < 0.01;
-    return <Text className={cn('text-sm font-semibold', ok ? 'text-green-600' : 'text-red-600')}>{ok ? s('total_ok') : `${s('total_label')} = ${sum.toFixed(1)}% — ${s('total_error')}`}</Text>;
+    return <Text className={cn('text-sm font-semibold', ok ? 'text-success' : 'text-destructive')}>{ok ? s('total_ok') : `${s('total_label')} = ${sum.toFixed(1)}% — ${s('total_error')}`}</Text>;
   };
   const pct = (key: string, label: string, tag?: string) => (
     <View key={key} className="w-[30%] gap-1">
@@ -107,7 +108,7 @@ function Form({ config, periods }: { config: GradebookConfig; periods: GroupedMa
     <>
       <Card>
         <CardContent className="gap-2 pt-4">
-          <Text className="text-xs font-semibold uppercase">{s('assignments_section')}</Text>
+          <Text className="text-sm font-semibold">{s('assignments_section')}</Text>
           <Label>{s('sort_by')}</Label>
           <Picker
             value={sorting}
@@ -131,17 +132,17 @@ function Form({ config, periods }: { config: GradebookConfig; periods: GroupedMa
       </Card>
       <Card>
         <CardContent className="gap-2 pt-4">
-          <Text className="text-xs font-semibold uppercase">{s('eligibility_section')}</Text>
+          <Text className="text-sm font-semibold">{s('eligibility_section')}</Text>
           <CheckRow label={s('eligibility_cumulative')} value={flags.eligibility} onChange={flag('eligibility')} />
         </CardContent>
       </Card>
       <Card>
         <CardContent className="gap-3 pt-4">
-          <Text className="text-xs font-semibold uppercase">{s('final_grading_section')}</Text>
+          <Text className="text-sm font-semibold">{s('final_grading_section')}</Text>
           <Text className="text-muted-foreground text-xs">{s('final_grading_help')}</Text>
           {!gradedSems.length && !fy?.does_grades ? <Text className="text-muted-foreground text-sm italic">{s('no_graded_periods')}</Text> : null}
           {gradedSems.length ? (
-            <View className="border-border gap-3 rounded-md border p-3">
+            <View className="border-info-soft dark:border-border gap-3 rounded-xl border p-3">
               <View className="gap-1">
                 <Text className="text-sm font-semibold">{gradedSems.map((x) => x.title).join(' + ')}</Text>
                 {semKeys.length ? totalBadge(semKeys) : null}
@@ -150,7 +151,7 @@ function Form({ config, periods }: { config: GradebookConfig; periods: GroupedMa
                 const qtrs = qtrsOf(sem.id);
                 return (
                   <View key={sem.id} className="gap-2">
-                    <Text className="text-muted-foreground text-xs font-medium uppercase">{sem.title}</Text>
+                    <Text className="text-muted-foreground text-xs font-medium">{sem.title}</Text>
                     {qtrs.length ? <View className="flex-row flex-wrap gap-3">{qtrs.map((q) => pct(`SEM-${q.id}`, q.title))}</View> : <Text className="text-muted-foreground text-xs">{s('no_quarters')}</Text>}
                   </View>
                 );
@@ -158,7 +159,7 @@ function Form({ config, periods }: { config: GradebookConfig; periods: GroupedMa
             </View>
           ) : null}
           {fy?.does_grades ? (
-            <View className="gap-3 rounded-md border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+            <View className="gap-3 rounded-xl border border-info-soft bg-info-soft p-3">
               <View className="gap-1">
                 <Text className="text-sm font-semibold">{fy.title}</Text>
                 {fyCols.length ? totalBadge(fyCols.map((c) => c.key)) : null}
@@ -186,7 +187,7 @@ export default function GradebookConfiguration() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: s('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">{s('subtitle')}</Text>
           {config.isLoading || periods.isLoading ? (

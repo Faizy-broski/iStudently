@@ -38,13 +38,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback((type: ToastType, message: string) => {
     const id = nextId.current++;
     setItems((prev) => [...prev.slice(-2), { id, type, message }]);
-    setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), type === 'error' ? 5000 : 3000);
+    setTimeout(
+      () => setItems((prev) => prev.filter((t) => t.id !== id)),
+      type === 'error' ? 5000 : 3000,
+    );
   }, []);
 
   return (
     <ToastContext.Provider value={show}>
       {children}
-      <View pointerEvents="box-none" className="absolute inset-x-0 top-0 gap-2 px-4" style={{ paddingTop: insets.top + 8 }}>
+      <View
+        pointerEvents="box-none"
+        className="absolute inset-x-0 top-0 gap-2 px-4"
+        style={{ paddingTop: insets.top + 8 }}>
         {items.map((t) => (
           <Animated.View
             key={t.id}
@@ -52,7 +58,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             exiting={FadeOutUp}
             accessibilityLiveRegion="polite"
             className={cn(
-              'bg-card border-border flex-row items-center gap-3 rounded-lg border px-4 py-3 shadow-lg shadow-black/10',
+              'bg-card border-border flex-row items-center gap-3 rounded-lg border px-4 py-3',
               t.type === 'error' && 'border-destructive/40',
             )}>
             <Icon

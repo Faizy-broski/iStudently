@@ -3,10 +3,10 @@ import { router, Stack } from 'expo-router';
 import { Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View, Pressable } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -66,14 +66,14 @@ export default function ServicesSettings() {
         <Card>
           <CardContent className="pt-2">
             {!services.length ? (
-              <Text className="text-muted-foreground py-8 text-center">{s('no_services')}</Text>
+              <EmptyState title={s('no_services')} />
             ) : (
               services.map((svc, i) => (
                 <View key={svc.id}>
                   {i > 0 ? <Separator /> : null}
                   <View className="flex-row items-start gap-2 py-3">
                     <View className="flex-1 gap-1.5">
-                      <Text className="font-medium">{svc.name}</Text>
+                      <Text className="text-sm font-semibold">{svc.name}</Text>
                       {svc.description ? <Text className="text-muted-foreground text-sm">{svc.description}</Text> : null}
                       <View className="flex-row flex-wrap gap-1.5">
                         {pill(svc.code, 'border-border border')}
@@ -85,12 +85,12 @@ export default function ServicesSettings() {
                         {s('table_col_charge')}: <Text className="text-sm font-semibold">{money(svc.default_charge)}</Text>
                       </Text>
                     </View>
-                    <Button size="icon" variant="ghost" onPress={() => router.push({ pathname: '/admin/settings/service-form', params: { id: svc.id } })} accessibilityLabel={t('common.edit')}>
-                      <Icon as={Pencil} className="text-foreground size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" disabled={deleting === svc.id} onPress={() => remove(svc)} accessibilityLabel={t('common.delete')}>
+                    <Pressable onPress={() => router.push({ pathname: '/admin/settings/service-form', params: { id: svc.id } })} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                      <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                    </Pressable>
+                    <Pressable disabled={deleting === svc.id} onPress={() => remove(svc)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
-                    </Button>
+                    </Pressable>
                   </View>
                 </View>
               ))

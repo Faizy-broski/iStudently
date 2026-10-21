@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { ChevronRight, Minus, Package, Plus, Save } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -17,6 +18,7 @@ import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminResources } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { IconTile } from '@/components/app/layout';
 
 const INVENTORY_TYPES: InventoryCategoryType[] = ['CATEGORY', 'STATUS', 'LOCATION', 'PERSON'];
 type Editable = { id?: string; title: string; color?: string };
@@ -75,7 +77,7 @@ export default function SchoolInventory() {
       <Stack.Screen options={{ title: v('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-28" keyboardShouldPersistTaps="handled">
         <View className="flex-row items-center gap-2">
-          <Icon as={Package} className="text-primary size-5" />
+          <IconTile icon={Package} size={32} />
           <Text className="text-muted-foreground flex-1 text-sm">
             {v('subtitle')} {campus ? v('campus_label', { name: campus.name }) : ''}
           </Text>
@@ -103,7 +105,7 @@ export default function SchoolInventory() {
                             disabled={!c.id}
                             onPress={() => router.push({ pathname: '/admin/resources/school-inventory/items', params: { type, categoryId: c.id!, categoryTitle: c.title } })}>
                             <Text className={c.id ? 'text-primary' : ''}>{c.title}</Text>
-                            {c.id ? <Icon as={ChevronRight} className="text-muted-foreground size-3.5 rtl:rotate-180" /> : null}
+                            {c.id ? <Icon flipRtl as={ChevronRight} className="text-muted-foreground size-3.5" /> : null}
                           </Pressable>
                           <Text className="text-muted-foreground w-10 text-end text-sm">{count}</Text>
                           <Button size="icon" variant="ghost" onPress={() => remove(type, i)} accessibilityLabel={v('btn_remove')}>

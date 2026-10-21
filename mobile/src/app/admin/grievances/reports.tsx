@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { DataList } from '@/components/app/data-list';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
@@ -50,9 +51,9 @@ export default function GrievanceReports() {
     try {
       if (kind === 'csv') return await shareTextFile('grievance_report.csv', toCsv(COLUMNS, toRows(rows)), 'text/csv', 'public.comma-separated-values-text');
       if (kind === 'excel') return await shareTextFile('grievance_report.xls', toExcelXml('Grievances', COLUMNS, toRows(rows)), 'application/vnd.ms-excel', 'com.microsoft.excel.xls');
-      const th = COLUMNS.map((c) => `<th style="text-align:start;padding:4px;border-bottom:2px solid #111;font-size:10px">${escapeHtml(c)}</th>`).join('');
+      const th = COLUMNS.map((c) => `<th style="text-align:start;padding:4px;border-bottom:2px solid ${colors.printText};font-size:10px">${escapeHtml(c)}</th>`).join('');
       const body = `<h2 style="margin:0 0 10px">Complaints &amp; Grievances Report</h2><table style="width:100%;border-collapse:collapse"><tr>${th}</tr>${toRows(rows)
-        .map((rw) => `<tr>${rw.map((c) => `<td style="padding:4px;border-bottom:1px solid #eee;font-size:10px">${escapeHtml(c)}</td>`).join('')}</tr>`)
+        .map((rw) => `<tr>${rw.map((c) => `<td style="padding:4px;border-bottom:1px solid ${colors.printBorder};font-size:10px">${escapeHtml(c)}</td>`).join('')}</tr>`)
         .join('')}</table>`;
       await sharePdf(buildPrintHtml({ title: r('title'), pages: [body], school: print.school, layout: print.layout, withHeader: true, reportLabel: r('title') }), 'grievance_report.pdf', { width: 842, height: 595 });
     } catch (e) {
@@ -101,7 +102,7 @@ export default function GrievanceReports() {
               {k ? (
                 <View className="flex-row flex-wrap gap-2">
                   {kpis.map(([label, value]) => (
-                    <View key={String(label)} className="border-border bg-card rounded-lg border p-3" style={{ width: '31%' }}>
+                    <View key={String(label)} className="border-info-soft dark:border-border bg-card rounded-xl border p-3" style={{ width: '31%' }}>
                       <Text className="text-muted-foreground text-[11px]">{label}</Text>
                       <Text className="text-lg font-bold">{value}</Text>
                     </View>
@@ -139,7 +140,7 @@ export default function GrievanceReports() {
                 <PriorityPill priority={g.priority} />
                 <StatusPill status={g.status} />
               </View>
-              <Text className="font-medium">{g.title}</Text>
+              <Text className="text-sm font-semibold">{g.title}</Text>
               <Text className="text-muted-foreground text-xs">{`${g.category?.name || '—'} · ${date(g.submitted_at)}`}</Text>
             </View>
           )}

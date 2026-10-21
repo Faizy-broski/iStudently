@@ -1,15 +1,16 @@
 import type { TeacherEvaluation } from '@studently/api-client';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { AlertTriangle, Camera, Check, FileAudio, Image as ImageIcon, Mic, Send, TrendingUp, X } from 'lucide-react-native';
+import { Camera, Check, FileAudio, Image as ImageIcon, Mic, Send, TrendingUp, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
@@ -34,11 +35,11 @@ export default function ObserveVisit() {
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`inspections.observe.${key}`, o);
   const toast = useToast();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, teacher } = useLocalSearchParams<{ id: string; teacher?: string }>();
   const visit = useApi(id ? ['inspector', 'visit', id] : null, ([, , v]) => inspector.visit(v as string));
   const v = visit.data;
   const [picked, setPicked] = useState<string | null>(null);
-  const teacherId = picked ?? (v?.teachers.length === 1 ? v.teachers[0].teacher_profile_id : null);
+  const teacherId = picked ?? teacher ?? (v?.teachers.length === 1 ? v.teachers[0].teacher_profile_id : null);
   const schoolId = v?.school_id ?? null;
   const ev = useApi(id && teacherId ? ['inspector', 'evaluation', id, teacherId] : null, async ([, , vid, tid]) => {
     const draft = await inspector.draftEvaluation(vid as string, tid as string);
@@ -60,6 +61,16 @@ export default function ObserveVisit() {
   const scores = new Map((e?.scores ?? []).map((s) => [s.criterion_id, s]));
   const all = (e?.rubric_template?.categories ?? []).flatMap((c) => c.criteria);
   const missing = all.filter((c) => !scores.has(c.id)).length;
+  const scoreValues = (e?.scores ?? []).map((x) => x.score).filter((n): n is number => typeof n === 'number');
+  const avg = scoreValues.length ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length : null;
+  const vt = v?.teachers.find((x) => x.teacher_profile_id === teacherId);
+  const teacherName = vt?.teacher ? `${vt.teacher.first_name} ${vt.teacher.last_name}` : '';
+  const teacherInitials = teacherName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join('');
 
   async function score(criterionId: string, n: number) {
     if (!evalId) return;
@@ -158,11 +169,30 @@ export default function ObserveVisit() {
     <>
       <Stack.Screen options={{ title: k('page_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-28" refreshControl={<RefreshControl refreshing={false} onRefresh={() => ev.mutate()} />}>
-        <Text variant="muted">{`${v.school?.name ?? ''} · ${v.scheduled_date}`}</Text>
+        {/* Teacher card: who is observed, where, and the live average score */}
+        <Panel className="flex-row items-center gap-3 p-4">
+          <View className="bg-warning-soft size-12 items-center justify-center rounded-full">
+            <Text className="text-warning font-bold">{teacherInitials}</Text>
+          </View>
+          <View className="flex-1">
+            <Text className="font-semibold" numberOfLines={1}>
+              {teacherName || k('page_title')}
+            </Text>
+            <Text variant="muted" className="text-xs" numberOfLines={1}>{`${v.school?.name ?? ''} · ${v.scheduled_date}`}</Text>
+          </View>
+          {avg !== null ? (
+            <View className="items-end">
+              <Text className="text-brand dark:text-foreground text-2xl font-bold">{avg.toFixed(1)}</Text>
+              <Text variant="muted" className="text-[11px]">
+                {t('app.obs_avg')}
+              </Text>
+            </View>
+          ) : null}
+        </Panel>
         {!v.teachers.length ? (
           <Card>
             <CardContent className="py-10">
-              <Text className="text-muted-foreground text-center text-sm">{k('no_teachers_on_visit')}</Text>
+              <EmptyState title={k('no_teachers_on_visit')} />
             </CardContent>
           </Card>
         ) : v.teachers.length > 1 ? (
@@ -181,79 +211,98 @@ export default function ObserveVisit() {
         {e ? (
           <>
             {!isDraft ? (
-              <Card className="border-green-200 bg-green-50 dark:bg-green-950/30">
+              <Card className="border-success/30 bg-success-soft">
                 <CardContent className="flex-row items-center gap-2 py-4">
-                  <Icon as={Check} className="size-4 text-green-700" />
-                  <Text className="flex-1 text-sm text-green-800 dark:text-green-200">{k('already_submitted', { score: String(e.overall_score ?? '—') })}</Text>
+                  <Icon as={Check} className="size-4 text-success" />
+                  <Text className="flex-1 text-sm text-success">{k('already_submitted', { score: String(e.overall_score ?? '—') })}</Text>
                 </CardContent>
               </Card>
             ) : null}
             {!e.rubric_template ? (
               <Card>
                 <CardContent className="py-10">
-                  <Text className="text-muted-foreground text-center text-sm">{k('no_rubric')}</Text>
+                  <EmptyState title={k('no_rubric')} />
                 </CardContent>
               </Card>
             ) : (
               <>
                 {e.rubric_template.categories.map((cat) => (
-                  <Card key={cat.id}>
-                    <CardHeader className="flex-row items-center gap-2">
-                      <CardTitle className="text-base">{cat.name}</CardTitle>
-                      <Badge variant="outline">
-                        <Text className="text-[10px]">{`${cat.weight}%`}</Text>
-                      </Badge>
-                    </CardHeader>
-                    <CardContent className="gap-4">
-                      {cat.criteria.map((crit) => {
+                  <View key={cat.id} className="gap-2">
+                    <View className="flex-row items-center gap-2">
+                      <Text className="flex-1 text-base font-semibold">{cat.name}</Text>
+                      <StatusChip label={`${cat.weight}%`} tone="info" />
+                    </View>
+                    <Panel>
+                      {cat.criteria.map((crit, ci) => {
                         const cur = scores.get(crit.id);
                         return (
-                          <View key={crit.id} className="border-border gap-2 border-b pb-4 last:border-b-0 last:pb-0">
+                          <View key={crit.id} className={cn('gap-2 px-4 py-3', ci < cat.criteria.length - 1 && 'border-info-soft dark:border-border border-b')}>
                             <View className="flex-row items-start gap-2">
                               <View className="flex-1">
-                                <Text className="text-sm font-medium">{crit.name}</Text>
+                                <Text className="text-sm font-semibold">{crit.name}</Text>
                                 {crit.description ? <Text className="text-muted-foreground text-xs">{crit.description}</Text> : null}
                               </View>
-                              {saving === crit.id ? <ActivityIndicator size="small" /> : null}
+                              {saving === crit.id ? <ActivityIndicator size="small" /> : cur?.score ? <Text className="text-muted-foreground text-xs">{t(`app.obs_level_${cur.score}`)}</Text> : null}
                             </View>
-                            <View className="flex-row flex-wrap items-center gap-2">
-                              {[1, 2, 3, 4, 5].map((n) => (
-                                <Pressable
-                                  key={n}
-                                  disabled={!isDraft}
-                                  onPress={() => score(crit.id, n)}
-                                  accessibilityRole="radio"
-                                  accessibilityState={{ checked: cur?.score === n, disabled: !isDraft }}
-                                  className={cn('size-11 items-center justify-center rounded-full border-2', cur?.score === n ? 'border-[#022172] bg-[#022172]' : 'border-border bg-background')}>
-                                  <Text className={cn('text-base font-semibold', cur?.score === n && 'text-white')}>{String(n)}</Text>
-                                </Pressable>
-                              ))}
+                            <View className="flex-row gap-1.5">
+                              {[1, 2, 3, 4, 5].map((n) => {
+                                const on = cur?.score === n;
+                                return (
+                                  <Pressable
+                                    key={n}
+                                    disabled={!isDraft}
+                                    onPress={() => score(crit.id, n)}
+                                    accessibilityRole="radio"
+                                    accessibilityLabel={t(`app.obs_level_${n}`)}
+                                    accessibilityState={{ checked: on, disabled: !isDraft }}
+                                    className={cn('h-10 flex-1 items-center justify-center rounded-xl border', on ? 'bg-brand border-brand' : 'bg-info-soft/60 border-info-soft dark:bg-muted dark:border-border')}>
+                                    <Text className={cn('text-sm font-semibold', on ? 'text-white' : 'text-foreground')}>{String(n)}</Text>
+                                  </Pressable>
+                                );
+                              })}
                             </View>
                             {tools(crit.id)}
                             {chips(e.evidence.filter((x) => x.criterion_id === crit.id))}
                           </View>
                         );
                       })}
-                    </CardContent>
-                  </Card>
+                    </Panel>
+                  </View>
                 ))}
                 <Card>
                   <CardHeader>
                     <View className="flex-row items-center gap-2">
-                      <Icon as={ImageIcon} className="size-4 text-[#022172] dark:text-blue-300" />
+                      <Icon as={ImageIcon} className="size-4 text-brand dark:text-brand-secondary" />
                       <CardTitle className="text-base">{k('general_evidence_title')}</CardTitle>
                     </View>
                     <CardDescription>{k('general_evidence_desc')}</CardDescription>
                   </CardHeader>
                   <CardContent className="gap-3">
+                    <View className="flex-row flex-wrap gap-2.5">
+                      {e.evidence
+                        .filter((x) => !x.criterion_id)
+                        .map((x) => (
+                          <EvidenceTile key={x.id} id={x.id} name={x.file_name} type={x.file_type} editable={isDraft} onRemove={removeEvidence} />
+                        ))}
+                      {isDraft ? (
+                        <Pressable
+                          onPress={() => photo(undefined, 'camera')}
+                          disabled={!!uploading}
+                          className="border-brand-secondary/60 bg-info-soft/40 size-[76px] items-center justify-center rounded-2xl border-2 border-dashed"
+                          accessibilityRole="button"
+                          accessibilityLabel={k('btn_add_photo')}>
+                          {uploading === 'general' ? <ActivityIndicator size="small" /> : <Icon as={Camera} className="text-brand dark:text-brand-secondary size-5" />}
+                        </Pressable>
+                      ) : null}
+                    </View>
                     {tools(undefined)}
-                    {e.evidence.filter((x) => !x.criterion_id).length ? chips(e.evidence.filter((x) => !x.criterion_id)) : <Text className="text-muted-foreground text-xs">{k('no_general_evidence')}</Text>}
+                    {!e.evidence.filter((x) => !x.criterion_id).length && !isDraft ? <Text className="text-muted-foreground text-xs">{k('no_general_evidence')}</Text> : null}
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader>
                     <View className="flex-row items-center gap-2">
-                      <Icon as={TrendingUp} className="size-4 text-[#022172] dark:text-blue-300" />
+                      <Icon as={TrendingUp} className="size-4 text-brand dark:text-brand-secondary" />
                       <CardTitle className="text-base">{k('grade_sample_title')}</CardTitle>
                     </View>
                     <CardDescription>{k('grade_sample_desc')}</CardDescription>
@@ -304,20 +353,15 @@ export default function ObserveVisit() {
         ) : null}
       </ScrollView>
       {e && isDraft && e.rubric_template ? (
-        <View className="border-border bg-background absolute inset-x-0 bottom-0 flex-row items-center justify-between gap-3 border-t px-4 pt-3 pb-6">
-          {missing > 0 ? (
-            <View className="flex-1 flex-row items-center gap-1.5">
-              <Icon as={AlertTriangle} className="size-4 text-amber-600" />
-              <Text className="flex-1 text-sm text-amber-700">{k('missing_count', { count: String(missing) })}</Text>
+        <View className="bg-background absolute inset-x-0 bottom-0 gap-2.5 px-4 pb-6 pt-3">
+          <View className="flex-row items-center gap-3">
+            <View className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
+              <View className={cn('h-2 rounded-full', missing > 0 ? 'bg-warning' : 'bg-success')} style={{ width: `${all.length ? ((all.length - missing) / all.length) * 100 : 0}%` }} />
             </View>
-          ) : (
-            <View className="flex-1 flex-row items-center gap-1.5">
-              <Icon as={Check} className="size-4 text-green-600" />
-              <Text className="flex-1 text-sm text-green-700">{k('all_scored')}</Text>
-            </View>
-          )}
-          <Button onPress={submit} disabled={submitting || missing > 0}>
-            <Icon as={Send} className="text-primary-foreground size-4 rtl:-scale-x-100" />
+            <Text className={cn('text-xs font-semibold', missing > 0 ? 'text-warning' : 'text-success')}>{t('app.obs_scored', { done: all.length - missing, total: all.length })}</Text>
+          </View>
+          <Button size="lg" onPress={submit} disabled={submitting || missing > 0}>
+            <Icon flipRtl as={Send} className="size-4 text-white" />
             <Text>{k('btn_submit_evaluation')}</Text>
           </Button>
         </View>
@@ -351,5 +395,32 @@ function EvidenceChip({ id, name, type, editable, onRemove }: { id: string; name
         </Pressable>
       ) : null}
     </View>
+  );
+}
+
+/** Evidence as a square tile (photo / voice): tap to view, × to remove while a draft. */
+function EvidenceTile({ id, name, type, editable, onRemove }: { id: string; name: string; type: 'photo' | 'audio'; editable: boolean; onRemove: (id: string) => void }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const [loading, setLoading] = useState(false);
+  async function view() {
+    setLoading(true);
+    const r = await teacherInspections.evidenceUrl(id);
+    setLoading(false);
+    if (!r.success || !r.data) return toast.error(r.error || t('common.error'));
+    await WebBrowser.openBrowserAsync(r.data.url);
+  }
+  return (
+    <Pressable onPress={view} className="border-info-soft dark:border-border bg-info-soft/40 size-[76px] items-center justify-center gap-1 rounded-2xl border p-1.5" accessibilityRole="link" accessibilityLabel={name}>
+      {loading ? <ActivityIndicator size="small" /> : <Icon as={type === 'photo' ? ImageIcon : Mic} className="text-brand dark:text-brand-secondary size-5" />}
+      <Text className="text-[10px]" numberOfLines={1}>
+        {name}
+      </Text>
+      {editable ? (
+        <Pressable onPress={() => onRemove(id)} hitSlop={8} className="bg-card absolute end-1 top-1 size-5 items-center justify-center rounded-full" accessibilityLabel={t('inspections.observe.btn_remove_evidence')}>
+          <Icon as={X} className="text-muted-foreground size-3" />
+        </Pressable>
+      ) : null}
+    </Pressable>
   );
 }

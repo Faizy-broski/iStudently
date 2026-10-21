@@ -12,9 +12,10 @@ import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { Initials } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { useAttendanceScope } from '@/features/admin/attendance';
 import { useCheckpoints } from '@/features/admin/entry-exit';
@@ -111,19 +112,18 @@ export default function EntryExitExceptions() {
           keyExtractor={(e) => e.id}
           renderItem={(e) => (
             <View className="flex-row items-center gap-3 px-4 py-3">
+              <Initials name={e.person_name || '?'} tone="warning" />
               <View className="flex-1 gap-0.5">
-                <Text className="font-medium">{e.person_name || `${e.person_id.slice(0, 12)}…`}</Text>
+                <Text className="text-sm font-semibold">{e.person_name || `${e.person_id.slice(0, 12)}…`}</Text>
                 <View className="flex-row flex-wrap items-center gap-2">
                   <Text className="text-muted-foreground text-xs">{e.checkpoint_name || `${e.checkpoint_id.slice(0, 8)}…`}</Text>
-                  <Badge variant="outline">
-                    <Text className="text-xs">{rt(e.record_type)}</Text>
-                  </Badge>
+                  <StatusChip label={rt(e.record_type)} tone="info" className="px-2 py-0.5" />
                 </View>
                 <Text className="text-xs">{`${e.from_date} → ${e.to_date}`}</Text>
                 {e.reason ? <Text className="text-muted-foreground text-xs">{e.reason}</Text> : null}
               </View>
-              <Pressable onPress={() => remove(e)} hitSlop={8}>
-                <Icon as={Trash2} className="text-muted-foreground size-4" />
+              <Pressable onPress={() => remove(e)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </View>
           )}

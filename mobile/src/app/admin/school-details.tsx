@@ -3,9 +3,10 @@ import { router, Stack } from 'expo-router';
 import { Building2, ChevronDown, ChevronUp, Compass, GraduationCap, Layers, ListPlus, Mail, MapPin, Pencil, Phone, Save, SlidersHorizontal, Target, ThumbsUp, Users, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, ScrollView, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { EmptyState } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -160,8 +161,8 @@ export default function SchoolDetails() {
     <View className="flex-row gap-3">
       <Icon as={icon} className="text-muted-foreground mt-0.5 size-4" />
       <View className="flex-1">
-        <Text className="text-muted-foreground text-xs font-semibold uppercase">{label}</Text>
-        {value ? <Text className="font-medium">{value}</Text> : <Text className="text-muted-foreground text-sm italic">{d('not_provided')}</Text>}
+        <Text className="text-muted-foreground text-sm font-semibold">{label}</Text>
+        {value ? <Text className="text-sm font-semibold">{value}</Text> : <Text className="text-muted-foreground text-sm italic">{d('not_provided')}</Text>}
         {extra ? <Text className="text-muted-foreground text-xs">{extra}</Text> : null}
       </View>
     </View>
@@ -192,8 +193,8 @@ export default function SchoolDetails() {
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <View className="flex-row flex-wrap items-center gap-2">
           <Text className="text-muted-foreground flex-1 text-sm">{d('manage_details', { name: campus.name })}</Text>
-          <View className={cn('rounded-full px-2.5 py-1', campus.status === 'active' ? 'bg-emerald-100 dark:bg-emerald-950' : 'bg-slate-100 dark:bg-slate-800')}>
-            <Text className={cn('text-xs font-semibold', campus.status === 'active' ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300')}>{campus.status === 'active' ? d('active') : d('inactive')}</Text>
+          <View className={cn('rounded-full px-2.5 py-1', campus.status === 'active' ? 'bg-success-soft ' : 'bg-muted ')}>
+            <Text className={cn('text-xs font-semibold', campus.status === 'active' ? 'text-success ' : 'text-muted-foreground ')}>{campus.status === 'active' ? d('active') : d('inactive')}</Text>
           </View>
         </View>
         <View className="flex-row flex-wrap gap-2">
@@ -238,8 +239,8 @@ export default function SchoolDetails() {
               <Icon as={Building2} className="text-primary size-5" />
               <Text className="text-primary flex-1 text-lg font-bold">{campus.name}</Text>
               {editing ? (
-                <View className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 dark:bg-amber-950">
-                  <Text className="text-xs text-amber-800 dark:text-amber-300">{t('app.sd_editing')}</Text>
+                <View className="rounded-full border border-warning bg-warning-soft px-2 py-0.5 ">
+                  <Text className="text-xs text-warning ">{t('app.sd_editing')}</Text>
                 </View>
               ) : null}
             </View>
@@ -279,7 +280,7 @@ export default function SchoolDetails() {
                   {info(Phone, d('phone'), campus.phone)}
                   {info(Mail, d('email'), campus.contact_email)}
                   <View className="gap-1">
-                    <Text className="text-muted-foreground text-xs font-semibold uppercase">{t('app.sd_location_on_map')}</Text>
+                    <Text className="text-muted-foreground text-sm font-semibold">{t('app.sd_location_on_map')}</Text>
                     {campus.latitude != null && campus.longitude != null ? (
                       <Button size="sm" variant="outline" className="self-start" onPress={() => Linking.openURL(`https://www.google.com/maps?q=${campus.latitude},${campus.longitude}`)}>
                         <Icon as={MapPin} className="text-foreground size-4" />
@@ -303,7 +304,7 @@ export default function SchoolDetails() {
                     </View>
                   ) : (
                     <View className="bg-muted/40 rounded-lg p-4">
-                      <Text className="text-muted-foreground mb-1 text-xs font-semibold uppercase">{d(`${k}_statement`)}</Text>
+                      <Text className="text-muted-foreground mb-1 text-sm font-semibold">{d(`${k}_statement`)}</Text>
                       <Text className="italic">“{form[k] || d(`${k}_default`)}”</Text>
                     </View>
                   );
@@ -315,7 +316,7 @@ export default function SchoolDetails() {
                 customBlock(activeTab.fields)
               ) : (
                 <View className="gap-1 py-4">
-                  <Text className="text-muted-foreground text-center text-sm">{t('app.sd_no_fields', { name: activeTab.name })}</Text>
+                  <EmptyState title={t('app.sd_no_fields', { name: activeTab.name })} />
                   <Text className="text-muted-foreground text-center text-xs">{t('app.sd_no_fields_hint')}</Text>
                 </View>
               )
@@ -324,11 +325,11 @@ export default function SchoolDetails() {
         </Card>
 
         <View className="flex-row flex-wrap gap-2">
-          <StatTile icon={Users} label={d('students')} value={s?.total_students ?? 0} sub={`${d('boys')}: ${s?.boys_count ?? 0}  ${d('girls')}: ${s?.girls_count ?? 0}`} tone="bg-blue-600" />
-          <StatTile icon={Users} label={d('parents')} value={s?.total_parents ?? 0} sub={d('total_registered_parents')} tone="bg-violet-600" />
-          <StatTile icon={GraduationCap} label={d('teachers')} value={s?.total_teachers ?? 0} sub={`${d('male')}: ${s?.male_teachers ?? 0}  ${d('female')}: ${s?.female_teachers ?? 0}`} tone="bg-emerald-600" />
-          <StatTile icon={Users} label={d('staff')} value={s?.total_staff ?? 0} sub={`${d('male')}: ${s?.male_staff ?? 0}  ${d('female')}: ${s?.female_staff ?? 0}`} tone="bg-amber-600" />
-          <StatTile icon={ThumbsUp} label={d('present_students_today')} value={s?.present_today ?? 0} sub={`${d('attendance_percentage')}: ${s ? parseFloat(s.attendance_percentage_today.toFixed(1)) : 0}%`} tone="bg-teal-600" />
+          <StatTile icon={Users} label={d('students')} value={s?.total_students ?? 0} sub={`${d('boys')}: ${s?.boys_count ?? 0}  ${d('girls')}: ${s?.girls_count ?? 0}`} tone="bg-brand" />
+          <StatTile icon={Users} label={d('parents')} value={s?.total_parents ?? 0} sub={d('total_registered_parents')} tone="bg-chart-6" />
+          <StatTile icon={GraduationCap} label={d('teachers')} value={s?.total_teachers ?? 0} sub={`${d('male')}: ${s?.male_teachers ?? 0}  ${d('female')}: ${s?.female_teachers ?? 0}`} tone="bg-success" />
+          <StatTile icon={Users} label={d('staff')} value={s?.total_staff ?? 0} sub={`${d('male')}: ${s?.male_staff ?? 0}  ${d('female')}: ${s?.female_staff ?? 0}`} tone="bg-warning" />
+          <StatTile icon={ThumbsUp} label={d('present_students_today')} value={s?.present_today ?? 0} sub={`${d('attendance_percentage')}: ${s ? parseFloat(s.attendance_percentage_today.toFixed(1)) : 0}%`} tone="bg-success" />
         </View>
       </ScrollView>
 
@@ -340,7 +341,7 @@ export default function SchoolDetails() {
           <Text className="text-muted-foreground text-xs">{d('tab_reorder_desc')}</Text>
           <View className="gap-1.5">
             {reorderList.map((x, i) => (
-              <View key={x.id} className="border-border flex-row items-center gap-2 rounded-md border px-3 py-2">
+              <View key={x.id} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border px-3 py-2">
                 <Text className="text-muted-foreground w-5 text-xs">{i + 1}</Text>
                 <Text className="flex-1 text-sm">{x.name}</Text>
                 <Button size="icon" variant="ghost" disabled={i === 0} onPress={() => move(i, -1)} accessibilityLabel={t('app.sd_move_up')}>

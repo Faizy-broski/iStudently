@@ -3,9 +3,10 @@ import { router, Stack } from 'expo-router';
 import { BookOpen, User, Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { BorrowerSearch, isLibraryKey, type Borrower } from '@/features/admin/library';
 import { adminLibrary } from '@/lib/api';
@@ -94,10 +96,8 @@ export default function LibraryQuickLoan() {
           <Card>
             <CardContent className="flex-row items-center gap-2 pt-4">
               <Icon as={User} className="text-primary size-4" />
-              <Text className="flex-1 font-medium">{borrower.name}</Text>
-              <View className="bg-secondary rounded-full px-2 py-0.5">
-                <Text className="text-xs">{type === 'student' ? t('app.lb_student') : t('app.lb_staff_other')}</Text>
-              </View>
+              <Text className="flex-1 text-sm font-semibold">{borrower.name}</Text>
+              <StatusChip label={String(type === 'student' ? t('app.lb_student') : t('app.lb_staff_other'))} tone="muted" className="px-2 py-0.5" />
               <Button size="sm" variant="ghost" onPress={() => setStep(1)}>
                 <Text>{t('app.lb_change')}</Text>
               </Button>
@@ -128,9 +128,7 @@ export default function LibraryQuickLoan() {
                         {d.reference ? ` • Ref: ${d.reference}` : ''}
                       </Text>
                     </View>
-                    <View className={cn('rounded-full px-2 py-0.5', ok ? 'bg-primary' : 'bg-destructive')}>
-                      <Text className="text-xs text-white">{t('app.lb_avail', { count: d.available_copies })}</Text>
-                    </View>
+                    <StatusChip label={t('app.lb_avail', { count: d.available_copies })} tone={ok ? 'info' : 'destructive'} />
                   </Pressable>
                 </View>
               );
@@ -145,7 +143,7 @@ export default function LibraryQuickLoan() {
               <CardContent className="flex-row items-center gap-2 pt-4">
                 <Icon as={BookOpen} className="text-primary size-4" />
                 <View className="flex-1">
-                  <Text className="font-medium">{doc.title}</Text>
+                  <Text className="text-sm font-semibold">{doc.title}</Text>
                   <Text className="text-muted-foreground text-xs">{doc.author}</Text>
                 </View>
                 <Button size="sm" variant="ghost" onPress={() => setStep(2)}>

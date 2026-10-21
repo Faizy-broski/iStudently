@@ -3,11 +3,12 @@ import { Stack } from 'expo-router';
 import { Save, SlidersHorizontal } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -167,12 +168,12 @@ export default function GeneratorSettings() {
             {constraintsRes.isLoading ? (
               <LoadingList rows={3} />
             ) : rows.length === 0 ? (
-              <Text className="text-muted-foreground py-4 text-center text-sm">{g('no_teachers')}</Text>
+              <EmptyState title={g('no_teachers')} />
             ) : (
               rows.map((r, i) => (
                 <View key={r.teacherId} className="gap-2">
                   {i > 0 ? <Separator /> : null}
-                  <Text className="font-medium">
+                  <Text className="text-sm font-semibold">
                     {r.name}
                     {savingTeacher === r.teacherId ? <Text className="text-muted-foreground text-xs"> · {g('saving')}</Text> : null}
                   </Text>

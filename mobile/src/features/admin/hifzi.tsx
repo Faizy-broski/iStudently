@@ -62,18 +62,18 @@ export function NoRoster({ circleId }: { circleId: string }) {
 }
 
 const BAND_COLORS: Record<HifziHeatmapCell['band'], string> = {
-  mastered: 'bg-green-700 dark:bg-green-600',
-  strong: 'bg-green-400 dark:bg-green-500',
-  review_due: 'bg-yellow-400 dark:bg-yellow-500',
-  weak: 'bg-orange-400 dark:bg-orange-500',
-  critical: 'bg-red-500 dark:bg-red-600',
+  mastered: 'bg-success ',
+  strong: 'bg-success ',
+  review_due: 'bg-warning ',
+  weak: 'bg-warning ',
+  critical: 'bg-destructive ',
 };
 const BANDS = ['mastered', 'strong', 'review_due', 'weak', 'critical'] as const;
 
 /** Memorization strength per unit, one row per juz (web: MushafHeatmap). */
 export function MushafHeatmap({ cells }: { cells: HifziHeatmapCell[] }) {
   const { h } = useHz('heatmap');
-  if (!cells.length) return <Text className="text-muted-foreground py-8 text-center text-sm">{h('empty')}</Text>;
+  if (!cells.length) return <EmptyState title={h('empty')} />;
   const byJuz = new Map<number, HifziHeatmapCell[]>();
   for (const c of cells) byJuz.set(c.juzNumber, [...(byJuz.get(c.juzNumber) ?? []), c]);
   return (
@@ -104,7 +104,7 @@ export function MushafHeatmap({ cells }: { cells: HifziHeatmapCell[] }) {
   );
 }
 
-const completionColor = (p: number) => (p >= 85 ? 'bg-green-500' : p >= 65 ? 'bg-blue-500' : p >= 40 ? 'bg-amber-500' : 'bg-red-500');
+const completionColor = (p: number) => (p >= 85 ? 'bg-success' : p >= 65 ? 'bg-brand' : p >= 40 ? 'bg-warning' : 'bg-destructive');
 
 /** One completion bar per circle (web: SyllabusCompletionHeatmap). */
 export function CompletionBars({ rows, emptyLabel }: { rows: { label: string; completionPercent: number; studentCount: number }[]; emptyLabel: string }) {

@@ -18,7 +18,7 @@ export default function SuperadminLayout() {
     return () => setDatePattern(null);
   }, [userId]);
   return (
-    <Stack>
+    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="school/[id]" options={{ title: '' }} />
       <Stack.Screen name="school/modules" options={{ title: '' }} />

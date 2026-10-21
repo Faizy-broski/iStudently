@@ -5,7 +5,8 @@ import { Code2, ExternalLink, FileText, Image as ImageIcon, Link2 } from 'lucide
 import { Pressable, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { Card, CardContent } from '@/components/ui/card';
+import { IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
@@ -21,9 +22,9 @@ export interface CustomPage {
 
 function Title({ icon, title }: { icon: typeof Link2; title: string }) {
   return (
-    <View className="flex-row items-center gap-2 p-3">
-      <Icon as={icon} className="text-primary size-4" />
-      <Text className="flex-1 text-sm font-medium">{title}</Text>
+    <View className="flex-row items-center gap-3 p-3">
+      <IconTile icon={icon} size={32} />
+      <Text className="flex-1 text-sm font-semibold">{title}</Text>
     </View>
   );
 }
@@ -32,43 +33,41 @@ export function PageCard({ page }: { page: CustomPage }) {
   if (page.page_type === 'url' && page.url) {
     const url = page.url;
     return (
-      <Pressable onPress={() => WebBrowser.openBrowserAsync(url)} accessibilityRole="link">
-        <Card>
-          <CardContent className="flex-row items-center gap-3 p-4">
-            <Icon as={Link2} className="text-primary size-5" />
-            <Text className="flex-1 text-sm font-medium">{page.title}</Text>
-            <Icon as={ExternalLink} className="text-muted-foreground size-4" />
-          </CardContent>
-        </Card>
+      <Pressable onPress={() => WebBrowser.openBrowserAsync(url)} accessibilityRole="link" className="active:opacity-80">
+        <Panel className="flex-row items-center gap-3 p-3">
+          <IconTile icon={Link2} size={40} />
+          <Text className="flex-1 text-sm font-semibold">{page.title}</Text>
+          <Icon as={ExternalLink} className="text-muted-foreground size-4" />
+        </Panel>
       </Pressable>
     );
   }
   if (page.page_type === 'embed' && page.url) {
     return (
-      <Card className="overflow-hidden">
+      <Panel className="overflow-hidden">
         <Title icon={Code2} title={page.title} />
         <View style={{ height: 480 }}>
           <WebView source={{ uri: page.url }} style={{ flex: 1 }} />
         </View>
-      </Card>
+      </Panel>
     );
   }
   if (page.page_type === 'text') {
     return (
-      <Card>
+      <Panel>
         <Title icon={FileText} title={page.title} />
-        <CardContent className="pt-0">
+        <View className="px-4 pb-4">
           <Text className="text-sm">{htmlToText(page.content ?? '')}</Text>
-        </CardContent>
-      </Card>
+        </View>
+      </Panel>
     );
   }
   if (page.page_type === 'image' && page.image_url) {
     return (
-      <Card className="overflow-hidden">
+      <Panel className="overflow-hidden">
         <Title icon={ImageIcon} title={page.title} />
         <Image source={{ uri: page.image_url }} style={{ width: '100%', aspectRatio: 4 / 3 }} contentFit="contain" accessibilityLabel={page.title} />
-      </Card>
+      </Panel>
     );
   }
   return null;

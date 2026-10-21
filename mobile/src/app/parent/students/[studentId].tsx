@@ -1,12 +1,11 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Calendar, GraduationCap, Mail, MapPin, Phone, User, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, RefreshControl, ScrollView, View } from 'react-native';
 
-import { PersonAvatar } from '@/components/app/person-avatar';
+import { PersonHero } from '@/components/app/layout';
+import { InfoRow, Panel } from '@/components/app/panel';
 import { EmptyState, LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { CustomFieldValues } from '@/features/admin/custom-field-values';
@@ -36,47 +35,36 @@ export default function ParentStudentDetail() {
     <>
       <Stack.Screen options={{ title: name }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([info.mutate(), defs.mutate()])} />}>
-        <Card>
-          <CardContent className="gap-4 p-4">
-            <View className="flex-row items-start gap-4">
-              <PersonAvatar url={student.profile_photo_url} name={name} size={64} />
-              <View className="flex-1 gap-1.5">
-                <Text className="text-xl font-bold">{name}</Text>
-                <View className="flex-row flex-wrap gap-1.5">
-                  <Badge variant="secondary" className="flex-row items-center gap-1">
-                    <Icon as={GraduationCap} className="text-foreground size-3" />
-                    <Text className="text-xs">{`${student.grade_level} — ${student.section}`}</Text>
-                  </Badge>
-                  {student.campus_name ? (
-                    <Badge variant="outline" className="flex-row items-center gap-1">
-                      <Icon as={MapPin} className="text-foreground size-3" />
-                      <Text className="text-xs">{student.campus_name}</Text>
-                    </Badge>
-                  ) : null}
-                </View>
-                <Text className="text-muted-foreground text-sm">{`${k('id')}: ${student.student_number}`}</Text>
-              </View>
-            </View>
-            {s?.email ? <Tile icon={Mail} tone="text-blue-600" label={k('email')} value={s.email} onPress={() => Linking.openURL(`mailto:${s.email}`)} /> : null}
-            {s?.phone ? <Tile icon={Phone} tone="text-green-600" label={k('phone')} value={s.phone} onPress={() => Linking.openURL(`tel:${s.phone}`)} /> : null}
-            {s?.father_name ? <Tile icon={User} tone="text-purple-600" label={k('father')} value={s.father_name} /> : null}
-            {dob ? <Tile icon={Calendar} tone="text-orange-600" label={k('dob')} value={dob} /> : null}
-          </CardContent>
-        </Card>
+        <PersonHero
+          name={name}
+          photo={student.profile_photo_url}
+          subtitle={`${k('id')}: ${student.student_number}`}
+          chips={
+            <>
+              <HeroChip icon={GraduationCap} label={`${student.grade_level} — ${student.section}`} />
+              {student.campus_name ? <HeroChip icon={MapPin} label={student.campus_name} /> : null}
+            </>
+          }
+        />
+        {s?.email || s?.phone || s?.father_name || dob ? (
+          <Panel>
+            <InfoRow icon={Mail} label={k('email')} value={s?.email} onPress={s?.email ? () => Linking.openURL(`mailto:${s.email}`) : undefined} />
+            <InfoRow icon={Phone} label={k('phone')} value={s?.phone} onPress={s?.phone ? () => Linking.openURL(`tel:${s.phone}`) : undefined} />
+            <InfoRow icon={User} label={k('father')} value={s?.father_name} />
+            <InfoRow icon={Calendar} label={k('dob')} value={dob} last />
+          </Panel>
+        ) : null}
         <CustomFieldValues defs={defs.data} values={s?.custom_fields} hideEmpty />
       </ScrollView>
     </>
   );
 }
 
-function Tile({ icon, tone, label, value, onPress }: { icon: LucideIcon; tone: string; label: string; value: string; onPress?: () => void }) {
+function HeroChip({ icon, label }: { icon: LucideIcon; label: string }) {
   return (
-    <Pressable disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'link' : undefined} className="bg-muted/50 flex-row items-center gap-3 rounded-lg p-3">
-      <Icon as={icon} className={`size-4 ${tone}`} />
-      <View className="flex-1">
-        <Text className="text-muted-foreground text-xs">{label}</Text>
-        <Text className={onPress ? 'text-sm font-medium text-blue-600' : 'text-sm font-medium'}>{value}</Text>
-      </View>
-    </Pressable>
+    <View className="flex-row items-center gap-1 rounded-full bg-white/15 px-2.5 py-1">
+      <Icon as={icon} className="size-3 text-white" />
+      <Text className="text-[11px] font-semibold text-white">{label}</Text>
+    </View>
   );
 }

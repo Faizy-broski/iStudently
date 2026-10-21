@@ -2,9 +2,10 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { AlertTriangle, BookOpen, CheckCircle } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { LoadingList } from '@/components/app/states';
@@ -56,7 +57,7 @@ export default function LibraryIssue() {
   if (book.isLoading) return <LoadingList />;
   const b = book.data;
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: t('app.lb_issue_book') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{t('app.lb_issue_desc')}</Text>
@@ -92,15 +93,15 @@ export default function LibraryIssue() {
           elig.isLoading ? (
             <Text className="text-muted-foreground text-sm">{t('app.lb_checking_eligibility')}</Text>
           ) : e ? (
-            <View className={`gap-1 rounded-md border p-3 ${e.eligible ? 'border-green-200 bg-green-50 dark:bg-green-950/30' : 'border-red-200 bg-red-50 dark:bg-red-950/30'}`}>
+            <View className={`gap-1 rounded-md border p-3 ${e.eligible ? 'border-success/30 bg-success-soft ' : 'border-destructive/30 bg-destructive-soft '}`}>
               <View className="flex-row items-center gap-2">
-                <Icon as={e.eligible ? CheckCircle : AlertTriangle} className={`size-4 ${e.eligible ? 'text-green-700' : 'text-red-700'}`} />
-                <Text className={`flex-1 text-sm font-medium ${e.eligible ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{e.message}</Text>
+                <Icon as={e.eligible ? CheckCircle : AlertTriangle} className={`size-4 ${e.eligible ? 'text-success' : 'text-destructive'}`} />
+                <Text className={`flex-1 text-sm font-medium ${e.eligible ? 'text-success ' : 'text-destructive '}`}>{e.message}</Text>
               </View>
               {e.active_loans !== undefined ? <Text className="text-xs">{t('app.lb_active_loans', { count: e.active_loans, max: e.max_books || 3 })}</Text> : null}
               {e.unpaid_fines ? <Text className="text-xs">{t('app.lb_unpaid_fines', { amount: money(e.unpaid_fines) })}</Text> : null}
               {(e.warnings ?? []).map((w) => (
-                <Text key={w} className="text-xs text-amber-700">• {w}</Text>
+                <Text key={w} className="text-xs text-warning">• {w}</Text>
               ))}
             </View>
           ) : null

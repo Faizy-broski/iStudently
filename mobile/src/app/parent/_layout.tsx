@@ -23,7 +23,7 @@ export default function ParentLayout() {
       <ParentChildProvider>
         <ChildAcademic>
           <View style={{ flex: 1 }}>
-            <Stack>
+            <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ title: '' }} />
               <Stack.Screen name="academic-overview" options={{ title: '' }} />

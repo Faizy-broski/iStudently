@@ -1,13 +1,13 @@
 import type { GrievanceView } from '@studently/api-client';
 import { router, type Href } from 'expo-router';
-import { PlusCircle } from 'lucide-react-native';
+import { MessageSquareWarning, PlusCircle } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
 import { FilterChips } from '@/components/app/filter-chips';
-import { Picker } from '@/components/app/picker';
+import { IconTile } from '@/components/app/layout';
 import { SearchBar } from '@/components/app/search-bar';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -34,7 +34,7 @@ export function GrievanceListScreen({ isAdmin, detailHref, submitHref }: { isAdm
         header={
           <View className="gap-3 p-4">
             <Text variant="muted" className="text-sm">{l('complaint_count', { count: total })}</Text>
-            <Button onPress={() => router.push(submitHref)}>
+            <Button size="sm" className="self-start" onPress={() => router.push(submitHref)}>
               <Icon as={PlusCircle} className="text-primary-foreground size-4" />
               <Text>{l('submit_complaint')}</Text>
             </Button>
@@ -50,7 +50,7 @@ export function GrievanceListScreen({ isAdmin, detailHref, submitHref }: { isAdm
               />
             ) : null}
             <SearchBar value={search} onChangeText={setSearch} placeholder={l('search_placeholder')} />
-            <Picker value={status || '__all__'} onChange={(v) => setStatus(v === '__all__' ? '' : v)} options={[{ value: '__all__', label: l('all_statuses') }, ...STATUS_KEYS.map((s) => ({ value: s, label: t(`grievances.status.${s}`) }))]} />
+            <FilterChips value={status || '__all__'} onChange={(v) => setStatus(v === '__all__' ? '' : v)} options={[{ value: '__all__', label: l('all_statuses') }, ...STATUS_KEYS.map((s) => ({ value: s, label: t(`grievances.status.${s}`) }))]} />
           </View>
         }
         items={list.data}
@@ -61,20 +61,21 @@ export function GrievanceListScreen({ isAdmin, detailHref, submitHref }: { isAdm
         emptyTitle={l('no_complaints')}
         keyExtractor={(g) => g.id}
         renderItem={(g) => (
-          <Pressable onPress={() => router.push(detailHref(g.id))} className="gap-1.5 px-4 py-3">
-            <View className="flex-row flex-wrap items-center gap-2">
-              <Text className="text-muted-foreground font-mono text-xs">{g.complaint_number}</Text>
+          <Pressable onPress={() => router.push(detailHref(g.id))} className="gap-2 px-4 py-3 active:opacity-70">
+            <View className="flex-row flex-wrap items-center gap-1.5">
+              <Text className="text-muted-foreground font-mono text-[11px]">{g.complaint_number}</Text>
               <PriorityPill priority={g.priority} />
               {g.is_confidential ? <OutlinePill label={l('confidential')} /> : null}
               {g.is_anonymous ? <OutlinePill label={l('anonymous')} /> : null}
               {isOverdue(g) ? <OverduePill /> : null}
             </View>
-            <View className="flex-row items-start gap-2">
-              <View className="flex-1">
-                <Text className="font-medium" numberOfLines={2}>
+            <View className="flex-row items-center gap-3">
+              <IconTile icon={MessageSquareWarning} size={40} />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-sm font-semibold" numberOfLines={2}>
                   {g.title}
                 </Text>
-                <Text className="text-muted-foreground text-sm" numberOfLines={1}>
+                <Text className="text-muted-foreground text-xs" numberOfLines={1}>
                   {`${g.category?.name || l('uncategorized')} • ${new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(g.submitted_at))}`}
                 </Text>
               </View>

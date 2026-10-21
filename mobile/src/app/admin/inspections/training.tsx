@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
+import { IconTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminInspections } from '@/lib/api';
@@ -65,9 +66,7 @@ export default function TrainingPrescriptions() {
           keyExtractor={(x) => x.id}
           renderItem={(x) => (
             <View className="flex-row items-start gap-3 px-4 py-3">
-              <View className="size-9 items-center justify-center rounded-full bg-[#022172]/10">
-                <Icon as={GraduationCap} className="size-4 text-[#022172]" />
-              </View>
+              <IconTile icon={GraduationCap} round />
               <View className="flex-1 gap-1">
                 <Text className="text-sm font-medium">{x.teacher ? `${x.teacher.first_name} ${x.teacher.last_name}` : ''}</Text>
                 <View className="flex-row flex-wrap gap-1.5">

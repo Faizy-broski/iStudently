@@ -3,13 +3,13 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, ArrowRight, Calendar, CheckCircle, Info, Pencil, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
-import { StatCard } from '@/components/app/stat-card';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +18,8 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
+import { StatTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { CheckRow } from '@/features/admin/attendance';
 import { plainMessage } from '@/i18n/plain';
@@ -84,10 +86,10 @@ export default function AcademicYears() {
       <Stack.Screen options={{ title: y('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{y('subtitle')}</Text>
-        <View className="flex-row gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 dark:bg-blue-950/30">
-          <Icon as={Info} className="size-4 text-blue-600" />
-          <Text className="flex-1 text-sm text-blue-800 dark:text-blue-200">
-            <Text className="text-sm font-bold text-blue-800 dark:text-blue-200">{y('alert_rollover_title')} </Text>
+        <View className="flex-row gap-2 rounded-xl border border-info-soft bg-info-soft p-3">
+          <Icon as={Info} className="size-4 text-brand dark:text-brand-secondary" />
+          <Text className="flex-1 text-sm text-brand dark:text-brand-secondary ">
+            <Text className="text-sm font-bold text-brand dark:text-brand-secondary ">{y('alert_rollover_title')} </Text>
             {plainMessage('school.academic_years.alert_rollover_desc')}
           </Text>
         </View>
@@ -97,7 +99,7 @@ export default function AcademicYears() {
             <CardContent className="flex-row items-center gap-3 pt-4">
               <View className="flex-1">
                 <View className="flex-row items-center gap-2">
-                  <Icon as={CheckCircle} className="size-5 text-green-600" />
+                  <Icon as={CheckCircle} className="size-5 text-success" />
                   <Text className="text-muted-foreground text-sm font-medium">{y('label_current_year')}</Text>
                 </View>
                 <Text className="text-primary text-2xl font-bold">{current.name}</Text>
@@ -109,19 +111,19 @@ export default function AcademicYears() {
             </CardContent>
           </Card>
         ) : (
-          <View className="flex-row gap-3 rounded-lg border-2 border-dashed border-orange-300 bg-orange-50 p-4 dark:bg-orange-950/20">
-            <Icon as={AlertTriangle} className="size-6 text-orange-500" />
+          <View className="flex-row gap-3 rounded-lg border-2 border-dashed border-warning bg-warning-soft p-4 ">
+            <Icon as={AlertTriangle} className="size-6 text-warning" />
             <View className="flex-1">
-              <Text className="font-semibold text-orange-700 dark:text-orange-300">{y('label_no_current')}</Text>
-              <Text className="text-sm text-orange-600 dark:text-orange-400">{plainMessage('school.academic_years.desc_no_current')}</Text>
+              <Text className="font-semibold text-warning ">{y('label_no_current')}</Text>
+              <Text className="text-sm text-warning ">{plainMessage('school.academic_years.desc_no_current')}</Text>
             </View>
           </View>
         )}
 
-        <Card className={cn('border-2', next ? 'border-green-400' : 'border-muted border-dashed')}>
+        <Card className={cn('border-2', next ? 'border-success' : 'border-muted border-dashed')}>
           <CardContent className="gap-2 pt-4">
             <View className="flex-row items-center gap-2">
-              <Icon as={ArrowRight} className="size-5 text-green-600 rtl:rotate-180" />
+              <Icon flipRtl as={ArrowRight} className="size-5 text-success" />
               <Text className="text-muted-foreground text-sm font-medium">{y('label_next_year')}</Text>
             </View>
             <Picker
@@ -134,15 +136,15 @@ export default function AcademicYears() {
               placeholder={y('placeholder_select_next')}
               options={[{ value: '', label: y('placeholder_select_next') }, ...eligibleNext.map((x) => ({ value: x.id, label: x.name }))]}
             />
-            {next && !explicitNext ? <Text className="text-xs text-amber-600">{y('auto_detected', { name: next.name })}</Text> : null}
-            {!next && eligibleNext.length === 0 ? <Text className="text-xs text-red-500">{y('no_eligible')}</Text> : null}
+            {next && !explicitNext ? <Text className="text-xs text-warning">{y('auto_detected', { name: next.name })}</Text> : null}
+            {!next && eligibleNext.length === 0 ? <Text className="text-xs text-destructive">{y('no_eligible')}</Text> : null}
           </CardContent>
         </Card>
 
         <View className="flex-row gap-2">
-          <StatCard icon={Calendar} label={y('stat_total')} value={String(years.length)} />
-          <StatCard icon={CheckCircle} label={y('stat_active')} value={String(years.filter((x) => x.is_active).length)} />
-          <StatCard icon={Calendar} label={y('stat_past')} value={String(years.filter((x) => !x.is_active).length)} tone="warning" />
+          <StatTile icon={Calendar} label={y('stat_total')} value={String(years.length)} />
+          <StatTile icon={CheckCircle} label={y('stat_active')} value={String(years.filter((x) => x.is_active).length)} />
+          <StatTile icon={Calendar} label={y('stat_past')} value={String(years.filter((x) => !x.is_active).length)} tone="warning" />
         </View>
 
         <Card>
@@ -157,7 +159,7 @@ export default function AcademicYears() {
             {res.isLoading ? (
               <LoadingList rows={3} />
             ) : !years.length ? (
-              <Text className="text-muted-foreground py-6 text-center">{y('no_years_found')}</Text>
+              <EmptyState title={y('no_years_found')} />
             ) : (
               years.map((yr, i) => {
                 const months = Math.round((new Date(yr.end_date).getTime() - new Date(yr.start_date).getTime()) / (1000 * 60 * 60 * 24 * 30));
@@ -166,15 +168,13 @@ export default function AcademicYears() {
                     {i > 0 ? <Separator /> : null}
                     <View className="gap-1.5 py-2.5">
                       <View className="flex-row flex-wrap items-center gap-2">
-                        <Text className="flex-1 font-medium">{yr.name}</Text>
+                        <Text className="flex-1 text-sm font-semibold">{yr.name}</Text>
                         {yr.is_current ? (
-                          <View className="rounded-full bg-green-600 px-2 py-0.5">
+                          <View className="rounded-full bg-success px-2 py-0.5">
                             <Text className="text-xs text-white">{y('status_current')}</Text>
                           </View>
                         ) : null}
-                        <View className={cn('rounded-full px-2 py-0.5', yr.is_active ? 'bg-primary' : 'bg-secondary')}>
-                          <Text className={cn('text-xs', yr.is_active ? 'text-primary-foreground' : 'text-secondary-foreground')}>{yr.is_active ? y('status_active') : y('status_inactive')}</Text>
-                        </View>
+                        <StatusChip label={yr.is_active ? y('status_active') : y('status_inactive')} tone={yr.is_active ? 'info' : 'muted'} />
                       </View>
                       <Text className="text-muted-foreground text-xs">
                         {day(yr.start_date)} – {day(yr.end_date)} · {y('duration_months', { count: months })}
@@ -193,9 +193,9 @@ export default function AcademicYears() {
                             <Text>{y('btn_set_current')}</Text>
                           </Button>
                         ) : null}
-                        <Button size="icon" variant="ghost" onPress={() => openForm(yr)} accessibilityLabel={t('common.edit')}>
-                          <Icon as={Pencil} className="text-foreground size-4" />
-                        </Button>
+                        <Pressable onPress={() => openForm(yr)} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                          <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                        </Pressable>
                       </View>
                     </View>
                   </View>
@@ -213,9 +213,9 @@ export default function AcademicYears() {
           </DialogHeader>
           <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
             {!editing ? (
-              <View className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:bg-amber-950/30">
-                <Text className="text-sm text-amber-800 dark:text-amber-200">
-                  <Text className="text-sm font-bold text-amber-800 dark:text-amber-200">{y('alert_dialog_title')} </Text>
+              <View className="rounded-xl border border-warning/30 bg-warning-soft p-3">
+                <Text className="text-sm text-warning ">
+                  <Text className="text-sm font-bold text-warning ">{y('alert_dialog_title')} </Text>
                   {plainMessage('school.academic_years.alert_dialog_desc')}
                 </Text>
               </View>

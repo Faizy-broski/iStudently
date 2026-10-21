@@ -3,11 +3,12 @@ import { Stack } from 'expo-router';
 import { Check, Minus, Plus, Settings, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -58,7 +59,7 @@ export default function Plugins() {
         {settings.isLoading ? (
           <LoadingList />
         ) : list.length === 0 ? (
-          <Text className="text-muted-foreground py-10 text-center">{p('no_results')}</Text>
+          <EmptyState title={p('no_results')} />
         ) : (
           <Card>
             {list.map((plugin, i) => {
@@ -74,7 +75,7 @@ export default function Plugins() {
                           {p(`${plugin.id}_desc`)}
                         </Text>
                       </View>
-                      <Icon as={on ? Check : X} className={on ? 'size-4 text-green-600' : 'size-4 text-red-500'} />
+                      <Icon as={on ? Check : X} className={on ? 'size-4 text-success' : 'size-4 text-destructive'} />
                     </View>
                     <View className="flex-row items-center gap-2">
                       <Button size="sm" variant={on ? 'outline' : 'default'} disabled={toggling === plugin.id} onPress={() => toggle(plugin.id)}>

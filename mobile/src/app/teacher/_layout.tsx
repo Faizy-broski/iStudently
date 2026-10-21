@@ -21,7 +21,7 @@ export default function TeacherLayout() {
     <CampusProvider>
       <CampusAcademic>
         <View style={{ flex: 1 }}>
-          <Stack>
+          <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="module" options={{ title: '' }} />
             <Stack.Screen name="grades/import-grades" options={{ title: '' }} />

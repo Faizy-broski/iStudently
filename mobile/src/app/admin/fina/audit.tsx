@@ -1,10 +1,11 @@
 import { Stack } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
@@ -60,7 +61,7 @@ export default function FinaAudit() {
         ) : res.error ? (
           <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : !rows.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{f('audit_empty')}</Text>
+          <EmptyState title={f('audit_empty')} />
         ) : (
           <Card>
             <CardContent className="py-1">

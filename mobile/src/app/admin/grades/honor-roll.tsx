@@ -1,21 +1,23 @@
 import type { HonorRollStudent } from '@studently/api-client';
 import { Image } from 'expo-image';
 import { Stack } from 'expo-router';
-import { Check, FileDown, ImagePlus, Plus, Printer, X } from 'lucide-react-native';
+import { FileDown, ImagePlus, Medal, Plus, Printer, Trophy, X } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
+import { CheckMark, FormSection, IconTile, Initials, RowItem, Section, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
+import { Segmented } from '@/components/app/segmented';
+import { StatusChip } from '@/components/app/status-chip';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
-import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { useAcademicYears, useMarkingPeriods } from '@/features/admin/grades';
 import { usePrintContext } from '@/features/admin/print-context';
@@ -24,7 +26,6 @@ import { adminGrades } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { buildPrintHtml, escapeHtml, printHtml, sharePdf } from '@/lib/print';
 import { pickImageDataUri } from '@/lib/upload';
-import { cn } from '@/lib/utils';
 
 type Level = 'all' | HonorRollStudent['honor_level'];
 const ALL = '__all__';
@@ -45,30 +46,28 @@ const TOKEN_CATEGORIES: Record<string, string[]> = {
 };
 
 const DEFAULT_CERTIFICATE_HTML = `<div style="text-align: center; font-family: 'Times New Roman', serif; padding: 40px;">
-  <h1 style="font-size: 36px; color: #022172; margin-bottom: 10px;">Certificate of Achievement</h1>
-  <p style="font-size: 18px; color: #666; margin-bottom: 30px;">__SCHOOL_NAME__</p>
+  <h1 style="font-size: 36px; color: ${colors.brand}; margin-bottom: 10px;">Certificate of Achievement</h1>
+  <p style="font-size: 18px; color: ${colors.printMuted}; margin-bottom: 30px;">__SCHOOL_NAME__</p>
   <p style="font-size: 16px; margin-bottom: 10px;">This is to certify that</p>
-  <h2 style="font-size: 28px; color: #0369a1; margin: 20px 0;">__FULL_NAME__</h2>
+  <h2 style="font-size: 28px; color: ${colors.brandSecondary}; margin: 20px 0;">__FULL_NAME__</h2>
   <p style="font-size: 16px; margin-bottom: 5px;">of Grade __GRADE_LEVEL__ — Section __SECTION_NAME__</p>
   <p style="font-size: 16px; margin-bottom: 20px;">has been placed on the</p>
-  <h3 style="font-size: 24px; color: #022172; margin: 15px 0;">__HONOR_LEVEL__</h3>
+  <h3 style="font-size: 24px; color: ${colors.brand}; margin: 15px 0;">__HONOR_LEVEL__</h3>
   <p style="font-size: 16px; margin-bottom: 30px;">for the Academic Year __ACADEMIC_YEAR__</p>
   <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 60px;">
     <div style="text-align: center;">
-      <div style="border-top: 1px solid #333; width: 200px; margin-top: 40px; padding-top: 5px;">Principal</div>
+      <div style="border-top: 1px solid ${colors.printText}; width: 200px; margin-top: 40px; padding-top: 5px;">Principal</div>
     </div>
     <div style="text-align: center;">
       <p style="margin-bottom: 0;">__CURRENT_DATE__</p>
-      <div style="border-top: 1px solid #333; width: 200px; margin-top: 5px; padding-top: 5px;">Date</div>
+      <div style="border-top: 1px solid ${colors.printText}; width: 200px; margin-top: 5px; padding-top: 5px;">Date</div>
     </div>
   </div>
 </div>`;
 
 const CERT_CSS = `@page{size:landscape;margin:0}body{margin:0;padding:0}.certificate-page{width:100vw;height:100vh;page-break-after:always;display:flex;align-items:center;justify-content:center;position:relative;box-sizing:border-box}.certificate-page:last-child{page-break-after:auto}.certificate-frame{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;object-fit:contain;z-index:0}.certificate-content{position:relative;z-index:1;width:80%;max-width:900px}`;
 
-function Box({ on }: { on: boolean }) {
-  return <View className={cn('size-5 items-center justify-center rounded border', on ? 'border-primary bg-primary' : 'border-border')}>{on ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>;
-}
+const Box = CheckMark;
 
 /** Honor roll list (PDF) and printable certificates with substitution fields and a frame image (web: /admin/grades/honor-roll). */
 export default function HonorRoll() {
@@ -108,8 +107,8 @@ export default function HonorRoll() {
     setBusy(true);
     try {
       const body = `<div class="record-header"><span>${escapeHtml(s('title'))}</span><span class="rh-right">${escapeHtml(mpTitle)}</span></div>
-        <table style="width:100%;border-collapse:collapse;margin-top:12px"><tr>${[c('student'), c('grade_level_header'), s('honor_level')].map((x) => `<th style="text-align:start;padding:6px 4px;border-bottom:2px solid #111;font-size:11px">${escapeHtml(x)}</th>`).join('')}</tr>
-        ${rows.map((x) => `<tr><td style="padding:5px 4px;border-bottom:1px solid #eee">${escapeHtml(`${x.first_name} ${x.last_name}`)}</td><td style="padding:5px 4px;border-bottom:1px solid #eee">${escapeHtml([x.grade_level, x.section].filter(Boolean).join(' · '))}</td><td style="padding:5px 4px;border-bottom:1px solid #eee">${escapeHtml(levelLabel(x.honor_level))}</td></tr>`).join('')}</table>`;
+        <table style="width:100%;border-collapse:collapse;margin-top:12px"><tr>${[c('student'), c('grade_level_header'), s('honor_level')].map((x) => `<th style="text-align:start;padding:6px 4px;border-bottom:2px solid ${colors.printText};font-size:11px">${escapeHtml(x)}</th>`).join('')}</tr>
+        ${rows.map((x) => `<tr><td style="padding:5px 4px;border-bottom:1px solid ${colors.printBorder}">${escapeHtml(`${x.first_name} ${x.last_name}`)}</td><td style="padding:5px 4px;border-bottom:1px solid ${colors.printBorder}">${escapeHtml([x.grade_level, x.section].filter(Boolean).join(' · '))}</td><td style="padding:5px 4px;border-bottom:1px solid ${colors.printBorder}">${escapeHtml(levelLabel(x.honor_level))}</td></tr>`).join('')}</table>`;
       await sharePdf(buildPrintHtml({ title: s('title'), pages: [body], school: print.school, layout: print.layout, withHeader: true, reportLabel: s('title') }), `honor-roll-${mpTitle || 'list'}.pdf`);
     } catch (e) {
       toast.error(e instanceof Error && e.message === 'print-unavailable' ? t('app.pr_rebuild') : t('app.error_title'));
@@ -168,8 +167,8 @@ export default function HonorRoll() {
   const allSelected = all.length > 0 && selected.size === all.length;
 
   const filters = (
-    <View className="gap-2">
-      <FilterChips
+    <Panel className="gap-3 p-4">
+      <Segmented
         value={mode}
         onChange={setMode}
         options={[
@@ -179,8 +178,9 @@ export default function HonorRoll() {
       />
       <Picker value={markingPeriod} onChange={setMp} options={mps.options} placeholder={s('select_mp')} />
       <Picker value={yearId} onChange={setAy} options={years.list.map((y) => ({ value: y.id, label: y.name }))} placeholder={h('academic_year')} />
-    </View>
+    </Panel>
   );
+  const highCount = rows.filter((x) => x.honor_level === 'high_honor').length;
 
   return (
     <View className="bg-background flex-1">
@@ -194,6 +194,10 @@ export default function HonorRoll() {
           <ErrorState message={list.error.message} onRetry={() => list.mutate()} />
         ) : mode === 'list' ? (
           <>
+            <StatTiles>
+              <StatTile icon={Trophy} tone="warning" label={levelLabel('high_honor')} value={String(highCount)} />
+              <StatTile icon={Medal} label={levelLabel('honor')} value={String(rows.length - highCount)} />
+            </StatTiles>
             <FilterChips<Level>
               value={level}
               onChange={setLevel}
@@ -203,9 +207,9 @@ export default function HonorRoll() {
                 { value: 'honor', label: levelLabel('honor') },
               ]}
             />
-            {gradeNames.length > 1 ? <Picker value={grade} onChange={setGrade} options={[{ value: ALL, label: c('all_grade_levels') }, ...gradeNames.map((g) => ({ value: g, label: g }))]} /> : null}
+            {gradeNames.length > 1 ? <FilterChips value={grade} onChange={setGrade} options={[{ value: ALL, label: c('all_grade_levels') }, ...gradeNames.map((g) => ({ value: g, label: g }))]} /> : null}
             <View className="flex-row items-center justify-between gap-3">
-              <Text className="text-muted-foreground text-sm">{c('students_found', { count: rows.length })}</Text>
+              <StatusChip label={c('students_found', { count: rows.length })} tone="info" className="px-2.5 py-1" />
               <Button size="sm" variant="outline" onPress={sharePdfList} disabled={busy || !rows.length || !print.ready}>
                 <Icon as={FileDown} className="text-foreground size-4" />
                 <Text>PDF</Text>
@@ -218,96 +222,92 @@ export default function HonorRoll() {
                 const group = rows.filter((x) => x.honor_level === lv);
                 if (!group.length) return null;
                 return (
-                  <Card key={lv}>
-                    <CardContent className="pt-3">
-                      <Text className="pb-2 font-semibold">
-                        {levelLabel(lv)} ({group.length})
-                      </Text>
-                      {group.map((x, i) => (
-                        <View key={x.student_id}>
-                          <Separator />
-                          <View className="flex-row items-center gap-3 py-2.5">
-                            <Text className="text-muted-foreground w-6 text-xs">{i + 1}</Text>
-                            <View className="flex-1">
-                              <Text className="font-medium">{`${x.first_name} ${x.last_name}`}</Text>
-                              <Text className="text-muted-foreground text-xs">{[x.student_number, x.grade_level, x.section, x.teacher].filter(Boolean).join(' · ')}</Text>
-                            </View>
-                            <Badge variant={lv === 'high_honor' ? 'default' : 'secondary'}>
-                              <Text className="text-xs">{levelLabel(lv)}</Text>
-                            </Badge>
-                          </View>
-                        </View>
-                      ))}
-                    </CardContent>
-                  </Card>
+                  <Section key={lv} title={`${levelLabel(lv)} (${group.length})`}>
+                    <Panel>
+                      {group.map((x, i) => {
+                        const name = `${x.first_name} ${x.last_name}`;
+                        return (
+                          <RowItem
+                            key={x.student_id}
+                            leading={<Initials name={name} tone={lv === 'high_honor' ? 'warning' : 'brand'} size={38} />}
+                            title={name}
+                            meta={[x.student_number, x.grade_level, x.section, x.teacher].filter(Boolean).join(' · ')}
+                            trailing={<StatusChip label={`#${i + 1}`} tone={lv === 'high_honor' ? 'warning' : 'info'} className="px-2 py-0.5" />}
+                            last={i === group.length - 1}
+                          />
+                        );
+                      })}
+                    </Panel>
+                  </Section>
                 );
               })
             )}
           </>
         ) : (
           <>
-            <Card>
-              <CardContent className="gap-3 pt-4">
-                <Text className="font-semibold">{h('template')}</Text>
-                <Text className="text-muted-foreground text-xs">{h('substitution_fields')}</Text>
-                <View className="flex-row items-center gap-2">
-                  <Picker
-                    className="flex-1"
-                    value={token}
-                    onChange={setToken}
-                    options={Object.entries(TOKEN_CATEGORIES).flatMap(([cat, toks]) => [{ value: `__CAT_${cat}__`, label: `— ${cat} —`, disabled: true }, ...toks.map((x) => ({ value: x, label: x }))])}
-                  />
-                  <Button size="sm" variant="outline" onPress={() => insert.current?.(token)}>
-                    <Icon as={Plus} className="text-foreground size-4" />
-                    <Text>{h('insert')}</Text>
+            <FormSection title={h('template')} description={h('substitution_fields')}>
+              <View className="flex-row items-center gap-2">
+                <Picker
+                  className="flex-1"
+                  value={token}
+                  onChange={setToken}
+                  options={Object.entries(TOKEN_CATEGORIES).flatMap(([cat, toks]) => [{ value: `__CAT_${cat}__`, label: `— ${cat} —`, disabled: true }, ...toks.map((x) => ({ value: x, label: x }))])}
+                />
+                <Button size="sm" variant="outline" onPress={() => insert.current?.(token)}>
+                  <Icon as={Plus} className="text-foreground size-4" />
+                  <Text>{h('insert')}</Text>
+                </Button>
+              </View>
+              <HtmlEditorField value={html} onChange={setHtml} insertRef={(fn) => (insert.current = fn)} />
+              <Button size="sm" variant="ghost" className="self-start" onPress={() => setHtml(DEFAULT_CERTIFICATE_HTML)}>
+                <Text>{h('reset_template')}</Text>
+              </Button>
+            </FormSection>
+            <FormSection title={h('frame')} description={h('frame_hint')}>
+              {frame ? (
+                <View className="gap-2">
+                  <View className="border-info-soft dark:border-border h-32 overflow-hidden rounded-xl border">
+                    <Image source={{ uri: frame }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+                  </View>
+                  <Button size="sm" variant="ghost" className="self-start" onPress={() => setFrame(null)}>
+                    <Icon as={X} className="text-destructive size-4" />
+                    <Text className="text-destructive">{h('frame_remove')}</Text>
                   </Button>
                 </View>
-                <HtmlEditorField value={html} onChange={setHtml} insertRef={(fn) => (insert.current = fn)} />
-                <Button size="sm" variant="ghost" className="self-start" onPress={() => setHtml(DEFAULT_CERTIFICATE_HTML)}>
-                  <Text>{h('reset_template')}</Text>
-                </Button>
-                <Separator />
-                <Text className="font-semibold">{h('frame')}</Text>
-                <Text className="text-muted-foreground text-xs">{h('frame_hint')}</Text>
-                {frame ? (
-                  <View className="gap-2">
-                    <View className="border-border h-32 overflow-hidden rounded-md border">
-                      <Image source={{ uri: frame }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
-                    </View>
-                    <Button size="sm" variant="ghost" className="self-start" onPress={() => setFrame(null)}>
-                      <Icon as={X} className="text-destructive size-4" />
-                      <Text className="text-destructive">{h('frame_remove')}</Text>
-                    </Button>
-                  </View>
-                ) : (
-                  <Button size="sm" variant="outline" className="self-start" onPress={chooseFrame}>
-                    <Icon as={ImagePlus} className="text-foreground size-4" />
-                    <Text>{h('frame_upload')}</Text>
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="gap-2 pt-4">
-                <Pressable onPress={() => setSelected(allSelected ? new Set() : new Set(all.map((x) => x.student_id)))} className="flex-row items-center gap-3 py-1">
-                  <Box on={allSelected} />
-                  <Text className="text-sm font-semibold">{t('app.sc_select_all', { count: selected.size })}</Text>
+              ) : (
+                <Pressable onPress={chooseFrame} className="border-info-soft dark:border-border items-center gap-2 rounded-2xl border-2 border-dashed py-6 active:opacity-70" accessibilityRole="button">
+                  <IconTile icon={ImagePlus} round />
+                  <Text className="text-brand dark:text-brand-secondary text-sm font-semibold">{h('frame_upload')}</Text>
                 </Pressable>
-                {!all.length ? <Text className="text-muted-foreground py-4 text-center text-sm">{s('no_students')}</Text> : null}
-                {all.map((x) => (
-                  <View key={x.student_id}>
-                    <Separator />
-                    <Pressable onPress={() => toggle(x.student_id)} className="flex-row items-center gap-3 py-2.5" accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(x.student_id) }}>
-                      <Box on={selected.has(x.student_id)} />
-                      <View className="flex-1">
-                        <Text className="text-sm">{`${x.first_name} ${x.last_name}`}</Text>
-                        <Text className="text-muted-foreground text-xs">{[x.grade_level, x.section, levelLabel(x.honor_level)].filter(Boolean).join(' · ')}</Text>
-                      </View>
-                    </Pressable>
-                  </View>
-                ))}
-              </CardContent>
-            </Card>
+              )}
+            </FormSection>
+            <Panel>
+              <Pressable onPress={() => setSelected(allSelected ? new Set() : new Set(all.map((x) => x.student_id)))} className="bg-info-soft/60 flex-row items-center gap-3 rounded-t-2xl px-4 py-3 active:opacity-70">
+                <Box on={allSelected} />
+                <Text className="text-brand dark:text-brand-secondary text-sm font-semibold">{t('app.sc_select_all', { count: selected.size })}</Text>
+              </Pressable>
+              {!all.length ? <EmptyState title={s('no_students')} /> : null}
+              {all.map((x) => {
+                const name = `${x.first_name} ${x.last_name}`;
+                return (
+                  <Pressable
+                    key={x.student_id}
+                    onPress={() => toggle(x.student_id)}
+                    className="border-info-soft dark:border-border flex-row items-center gap-3 border-t px-4 py-2.5 active:opacity-70"
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selected.has(x.student_id) }}>
+                    <Box on={selected.has(x.student_id)} />
+                    <Initials name={name} size={32} tone={x.honor_level === 'high_honor' ? 'warning' : 'brand'} />
+                    <View className="flex-1">
+                      <Text className="text-sm font-medium">{name}</Text>
+                      <Text variant="muted" className="text-[11px]">
+                        {[x.grade_level, x.section, levelLabel(x.honor_level)].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </Panel>
             <View className="flex-row gap-2">
               <Button className="flex-1" variant="outline" onPress={() => certificates('pdf')} disabled={busy}>
                 <Icon as={FileDown} className="text-foreground size-4" />

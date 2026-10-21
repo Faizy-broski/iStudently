@@ -295,6 +295,11 @@ export interface StudentFormData {
   dateOfBirth: Date | null
   gender: Gender | null
   nationalId: string
+  /** Report-card fields (Jahbadh grades). */
+  nationality?: string
+  motherName?: string
+  placeOfBirth?: string
+  registrationNumber?: string
   studentPhoto: string
   address: string
   email: string

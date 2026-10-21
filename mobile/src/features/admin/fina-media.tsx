@@ -88,7 +88,7 @@ export function TaggingPanel({ mediaId, onConfirmed, footer }: { mediaId: string
       {tags.length ? (
         <View className="flex-row flex-wrap gap-1.5">
           {tags.map((t) => (
-            <View key={t.id} className="flex-row items-center gap-1 rounded-full bg-blue-100 py-1 ps-3 pe-1 dark:bg-blue-900">
+            <View key={t.id} className="flex-row items-center gap-1 rounded-full bg-info-soft py-1 ps-3 pe-1 ">
               <Text className="text-xs">{personName(t.student?.profile) || '—'}</Text>
               <Pressable onPress={() => run(() => fina.removeFaceTag(mediaId, t.id, campusId))} disabled={busy} hitSlop={6} className="p-0.5">
                 <Icon as={X} className="text-foreground size-3.5" />
@@ -104,7 +104,7 @@ export function TaggingPanel({ mediaId, onConfirmed, footer }: { mediaId: string
       {!media.no_identifiable_students ? (
         <View className="gap-2">
           <SearchBar value={search} onChangeText={setSearch} placeholder={f('student_search_placeholder')} />
-          <View className="border-border max-h-72 rounded-md border">
+          <View className="border-info-soft dark:border-border max-h-72 rounded-xl border">
             {candidates.slice(0, 60).map((c, i) => (
               <View key={c.id}>
                 {i > 0 ? <Separator /> : null}

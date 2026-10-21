@@ -1,16 +1,18 @@
 import { router, Stack } from 'expo-router';
-import { BookOpen, Globe, GraduationCap, Trophy } from 'lucide-react-native';
+import { BookOpen, Globe, GraduationCap } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
 import { PersonAvatar } from '@/components/app/person-avatar';
-import { Picker } from '@/components/app/picker';
-import { Badge } from '@/components/ui/badge';
+import { FilterChips } from '@/components/app/filter-chips';
+import { HeroCard, IconTile, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { StatusChip } from '@/components/app/status-chip';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { readingBadge } from '@/features/speed-reading/badge';
@@ -53,97 +55,90 @@ export default function StudentSpeedReading() {
             }}
           />
         }>
-        <Card>
-          <CardContent className="flex-row flex-wrap justify-around gap-4 pt-5">
-            {loading ? (
-              <Skeleton className="h-14 w-full" />
-            ) : (
-              <>
-                <Stat value={String(st?.total_points ?? 0)} label={s('totalPoints')} />
-                <Stat value={String(st?.best_wpm ?? 0)} label={s('bestWpm')} />
-                <Stat value={String(st?.sessions ?? 0)} label={s('totalSessions')} />
-                <View className="items-center">
-                  <Text className="text-2xl">{mine.emoji}</Text>
-                  <Text className="text-muted-foreground mt-1 text-xs">{a(`badge_${mine.key}`)}</Text>
-                </View>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <View className="gap-2">
-          <View className="flex-row items-center gap-2">
-            <Icon as={BookOpen} className="text-muted-foreground size-5" />
-            <Text className="flex-1 text-lg font-semibold">{a('texts')}</Text>
-          </View>
-          <Picker value={grade} onChange={setGrade} options={[{ value: 'all', label: a('all_grades') }, ...[...grades.entries()].map(([id, name]) => ({ value: id, label: name }))]} />
+        <HeroCard>
           {loading ? (
-            <Skeleton className="h-32" />
+            <Skeleton className="h-14 w-full rounded-2xl bg-white/20" />
+          ) : (
+            <View className="flex-row flex-wrap justify-around gap-4">
+              <Stat value={String(st?.total_points ?? 0)} label={s('totalPoints')} />
+              <Stat value={String(st?.best_wpm ?? 0)} label={s('bestWpm')} />
+              <Stat value={String(st?.sessions ?? 0)} label={s('totalSessions')} />
+              <View className="items-center">
+                <Text className="text-2xl">{mine.emoji}</Text>
+                <Text className="mt-1 text-xs text-white/80">{a(`badge_${mine.key}`)}</Text>
+              </View>
+            </View>
+          )}
+        </HeroCard>
+
+        <Section title={a('texts')}>
+          <FilterChips value={grade} onChange={setGrade} options={[{ value: 'all', label: a('all_grades') }, ...[...grades.entries()].map(([id, name]) => ({ value: id, label: name }))]} />
+          {loading ? (
+            <Skeleton className="h-32 rounded-2xl" />
           ) : shown.length === 0 ? (
-            <Text className="text-muted-foreground py-6 text-center text-sm">{s('noTexts')}</Text>
+            <EmptyState icon={BookOpen} title={s('noTexts')} />
           ) : (
             shown.map((x) => (
-              <Pressable key={x.id} onPress={() => router.push({ pathname: '/student/speed-reading/[textId]', params: { textId: x.id } })} accessibilityRole="button">
-                <Card className="py-4">
-                  <CardContent className="gap-2 px-4">
-                    <View className="flex-row items-start justify-between gap-2">
-                      <Text className="flex-1 font-semibold">{x.title}</Text>
-                      <Badge variant="outline">
-                        <Icon as={Globe} className="size-3" />
-                        <Text className="text-xs">{x.language === 'ar' ? s('languageAr') : s('languageEn')}</Text>
-                      </Badge>
+              <Pressable key={x.id} onPress={() => router.push({ pathname: '/student/speed-reading/[textId]', params: { textId: x.id } })} accessibilityRole="button" className="active:opacity-80">
+                <Panel className="gap-2 p-4">
+                  <View className="flex-row items-start gap-3">
+                    <IconTile icon={BookOpen} size={40} />
+                    <View className="flex-1 gap-0.5">
+                      <Text className="text-sm font-semibold">{x.title}</Text>
+                      <Text className="text-muted-foreground text-xs">{a('words', { count: x.word_count })}</Text>
                     </View>
-                    <Text className="text-muted-foreground text-xs">{a('words', { count: x.word_count })}</Text>
-                    <View className="flex-row flex-wrap gap-2">
+                    <View className="bg-muted flex-row items-center gap-1 rounded-full px-2.5 py-1">
+                      <Icon as={Globe} className="text-muted-foreground size-3" />
+                      <Text className="text-muted-foreground text-[11px] font-semibold">{x.language === 'ar' ? s('languageAr') : s('languageEn')}</Text>
+                    </View>
+                  </View>
+                  {x.grade_level_name || x.quiz_questions?.length ? (
+                    <View className="flex-row flex-wrap gap-1.5">
                       {x.grade_level_name ? (
-                        <Badge variant="secondary">
-                          <Icon as={GraduationCap} className="size-3" />
-                          <Text className="text-xs">{x.grade_level_name}</Text>
-                        </Badge>
+                        <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
+                          <Icon as={GraduationCap} className="text-brand dark:text-brand-secondary size-3" />
+                          <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{x.grade_level_name}</Text>
+                        </View>
                       ) : null}
-                      {x.quiz_questions?.length ? (
-                        <Badge>
-                          <Text className="text-xs">{a('quiz')}</Text>
-                        </Badge>
-                      ) : null}
+                      {x.quiz_questions?.length ? <StatusChip label={a('quiz')} tone="success" /> : null}
                     </View>
-                    <Button size="sm" onPress={() => router.push({ pathname: '/student/speed-reading/[textId]', params: { textId: x.id } })}>
-                      <Text>{s('startReading')}</Text>
-                    </Button>
-                  </CardContent>
-                </Card>
+                  ) : null}
+                  <Button size="sm" onPress={() => router.push({ pathname: '/student/speed-reading/[textId]', params: { textId: x.id } })}>
+                    <Text>{s('startReading')}</Text>
+                  </Button>
+                </Panel>
               </Pressable>
             ))
           )}
-        </View>
+        </Section>
 
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={Trophy} className="size-5 text-amber-500" />
-            <CardTitle>{s('leaderboard')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-2">
-            {loading ? (
-              <Skeleton className="h-40" />
-            ) : !(board.data ?? []).length ? (
-              <Text className="text-muted-foreground py-4 text-center text-sm">{s('noSessions')}</Text>
-            ) : (
-              (board.data ?? []).slice(0, 10).map((e, i) => {
+        <Section title={s('leaderboard')}>
+          {loading ? (
+            <Skeleton className="h-40 rounded-2xl" />
+          ) : !(board.data ?? []).length ? (
+            <EmptyState title={s('noSessions')} />
+          ) : (
+            <Panel>
+              {(board.data ?? []).slice(0, 10).map((e, i, arr) => {
                 const me2 = e.student_id === pid;
                 return (
-                  <View key={e.student_id} className={cn('flex-row items-center gap-2 rounded-lg p-2', me2 && 'bg-primary/10 border-primary/20 border')}>
-                    <Text className="text-muted-foreground w-7 text-center text-sm font-bold">{`#${i + 1}`}</Text>
+                  <View key={e.student_id} className={cn('flex-row items-center gap-2.5 px-4 py-2.5', i < arr.length - 1 && 'border-info-soft dark:border-border border-b', me2 && 'bg-info-soft')}>
+                    <View className={cn('size-7 items-center justify-center rounded-full', i < 3 ? 'bg-warning-soft' : 'bg-muted')}>
+                      <Text className={cn('text-[11px] font-bold', i < 3 ? 'text-warning' : 'text-muted-foreground')}>{String(i + 1)}</Text>
+                    </View>
                     <PersonAvatar url={e.profile_photo_url} name={`${e.first_name} ${e.last_name}`} size={32} />
-                    <Text className="flex-1 text-sm font-medium">{`${e.first_name} ${e.last_name}`}</Text>
-                    <Text className="text-muted-foreground text-xs">{a('wpm', { wpm: e.best_wpm })}</Text>
-                    <Text className="text-primary text-xs font-semibold">{a('pts', { count: e.total_points })}</Text>
+                    <View className="flex-1">
+                      <Text className={cn('text-sm', me2 ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')} numberOfLines={1}>{`${e.first_name} ${e.last_name}`}</Text>
+                      <Text className="text-muted-foreground text-[11px]">{a('wpm', { wpm: e.best_wpm })}</Text>
+                    </View>
+                    <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{a('pts', { count: e.total_points })}</Text>
                     <Text>{readingBadge(e.best_wpm).emoji}</Text>
                   </View>
                 );
-              })
-            )}
-          </CardContent>
-        </Card>
+              })}
+            </Panel>
+          )}
+        </Section>
       </ScrollView>
     </>
   );
@@ -152,8 +147,8 @@ export default function StudentSpeedReading() {
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <View className="items-center">
-      <Text className="text-primary text-3xl font-bold">{value}</Text>
-      <Text className="text-muted-foreground mt-1 text-xs">{label}</Text>
+      <Text className="text-3xl font-bold text-white">{value}</Text>
+      <Text className="mt-1 text-xs text-white/80">{label}</Text>
     </View>
   );
 }

@@ -3,8 +3,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { BarChart3, Calendar, CheckCircle2, CheckSquare, Circle, CircleDot, Download, ExternalLink, FileText, Pin, Square } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { EmptyState } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
@@ -57,10 +58,10 @@ export function PortalNotesScreen({ campusId: forCampus }: { campusId?: string |
           const open = expanded === n.id;
           return (
             <Pressable key={n.id} onPress={() => setExpanded(open ? null : n.id)} accessibilityRole="button" accessibilityState={{ expanded: open }}>
-              <Card className={cn('gap-2 py-4', n.is_pinned && 'border-2 border-[#022172]')}>
+              <Card className={cn('gap-2 py-4', n.is_pinned && 'border-2 border-brand')}>
                 <CardHeader className="flex-row items-start justify-between gap-2 px-4">
                   <View className="flex-1 flex-row items-start gap-2">
-                    {n.is_pinned ? <Icon as={Pin} className="mt-0.5 size-5 text-[#022172] dark:text-blue-400" /> : null}
+                    {n.is_pinned ? <Icon as={Pin} className="mt-0.5 size-5 text-brand dark:text-brand-secondary " /> : null}
                     <View className="flex-1">
                       <CardTitle className="text-lg">{n.title}</CardTitle>
                       <View className="mt-1 flex-row flex-wrap items-center gap-x-3">
@@ -73,7 +74,7 @@ export function PortalNotesScreen({ campusId: forCampus }: { campusId?: string |
                     </View>
                   </View>
                   {n.is_pinned ? (
-                    <Badge className="bg-[#022172]">
+                    <Badge className="bg-brand">
                       <Text className="text-white">{k('pinned')}</Text>
                     </Badge>
                   ) : null}
@@ -86,19 +87,19 @@ export function PortalNotesScreen({ campusId: forCampus }: { campusId?: string |
                     <View className="border-border mt-3 gap-3 border-t pt-3">
                       {n.file_url ? (
                         <Pressable onPress={() => WebBrowser.openBrowserAsync(n.file_url as string)} className="flex-row items-center gap-2" accessibilityRole="link">
-                          <Icon as={Download} className="size-4 text-[#022172] dark:text-blue-400" />
-                          <Text className="text-sm text-[#022172] dark:text-blue-400">{n.file_name || k('download')}</Text>
+                          <Icon as={Download} className="size-4 text-brand dark:text-brand-secondary " />
+                          <Text className="text-sm text-brand dark:text-brand-secondary ">{n.file_name || k('download')}</Text>
                         </Pressable>
                       ) : null}
                       {n.embed_link ? (
                         <Pressable onPress={() => WebBrowser.openBrowserAsync(n.embed_link as string)} className="flex-row items-center gap-2" accessibilityRole="link">
-                          <Icon as={ExternalLink} className="size-4 text-[#022172] dark:text-blue-400" />
-                          <Text className="text-sm text-[#022172] dark:text-blue-400">{k('view_link')}</Text>
+                          <Icon as={ExternalLink} className="size-4 text-brand dark:text-brand-secondary " />
+                          <Text className="text-sm text-brand dark:text-brand-secondary ">{k('view_link')}</Text>
                         </Pressable>
                       ) : null}
                     </View>
                   ) : null}
-                  {!open && n.content.length > 200 ? <Text className="mt-2 text-sm text-[#022172] dark:text-blue-400">{k('read_more')}</Text> : null}
+                  {!open && n.content.length > 200 ? <Text className="mt-2 text-sm text-brand dark:text-brand-secondary ">{k('read_more')}</Text> : null}
                 </CardContent>
               </Card>
             </Pressable>
@@ -173,7 +174,7 @@ export function PortalPollsScreen({ campusId: forCampus }: { campusId?: string |
                   </View>
                 </View>
                 {done ? (
-                  <Badge className="bg-green-500">
+                  <Badge className="bg-success">
                     <Icon as={CheckCircle2} className="size-3 text-white" />
                     <Text className="text-white">{k('voted')}</Text>
                   </Badge>
@@ -182,7 +183,7 @@ export function PortalPollsScreen({ campusId: forCampus }: { campusId?: string |
               <CardContent className="gap-5 px-4">
                 {done ? (
                   <View className="items-center py-6">
-                    <Icon as={CheckCircle2} className="mb-3 size-12 text-green-500" />
+                    <Icon as={CheckCircle2} className="mb-3 size-12 text-success" />
                     <Text className="text-muted-foreground">{k('thanks')}</Text>
                     {poll.show_results ? <Text className="text-muted-foreground mt-2 text-sm">{k('results_later')}</Text> : null}
                   </View>
@@ -195,7 +196,7 @@ export function PortalPollsScreen({ campusId: forCampus }: { campusId?: string |
                         <View key={q.id} className="gap-2">
                           <Text className="text-base font-medium">
                             {`${qi + 1}. ${q.question_text}`}
-                            {q.is_required ? <Text className="text-red-500"> *</Text> : null}
+                            {q.is_required ? <Text className="text-destructive"> *</Text> : null}
                           </Text>
                           {q.question_type === 'single_choice'
                             ? opts.map((o) => (
@@ -235,7 +236,7 @@ export function PortalPollsScreen({ campusId: forCampus }: { campusId?: string |
                         </View>
                       );
                     })}
-                    <Button className="bg-[#022172]" onPress={() => submit(poll)} disabled={submitting === poll.id}>
+                    <Button className="bg-brand" onPress={() => submit(poll)} disabled={submitting === poll.id}>
                       <Text className="text-white">{submitting === poll.id ? k('submitting') : k('submit')}</Text>
                     </Button>
                   </>

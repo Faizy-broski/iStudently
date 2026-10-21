@@ -2,9 +2,10 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { SearchBar } from '@/components/app/search-bar';
 import { ErrorState, LoadingList } from '@/components/app/states';
@@ -28,7 +29,7 @@ function Section({ title, count, onAssign, assignLabel, children, empty }: { tit
     <Card>
       <CardContent className="gap-1 pt-4">
         <View className="flex-row items-center pb-1">
-          <Text className="flex-1 text-xs font-semibold uppercase">
+          <Text className="flex-1 text-xs font-semibold">
             {title} ({count})
           </Text>
           <Button size="sm" variant="outline" onPress={onAssign}>
@@ -43,6 +44,7 @@ function Section({ title, count, onAssign, assignLabel, children, empty }: { tit
 }
 
 function Row({ label, hint, onRemove }: { label: string; hint?: string; onRemove: () => void }) {
+  const { t } = useTranslation();
   return (
     <View>
       <Separator />
@@ -51,7 +53,7 @@ function Row({ label, hint, onRemove }: { label: string; hint?: string; onRemove
           <Text className="text-sm font-medium">{label}</Text>
           {hint ? <Text className="text-muted-foreground text-xs">{hint}</Text> : null}
         </View>
-        <Pressable onPress={onRemove} hitSlop={8} className="p-1">
+        <Pressable onPress={onRemove} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70" accessibilityLabel={t('common.delete')}>
           <Icon as={Trash2} className="text-destructive size-4" />
         </Pressable>
       </View>
@@ -208,7 +210,7 @@ export default function GraduationPathDetail() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: title || g('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}>
           {path.data?.comment ? <Text className="text-muted-foreground text-sm">{path.data.comment}</Text> : null}
           {loading ? (

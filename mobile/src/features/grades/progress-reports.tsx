@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native';
 
 import { useToast } from '@/components/app/toast';
-import { Card, CardContent } from '@/components/ui/card';
+import { Panel } from '@/components/app/panel';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import type { usePrintContext } from '@/features/admin/print-context';
@@ -45,8 +45,7 @@ export function ProgressReportsView({ ctx, campusId, chosen, list, subtitle }: {
       <Stack.Screen options={{ title: p('title') }} />
       <Text className="text-muted-foreground text-sm">{subtitle ?? p('subtitle')}</Text>
       {actions}
-      <Card>
-        <CardContent className="gap-1 pt-4">
+      <Panel className="gap-1 p-4">
           <CheckRow label={p('assigned_date')} value={o.include_assigned_date} onChange={set('include_assigned_date')} />
           <CheckRow label={p('exclude_ungraded_ec')} value={o.exclude_ungraded_ec} onChange={set('exclude_ungraded_ec')} />
           <CheckRow label={p('due_date')} value={o.include_due_date} onChange={set('include_due_date')} />
@@ -54,8 +53,7 @@ export function ProgressReportsView({ ctx, campusId, chosen, list, subtitle }: {
           <CheckRow label={p('group_by_category')} value={o.group_by_category} onChange={set('group_by_category')} />
           <Separator className="my-1" />
           <CheckRow label={c('mailing_labels')} value={o.include_mailing_labels} onChange={set('include_mailing_labels')} />
-        </CardContent>
-      </Card>
+      </Panel>
       {list}
       {actions}
     </ScrollView>

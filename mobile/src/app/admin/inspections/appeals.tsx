@@ -6,6 +6,7 @@ import { Pressable, View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
 import { Icon } from '@/components/ui/icon';
+import { IconTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminInspections } from '@/lib/api';
@@ -13,12 +14,12 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 export const APPEAL_STATUS_CLS: Record<AppealStatus, [string, string]> = {
-  submitted: ['bg-amber-100', 'text-amber-800'],
-  under_review: ['bg-blue-100', 'text-blue-800'],
-  escalated: ['bg-purple-100', 'text-purple-800'],
-  upheld: ['bg-green-100', 'text-green-800'],
-  denied: ['bg-red-100', 'text-red-800'],
-  withdrawn: ['bg-gray-100', 'text-gray-600'],
+  submitted: ['bg-warning-soft', 'text-warning'],
+  under_review: ['bg-info-soft', 'text-brand dark:text-brand-secondary'],
+  escalated: ['bg-chart-6/10', 'text-chart-6'],
+  upheld: ['bg-success-soft', 'text-success'],
+  denied: ['bg-destructive-soft', 'text-destructive'],
+  withdrawn: ['bg-muted', 'text-muted-foreground'],
 };
 
 function Row({ a, sub, accent }: { a: InspectionAppeal; sub: string; accent?: boolean }) {
@@ -26,11 +27,9 @@ function Row({ a, sub, accent }: { a: InspectionAppeal; sub: string; accent?: bo
   const [bg, fg] = APPEAL_STATUS_CLS[a.status];
   return (
     <Pressable onPress={() => router.push({ pathname: '/admin/inspections/appeal/[id]', params: { id: a.id } })} className="flex-row items-center gap-3 px-4 py-3">
-      <View className={cn('size-9 items-center justify-center rounded-full', accent ? 'bg-purple-100' : 'bg-[#022172]/10')}>
-        <Icon as={User} className={cn('size-4', accent ? 'text-purple-600' : 'text-[#022172]')} />
-      </View>
+      <IconTile icon={User} tone={accent ? 'warning' : 'brand'} round />
       <View className="flex-1">
-        <Text className="text-sm font-medium">{a.teacher ? `${a.teacher.first_name} ${a.teacher.last_name}` : ''}</Text>
+        <Text className="text-sm font-semibold">{a.teacher ? `${a.teacher.first_name} ${a.teacher.last_name}` : ''}</Text>
         <Text className="text-muted-foreground text-xs" numberOfLines={1}>
           {sub}
         </Text>
@@ -58,10 +57,10 @@ export default function InspectionAppeals() {
             <View className="gap-3 p-4">
               <Text variant="muted" className="text-sm">{p('admin_list_subtitle')}</Text>
               {(mine.data ?? []).length ? (
-                <View className="rounded-xl border border-purple-200">
+                <View className="rounded-xl border border-chart-6/30">
                   <View className="gap-1 p-3">
                     <View className="flex-row items-center gap-2">
-                      <Icon as={ArrowUpCircle} className="size-4 text-purple-600" />
+                      <Icon as={ArrowUpCircle} className="size-4 text-chart-6" />
                       <Text className="font-semibold">{p('escalated_to_me_title')}</Text>
                     </View>
                     <Text className="text-muted-foreground text-xs">{p('escalated_to_me_desc')}</Text>

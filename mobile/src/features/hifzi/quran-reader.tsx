@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { Picker } from '@/components/app/picker';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,13 +50,13 @@ export function QuranReader() {
               <CardContent className="gap-3 pt-4">
                 <View className="flex-row items-center gap-2">
                   <Button variant="outline" size="icon" onPress={() => setSurah((n) => Math.max(1, n - 1))} disabled={surah <= 1} accessibilityLabel={h('previousSurah')}>
-                    <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
+                    <Icon flipRtl as={ChevronLeft} className="text-foreground size-4" />
                   </Button>
                   <View className="flex-1">
                     <Picker value={String(surah)} onChange={(v) => setSurah(Number(v))} options={list.map((s) => ({ value: String(s.number), label: `${s.number}. ${isAr ? s.nameAr : `${s.nameTransliterated} (${s.nameEn})`}` }))} />
                   </View>
                   <Button variant="outline" size="icon" onPress={() => setSurah((n) => Math.min(114, n + 1))} disabled={surah >= 114} accessibilityLabel={h('nextSurah')}>
-                    <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
+                    <Icon flipRtl as={ChevronRight} className="text-foreground size-4" />
                   </Button>
                 </View>
                 {current ? (
@@ -74,8 +74,8 @@ export function QuranReader() {
             {notVerified ? (
               <Card className="border-dashed">
                 <CardContent className="items-center gap-2 pt-6 pb-6">
-                  <Text className="font-medium">{h('notVerifiedTitle')}</Text>
-                  <Text className="text-muted-foreground text-center text-sm">{h('notVerifiedBody')}</Text>
+                  <Text className="text-sm font-semibold">{h('notVerifiedTitle')}</Text>
+                  <EmptyState title={h('notVerifiedBody')} />
                 </CardContent>
               </Card>
             ) : text.isLoading || editions.isLoading ? (

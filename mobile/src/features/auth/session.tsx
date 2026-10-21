@@ -1,9 +1,12 @@
 import type { AccountGate, Me } from '@studently/api-client'
 import type { Session } from '@supabase/supabase-js'
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { hasSavedLocale, locale, setLocale } from '@/i18n'
 import { auth, onAccountGate } from '@/lib/api'
+import { clearDataCache } from '@/lib/data'
+import { unregisterPush } from '@/features/push/push'
+import { setLastSchoolName } from '@/features/splash/last-school'
 import { setMonitoringUser } from '@/lib/monitoring'
 import { supabase } from '@/lib/supabase'
 
@@ -54,6 +57,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const accountLang = res.data.profile.language
       if (!hasSavedLocale() && accountLang && accountLang !== locale) setLocale(accountLang)
       setMonitoringUser({ id: res.data.profile.id, role: res.data.profile.role })
+      setLastSchoolName(res.data.school?.name)
       return setMe({ status: 'ready', me: res.data })
     }
     if (res.code && BLOCKING_GATES.includes(res.code as AccountGate)) {
@@ -74,6 +78,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setMeFor(userId)
     setMe({ status: 'loading' })
   }
+  // Drop cached data whenever the signed-in user changes (sign-out, expiry, another account).
+  const cachedFor = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (cachedFor.current !== undefined && cachedFor.current !== userId) clearDataCache()
+    cachedFor.current = userId
+  }, [userId])
   useEffect(() => {
     if (!userId) return setMonitoringUser(null)
     let alive = true
@@ -114,7 +124,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    // Stop push to this phone for this account first (needs the session).
+    await unregisterPush()
+    // 'local' ends this device's session only; the default 'global' would also sign the user out
+    // of the website and their other devices.
+    await supabase.auth.signOut({ scope: 'local' })
+    clearDataCache()
   }
 
   return (

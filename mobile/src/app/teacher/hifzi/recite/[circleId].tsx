@@ -1,15 +1,17 @@
 import type { AyahWithText } from '@studently/api-client';
 import { randomUUID } from 'expo-crypto';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Play, Undo2 } from 'lucide-react-native';
+import { BookOpen, Play, Undo2, UserRound } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
+import { FormSection } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,18 +26,18 @@ const SESSION_TYPES = ['new', 'near_review', 'far_review', 'consolidation', 'con
 const ERROR_TYPES = ['major', 'minor', 'skipped_ayah', 'skipped_word', 'substituted', 'added', 'hesitation', 'repetition', 'prompt', 'similar_jump', 'bad_waqf', 'performance'] as const;
 type ErrorType = (typeof ERROR_TYPES)[number];
 const COLORS: Record<ErrorType, string> = {
-  major: 'bg-red-500',
-  minor: 'bg-orange-300',
-  skipped_ayah: 'bg-red-700',
-  skipped_word: 'bg-red-400',
-  substituted: 'bg-purple-400',
-  added: 'bg-yellow-400',
-  hesitation: 'bg-blue-200',
-  repetition: 'bg-blue-300',
-  prompt: 'bg-red-600',
-  similar_jump: 'bg-pink-400',
-  bad_waqf: 'bg-teal-300',
-  performance: 'bg-gray-300',
+  major: 'bg-destructive',
+  minor: 'bg-warning',
+  skipped_ayah: 'bg-destructive',
+  skipped_word: 'bg-destructive',
+  substituted: 'bg-chart-6',
+  added: 'bg-warning',
+  hesitation: 'bg-info-soft',
+  repetition: 'bg-brand-secondary',
+  prompt: 'bg-destructive',
+  similar_jump: 'bg-chart-6',
+  bad_waqf: 'bg-success',
+  performance: 'bg-muted-foreground/40',
 };
 type Mark = { ayahId: string; wordIndex: number; errorType: ErrorType };
 const keyOf = (ayahId: string, i: number) => `${ayahId}:${i}`;
@@ -181,12 +183,10 @@ export default function TeacherRecite() {
     <>
       <Stack.Screen options={{ title: h('recitation.title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        <View className="gap-1.5">
-          <Label>{h('recitation.selectStudent')}</Label>
+        <FormSection title={h('recitation.selectStudent')} icon={UserRound}>
           <Picker value={studentId} onChange={selectStudent} options={students.map((e) => ({ value: e.student_id, label: name(e) }))} />
-        </View>
-        <Card>
-          <CardContent className="gap-3 pt-4">
+        </FormSection>
+        <FormSection title={h('recitation.sessionType')} icon={BookOpen}>
             <View className="flex-row gap-2">
               <View className="flex-1 gap-1">
                 <Label>{h('recitation.sessionType')}</Label>
@@ -208,19 +208,18 @@ export default function TeacherRecite() {
                   <Input value={value as string} onChangeText={(v) => (setter as (s: string) => void)(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" />
                 </View>
               ))}
-              <Button onPress={loadText} disabled={loadingText || !studentId}>
+              <Button onPress={loadText} disabled={loadingText || !studentId} accessibilityLabel={a('a11y_play')}>
                 <Icon as={Play} className="text-primary-foreground size-4" />
               </Button>
             </View>
             {ayahs.length ? <Timer key={`${studentId}-${startedAt}`} startedAt={startedAt} /> : null}
-          </CardContent>
-        </Card>
+        </FormSection>
 
         {ayahs.length ? (
           <>
             <Text className="text-muted-foreground text-xs">{h('recitation.tapWordHint')}</Text>
-            <Card>
-              <CardContent className="gap-3 pt-4" style={{ direction: 'rtl' }}>
+            <Panel>
+              <View className="gap-3 p-4" style={{ direction: 'rtl' }}>
                 {ayahs.map((a) => {
                   const words = a.textUthmani.split(/\s+/).filter(Boolean);
                   return (
@@ -230,7 +229,7 @@ export default function TeacherRecite() {
                         const m = marks.get(key);
                         return (
                           <View key={key}>
-                            <Pressable onPress={() => setPicker(picker === key ? null : key)} accessibilityRole="button" className={cn('rounded px-1.5 py-1', m ? COLORS[m.errorType] : 'bg-transparent')}>
+                            <Pressable onPress={() => setPicker(picker === key ? null : key)} accessibilityRole="button" className={cn('rounded-lg px-1.5 py-1', m ? COLORS[m.errorType] : picker === key ? 'bg-info-soft' : 'bg-transparent')}>
                               <Text className="text-xl leading-9">{w}</Text>
                             </Pressable>
                           </View>
@@ -238,10 +237,10 @@ export default function TeacherRecite() {
                       })}
                       <Text className="text-muted-foreground self-center text-sm">{`﴿${a.ayahNumber}﴾`}</Text>
                       {picker && picker.startsWith(`${a.id}:`) ? (
-                        <View className="border-border bg-card w-full flex-row flex-wrap gap-1.5 rounded-lg border p-2">
+                        <View className="border-info-soft dark:border-border bg-card w-full flex-row flex-wrap gap-1.5 rounded-2xl border p-2.5">
                           {ERROR_TYPES.map((et) => (
-                            <Pressable key={et} onPress={() => mark(a.id, Number(picker.split(':')[1]), et)} accessibilityRole="button" className={cn('rounded-full px-2.5 py-1', COLORS[et])}>
-                              <Text className="text-xs font-medium">{h(`errorTypes.${et}`)}</Text>
+                            <Pressable key={et} onPress={() => mark(a.id, Number(picker.split(':')[1]), et)} accessibilityRole="button" className={cn('rounded-full px-3 py-1.5 active:opacity-70', COLORS[et])}>
+                              <Text className="text-xs font-semibold">{h(`errorTypes.${et}`)}</Text>
                             </Pressable>
                           ))}
                         </View>
@@ -249,20 +248,21 @@ export default function TeacherRecite() {
                     </View>
                   );
                 })}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="gap-3 pt-4">
+              </View>
+            </Panel>
+            <Panel className="gap-3 p-4">
                 <View className="flex-row items-center justify-between">
                   <Button variant="outline" size="sm" onPress={undo} disabled={!order.length}>
                     <Icon as={Undo2} className="size-4" />
                     <Text>{h('recitation.undo')}</Text>
                   </Button>
-                  <Text className="text-lg font-bold">{`${h('recitation.score')}: ${preview !== null ? preview.toFixed(2) : '—'}`}</Text>
+                  <View className="bg-info-soft rounded-full px-3 py-1.5">
+                    <Text className="text-brand dark:text-brand-secondary text-base font-bold">{`${h('recitation.score')}: ${preview !== null ? preview.toFixed(2) : '—'}`}</Text>
+                  </View>
                 </View>
                 <View className="flex-row items-center gap-3">
+                  <Text className="flex-1 text-sm font-medium">{h('recitation.overrideScore')}</Text>
                   <Switch checked={override} onCheckedChange={setOverride} />
-                  <Text className="flex-1 text-sm">{h('recitation.overrideScore')}</Text>
                 </View>
                 {override ? (
                   <View className="gap-2">
@@ -271,15 +271,14 @@ export default function TeacherRecite() {
                   </View>
                 ) : null}
                 <View className="flex-row gap-2">
-                  <Button variant="ghost" className="flex-1" onPress={next}>
+                  <Button variant="outline" className="flex-1" onPress={next}>
                     <Text>{h('recitation.nextStudent')}</Text>
                   </Button>
                   <Button className="flex-1" onPress={save} disabled={saving}>
                     <Text>{saving ? h('recitation.saving') : h('recitation.save')}</Text>
                   </Button>
                 </View>
-              </CardContent>
-            </Card>
+            </Panel>
           </>
         ) : null}
       </ScrollView>

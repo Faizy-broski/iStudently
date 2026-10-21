@@ -14,8 +14,8 @@ export function PersonAvatar({ url, name, size = 40 }: { url?: string | null; na
     return <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" accessibilityIgnoresInvertColors />;
   }
   return (
-    <View className="bg-muted items-center justify-center rounded-full" style={{ width: size, height: size }}>
-      <Text className="text-muted-foreground font-semibold" style={{ fontSize: size * 0.38 }}>
+    <View className="bg-info-soft items-center justify-center rounded-full" style={{ width: size, height: size }}>
+      <Text className="text-brand dark:text-brand-secondary font-bold" style={{ fontSize: size * 0.36 }}>
         {initials(name)}
       </Text>
     </View>

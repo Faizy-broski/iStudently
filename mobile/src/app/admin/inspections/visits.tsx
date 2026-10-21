@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
+import { IconTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { useCampus } from '@/features/campus/campus';
@@ -20,12 +21,12 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 const STATUS_CLS: Record<VisitStatus, [string, string]> = {
-  scheduled: ['bg-amber-100', 'text-amber-800'],
-  confirmed: ['bg-blue-100', 'text-blue-800'],
-  in_progress: ['bg-purple-100', 'text-purple-800'],
-  completed: ['bg-green-100', 'text-green-800'],
-  cancelled: ['bg-red-100', 'text-red-800'],
-  rescheduled: ['bg-gray-100', 'text-gray-600'],
+  scheduled: ['bg-warning-soft', 'text-warning'],
+  confirmed: ['bg-info-soft', 'text-brand dark:text-brand-secondary'],
+  in_progress: ['bg-chart-6/10', 'text-chart-6'],
+  completed: ['bg-success-soft', 'text-success'],
+  cancelled: ['bg-destructive-soft', 'text-destructive'],
+  rescheduled: ['bg-muted', 'text-muted-foreground'],
 };
 
 /** Inspection visits for the campus: confirm or cancel (web: /admin/inspections/visits). */
@@ -83,9 +84,7 @@ export default function InspectionVisits() {
             return (
               <View className="gap-2 px-4 py-3">
                 <View className="flex-row items-center gap-3">
-                  <View className="size-9 items-center justify-center rounded-full bg-[#022172]/10">
-                    <Icon as={UserCog} className="size-4 text-[#022172]" />
-                  </View>
+                  <IconTile icon={UserCog} round />
                   <View className="flex-1">
                     <Text className="text-sm font-medium">{x.inspector ? `${x.inspector.first_name} ${x.inspector.last_name}` : v('inspector_label')}</Text>
                     <View className="flex-row flex-wrap items-center gap-1">

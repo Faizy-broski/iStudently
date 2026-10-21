@@ -3,9 +3,10 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, Layers, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { ScrollView } from '@/components/app/keyboard';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -94,13 +95,13 @@ export default function InspectionRubrics() {
         <View className="gap-2">
           <View className="flex-row flex-wrap items-center gap-2">
             <Text className="text-muted-foreground text-xs">{`${r('total_weight_label')}:`}</Text>
-            <Badge variant={total === 100 ? 'secondary' : 'outline'} className={total !== 100 ? 'border-amber-300' : undefined}>
-              <Text className={total !== 100 ? 'text-amber-700' : undefined}>{`${total}%`}</Text>
+            <Badge variant={total === 100 ? 'secondary' : 'outline'} className={total !== 100 ? 'border-warning' : undefined}>
+              <Text className={total !== 100 ? 'text-warning' : undefined}>{`${total}%`}</Text>
             </Badge>
             {total !== 100 ? (
               <View className="flex-row items-center gap-1">
-                <Icon as={AlertTriangle} className="size-3 text-amber-700" />
-                <Text className="text-xs text-amber-700">{r('weight_warning')}</Text>
+                <Icon as={AlertTriangle} className="size-3 text-warning" />
+                <Text className="text-xs text-warning">{r('weight_warning')}</Text>
               </View>
             ) : null}
           </View>
@@ -109,32 +110,32 @@ export default function InspectionRubrics() {
             <Text>{r('btn_add_category')}</Text>
           </Button>
         </View>
-        {!tpl.categories.length ? <Text variant="muted" className="py-8 text-center text-sm">{r('no_categories')}</Text> : null}
+        {!tpl.categories.length ? <EmptyState title={r('no_categories')} /> : null}
         {tpl.categories.map((c) => (
           <Card key={c.id}>
             <CardHeader className="flex-row items-center gap-2">
-              <Icon as={Layers} className="size-4 text-[#022172]" />
+              <Icon as={Layers} className="size-4 text-brand dark:text-brand-secondary" />
               <CardTitle className="flex-1">{c.name}</CardTitle>
               <Badge variant="outline">
                 <Text className="text-[10px]">{`${c.weight}%`}</Text>
               </Badge>
-              <Pressable onPress={() => setCat({ editing: c, name: c.name, weight: String(c.weight) })} hitSlop={8}>
-                <Icon as={Pencil} className="text-muted-foreground size-4" />
+              <Pressable onPress={() => setCat({ editing: c, name: c.name, weight: String(c.weight) })} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
               </Pressable>
-              <Pressable onPress={() => run(adminInspections.deleteRubricCategory(c.id), 'msg_category_deleted')} hitSlop={8}>
+              <Pressable onPress={() => run(adminInspections.deleteRubricCategory(c.id), 'msg_category_deleted')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                 <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </CardHeader>
             <CardContent className="gap-2">
               {!c.criteria.length ? <Text className="text-muted-foreground text-xs">{r('no_criteria')}</Text> : null}
               {c.criteria.map((cr) => (
-                <View key={cr.id} className="border-border flex-row items-center gap-2 rounded-md border px-3 py-2">
+                <View key={cr.id} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border px-3 py-2">
                   <Text className="flex-1 text-sm">{cr.name}</Text>
-                  <Pressable onPress={() => setCrit({ categoryId: c.id, editing: cr, name: cr.name, description: cr.description ?? '' })} hitSlop={8}>
-                    <Icon as={Pencil} className="text-muted-foreground size-3.5" />
+                  <Pressable onPress={() => setCrit({ categoryId: c.id, editing: cr, name: cr.name, description: cr.description ?? '' })} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                   </Pressable>
-                  <Pressable onPress={() => run(adminInspections.deleteCriterion(cr.id), 'msg_criterion_deleted')} hitSlop={8}>
-                    <Icon as={Trash2} className="text-destructive size-3.5" />
+                  <Pressable onPress={() => run(adminInspections.deleteCriterion(cr.id), 'msg_criterion_deleted')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>
               ))}

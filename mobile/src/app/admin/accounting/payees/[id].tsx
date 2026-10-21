@@ -3,8 +3,9 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { InfoCard, InfoRow } from '@/components/app/info';
 import { ErrorState, LoadingList } from '@/components/app/states';
@@ -103,19 +104,18 @@ export default function PayeeDetail() {
                 {i > 0 ? <Separator /> : null}
                 <View className="flex-row items-center gap-3 py-2">
                   <View className="flex-1">
-                    <Text className="font-medium">{money(r.amount)}</Text>
+                    <Text className="text-sm font-semibold">{money(r.amount)}</Text>
                     <Text className="text-muted-foreground text-xs">{[formatDate(r.payment_date), r.reference_number, r.description].filter(Boolean).join(' · ')}</Text>
                   </View>
                   <Pressable
-                    hitSlop={8}
                     accessibilityLabel={t('app.bl_delete')}
                     onPress={async () => {
                       if (!(await confirm({ title: t('app.ac_delete'), body: money(r.amount), destructive: true, confirmLabel: t('app.bl_delete') }))) return;
                       const res = await adminAccounting.deletePayeePayment(scopeId!, r.id);
                       if (!res.success) return toast.error(res.error || t('app.error_title'));
                       payments.mutate();
-                    }}>
-                    <Icon as={Trash2} className="text-muted-foreground size-4" />
+                    }} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>
               </View>

@@ -2,10 +2,11 @@ import { Stack } from 'expo-router';
 import { Info, Save } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -60,11 +61,11 @@ export default function TeacherMessagingSettings() {
       <Stack.Screen options={{ title: s('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-sm">{s('subtitle')}</Text>
-        <View className="flex-row gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 dark:bg-blue-950/30">
-          <Icon as={Info} className="size-5 text-blue-600" />
+        <View className="flex-row gap-2 rounded-xl border border-info-soft bg-info-soft p-3">
+          <Icon as={Info} className="size-5 text-brand dark:text-brand-secondary" />
           <View className="flex-1">
-            <Text className="text-sm font-medium text-blue-800 dark:text-blue-300">{s('how_title')}</Text>
-            <Text className="text-sm text-blue-800 dark:text-blue-300">{s('how_body')}</Text>
+            <Text className="text-sm font-medium text-brand dark:text-brand-secondary ">{s('how_title')}</Text>
+            <Text className="text-sm text-brand dark:text-brand-secondary ">{s('how_body')}</Text>
           </View>
         </View>
         <Card>
@@ -75,7 +76,7 @@ export default function TeacherMessagingSettings() {
             {res.isLoading ? (
               <LoadingList rows={4} />
             ) : !staff.length ? (
-              <Text className="text-muted-foreground py-8 text-center text-sm">{s('none')}</Text>
+              <EmptyState title={s('none')} />
             ) : (
               <View>
                 <CheckRow
@@ -83,7 +84,10 @@ export default function TeacherMessagingSettings() {
                   onPress={() =>
                     setAllowed((p) => {
                       const n = new Set(p);
-                      for (const x of filtered) (allVisible ? n.delete(x.profileId) : n.add(x.profileId));
+                      for (const x of filtered) {
+                        if (allVisible) n.delete(x.profileId);
+                        else n.add(x.profileId);
+                      }
                       return n;
                     })
                   }

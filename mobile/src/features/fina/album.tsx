@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { FilterChips } from '@/components/app/filter-chips';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { GatedImage, useFn } from '@/features/admin/fina';
 import { useCampus } from '@/features/campus/campus';
@@ -40,7 +40,7 @@ export function FinaAlbumScreen() {
                 ]}
               />
             ) : null}
-            {!shown.length ? <Text className="text-muted-foreground py-8 text-center text-sm">{f('pending_queue_empty')}</Text> : null}
+            {!shown.length ? <EmptyState title={f('pending_queue_empty')} /> : null}
             <View className="flex-row flex-wrap gap-1.5">
               {shown.map((m) => (
                 <GatedImage key={m.id} mediaId={m.id} variant="md" className="aspect-square w-[48.5%] rounded-md" />

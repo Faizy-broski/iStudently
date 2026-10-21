@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 
 import { CalendarGrid } from '@/components/app/calendar-grid';
-import { Icon } from '@/components/ui/icon';
+import { IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { usePortalSettings } from '@/features/portal/menu';
@@ -44,18 +45,20 @@ export default function StudentEvents() {
       <Stack.Screen options={{ title: t('app.st_ev_title') }} />
       <ScrollView
         className="bg-background flex-1"
-        contentContainerClassName="gap-3 p-4 pb-10"
+        contentContainerClassName="gap-4 p-4 pb-10"
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([events.mutate(), calendars.mutate(), days.mutate()])} />}>
-        <View className="flex-row items-center gap-2">
-          <Icon as={CalendarIcon} className="size-6 text-[#022172] dark:text-blue-400" />
-          <Text className="text-xl font-bold text-[#022172] dark:text-white">{t('app.st_ev_title')}</Text>
+        <View className="flex-row items-center gap-3">
+          <IconTile icon={CalendarIcon} size={44} />
+          <View className="flex-1">
+            <Text className="text-brand dark:text-foreground text-lg font-bold">{t('app.st_ev_title')}</Text>
+            <Text className="text-muted-foreground text-xs">{t('app.st_ev_subtitle')}</Text>
+          </View>
         </View>
-        <Text variant="muted">{t('app.st_ev_subtitle')}</Text>
         {loading ? (
-          <View className="border-border bg-card h-80 items-center justify-center rounded-xl border">
+          <Panel className="h-80 items-center justify-center">
             <ActivityIndicator />
             <Text className="text-muted-foreground mt-3 text-sm">{t('app.st_ev_loading')}</Text>
-          </View>
+          </Panel>
         ) : (
           <CalendarGrid
             events={events.data ?? []}

@@ -1,11 +1,12 @@
 import { Stack } from 'expo-router';
-import { Award, TrendingUp, Users, type LucideIcon } from 'lucide-react-native';
+import { Award, Percent, TrendingUp, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HeroCard, Section, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { NoChild, useChild } from '@/features/parent/child';
@@ -43,62 +44,58 @@ export default function ParentGpaRank() {
     <>
       <Stack.Screen options={{ title: t('app.st_gpa_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
-        <Text variant="muted">{k('subtitle')}</Text>
         {!g || g.gpa === null ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Icon as={TrendingUp} className="text-muted-foreground mb-3 size-12" />
-              <Text className="text-muted-foreground">{k('empty')}</Text>
-            </CardContent>
-          </Card>
+          <>
+            <Text variant="muted">{k('subtitle')}</Text>
+            <EmptyState icon={TrendingUp} title={k('empty')} />
+          </>
         ) : (
-          <View className="flex-row flex-wrap gap-3">
-            <Stat icon={Award} iconClass="text-primary" label={k('gpa')} value={g.gpa.toFixed(2)} valueClass="text-primary">
+          <>
+            <HeroCard>
+              <View className="flex-row items-center justify-between gap-3">
+                <View className="flex-1 gap-1">
+                  <Text className="text-sm font-semibold text-white/85">{k('gpa')}</Text>
+                  <Text className="text-4xl font-bold text-white">{g.gpa.toFixed(2)}</Text>
+                </View>
+                <View className="size-14 items-center justify-center rounded-full bg-white/15">
+                  <Icon as={Award} className="size-7 text-white" />
+                </View>
+              </View>
               {g.grade ? (
-                <Badge className="mt-2">
-                  <Text>{g.grade}</Text>
-                </Badge>
+                <View className="flex-row">
+                  <View className="rounded-full bg-white/15 px-3 py-1">
+                    <Text className="text-xs font-semibold text-white">{g.grade}</Text>
+                  </View>
+                </View>
               ) : null}
-            </Stat>
-            <Stat icon={TrendingUp} iconClass="text-blue-500" label={t('app.st_gpa_rank')} value={g.rank !== null ? `#${g.rank}` : '—'} valueClass="text-blue-600" />
-            <Stat icon={Users} iconClass="text-muted-foreground" label={k('class_size')} value={g.total_students != null ? String(g.total_students) : '—'} />
-            <Stat label={k('percentile')} value={g.percentage !== null ? `${g.percentage.toFixed(1)}%` : '—'} valueClass="text-green-600" />
-          </View>
+              <Text className="text-xs text-white/80">{k('subtitle')}</Text>
+            </HeroCard>
+            <StatTiles>
+              <StatTile icon={TrendingUp} label={t('app.st_gpa_rank')} value={g.rank !== null ? `#${g.rank}` : '—'} />
+              <StatTile icon={Users} tone="muted" label={k('class_size')} value={g.total_students != null ? String(g.total_students) : '—'} />
+              <StatTile icon={Percent} tone="success" label={k('percentile')} value={g.percentage !== null ? `${g.percentage.toFixed(1)}%` : '—'} />
+            </StatTiles>
+          </>
         )}
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={TrendingUp} className="size-5" />
-            <CardTitle>{k('scale')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <View className="border-border flex-row border-b pb-2">
-              <Text className="text-muted-foreground flex-1 text-xs font-semibold uppercase">{k('col_pct')}</Text>
-              <Text className="text-muted-foreground w-20 text-center text-xs font-semibold uppercase">{k('col_letter')}</Text>
-              <Text className="text-muted-foreground w-20 text-center text-xs font-semibold uppercase">{k('col_gpa')}</Text>
+        <Section title={k('scale')}>
+          <Panel>
+            <View className="border-info-soft dark:border-border flex-row border-b px-4 py-2.5">
+              <Text className="text-muted-foreground flex-1 text-xs font-semibold">{k('col_pct')}</Text>
+              <Text className="text-muted-foreground w-20 text-center text-xs font-semibold">{k('col_letter')}</Text>
+              <Text className="text-muted-foreground w-20 text-center text-xs font-semibold">{k('col_gpa')}</Text>
             </View>
-            {SCALE.map(([range, letter, gpa]) => (
-              <View key={letter} className="border-border flex-row border-b py-2 last:border-b-0">
+            {SCALE.map(([range, letter, gpa], i) => (
+              <View key={letter} className={cn('flex-row items-center px-4 py-2.5', i < SCALE.length - 1 && 'border-info-soft dark:border-border border-b')}>
                 <Text className="flex-1 text-sm">{range}</Text>
-                <Text className="w-20 text-center text-sm font-semibold">{letter}</Text>
-                <Text className="w-20 text-center text-sm">{gpa}</Text>
+                <View className="w-20 items-center">
+                  <StatusChip label={letter} tone="info" />
+                </View>
+                <Text className="w-20 text-center text-sm font-medium">{gpa}</Text>
               </View>
             ))}
-          </CardContent>
-        </Card>
+          </Panel>
+        </Section>
       </ScrollView>
     </>
-  );
-}
-
-function Stat({ icon, iconClass, label, value, valueClass, children }: { icon?: LucideIcon; iconClass?: string; label: string; value: string; valueClass?: string; children?: React.ReactNode }) {
-  return (
-    <Card className="min-w-[45%] flex-1">
-      <CardContent className="items-center p-4">
-        {icon ? <Icon as={icon} className={cn('mb-2 size-8', iconClass)} /> : null}
-        <Text className="text-muted-foreground text-center text-sm">{label}</Text>
-        <Text className={cn('mt-1 text-3xl font-bold', valueClass)}>{value}</Text>
-        {children}
-      </CardContent>
-    </Card>
   );
 }

@@ -5,11 +5,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
+import { FilterChips } from '@/components/app/filter-chips';
+import { Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip, type ChipTone } from '@/components/app/status-chip';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
@@ -18,13 +19,13 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import i18n from '@/i18n';
 
-const COLORS: Record<string, string> = {
-  academic: 'bg-purple-100 text-purple-700',
-  holiday: 'bg-orange-100 text-orange-700',
-  exam: 'bg-red-100 text-red-700',
-  meeting: 'bg-blue-100 text-blue-700',
-  activity: 'bg-green-100 text-green-700',
-  reminder: 'bg-yellow-100 text-yellow-700',
+const TONES: Record<string, ChipTone> = {
+  academic: 'info',
+  holiday: 'warning',
+  exam: 'destructive',
+  meeting: 'info',
+  activity: 'success',
+  reminder: 'warning',
 };
 const CATS = ['academic', 'holiday', 'exam', 'meeting', 'activity', 'reminder'];
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
@@ -47,8 +48,8 @@ export default function TeacherEvents() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([upcoming.mutate(), all.mutate()])} />}>
-        <Text variant="muted">{k('pageSubtitle')}</Text>
-        <Picker
+        <Text className="text-muted-foreground text-sm">{k('pageSubtitle')}</Text>
+        <FilterChips
           value={cat || 'all'}
           onChange={(v) => setCat(v === 'all' ? '' : v)}
           options={[{ value: 'all', label: k('allCategories') }, ...CATS.map((c) => ({ value: c, label: k(`category${c[0].toUpperCase()}${c.slice(1)}`) }))]}
@@ -56,72 +57,72 @@ export default function TeacherEvents() {
         {upcoming.isLoading ? (
           <LoadingList rows={4} />
         ) : !up.length ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Icon as={Calendar} className="text-muted-foreground mb-3 size-12" />
-              <Text className="text-muted-foreground">{k('noUpcomingEvents')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={Calendar} title={k('noUpcomingEvents')} />
         ) : (
-          <>
-            <Text className="text-lg font-semibold">{k('upcomingEventsCount', { count: up.length })}</Text>
-            {up.map((e) => (
-              <EventCard key={e.id} event={e} today={sameDay(new Date(e.start_at), now)} />
-            ))}
-          </>
+          <Section title={k('upcomingEventsCount', { count: up.length })}>
+            <Panel>
+              {up.map((e, i) => (
+                <EventRow key={e.id} event={e} today={sameDay(new Date(e.start_at), now)} last={i === up.length - 1} />
+              ))}
+            </Panel>
+          </Section>
         )}
         <Button variant="outline" size="sm" className="self-start" onPress={() => setShowPast((v) => !v)}>
           <Text>{showPast ? k('hidePastEvents') : k('showPastEvents')}</Text>
-          <Icon as={ChevronRight} className={cn('size-4', showPast ? 'rotate-90' : 'rtl:rotate-180')} />
+          <Icon flipRtl as={ChevronRight} className={cn('size-4', showPast ? 'rotate-90' : '')} />
         </Button>
         {showPast ? (
-          <View className="gap-3 opacity-70">
-            <Text className="text-lg font-semibold">{k('pastEvents')}</Text>
-            {all.isLoading ? <LoadingList rows={2} /> : !past.length ? <Text className="text-muted-foreground text-sm">{k('noPastEvents')}</Text> : past.map((e) => <EventCard key={e.id} event={e} past />)}
-          </View>
+          <Section title={k('pastEvents')} className="opacity-70">
+            {all.isLoading ? (
+              <LoadingList rows={2} />
+            ) : !past.length ? (
+              <EmptyState icon={Calendar} title={k('noPastEvents')} />
+            ) : (
+              <Panel>
+                {past.map((e, i) => (
+                  <EventRow key={e.id} event={e} past last={i === past.length - 1} />
+                ))}
+              </Panel>
+            )}
+          </Section>
         ) : null}
       </ScrollView>
     </>
   );
 }
 
-function EventCard({ event, today, past }: { event: SchoolEvent; today?: boolean; past?: boolean }) {
+function EventRow({ event, today, past, last }: { event: SchoolEvent; today?: boolean; past?: boolean; last?: boolean }) {
   const { t } = useTranslation();
   const loc = i18n.language === 'ar' ? 'ar' : 'en';
   const start = new Date(event.start_at);
   const time = (d: Date) => d.toLocaleTimeString(loc, { hour: 'numeric', minute: '2-digit' });
+  const isToday = today && !past;
   return (
-    <Pressable onPress={() => router.push({ pathname: '/teacher/events/[id]', params: { id: event.id } })} accessibilityRole="button">
-      <Card className={cn(today && !past && 'border-primary border-2')}>
-        <CardContent className="flex-row items-start gap-3 p-4">
-          <View className="bg-muted min-w-14 items-center rounded-lg p-2">
-            <Text className="text-muted-foreground text-xs font-medium uppercase">{start.toLocaleDateString(loc, { month: 'short' })}</Text>
-            <Text className="text-xl font-bold">{String(start.getDate())}</Text>
-          </View>
-          <View className="flex-1 gap-1">
-            <View className="flex-row flex-wrap items-center gap-2">
-              <Text className="font-semibold">{event.title}</Text>
-              <View className={cn('rounded-full px-2 py-0.5', COLORS[event.category] ?? 'bg-gray-100 text-gray-700')}>
-                <Text className={cn('text-xs', (COLORS[event.category] ?? 'text-gray-700').split(' ')[1])}>{t(`teacherPages.events.category${event.category[0]?.toUpperCase()}${event.category.slice(1)}`, { defaultValue: event.category })}</Text>
-              </View>
-              {today && !past ? (
-                <Badge>
-                  <Text>{t('teacherPages.events.today')}</Text>
-                </Badge>
-              ) : null}
-            </View>
-            {event.description ? (
-              <Text className="text-muted-foreground text-sm" numberOfLines={2}>
-                {event.description}
-              </Text>
-            ) : null}
-            <View className="flex-row items-center gap-1">
-              <Icon as={Clock} className="text-muted-foreground size-3" />
-              <Text className="text-muted-foreground text-xs">{event.is_all_day ? t('teacherPages.events.allDay') : `${time(start)} – ${time(new Date(event.end_at))}`}</Text>
-            </View>
-          </View>
-        </CardContent>
-      </Card>
+    <Pressable
+      onPress={() => router.push({ pathname: '/teacher/events/[id]', params: { id: event.id } })}
+      accessibilityRole="button"
+      className={cn('flex-row items-start gap-3 px-4 py-3 active:opacity-70', !last && 'border-info-soft dark:border-border border-b', isToday && 'bg-info-soft')}>
+      <View className={cn('min-w-12 items-center rounded-xl px-2 py-1.5', isToday ? 'bg-brand dark:bg-brand-secondary' : 'bg-info-soft')}>
+        <Text className={cn('text-[10px] font-semibold uppercase', isToday ? 'text-white/85' : 'text-brand dark:text-brand-secondary')}>{start.toLocaleDateString(loc, { month: 'short' })}</Text>
+        <Text className={cn('text-lg font-bold', isToday ? 'text-white' : 'text-brand dark:text-brand-secondary')}>{String(start.getDate())}</Text>
+      </View>
+      <View className="flex-1 gap-1">
+        <Text className="text-sm font-semibold">{event.title}</Text>
+        <View className="flex-row flex-wrap items-center gap-1.5">
+          <StatusChip label={t(`teacherPages.events.category${event.category[0]?.toUpperCase()}${event.category.slice(1)}`, { defaultValue: event.category })} tone={TONES[event.category] ?? 'muted'} />
+          {isToday ? <StatusChip label={t('teacherPages.events.today')} tone="success" /> : null}
+        </View>
+        {event.description ? (
+          <Text className="text-muted-foreground text-xs" numberOfLines={2}>
+            {event.description}
+          </Text>
+        ) : null}
+        <View className="flex-row items-center gap-1">
+          <Icon as={Clock} className="text-muted-foreground size-3" />
+          <Text className="text-muted-foreground text-xs">{event.is_all_day ? t('teacherPages.events.allDay') : `${time(start)} – ${time(new Date(event.end_at))}`}</Text>
+        </View>
+      </View>
+      <Icon as={ChevronRight} flipRtl className="text-muted-foreground mt-1 size-4" />
     </Pressable>
   );
 }

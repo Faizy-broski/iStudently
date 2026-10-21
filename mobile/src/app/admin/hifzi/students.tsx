@@ -1,23 +1,24 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Check, LogOut, UserPlus, Users } from 'lucide-react-native';
+import { LogOut, UserPlus, Users } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { SearchBar } from '@/components/app/search-bar';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
+import { CheckMark, Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { CirclePicker, enrollmentName, NoCircles, useHifziCircles, useHifziRoster, useHz } from '@/features/admin/hifzi';
 import { useCampus } from '@/features/campus/campus';
 import { adminHifzi, adminLibrary } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { cn } from '@/lib/utils';
 import { useDebounced } from '@/lib/use-debounced';
 
 type Hit = { id: string; name: string; detail: string };
@@ -149,7 +150,7 @@ function EnrollBulk({ circleId, onClose, onEnrolled }: { circleId: string; onClo
                 <View key={s.id}>
                   {i > 0 ? <Separator /> : null}
                   <Pressable onPress={() => toggle(s)} className="flex-row items-center gap-3 px-1 py-2.5" accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
-                    <View className={cn('size-5 items-center justify-center rounded border', on ? 'border-primary bg-primary' : 'border-border')}>{on ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>
+                    <CheckMark on={on} />
                     <Text className="flex-1">{s.name}</Text>
                   </Pressable>
                 </View>
@@ -222,16 +223,17 @@ export default function HifziStudents() {
             ) : roster.error ? (
               <ErrorState message={roster.error.message} onRetry={() => roster.mutate()} />
             ) : !rows.length ? (
-              <Text className="text-muted-foreground py-8 text-center text-sm">{h('noStudents')}</Text>
+              <EmptyState title={h('noStudents')} />
             ) : (
               <Card>
                 <CardContent className="py-1">
                   {rows.map((e, i) => (
                     <View key={e.id}>
                       {i > 0 ? <Separator /> : null}
-                      <View className="flex-row items-center gap-2 py-2.5">
+                      <View className="flex-row items-center gap-3 py-2.5">
+                        <Initials name={enrollmentName(e) || '?'} />
                         <View className="flex-1">
-                          <Text className="font-medium">{enrollmentName(e)}</Text>
+                          <Text className="text-sm font-semibold">{enrollmentName(e)}</Text>
                           <Text className="text-muted-foreground text-xs">{e.students?.student_number}</Text>
                         </View>
                         <Button size="sm" variant="outline" onPress={() => withdraw(e.id, enrollmentName(e))}>

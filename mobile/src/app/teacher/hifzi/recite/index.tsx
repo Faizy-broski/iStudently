@@ -1,11 +1,10 @@
 import { router, Stack } from 'expo-router';
-import { ChevronRight, Users } from 'lucide-react-native';
-import { Pressable, RefreshControl, ScrollView } from 'react-native';
+import { Users } from 'lucide-react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
-import { Text } from '@/components/ui/text';
+import { IconTile, RowItem } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useHz } from '@/features/admin/hifzi';
 import { adminHifzi } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -22,19 +21,19 @@ export default function TeacherReciteCircles() {
         {circles.isLoading ? (
           <LoadingList rows={3} />
         ) : !list.length ? (
-          <Text className="text-muted-foreground text-sm">{h('circles.noCircles')}</Text>
+          <EmptyState icon={Users} title={h('circles.noCircles')} />
         ) : (
-          list.map((c) => (
-            <Pressable key={c.id} onPress={() => router.push({ pathname: '/teacher/hifzi/recite/[circleId]', params: { circleId: c.id } })} accessibilityRole="button">
-              <Card>
-                <CardContent className="flex-row items-center gap-3 p-4">
-                  <Icon as={Users} className="size-5 text-[#022172] dark:text-blue-400" />
-                  <Text className="flex-1 font-medium">{(isAr ? c.name_ar : c.name_en) || c.name_ar}</Text>
-                  <Icon as={ChevronRight} className="text-muted-foreground size-4 rtl:rotate-180" />
-                </CardContent>
-              </Card>
-            </Pressable>
-          ))
+          <Panel>
+            {list.map((c, i) => (
+              <RowItem
+                key={c.id}
+                title={(isAr ? c.name_ar : c.name_en) || c.name_ar}
+                leading={<IconTile icon={Users} size={40} />}
+                onPress={() => router.push({ pathname: '/teacher/hifzi/recite/[circleId]', params: { circleId: c.id } })}
+                last={i === list.length - 1}
+              />
+            ))}
+          </Panel>
         )}
       </ScrollView>
     </>

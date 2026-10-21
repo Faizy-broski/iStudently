@@ -46,8 +46,9 @@ export default function AddAbsences() {
   const periodsRes = useApi(['admin', 'class-periods', campusId ?? 'school'], () => adminAcademics.periods(campusId));
   const activePeriods = (periodsRes.data ?? []).filter((p) => !p.is_break);
 
-  const students = useApi(['admin', 'absence-students', campusId ?? 'school', gs.gradeName ?? 'all'], () =>
-    adminStudents.list(campusId, { grade_level: gs.gradeName ? [gs.gradeName] : undefined, limit: 500, is_active: true }),
+  // Same query as the web: grade by id (the server accepts ids or names), up to 500 students.
+  const students = useApi(['admin', 'absence-students', campusId ?? 'school', gs.gradeId ?? 'all'], () =>
+    adminStudents.list(campusId, { grade_level: gs.gradeId ? [gs.gradeId] : undefined, limit: 500 }),
   );
 
   const lastDay = new Date(year, month + 1, 0).getDate();
@@ -62,7 +63,7 @@ export default function AddAbsences() {
   const rows = (students.data ?? []).filter((s) => {
     if (gs.sectionId && s.section_id !== gs.sectionId) return false;
     if (!q) return true;
-    return `${s.profile?.first_name ?? ''} ${s.profile?.last_name ?? ''}`.toLowerCase().includes(q) || (s.student_number ?? '').toLowerCase().includes(q);
+    return `${s.profile?.first_name ?? ''} ${s.profile?.last_name ?? ''}`.toLowerCase().includes(q) || ((s as { admission_number?: string | null }).admission_number || s.student_number || '').toLowerCase().includes(q);
   });
 
   const toggle = <T,>(set: Set<T>, v: T) => {
@@ -182,7 +183,7 @@ export default function AddAbsences() {
                       accessibilityState={{ checked: on, disabled: !schoolDay }}
                       className="h-10 flex-1 items-center justify-center p-0.5">
                       <View className={cn('size-9 items-center justify-center rounded-md border', on ? 'border-primary bg-primary' : 'border-input', !schoolDay && 'opacity-30')}>
-                        <Text className={cn('text-sm', on ? 'text-primary-foreground font-semibold' : off ? 'text-red-500' : 'text-foreground')}>{day}</Text>
+                        <Text className={cn('text-sm', on ? 'text-primary-foreground font-semibold' : off ? 'text-destructive' : 'text-foreground')}>{day}</Text>
                       </View>
                     </Pressable>
                   );
@@ -218,7 +219,7 @@ export default function AddAbsences() {
             <Pressable onPress={() => setSelected((x) => toggle(x, s.id))} className={cn('flex-row items-center gap-3 px-4 py-3', selected.has(s.id) && 'bg-primary/10')}>
               <CheckRow checked={selected.has(s.id)} onPress={() => setSelected((x) => toggle(x, s.id))} label="" />
               <View className="flex-1">
-                <Text className="font-medium">{shortName(s.profile) || s.student_number}</Text>
+                <Text className="text-sm font-semibold">{shortName(s.profile) || s.student_number}</Text>
                 <Text className="text-muted-foreground text-xs">{[s.student_number, s.grade?.name ?? s.grade_level].filter(Boolean).join(' · ') || '-'}</Text>
               </View>
             </Pressable>

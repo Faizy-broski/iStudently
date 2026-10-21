@@ -1,8 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Text } from '@/components/ui/text';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { RoomCard, useLc } from '@/features/admin/jitsi';
 import { jitsi } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -19,7 +18,7 @@ export default function ParentMeet() {
         {res.isLoading ? (
           <LoadingList rows={3} />
         ) : !rooms.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{l('no_rooms_yet')}</Text>
+          <EmptyState title={l('no_rooms_yet')} />
         ) : (
           rooms.map((r) => <RoomCard key={r.id} room={r} onJoin={() => router.push({ pathname: '/parent/jitsi-meet/rooms/[id]', params: { id: r.id } })} />)
         )}

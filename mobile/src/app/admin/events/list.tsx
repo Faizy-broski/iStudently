@@ -3,9 +3,11 @@ import { router, Stack } from 'expo-router';
 import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, Upload } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
@@ -15,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { CategoryBadge, EVENT_CATEGORIES } from '@/features/admin/events';
 import { useCampus } from '@/features/campus/campus';
@@ -119,14 +122,12 @@ export default function AllEvents() {
                 {i > 0 ? <Separator /> : null}
                 <Pressable className="gap-1.5 px-4 py-3" onPress={() => router.push({ pathname: '/admin/events/[id]', params: { id: ev.id } })}>
                   <View className="flex-row items-center gap-2">
-                    <View className="size-2.5 rounded-full" style={{ backgroundColor: ev.color_code || '#6b7280' }} />
-                    <Text className="flex-1 font-medium" numberOfLines={1}>
+                    <View className="size-2.5 rounded-full" style={{ backgroundColor: ev.color_code || colors.printMuted }} />
+                    <Text className="flex-1 text-sm font-semibold" numberOfLines={1}>
                       {ev.title}
                     </Text>
                     {ev.is_all_day ? (
-                      <View className="border-border rounded-full border px-2 py-0.5">
-                        <Text className="text-[10px]">{l('all_day')}</Text>
-                      </View>
+                      <StatusChip label={String(l('all_day'))} tone="muted" />
                     ) : null}
                   </View>
                   {ev.description ? (
@@ -144,17 +145,15 @@ export default function AllEvents() {
                   </View>
                   <View className="flex-row flex-wrap items-center gap-1.5 ps-4">
                     {ev.visible_to_roles.map((r) => (
-                      <View key={r} className="border-border rounded-full border px-2 py-0.5">
-                        <Text className="text-[10px] capitalize">{r}</Text>
-                      </View>
+                      <StatusChip key={r} label={String(r)} tone="muted" className="capitalize" />
                     ))}
                     <View className="flex-1" />
-                    <Button size="icon" variant="ghost" onPress={() => router.push({ pathname: '/admin/events/form', params: { id: ev.id } })} accessibilityLabel={t('common.edit')}>
-                      <Icon as={Pencil} className="text-foreground size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onPress={() => remove(ev)} accessibilityLabel={t('common.delete')}>
+                    <Pressable onPress={() => router.push({ pathname: '/admin/events/form', params: { id: ev.id } })} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                      <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                    </Pressable>
+                    <Pressable onPress={() => remove(ev)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
-                    </Button>
+                    </Pressable>
                   </View>
                 </Pressable>
               </View>
@@ -168,12 +167,12 @@ export default function AllEvents() {
               {l('showing', { from: (current - 1) * PAGE_SIZE + 1, to: Math.min(current * PAGE_SIZE, filtered.length), total: filtered.length })}
             </Text>
             <View className="flex-row items-center gap-1">
-              <Button size="icon" variant="outline" disabled={current === 1} onPress={() => setPage(current - 1)}>
-                <Icon as={ChevronLeft} className="text-foreground size-4 rtl:rotate-180" />
+              <Button size="icon" variant="outline" disabled={current === 1} onPress={() => setPage(current - 1)} accessibilityLabel={t('common.previous')}>
+                <Icon flipRtl as={ChevronLeft} className="text-foreground size-4" />
               </Button>
               <Text className="px-2 text-xs">{l('page_of', { page: current, total: totalPages })}</Text>
-              <Button size="icon" variant="outline" disabled={current === totalPages} onPress={() => setPage(current + 1)}>
-                <Icon as={ChevronRight} className="text-foreground size-4 rtl:rotate-180" />
+              <Button size="icon" variant="outline" disabled={current === totalPages} onPress={() => setPage(current + 1)} accessibilityLabel={t('common.next')}>
+                <Icon flipRtl as={ChevronRight} className="text-foreground size-4" />
               </Button>
             </View>
           </View>

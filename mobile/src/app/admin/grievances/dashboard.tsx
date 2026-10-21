@@ -3,6 +3,7 @@ import { AlertTriangle, Archive, CheckCircle2, Clock, Search, TrendingUp } from 
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { PieChart } from '@/components/app/charts';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,16 +23,16 @@ export default function GrievanceDashboard() {
   const s = stats.data;
   if (!s) return <ErrorState message={d('failed_to_load')} onRetry={() => stats.mutate()} />;
   const cards = [
-    { title: d('stat_pending'), value: s.pending, icon: Clock, fg: 'text-blue-600', bg: 'bg-blue-100' },
-    { title: d('stat_under_investigation'), value: s.under_investigation, icon: Search, fg: 'text-purple-600', bg: 'bg-purple-100' },
-    { title: d('stat_overdue'), value: s.overdue, icon: AlertTriangle, fg: 'text-red-600', bg: 'bg-red-100' },
-    { title: d('stat_resolved'), value: s.resolved, icon: CheckCircle2, fg: 'text-emerald-600', bg: 'bg-emerald-100' },
-    { title: d('stat_closed'), value: s.closed, icon: Archive, fg: 'text-gray-600', bg: 'bg-gray-100' },
-    { title: d('stat_escalated'), value: s.escalated, icon: TrendingUp, fg: 'text-orange-600', bg: 'bg-orange-100' },
+    { title: d('stat_pending'), value: s.pending, icon: Clock, fg: 'text-brand dark:text-brand-secondary', bg: 'bg-info-soft' },
+    { title: d('stat_under_investigation'), value: s.under_investigation, icon: Search, fg: 'text-chart-6', bg: 'bg-chart-6/10' },
+    { title: d('stat_overdue'), value: s.overdue, icon: AlertTriangle, fg: 'text-destructive', bg: 'bg-destructive-soft' },
+    { title: d('stat_resolved'), value: s.resolved, icon: CheckCircle2, fg: 'text-success', bg: 'bg-success-soft' },
+    { title: d('stat_closed'), value: s.closed, icon: Archive, fg: 'text-muted-foreground', bg: 'bg-muted' },
+    { title: d('stat_escalated'), value: s.escalated, icon: TrendingUp, fg: 'text-warning', bg: 'bg-warning-soft' },
   ];
   const pie = Object.entries(s.by_priority)
     .filter(([, v]) => v > 0)
-    .map(([p, v]) => ({ name: t(`grievances.priority.${p}`), value: v, color: PRIORITY_HEX[p] ?? '#94a3b8' }));
+    .map(([p, v]) => ({ name: t(`grievances.priority.${p}`), value: v, color: PRIORITY_HEX[p] ?? colors.printMuted }));
   return (
     <>
       <Stack.Screen options={{ title: d('title') }} />

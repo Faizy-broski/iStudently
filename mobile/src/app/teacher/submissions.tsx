@@ -4,14 +4,18 @@ import * as WebBrowser from 'expo-web-browser';
 import { Award, CheckSquare, Clock, FileText } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
+import { FilterChips } from '@/components/app/filter-chips';
+import { FormSection, Initials, RowItem, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip, type ChipTone } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -23,13 +27,12 @@ import { attachmentUrl } from '@/features/teacher/homework';
 import { homework } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate, formatDateTime } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
-const STATUS: Record<string, [string, string]> = {
-  pending: ['statusPending', 'bg-gray-100 text-gray-700'],
-  submitted: ['statusSubmitted', 'bg-blue-100 text-blue-700'],
-  late: ['statusLate', 'bg-orange-100 text-orange-700'],
-  graded: ['statusGraded', 'bg-green-100 text-green-700'],
+const STATUS: Record<string, [string, ChipTone]> = {
+  pending: ['statusPending', 'muted'],
+  submitted: ['statusSubmitted', 'info'],
+  late: ['statusLate', 'warning'],
+  graded: ['statusGraded', 'success'],
 };
 
 /** Pick one of the teacher's assignments, see submission counts, filter, and grade each submission (web: /teacher/submissions). */
@@ -55,9 +58,7 @@ export default function TeacherSubmissions() {
   const all = subs.data ?? [];
   const term = q.trim().toLowerCase();
   const shown = all.filter(
-    (s) =>
-      (status === 'all' || s.status === status) &&
-      (!term || `${s.student?.profile?.first_name ?? ''} ${s.student?.profile?.last_name ?? ''}`.toLowerCase().includes(term) || (s.student?.student_number ?? '').toLowerCase().includes(term)),
+    (s) => (status === 'all' || s.status === status) && (!term || `${s.student?.profile?.first_name ?? ''} ${s.student?.profile?.last_name ?? ''}`.toLowerCase().includes(term) || (s.student?.student_number ?? '').toLowerCase().includes(term)),
   );
   const stats = {
     total: all.length,
@@ -88,71 +89,51 @@ export default function TeacherSubmissions() {
   return (
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
-      <ScrollView
-        className="bg-background flex-1"
-        contentContainerClassName="gap-3 p-4 pb-10"
-        keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([list.mutate(), subs.mutate()])} />}>
-        <Text variant="muted">{k('pageSubtitle')}</Text>
-        <View className="gap-1.5">
-          <Label>{k('selectAssignment')}</Label>
-          <Picker
-            value={selected || null}
-            onChange={setPicked}
-            placeholder={k('chooseAssignmentPlaceholder')}
-            options={assignments.map((a) => ({ value: a.id, label: `${a.title} - ${a.section?.name ?? ''} (${a.subject?.name ?? ''})` }))}
-          />
-        </View>
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([list.mutate(), subs.mutate()])} />}>
+        <Text variant="muted" className="text-sm">
+          {k('pageSubtitle')}
+        </Text>
+        <FormSection title={k('selectAssignment')} icon={FileText}>
+          <Picker value={selected || null} onChange={setPicked} placeholder={k('chooseAssignmentPlaceholder')} options={assignments.map((a) => ({ value: a.id, label: `${a.title} - ${a.section?.name ?? ''} (${a.subject?.name ?? ''})` }))} />
+        </FormSection>
         {list.isLoading ? <LoadingList rows={2} /> : null}
         {selected ? (
           <>
-            <View className="flex-row flex-wrap gap-2">
-              <Stat icon={FileText} label={k('total')} value={stats.total} tone="bg-gray-100 text-gray-600" />
-              <Stat icon={Clock} label={k('statusPending')} value={stats.pending} tone="bg-orange-100 text-orange-600" />
-              <Stat icon={CheckSquare} label={k('statusSubmitted')} value={stats.submitted} tone="bg-blue-100 text-blue-600" />
-              <Stat icon={Award} label={k('statusGraded')} value={stats.graded} tone="bg-green-100 text-green-600" />
-            </View>
+            <StatTiles>
+              <StatTile icon={FileText} tone="muted" label={k('total')} value={String(stats.total)} />
+              <StatTile icon={Clock} tone="warning" label={k('statusPending')} value={String(stats.pending)} />
+              <StatTile icon={CheckSquare} label={k('statusSubmitted')} value={String(stats.submitted)} />
+              <StatTile icon={Award} tone="success" label={k('statusGraded')} value={String(stats.graded)} />
+            </StatTiles>
             <SearchBar value={q} onChangeText={setQ} placeholder={k('searchByStudentPlaceholder')} />
-            <Picker
-              value={status}
-              onChange={setStatus}
-              options={[{ value: 'all', label: k('allStatus') }, ...Object.entries(STATUS).map(([v, [key]]) => ({ value: v, label: k(key) }))]}
-            />
+            <FilterChips value={status} onChange={setStatus} options={[{ value: 'all', label: k('allStatus') }, ...Object.entries(STATUS).map(([v, [key]]) => ({ value: v, label: k(key) }))]} />
             {subs.isLoading ? (
               <LoadingList rows={4} />
             ) : !shown.length ? (
-              <Card>
-                <CardContent className="items-center py-12">
-                  <Icon as={FileText} className="text-muted-foreground mb-4 size-14" />
-                  <Text className="mb-2 text-xl font-semibold">{k('noSubmissionsFound')}</Text>
-                  <Text className="text-muted-foreground text-center">{status !== 'all' ? k('tryChangingFilter') : k('noSubmissionsYet')}</Text>
-                </CardContent>
-              </Card>
+              <EmptyState icon={FileText} title={k('noSubmissionsFound')} body={status !== 'all' ? k('tryChangingFilter') : k('noSubmissionsYet')} />
             ) : (
-              shown.map((s) => {
-                const [key, tone] = STATUS[s.status] ?? [s.status, 'bg-gray-100 text-gray-700'];
-                return (
-                  <Card key={s.id}>
-                    <CardContent className="flex-row items-center gap-3 p-4">
-                      <View className="flex-1 gap-1">
-                        <View className="flex-row flex-wrap items-center gap-2">
-                          <Text className="font-semibold">{nameOf(s) || '—'}</Text>
-                          <View className={cn('rounded-full px-2 py-0.5', tone)}>
-                            <Text className={cn('text-xs font-medium', tone.split(' ')[1])}>{STATUS[s.status] ? k(key) : s.status}</Text>
-                          </View>
+              <Panel>
+                {shown.map((s, i) => {
+                  const [key, tone] = STATUS[s.status] ?? [s.status, 'muted' as ChipTone];
+                  return (
+                    <RowItem
+                      key={s.id}
+                      leading={<Initials name={nameOf(s) || '?'} size={40} />}
+                      title={nameOf(s) || '—'}
+                      meta={[s.submitted_at ? k('submittedOn', { date: formatDate(s.submitted_at) }) : null, s.score != null ? k('scoreLabel', { score: s.score }) : null].filter(Boolean).join(' · ') || null}
+                      trailing={
+                        <View className="items-end gap-1.5">
+                          <StatusChip label={STATUS[s.status] ? k(key) : s.status} tone={tone} />
+                          <Button size="sm" variant={s.status === 'graded' ? 'outline' : 'default'} className="h-8 rounded-full px-3" onPress={() => open(s)}>
+                            <Text className="text-xs">{s.status === 'graded' ? k('viewGrade') : k('grade')}</Text>
+                          </Button>
                         </View>
-                        <View className="flex-row flex-wrap gap-3">
-                          {s.submitted_at ? <Text className="text-muted-foreground text-xs">{k('submittedOn', { date: formatDate(s.submitted_at) })}</Text> : null}
-                          {s.score != null ? <Text className="text-muted-foreground text-xs">{k('scoreLabel', { score: s.score })}</Text> : null}
-                        </View>
-                      </View>
-                      <Button size="sm" variant={s.status === 'graded' ? 'outline' : 'default'} onPress={() => open(s)}>
-                        <Text>{s.status === 'graded' ? k('viewGrade') : k('grade')}</Text>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })
+                      }
+                      last={i === shown.length - 1}
+                    />
+                  );
+                })}
+              </Panel>
             )}
           </>
         ) : null}
@@ -167,7 +148,7 @@ export default function TeacherSubmissions() {
             {grading?.submission_text ? (
               <View className="gap-1">
                 <Label>{k('submissionText')}</Label>
-                <View className="bg-muted rounded-lg p-3">
+                <View className="bg-muted/40 rounded-xl p-3">
                   <Text className="text-sm">{grading.submission_text}</Text>
                 </View>
               </View>
@@ -176,8 +157,10 @@ export default function TeacherSubmissions() {
               <View className="gap-2">
                 <Label>{k('attachmentsCount', { count: grading.attachments.length })}</Label>
                 {grading.attachments.map((a, i) => (
-                  <View key={i} className="bg-muted flex-row items-center gap-2 rounded-lg p-2">
-                    <Icon as={FileText} className="size-4 text-blue-600" />
+                  <View key={i} className="bg-muted/40 flex-row items-center gap-2 rounded-xl p-2">
+                    <View className="bg-info-soft size-8 items-center justify-center rounded-full">
+                      <Icon as={FileText} className="text-brand dark:text-brand-secondary size-4" />
+                    </View>
                     <View className="flex-1">
                       <Text className="text-sm font-medium">{typeof a === 'string' || a.url ? k('fileNumber', { number: i + 1 }) : k('attachmentNumber', { number: i + 1 })}</Text>
                       {typeof a !== 'string' && a.uploaded_at ? <Text className="text-muted-foreground text-xs">{k('uploadedOn', { date: formatDate(a.uploaded_at) })}</Text> : null}
@@ -189,8 +172,8 @@ export default function TeacherSubmissions() {
                 ))}
               </View>
             ) : null}
-            {!grading?.submission_text && !grading?.attachments?.length ? <Text className="text-muted-foreground bg-muted rounded-lg p-3 text-center text-sm">{k('noSubmissionContent')}</Text> : null}
-            <View className="border-border gap-3 border-t pt-3">
+            {!grading?.submission_text && !grading?.attachments?.length ? <Text className="text-muted-foreground bg-muted/40 rounded-xl p-3 text-center text-sm">{k('noSubmissionContent')}</Text> : null}
+            <View className="border-info-soft dark:border-border gap-3 border-t pt-3">
               <Text className="font-semibold">{k('gradeThisSubmission')}</Text>
               <View className="gap-1.5">
                 <Label>{`${k('score')} *`}</Label>
@@ -214,21 +197,5 @@ export default function TeacherSubmissions() {
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function Stat({ icon, label, value, tone }: { icon: typeof Clock; label: string; value: number; tone: string }) {
-  return (
-    <Card className="min-w-[45%] flex-1">
-      <CardContent className="flex-row items-center gap-3 p-3">
-        <View className={cn('rounded-lg p-2', tone.split(' ')[0])}>
-          <Icon as={icon} className={cn('size-5', tone.split(' ')[1])} />
-        </View>
-        <View>
-          <Text className="text-muted-foreground text-xs">{label}</Text>
-          <Text className="text-xl font-bold">{String(value)}</Text>
-        </View>
-      </CardContent>
-    </Card>
   );
 }

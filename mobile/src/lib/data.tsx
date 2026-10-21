@@ -25,12 +25,21 @@ export function unwrap<T>(res: ApiResponse<T>): T {
   return res.data as T
 }
 
+// One cache for the app. Cleared on sign-out / user change so the next account on a shared device
+// never sees the previous user's data (SWR keys don't include the user id).
+const cache = new Map()
+
+/** Drops every cached response (call on sign-out and when the signed-in user changes). */
+export function clearDataCache() {
+  cache.clear()
+}
+
 /** SWR revalidation on app foreground and on reconnect (instead of the browser focus/online events). */
 export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <SWRConfig
       value={{
-        provider: () => new Map(),
+        provider: () => cache,
         dedupingInterval: 2000,
         errorRetryCount: 2,
         shouldRetryOnError: (err) => !(err instanceof ApiError) || err.retryable,

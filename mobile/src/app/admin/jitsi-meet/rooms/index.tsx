@@ -2,10 +2,11 @@ import type { JitsiRoom, JitsiRoomInput } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { KeyboardAvoidingView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
@@ -61,7 +62,7 @@ export default function MyRooms() {
             ) : null,
         }}
       />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
           {mode !== 'none' ? (
             <Card>
@@ -74,7 +75,7 @@ export default function MyRooms() {
           {res.isLoading ? (
             <LoadingList rows={3} />
           ) : !rooms.length && mode === 'none' ? (
-            <Text className="text-muted-foreground py-8 text-center text-sm">{l('no_rooms_yet')}</Text>
+            <EmptyState title={l('no_rooms_yet')} />
           ) : (
             rooms.map((r) => (
               <RoomCard key={r.id} room={r} onJoin={() => router.push(role.href('/jitsi-meet/rooms/[id]', { id: r.id }))} onEdit={() => setMode(r)} onDelete={() => remove(r)} />

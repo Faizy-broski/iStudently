@@ -2,24 +2,23 @@ import type { PlatformSchool, SchoolAdminCredentials } from '@studently/api-clie
 import * as Clipboard from 'expo-clipboard';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as ScreenCapture from 'expo-screen-capture';
-import { Copy, Eye, EyeOff, KeyRound } from 'lucide-react-native';
+import { CalendarDays, Copy, Eye, EyeOff, Globe, KeyRound, LayoutGrid, Link2, ListPlus, Mail, MapPin, Pencil, PanelLeft, Phone, ShieldCheck, ShieldOff, UserRound, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { BrandGradient } from '@/components/app/brand-gradient';
 import { useConfirm } from '@/components/app/confirm';
-import { ListRow } from '@/components/app/list-row';
+import { ActionRow, InfoRow, Panel, PanelTitle } from '@/components/app/panel';
 import { SchoolLogo } from '@/components/app/school-logo';
 import { ErrorState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
-import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
-import { PAY_VARIANT } from '@/features/superadmin/billing';
-import { onTrial, SchoolStatusBadge } from '@/features/superadmin/school-status';
+import { PAY_TONE } from '@/features/superadmin/billing';
+import { onTrial } from '@/features/superadmin/school-status';
 import { platform } from '@/lib/api';
 import { confirmIdentity } from '@/lib/biometric';
 import { useApi } from '@/lib/data';
@@ -159,12 +158,20 @@ export default function SchoolDetail() {
     if (result.ok) toast.success(suspended ? t('app.sa_activated_ok') : t('app.sa_suspended_ok'));
   }
 
+  const campusLabel = t('app.sa_campuses', { count: campuses.length });
+  const quick: [LucideIcon, string, () => void][] = [
+    [Pencil, t('app.sd_edit'), () => router.push({ pathname: '/superadmin/school/edit', params: { id: school.id } })],
+    [LayoutGrid, t('app.sd_modules'), () => router.push({ pathname: '/superadmin/school/modules', params: { id: school.id, name: school.name } })],
+    [PanelLeft, t('app.sd_sidebar'), () => router.push({ pathname: '/superadmin/sidebar', params: { schoolId: school.id, name: school.name } })],
+    [ListPlus, t('app.sd_fields'), () => router.push({ pathname: '/superadmin/school/fields', params: { id: school.id, name: school.name } })],
+  ];
+
   return (
     <>
       <Stack.Screen options={{ title: school.short_name || school.name }} />
       <ScrollView
         className="bg-background flex-1"
-        contentContainerClassName="gap-3 p-4 pb-10"
+        contentContainerClassName="gap-4 p-4 pb-10"
         refreshControl={
           <RefreshControl
             refreshing={schools.isValidating && !schools.isLoading}
@@ -175,56 +182,97 @@ export default function SchoolDetail() {
             }}
           />
         }>
-        <View className="flex-row items-center gap-3">
-          <SchoolLogo url={school.logo_url} shape={school.logo_shape} size={56} borderWidth={school.logo_border_width} borderColor={school.logo_border_color} />
-          <View className="flex-1 gap-1">
-            <Text variant="large" numberOfLines={2}>
-              {school.name}
-            </Text>
-            <View className="flex-row">
-              <SchoolStatusBadge school={school} />
+        {/* Hero: logo, name, status, quick actions */}
+        <BrandGradient variant="primary" angle={150} style={{ borderRadius: 24 }}>
+          <View className="gap-4 p-5">
+            <View className="flex-row items-center gap-3">
+              <View className="bg-white rounded-2xl p-1.5">
+                <SchoolLogo url={school.logo_url} shape={school.logo_shape} size={52} borderWidth={school.logo_border_width} borderColor={school.logo_border_color} />
+              </View>
+              <View className="flex-1 gap-1">
+                <Text className="text-white text-lg font-bold" numberOfLines={2}>
+                  {school.name}
+                </Text>
+                <Text className="text-white text-xs opacity-80" numberOfLines={1}>
+                  {[school.city, campusLabel, t('app.sd_since', { date: formatDate(school.created_at) })].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+              <View className="bg-overlay-light rounded-full px-2.5 py-1">
+                <Text className="text-white text-[11px] font-semibold">{suspended ? t('app.sa_status_suspended') : onTrial(school) ? t('app.sa_status_trial') : t('app.sa_status_active')}</Text>
+              </View>
+            </View>
+            <View className="flex-row justify-between">
+              {quick.map(([icon, label, onPress]) => (
+                <Pressable key={label} onPress={onPress} className="w-[23%] items-center gap-1.5 active:opacity-70" accessibilityRole="button">
+                  <View className="bg-overlay-light size-12 items-center justify-center rounded-2xl">
+                    <Icon as={icon} strokeWidth={2.2} className="size-5 text-white" />
+                  </View>
+                  <Text className="text-white text-[11px] font-medium" numberOfLines={1}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
-        </View>
+        </BrandGradient>
 
-        <Card className="gap-2 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.sa_status_section')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-2 px-4">
-            {school.is_trial && school.trial_ends_at ? (
-              <Field label={onTrial(school) ? t('app.sa_trial_until') : t('app.sa_trial_ended')} value={formatDate(school.trial_ends_at)} />
-            ) : null}
-            <Button variant={suspended ? 'default' : 'destructive'} onPress={toggleStatus} disabled={setStatus.running}>
-              <Text>{suspended ? t('app.sa_activate') : t('app.sa_suspend')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Status */}
+        <Panel className="gap-3 p-4">
+          <View className="flex-row items-center gap-3">
+            <View className={suspended ? 'bg-destructive-soft size-9 items-center justify-center rounded-full' : 'bg-success-soft size-9 items-center justify-center rounded-full'}>
+              <Icon as={suspended ? ShieldOff : ShieldCheck} className={suspended ? 'text-destructive size-4' : 'text-success size-4'} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold">{t('app.sa_status_section')}</Text>
+              <Text variant="muted" className="text-xs">
+                {school.is_trial && school.trial_ends_at
+                  ? `${onTrial(school) ? t('app.sa_trial_until') : t('app.sa_trial_ended')} ${formatDate(school.trial_ends_at)}`
+                  : suspended
+                    ? t('app.sa_status_suspended')
+                    : t('app.sa_status_active')}
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={toggleStatus}
+            disabled={setStatus.running}
+            className={suspended ? 'bg-success-soft h-11 items-center justify-center rounded-full active:opacity-80' : 'bg-destructive-soft h-11 items-center justify-center rounded-full active:opacity-80'}
+            accessibilityRole="button">
+            <Text className={suspended ? 'text-success font-semibold' : 'text-destructive font-semibold'}>{suspended ? t('app.sa_activate') : t('app.sa_suspend')}</Text>
+          </Pressable>
+        </Panel>
 
-        <Card className="gap-1 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.sa_details')}</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4">
-            <Field label={t('app.sa_email')} value={school.contact_email} />
-            <Field label={t('app.sa_phone')} value={school.phone} />
-            <Field label={t('app.sa_website')} value={school.website} />
-            <Field label={t('app.sa_address')} value={[school.address, school.city, school.state].filter(Boolean).join(', ')} />
-            <Field label={t('app.sa_principal')} value={school.principal_name} />
-            <Field label={t('app.sa_slug')} value={school.slug} />
-            <Field label={t('app.sa_created')} value={formatDate(school.created_at)} />
-          </CardContent>
-        </Card>
+        {/* Details */}
+        <Panel>
+          <PanelTitle title={t('app.sa_details')} />
+          <InfoRow icon={Mail} label={t('app.sa_email')} value={school.contact_email} />
+          <InfoRow icon={Phone} label={t('app.sa_phone')} value={school.phone} />
+          <InfoRow icon={Globe} label={t('app.sa_website')} value={school.website} />
+          <InfoRow icon={MapPin} label={t('app.sa_address')} value={[school.address, school.city, school.state].filter(Boolean).join(', ')} />
+          <InfoRow icon={UserRound} label={t('app.sa_principal')} value={school.principal_name} />
+          <InfoRow icon={Link2} label={t('app.sa_slug')} value={school.slug} />
+          <InfoRow icon={CalendarDays} label={t('app.sa_created')} value={formatDate(school.created_at)} last />
+        </Panel>
 
-        <Card className="gap-2 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.sa_admin_section')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-2 px-4">
+        {/* School administrator */}
+        <Panel>
+          <PanelTitle title={t('app.sa_admin_section')} />
+          <View className="gap-3 px-4 pb-4 pt-2">
             {admin.data ? (
               <>
-                <Field label={t('app.sa_name')} value={admin.data.admin_name} />
-                <Field label={t('app.sa_email')} value={admin.data.admin_email} />
+                <View className="flex-row items-center gap-3">
+                  <View className="bg-info-soft size-10 items-center justify-center rounded-full">
+                    <Text className="text-brand dark:text-brand-secondary font-bold">{(admin.data.admin_name || '?').trim().charAt(0)}</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold" numberOfLines={1}>
+                      {admin.data.admin_name}
+                    </Text>
+                    <Text variant="muted" className="text-xs" numberOfLines={1} selectable>
+                      {admin.data.admin_email}
+                    </Text>
+                  </View>
+                </View>
                 <AdminCredentials schoolId={school.id} />
               </>
             ) : admin.isLoading ? (
@@ -232,81 +280,70 @@ export default function SchoolDetail() {
             ) : (
               <Text variant="muted">{t('app.sa_no_admin')}</Text>
             )}
-          </CardContent>
-        </Card>
+          </View>
+        </Panel>
 
-        <Card className="gap-0 py-0">
-          <ListRow
-            title={t('app.es_edit')}
-            onPress={() => router.push({ pathname: '/superadmin/school/edit', params: { id: school.id } })}
-          />
-          <Separator />
-          <ListRow
-            title={t('app.ma_entry')}
-            onPress={() => router.push({ pathname: '/superadmin/school/modules', params: { id: school.id, name: school.name } })}
-          />
-          <Separator />
-          <ListRow
-            title={t('app.sb_school_sidebar')}
-            onPress={() => router.push({ pathname: '/superadmin/sidebar', params: { schoolId: school.id, name: school.name } })}
-          />
-          <Separator />
-          <ListRow
-            title={t('app.cf_entry')}
-            onPress={() => router.push({ pathname: '/superadmin/school/fields', params: { id: school.id, name: school.name } })}
-          />
-          <Separator />
-          <ListRow
-            title={t('app.cs_entry')}
-            onPress={() => router.push({ pathname: '/superadmin/school/copy-settings', params: { id: school.id, name: school.name } })}
-          />
-        </Card>
+        {/* Setup */}
+        <Panel>
+          <ActionRow icon={Copy} title={t('app.cs_entry')} last onPress={() => router.push({ pathname: '/superadmin/school/copy-settings', params: { id: school.id, name: school.name } })} />
+        </Panel>
 
         {campuses.length > 0 ? (
-          <Card className="gap-0 py-0">
-            <CardHeader className="px-4 py-4">
-              <CardTitle>{t('app.sa_campuses_section')}</CardTitle>
-            </CardHeader>
+          <Panel>
+            <PanelTitle title={t('app.sa_campuses_section')} />
             {campuses.map((c, i) => (
-              <View key={c.id}>
-                {i > 0 ? <Separator /> : null}
-                <ListRow
-                  title={c.name}
-                  subtitle={c.city}
-                  leading={<SchoolLogo url={c.logo_url} shape={c.logo_shape} size={36} />}
-                  trailing={<SchoolStatusBadge school={c} />}
-                  onPress={() => router.push({ pathname: '/superadmin/school/[id]', params: { id: c.id } })}
-                />
-              </View>
+              <Pressable
+                key={c.id}
+                onPress={() => router.push({ pathname: '/superadmin/school/[id]', params: { id: c.id } })}
+                className={i < campuses.length - 1 ? 'border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-2.5 active:opacity-70' : 'flex-row items-center gap-3 px-4 py-2.5 active:opacity-70'}>
+                <SchoolLogo url={c.logo_url} shape={c.logo_shape} size={32} />
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold" numberOfLines={1}>
+                    {c.name}
+                  </Text>
+                  {c.city ? (
+                    <Text variant="muted" className="text-[11px]">
+                      {c.city}
+                    </Text>
+                  ) : null}
+                </View>
+                <StatusChip label={c.status === 'suspended' ? t('app.sa_status_suspended') : t('app.sa_status_active')} tone={c.status === 'suspended' ? 'destructive' : 'success'} />
+              </Pressable>
             ))}
-          </Card>
+          </Panel>
         ) : null}
 
-        <Card className="gap-0 py-0">
-          <CardHeader className="px-4 py-4">
-            <CardTitle>{t('app.sa_invoices_section')}</CardTitle>
-          </CardHeader>
+        <Panel>
+          <PanelTitle title={t('app.sa_invoices_section')} />
           {(invoices.data ?? []).length === 0 ? (
-            <Text variant="muted" className="px-4 pb-4">
+            <Text variant="muted" className="px-4 pb-4 pt-1 text-sm">
               {invoices.isLoading ? '…' : t('app.sa_no_invoices')}
             </Text>
           ) : (
-            (invoices.data ?? []).map((r, i) => (
-              <View key={r.id}>
-                {i > 0 ? <Separator /> : null}
-                <ListRow
-                  title={`${r.invoice_number} · ${formatMoney(r.amount, r.currency)}`}
-                  subtitle={[r.subscription_plan, t('app.sa_due', { date: formatDate(r.due_date) })].filter(Boolean).join(' · ')}
-                  trailing={
-                    <Badge variant={PAY_VARIANT[r.effective_status ?? r.payment_status]}>
-                      <Text>{t(`app.sa_pay_status_${r.effective_status ?? r.payment_status}`)}</Text>
-                    </Badge>
-                  }
-                />
-              </View>
-            ))
+            (invoices.data ?? []).map((r, i, arr) => {
+              const st = r.effective_status ?? r.payment_status;
+              return (
+                <Pressable
+                  key={r.id}
+                  onPress={() => router.push({ pathname: '/superadmin/billing/record/[id]', params: { id: r.id } })}
+                  className={i < arr.length - 1 ? 'border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-2.5 active:opacity-70' : 'flex-row items-center gap-3 px-4 py-2.5 active:opacity-70'}>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold" numberOfLines={1}>
+                      {r.invoice_number}
+                    </Text>
+                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      {[r.subscription_plan, t('app.sa_due', { date: formatDate(r.due_date) })].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                  <View className="items-end gap-1">
+                    <Text className="text-sm font-bold">{formatMoney(r.amount, r.currency)}</Text>
+                    <StatusChip label={t(`app.sa_pay_status_${st}`)} tone={PAY_TONE[st]} className="px-2 py-0.5" />
+                  </View>
+                </Pressable>
+              );
+            })
           )}
-        </Card>
+        </Panel>
       </ScrollView>
     </>
   );

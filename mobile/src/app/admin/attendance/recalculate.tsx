@@ -2,8 +2,9 @@ import { router, Stack } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ export default function RecalculateAttendance() {
       <ScrollView className="bg-background flex-1" contentContainerClassName="p-4">
         <Card>
           <CardHeader className="bg-muted/50 border-border border-b">
-            <CardTitle className="text-center text-base uppercase">{a('recalculate_confirm')}</CardTitle>
+            <CardTitle className="text-center text-base">{a('recalculate_confirm')}</CardTitle>
           </CardHeader>
           <CardContent className="gap-4 pt-6">
             <Text className="text-center font-semibold">{a('recalculate_when')}</Text>

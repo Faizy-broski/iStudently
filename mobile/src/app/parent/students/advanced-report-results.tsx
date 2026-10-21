@@ -1,20 +1,24 @@
 import type { ParentStudent } from '@studently/api-client';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { FileDown, Search } from 'lucide-react-native';
+import { FileDown } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
+import { Initials, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
-import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useChild } from '@/features/parent/child';
 import { adminCustomFields } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { shareTextFile } from '@/lib/share-file';
+import { cn } from '@/lib/utils';
 
 // Web: the parent report reads the children list, so only these standard fields have values; custom fields show '-'.
 const FIELD_MAP: Record<string, keyof ParentStudent> = {
@@ -65,9 +69,9 @@ export default function ParentReportResults() {
 
   if (isLoading) {
     return (
-      <View className="bg-background flex-1 items-center justify-center">
+      <View className="bg-background flex-1 items-center justify-center gap-3">
         <ActivityIndicator />
-        <Text className="text-muted-foreground mt-3">{t('app.pa_ar_loading')}</Text>
+        <Text className="text-muted-foreground text-sm">{t('app.pa_ar_loading')}</Text>
       </View>
     );
   }
@@ -76,40 +80,40 @@ export default function ParentReportResults() {
       <Stack.Screen options={{ title: t('app.pa_ar_results') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <View className="flex-row items-center justify-between gap-2">
-          <Text variant="muted" className="flex-1">
+          <Text variant="muted" className="flex-1 text-sm">
             {t('app.pa_ar_found', { count: rows.length })}
           </Text>
-          <Button variant="outline" onPress={exportCsv} disabled={!rows.length}>
+          <Button variant="outline" size="sm" onPress={exportCsv} disabled={!rows.length}>
             <Icon as={FileDown} className="size-4" />
             <Text>{k('export')}</Text>
           </Button>
         </View>
-        <Card>
-          <CardHeader>
-            <CardTitle>{k('data')}</CardTitle>
-            <CardDescription>{k('count', { count: selected.length })}</CardDescription>
-          </CardHeader>
-          <CardContent className="gap-3">
-            <View className="justify-center">
-              <Icon as={Search} className="text-muted-foreground absolute start-3 size-4" />
-              <Input className="ps-9" value={query} onChangeText={setQuery} placeholder={t('common.search')} />
-            </View>
+        <Section title={k('data')}>
+          <View className="gap-3">
+            <Text variant="muted" className="text-xs">
+              {k('count', { count: selected.length })}
+            </Text>
+            <SearchBar value={query} onChangeText={setQuery} placeholder={t('common.search')} />
             {!rows.length ? (
-              <Text className="text-muted-foreground py-6 text-center">{t('app.pa_ar_none')}</Text>
+              <EmptyState title={t('app.pa_ar_none')} />
             ) : (
               rows.map((s) => (
-                <View key={s.id} className="border-border rounded-lg border px-3 py-1">
-                  {selected.map((f) => (
-                    <View key={f} className="border-border flex-row justify-between gap-3 border-b py-2 last:border-b-0">
-                      <Text className="text-muted-foreground flex-1 text-sm">{labelOf(f)}</Text>
+                <Panel key={s.id}>
+                  <View className="border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3">
+                    <Initials name={`${s.first_name} ${s.last_name}`} />
+                    <Text className="flex-1 text-sm font-semibold" numberOfLines={1}>{`${s.first_name} ${s.last_name}`}</Text>
+                  </View>
+                  {selected.map((f, i) => (
+                    <View key={f} className={cn('flex-row justify-between gap-3 px-4 py-2.5', i < selected.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                      <Text className="text-muted-foreground flex-1 text-xs">{labelOf(f)}</Text>
                       <Text className="flex-1 text-end text-sm font-medium">{valueOf(s, f)}</Text>
                     </View>
                   ))}
-                </View>
+                </Panel>
               ))
             )}
-          </CardContent>
-        </Card>
+          </View>
+        </Section>
       </ScrollView>
     </>
   );

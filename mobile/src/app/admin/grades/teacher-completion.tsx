@@ -5,6 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
+import { FilterChips } from '@/components/app/filter-chips';
+import { Initials, UsageBar } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { Picker } from '@/components/app/picker';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -38,12 +41,8 @@ export default function TeacherCompletion() {
           header={
             <View className="gap-3 p-4">
               <Picker value={markingPeriod} onChange={setMp} options={mps.options} placeholder={c('marking_period')} />
-              <Picker
-                value={period}
-                onChange={setPeriod}
-                options={[{ value: ALL, label: c('all') }, ...(periods.data ?? []).map((p) => ({ value: p.id, label: p.title ?? p.period_name ?? p.short_name ?? '' }))]}
-              />
-              {list.data ? <Text variant="muted">{s('teachers_found', { count: list.data.length })}</Text> : null}
+              <FilterChips value={period} onChange={setPeriod} options={[{ value: ALL, label: c('all') }, ...(periods.data ?? []).map((p) => ({ value: p.id, label: p.title ?? p.period_name ?? p.short_name ?? '' }))]} />
+              {list.data ? <StatusChip label={s('teachers_found', { count: list.data.length })} tone="info" className="self-start px-2.5 py-1" /> : null}
             </View>
           }
           items={list.data}
@@ -57,11 +56,15 @@ export default function TeacherCompletion() {
             const entries = Object.entries(x.periods);
             const done = entries.filter(([, p]) => p.completed).length;
             return (
-              <View className="gap-1.5 px-4 py-3">
-                <View className="flex-row items-center justify-between gap-3">
-                  <Text className="flex-1 font-medium">{x.teacher_name}</Text>
-                  <Text className={done === entries.length ? 'text-success text-sm font-semibold' : 'text-muted-foreground text-sm'}>{`${done}/${entries.length}`}</Text>
+              <View className="gap-2 px-4 py-3">
+                <View className="flex-row items-center gap-3">
+                  <Initials name={x.teacher_name} tone={done === entries.length ? 'success' : 'brand'} />
+                  <Text className="flex-1 text-sm font-semibold" numberOfLines={1}>
+                    {x.teacher_name}
+                  </Text>
+                  <StatusChip label={`${done}/${entries.length}`} tone={done === entries.length ? 'success' : done ? 'warning' : 'muted'} className="px-2 py-0.5" />
                 </View>
+                <UsageBar used={done} total={entries.length || 1} />
                 {entries.map(([pid, p]) => (
                   <View key={pid} className="flex-row items-center gap-2">
                     <Icon as={p.completed ? CheckCircle2 : Circle} className={p.completed ? 'text-success size-4' : 'text-muted-foreground size-4'} />

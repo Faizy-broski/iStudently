@@ -1,40 +1,42 @@
 import { router } from 'expo-router';
-import { Settings as SettingsIcon } from 'lucide-react-native';
+import { Banknote, FileText, Wallet } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
 
-import { ListRow } from '@/components/app/list-row';
-import { SearchBar } from '@/components/app/search-bar';
-import { Icon } from '@/components/ui/icon';
-import { Separator } from '@/components/ui/separator';
+import { Tile } from '@/components/app/tile-grid';
 import { TAB_GROUPS } from '@/features/admin/menu';
 import { ModuleList } from '@/features/admin/module-list';
+import { useSession } from '@/features/auth/session';
+import { CampusSwitcher } from '@/features/campus/campus-switcher';
+import { MoreFrame, MoreHeader, OpenWebsiteCard, useAccountTiles } from '@/features/menu/more-layout';
 
 const ON_TABS = new Set(Object.values(TAB_GROUPS).flat());
 
-/** Every other admin module, plus search across all of them and the app settings. */
+/** Every other admin module (tile grid), search across all of them, campus, settings. (Figma "More Menu") */
 export default function AdminMore() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const accountTiles = useAccountTiles();
+  const { me } = useSession();
+  // Staff also have their own payroll pages (web sidebar "My payroll").
+  const payroll =
+    me.status === 'ready' && me.me.profile.role === 'staff'
+      ? [
+          <Tile key="pay-salaries" icon={Wallet} label={t('sidebar.salaries')} onPress={() => router.push('/admin/my-payroll/salaries')} />,
+          <Tile key="pay-payments" icon={Banknote} label={t('sidebar.staff_payments')} onPress={() => router.push('/admin/my-payroll/staff-payments')} />,
+          <Tile key="pay-statements" icon={FileText} label={t('sidebar.print_statements')} onPress={() => router.push('/admin/my-payroll/print-statements')} />,
+        ]
+      : [];
   return (
-    <View className="bg-background flex-1">
-      <View className="px-4 pt-3 pb-1">
-        <SearchBar value={query} onChangeText={setQuery} placeholder={t('app.ad_search_modules')} />
-      </View>
+    <MoreFrame>
       <ModuleList
         query={query}
-        // Searching covers every module, including the ones on the other tabs.
         filter={query ? undefined : (title) => !ON_TABS.has(title) && title !== 'dashboard'}
-        header={
-          query ? undefined : (
-            <>
-              <ListRow title={t('app.set_title')} leading={<Icon as={SettingsIcon} className="text-muted-foreground size-5" />} onPress={() => router.push('/settings')} />
-              <Separator />
-            </>
-          )
-        }
+        header={<MoreHeader top={<CampusSwitcher variant="card" />} search={{ value: query, onChange: setQuery, placeholder: t('app.ad_search_modules') }} />}
+        groupTiles
+        extraTiles={[...payroll, ...accountTiles]}
+        footer={query ? undefined : <OpenWebsiteCard />}
       />
-    </View>
+    </MoreFrame>
   );
 }

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { v } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Trash2 } from 'lucide-react-native';
+import { Quote, Trash2 } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { useConfirm } from '@/components/app/confirm';
 import { SwitchField, TextField } from '@/components/app/form';
+import { FormSection } from '@/components/app/layout';
 import { Screen } from '@/components/app/screen';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -65,14 +66,16 @@ export default function QuoteForm() {
     <>
       <Stack.Screen options={{ title: editing ? t('app.bl_edit') : t('app.ib_new_quote') }} />
       <Screen scroll edges={['bottom']}>
-        <TextField control={control} name="text_en" label={t('app.ib_quote_en')} multiline />
-        <TextField control={control} name="text_ar" label={t('app.ib_quote_ar')} multiline style={{ writingDirection: 'rtl', textAlign: 'right' }} />
-        <SwitchField control={control} name="is_active" label={t('app.ib_quote_active')} />
+        <FormSection title={editing ? t('app.bl_edit') : t('app.ib_new_quote')} icon={Quote}>
+          <TextField control={control} name="text_en" label={t('app.ib_quote_en')} multiline />
+          <TextField control={control} name="text_ar" label={t('app.ib_quote_ar')} multiline style={{ writingDirection: 'rtl', textAlign: 'right' }} />
+          <SwitchField control={control} name="is_active" label={t('app.ib_quote_active')} />
+        </FormSection>
         <Button onPress={onSubmit} disabled={save.running}>
           <Text>{t('app.bl_save')}</Text>
         </Button>
         {editing ? (
-          <Button variant="ghost" onPress={onDelete} disabled={remove.running}>
+          <Button variant="ghost" className="bg-destructive-soft rounded-full" onPress={onDelete} disabled={remove.running}>
             <Icon as={Trash2} className="text-destructive size-4" />
             <Text className="text-destructive">{t('app.bl_delete')}</Text>
           </Button>

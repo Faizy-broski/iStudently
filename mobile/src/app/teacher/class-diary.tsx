@@ -1,16 +1,17 @@
 import { Stack } from 'expo-router';
-import { BookOpen, Plus, X } from 'lucide-react-native';
+import { BookOpen, NotebookPen, Plus, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
+import { FormSection, IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -21,6 +22,8 @@ import { useCampus } from '@/features/campus/campus';
 import { usePortalAcademic } from '@/features/portal/academic';
 import { classDiary } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { cn } from '@/lib/utils';
+import { StatusChip } from '@/components/app/status-chip';
 import i18n from '@/i18n';
 
 /** Daily class notes per class: pick a class, write an entry, list its entries (web: /teacher/class-diary). */
@@ -57,8 +60,8 @@ export default function TeacherClassDiary() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => entries.mutate()} />}>
-        <Text variant="muted">{k('pageSubtitle')}</Text>
-        <View className="gap-1.5">
+        <Text className="text-muted-foreground text-sm">{k('pageSubtitle')}</Text>
+        <Panel className="gap-1.5 p-4">
           <Label>{k('selectClass')}</Label>
           <Picker
             value={cpId || null}
@@ -66,68 +69,53 @@ export default function TeacherClassDiary() {
             placeholder={k('chooseClassPlaceholder')}
             options={(cps.data ?? []).map((c) => ({ value: c.id, label: `${c.course?.title || c.title || k('unnamed')}${c.section?.name ? ` — ${c.section.name}` : ''}` }))}
           />
-        </View>
+        </Panel>
         {cpId ? (
-          <Button variant={form ? 'outline' : 'default'} className="self-start" onPress={() => setForm(form ? null : { content: '', date: todayYmd(), comments: false })}>
+          <Button variant={form ? 'outline' : 'default'} size="sm" className="self-start" onPress={() => setForm(form ? null : { content: '', date: todayYmd(), comments: false })}>
             <Icon as={form ? X : Plus} className={form ? 'size-4' : 'text-primary-foreground size-4'} />
             <Text>{form ? k('cancel') : k('newEntry')}</Text>
           </Button>
         ) : null}
         {form ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{k('newDiaryEntry')}</CardTitle>
-            </CardHeader>
-            <CardContent className="gap-3">
-              <DateField label={k('date')} value={form.date} onChange={(d) => d && setForm({ ...form, date: d })} />
-              <View className="gap-1.5">
-                <Label>{`${k('content')} *`}</Label>
-                <Textarea value={form.content} onChangeText={(v) => setForm({ ...form, content: v })} placeholder={k('contentPlaceholder')} />
-              </View>
-              <View className="flex-row items-center gap-3">
-                <Switch checked={form.comments} onCheckedChange={(v) => setForm({ ...form, comments: v })} />
-                <Text className="flex-1 text-sm">{k('allowStudentComments')}</Text>
-              </View>
-              <Button onPress={save} disabled={busy}>
-                <Text>{busy ? k('saving') : k('saveEntry')}</Text>
-              </Button>
-            </CardContent>
-          </Card>
+          <FormSection title={k('newDiaryEntry')} icon={NotebookPen}>
+            <DateField label={k('date')} value={form.date} onChange={(d) => d && setForm({ ...form, date: d })} />
+            <View className="gap-1.5">
+              <Label>{`${k('content')} *`}</Label>
+              <Textarea value={form.content} onChangeText={(v) => setForm({ ...form, content: v })} placeholder={k('contentPlaceholder')} />
+            </View>
+            <View className="flex-row items-center gap-3">
+              <Text className="flex-1 text-sm font-medium">{k('allowStudentComments')}</Text>
+              <Switch checked={form.comments} onCheckedChange={(v) => setForm({ ...form, comments: v })} />
+            </View>
+            <Button onPress={save} disabled={busy}>
+              <Text>{busy ? k('saving') : k('saveEntry')}</Text>
+            </Button>
+          </FormSection>
         ) : null}
         {!cpId ? (
-          <Card>
-            <CardContent className="items-center py-10">
-              <Icon as={BookOpen} className="text-muted-foreground/40 mb-3 size-10" />
-              <Text className="text-muted-foreground">{k('selectClassHint')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={BookOpen} title={k('selectClassHint')} />
         ) : entries.isLoading ? (
           <LoadingList rows={3} />
         ) : !(entries.data ?? []).length ? (
-          <Text className="text-muted-foreground py-8 text-center">{k('noDiaryEntries')}</Text>
+          <EmptyState icon={NotebookPen} title={k('noDiaryEntries')} />
         ) : (
-          (entries.data ?? []).map((e) => (
-            <Card key={e.id}>
-              <CardContent className="gap-2 p-4">
-                <View className="flex-row flex-wrap items-center justify-between gap-2">
-                  <Text className="font-medium">{new Date(`${e.diary_date.slice(0, 10)}T00:00:00`).toLocaleDateString(loc, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</Text>
-                  <View className="flex-row gap-1">
-                    {e.is_published ? (
-                      <Badge variant="outline">
-                        <Text className="text-xs">{k('published')}</Text>
-                      </Badge>
-                    ) : null}
-                    {e.enable_comments ? (
-                      <Badge variant="outline">
-                        <Text className="text-xs">{k('commentsOn')}</Text>
-                      </Badge>
-                    ) : null}
-                  </View>
+          <Panel>
+            {(entries.data ?? []).map((e, i, arr) => (
+              <View key={e.id} className={cn('flex-row items-start gap-3 px-4 py-3', i < arr.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                <IconTile icon={NotebookPen} size={40} />
+                <View className="flex-1 gap-1">
+                  <Text className="text-sm font-semibold">{new Date(`${e.diary_date.slice(0, 10)}T00:00:00`).toLocaleDateString(loc, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</Text>
+                  {e.is_published || e.enable_comments ? (
+                    <View className="flex-row flex-wrap gap-1.5">
+                      {e.is_published ? <StatusChip label={k('published')} tone="success" /> : null}
+                      {e.enable_comments ? <StatusChip label={k('commentsOn')} tone="info" /> : null}
+                    </View>
+                  ) : null}
+                  <Text className="text-muted-foreground text-sm">{e.content}</Text>
                 </View>
-                <Text className="text-muted-foreground text-sm">{e.content}</Text>
-              </CardContent>
-            </Card>
-          ))
+              </View>
+            ))}
+          </Panel>
         )}
       </ScrollView>
     </>

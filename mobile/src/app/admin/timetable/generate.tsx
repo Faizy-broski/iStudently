@@ -6,10 +6,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
+import { StatTile } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
-import { LoadingList } from '@/components/app/states';
+import { Segmented } from '@/components/app/segmented';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -87,10 +90,14 @@ export default function Generate() {
       ...sec.map(async (id) => {
         const s = sections.find((x) => x.id === id);
         const [reqs, cov] = await Promise.all([adminGenerator.requirements(String(y), id), adminGenerator.coverage(id, String(y))]);
+        if (!reqs.success) throw new Error(reqs.error);
+        if (!cov.success) throw new Error(cov.error);
         return { kind: 'section' as const, id, name: s?.name ?? id, gradeName: gradeName(s?.grade_level_id), requirementCount: reqs.data?.length ?? 0, coverage: cov.data ?? null };
       }),
       ...grd.map(async (id) => {
         const [reqs, cov] = await Promise.all([adminGenerator.requirements(String(y), undefined, id), adminGenerator.coverage(id, String(y), 'grade')]);
+        if (!reqs.success) throw new Error(reqs.error);
+        if (!cov.success) throw new Error(cov.error);
         const name = gradeName(id) ?? id;
         return { kind: 'grade' as const, id, name, gradeName: name, requirementCount: reqs.data?.length ?? 0, coverage: cov.data ?? null };
       }),
@@ -104,6 +111,8 @@ export default function Generate() {
   const targetLabel = (p: Preflight) => (p.kind === 'section' ? `${p.gradeName} - ${p.name}` : g('grade_level', { name: p.name }));
 
   async function start() {
+    // Don't generate on top of a failed pre-flight (it would hide missing requirements).
+    if (pre.error) return toast.error(pre.error.message);
     if (noReqs.length) return toast.error(g('err_no_reqs', { count: noReqs.length }));
     if (!yearId) return;
     setStarting(true);
@@ -158,10 +167,11 @@ export default function Generate() {
   const review = useApi(reviewKey, async ([, , y, sIds, gIds]) => {
     const sec = String(sIds).split(',').filter(Boolean);
     const grd = String(gIds).split(',').filter(Boolean);
-    const [s, gr] = await Promise.all([
-      Promise.all(sec.map(async (id) => [id, (await adminTimetable.bySection(id, String(y))).data ?? []] as const)),
-      Promise.all(grd.map(async (id) => [id, (await adminTimetable.byGrade(id, String(y))).data ?? []] as const)),
-    ]);
+    const [sr, gr0] = await Promise.all([Promise.all(sec.map((id) => adminTimetable.bySection(id, String(y)))), Promise.all(grd.map((id) => adminTimetable.byGrade(id, String(y))))]);
+    const bad = [...sr, ...gr0].find((r) => !r.success);
+    if (bad) return { ...bad, data: undefined };
+    const s = sec.map((id, i) => [id, sr[i].data ?? []] as const);
+    const gr = grd.map((id, i) => [id, gr0[i].data ?? []] as const);
     return { success: true, data: { sections: Object.fromEntries(s) as Record<string, AdminTimetableEntry[]>, grades: Object.fromEntries(gr) as Record<string, AdminTimetableEntry[]> } };
   });
   const sectionEntries = review.data?.sections ?? {};
@@ -217,7 +227,7 @@ export default function Generate() {
     if (!x) return toast.error(g('select_export'));
     const head = `<tr><th>Period</th>${TT_DAYS.map((d) => `<th>${escapeHtml(t(`school.timetable.days.${d}`))}</th>`).join('')}</tr>`;
     const body = periods.map((p) => `<tr><td><b>${escapeHtml(periodTitle(p))}</b><br/>${escapeHtml(periodTime(p, t('school.timetable.unit_min')))}</td>${TT_DAYS.map((_, i) => `<td>${escapeHtml(entryAt(x.entries, i, p.id) ? x.label(entryAt(x.entries, i, p.id)!) : '-')}</td>`).join('')}</tr>`).join('');
-    const css = `.tt{width:100%;border-collapse:collapse;font-size:10px}.tt th{background:#022172;color:#fff;padding:5px}.tt td{border:1px solid #ccc;padding:5px;text-align:center}`;
+    const css = `.tt{width:100%;border-collapse:collapse;font-size:10px}.tt th{background:${colors.brand};color:${colors.white};padding:5px}.tt td{border:1px solid ${colors.printBorder};padding:5px;text-align:center}`;
     try {
       await sharePdf(buildPrintHtml({ title: x.title, pages: [`<h2>${escapeHtml(x.title)}</h2><table class="tt">${head}${body}</table>`], school: print.school, layout: print.layout, withHeader: print.withHeader, extraCss: css }), `${x.file}.pdf`, { width: 842, height: 595 });
     } catch {
@@ -259,7 +269,7 @@ export default function Generate() {
         <View className="flex-row flex-wrap items-center gap-2">
           {steps.map((s, i) => (
             <View key={s.key} className="flex-row items-center gap-1.5">
-              <View className={cn('size-6 items-center justify-center rounded-full', i < stepIdx ? 'bg-green-600' : i === stepIdx ? 'bg-primary' : 'bg-muted')}>
+              <View className={cn('size-6 items-center justify-center rounded-full', i < stepIdx ? 'bg-success' : i === stepIdx ? 'bg-primary' : 'bg-muted')}>
                 {i < stepIdx ? <Icon as={CheckCircle2} className="size-3.5 text-white" /> : <Text className={cn('text-xs font-semibold', i === stepIdx ? 'text-primary-foreground' : 'text-muted-foreground')}>{i + 1}</Text>}
               </View>
               <Text className={cn('text-xs', i === stepIdx ? 'font-medium' : 'text-muted-foreground')}>{s.label}</Text>
@@ -313,10 +323,12 @@ export default function Generate() {
 
             {pre.isLoading ? (
               <Text className="text-muted-foreground text-sm">{g('preflight_running')}</Text>
+            ) : pre.error ? (
+              <ErrorState message={pre.error.message} onRetry={() => pre.mutate()} />
             ) : (
               <>
                 {noReqs.length ? (
-                  <View className="border-destructive/50 bg-destructive/5 gap-1 rounded-md border p-3">
+                  <View className="border-destructive/50 bg-destructive/5 gap-1 rounded-xl border p-3">
                     <Text className="text-destructive font-medium">{g('no_reqs_title', { count: noReqs.length })}</Text>
                     {noReqs.map((p) => (
                       <View key={p.id}>
@@ -327,8 +339,8 @@ export default function Generate() {
                   </View>
                 ) : null}
                 {overCap.length ? (
-                  <View className="gap-1 rounded-md border border-amber-500/50 bg-amber-50 p-3 dark:bg-amber-950/20">
-                    <Text className="font-medium text-amber-800 dark:text-amber-400">{g('over_cap_title', { count: overCap.length })}</Text>
+                  <View className="gap-1 rounded-xl border border-warning/30 bg-warning-soft p-3">
+                    <Text className="font-medium text-warning ">{g('over_cap_title', { count: overCap.length })}</Text>
                     {overCap.map((p) => (
                       <View key={p.id}>
                         <Text className="text-sm">
@@ -340,9 +352,9 @@ export default function Generate() {
                   </View>
                 ) : null}
                 {preflight.length && !noReqs.length && !overCap.length ? (
-                  <View className="flex-row items-center gap-2 rounded-md border border-green-500/50 bg-green-50 p-3 dark:bg-green-950/20">
-                    <Icon as={CheckCircle2} className="size-4 text-green-600" />
-                    <Text className="flex-1 text-sm text-green-700 dark:text-green-400">{g('ready', { count: preflight.length })}</Text>
+                  <View className="flex-row items-center gap-2 rounded-xl border border-success/30 bg-success-soft p-3">
+                    <Icon as={CheckCircle2} className="size-4 text-success" />
+                    <Text className="flex-1 text-sm text-success ">{g('ready', { count: preflight.length })}</Text>
                   </View>
                 ) : null}
               </>
@@ -359,7 +371,7 @@ export default function Generate() {
             <CardContent className="items-center gap-3 py-10">
               <LoadingList rows={1} />
               <Text className="text-lg font-medium">{job?.status === 'queued' ? g('queued') : g('solving')}</Text>
-              <Text className="text-muted-foreground text-center text-sm">{g('solving_desc')}</Text>
+              <EmptyState title={g('solving_desc')} />
               {job?.total_activities ? (
                 <View className="w-full gap-1">
                   <Progress value={job.progress_percent} />
@@ -407,14 +419,14 @@ export default function Generate() {
                     </Button>
                     <Button onPress={() => setStep('review')}>
                       <Text>{g('review_grid')}</Text>
-                      <Icon as={ArrowRight} className="text-primary-foreground size-4 rtl:rotate-180" />
+                      <Icon flipRtl as={ArrowRight} className="text-primary-foreground size-4" />
                     </Button>
                   </View>
                 </>
               ) : (
                 <>
                   <View className="flex-row items-center gap-2">
-                    <Icon as={CheckCircle2} className="size-5 text-green-600" />
+                    <Icon as={CheckCircle2} className="size-5 text-success" />
                     <Text className="font-semibold">{g('complete_title')}</Text>
                   </View>
                   <View className="flex-row flex-wrap gap-2">
@@ -424,17 +436,17 @@ export default function Generate() {
                     <Stat label={g('soft_score')} value={job.soft_score ?? 0} tone="neutral" />
                   </View>
                   {job.hard_violations > 0 ? (
-                    <View className="border-destructive/50 bg-destructive/5 rounded-md border p-3">
+                    <View className="border-destructive/50 bg-destructive/5 rounded-xl border p-3">
                       <Text className="text-destructive text-sm">{g('hard_warning', { count: job.hard_violations })}</Text>
                     </View>
                   ) : null}
                   {job.result_summary?.unplaced?.length ? (
                     <View className="gap-2">
                       <View className="flex-row items-center gap-2">
-                        <Icon as={AlertTriangle} className="size-4 text-amber-600" />
+                        <Icon as={AlertTriangle} className="size-4 text-warning" />
                         <Text className="text-sm font-medium">{g('unplaced_title')}</Text>
                       </View>
-                      <View className="border-border rounded-md border">
+                      <View className="border-info-soft dark:border-border rounded-xl border">
                         {job.result_summary.unplaced.map((u, i) => (
                           <View key={`${u.activity_id}-${i}`}>
                             {i > 0 ? <Separator /> : null}
@@ -452,7 +464,7 @@ export default function Generate() {
                     </View>
                   ) : null}
                   {job.result_summary?.warnings?.length ? (
-                    <View className="gap-1 rounded-md border border-amber-500/50 bg-amber-50 p-3 dark:bg-amber-950/20">
+                    <View className="gap-1 rounded-xl border border-warning/30 bg-warning-soft p-3">
                       {job.result_summary.warnings.map((w, i) => (
                         <Text key={i} className="text-sm">
                           {w}
@@ -467,7 +479,7 @@ export default function Generate() {
                     </Button>
                     <Button onPress={() => setStep('review')}>
                       <Text>{g('review_grid')}</Text>
-                      <Icon as={ArrowRight} className="text-primary-foreground size-4 rtl:rotate-180" />
+                      <Icon flipRtl as={ArrowRight} className="text-primary-foreground size-4" />
                     </Button>
                   </View>
                 </>
@@ -503,7 +515,7 @@ export default function Generate() {
               <CardContent className="gap-3 pt-4">
                 <Text className="font-semibold">{g('export_title')}</Text>
                 <Text className="text-muted-foreground text-xs">{g('export_desc')}</Text>
-                <FilterChips
+                <Segmented
                   value={exportView}
                   onChange={(v) => {
                     setExportView(v);
@@ -532,6 +544,8 @@ export default function Generate() {
 
             {review.isLoading ? (
               <LoadingList />
+            ) : review.error ? (
+              <ErrorState message={review.error.message} onRetry={() => review.mutate()} />
             ) : reviewSectionId && reviewSection && yearId ? (
               <TimetableBuilder
                 key={reviewSectionId}
@@ -576,7 +590,7 @@ export default function Generate() {
                       }}
                     />
                   ) : (
-                    <Text className="text-muted-foreground text-center text-sm">{g('no_periods')}</Text>
+                    <EmptyState title={g('no_periods')} />
                   )}
                 </CardContent>
               </Card>
@@ -593,11 +607,6 @@ export default function Generate() {
 }
 
 function Stat({ label, value, tone }: { label: string; value: number; tone: 'good' | 'bad' | 'warn' | 'neutral' }) {
-  const cls = { good: 'border-green-500/40 bg-green-50 dark:bg-green-950/20', bad: 'border-destructive/40 bg-destructive/5', warn: 'border-amber-500/40 bg-amber-50 dark:bg-amber-950/20', neutral: 'border-border bg-muted/30' }[tone];
-  return (
-    <View className={cn('min-w-[45%] flex-1 rounded-md border p-3', cls)}>
-      <Text className="text-2xl font-bold">{value}</Text>
-      <Text className="text-xs">{label}</Text>
-    </View>
-  );
+  const map = { good: 'success', bad: 'destructive', warn: 'warning', neutral: 'brand' } as const;
+  return <StatTile label={label} value={String(value)} tone={map[tone]} />;
 }

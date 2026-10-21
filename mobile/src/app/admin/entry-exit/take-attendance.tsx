@@ -13,6 +13,7 @@ import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAcademicYears } from '@/features/admin/grades';
 import { useAttendanceScope } from '@/features/admin/attendance';
@@ -135,8 +136,13 @@ export default function EntryExitTakeAttendance() {
                   setRows([]);
                 }}
                 className="px-4 py-3">
-                <Text className="text-primary font-medium">{x.name}</Text>
-                {x.number ? <Text className="text-muted-foreground text-xs">{x.number}</Text> : null}
+                <View className="flex-row items-center gap-3">
+                  <Initials name={x.name || '?'} />
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-sm font-semibold">{x.name}</Text>
+                    {x.number ? <Text className="text-muted-foreground text-xs">{x.number}</Text> : null}
+                  </View>
+                </View>
               </Pressable>
             )}
           />
@@ -198,23 +204,23 @@ export default function EntryExitTakeAttendance() {
             const el = (leaves.data ?? []).find((l) => l.student_id === r.student_id);
             const rec = (gate.data ?? []).find((x) => x.person_id === r.student_id);
             return (
-              <View className={cn('gap-2 px-4 py-3', r.status === 'absent' ? 'bg-red-50/40' : r.status === 'late' ? 'bg-amber-50/30' : undefined)}>
+              <View className={cn('gap-2 px-4 py-3', r.status === 'absent' ? 'bg-destructive-soft' : r.status === 'late' ? 'bg-warning-soft' : undefined)}>
                 <View className="flex-row items-start gap-2">
                   <View className="flex-1">
-                    <Text className="font-medium">{r.student_name}</Text>
+                    <Text className="text-sm font-semibold">{r.student_name}</Text>
                     <Text className="text-muted-foreground text-xs">{[r.student_number || '—', course?.gradeName || '—'].join(' · ')}</Text>
                   </View>
                   <View className="items-end">
-                    <Text className="text-muted-foreground text-[10px]">{`${a('table_col_evening_leave')}: `}<Text className="text-xs font-medium text-purple-600">{el ? (el.authorized_return_time?.slice(0, 5) ?? a('label_yes')) : '—'}</Text></Text>
+                    <Text className="text-muted-foreground text-[10px]">{`${a('table_col_evening_leave')}: `}<Text className="text-xs font-medium text-chart-6">{el ? (el.authorized_return_time?.slice(0, 5) ?? a('label_yes')) : '—'}</Text></Text>
                     <Text className="text-muted-foreground text-[10px]">{`${a('table_col_time')}: `}<Text className="text-xs font-medium">{rec ? time(rec.recorded_at) : '—'}</Text></Text>
                   </View>
                 </View>
                 <View className="flex-row gap-2">
                   {(
                     [
-                      ['absent', 'status_absent', 'border-red-400 bg-red-400'],
-                      ['present', 'status_present', 'border-blue-500 bg-blue-500'],
-                      ['late', 'status_late', 'border-gray-400 bg-gray-400'],
+                      ['absent', 'status_absent', 'border-destructive bg-destructive'],
+                      ['present', 'status_present', 'border-brand bg-brand'],
+                      ['late', 'status_late', 'border-border bg-muted-foreground'],
                     ] as const
                   ).map(([s, key, on]) => (
                     <Pressable

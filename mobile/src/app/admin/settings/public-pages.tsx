@@ -4,8 +4,9 @@ import { router, Stack } from 'expo-router';
 import { ExternalLink, Eye, Globe, Info, Save } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
@@ -63,7 +64,7 @@ export default function PublicPagesSettings() {
   const pageOptions = [{ value: 'login', label: u('login_default') }, ...PUBLIC_PAGE_IDS.filter((id) => config.pages.includes(id)).map((id) => ({ value: id, label: u(`pages.${id}`) }))];
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: u('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <View className="flex-row items-start gap-2">
@@ -78,12 +79,12 @@ export default function PublicPagesSettings() {
           ) : null}
         </View>
 
-        <Pressable onPress={() => router.push('/admin/settings/plugins')} accessibilityRole="link" className="flex-row gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/50 dark:bg-blue-950/30">
-          <Icon as={Info} className="mt-0.5 size-4 text-blue-800 dark:text-blue-300" />
+        <Pressable onPress={() => router.push('/admin/settings/plugins')} accessibilityRole="link" className="flex-row gap-2 rounded-xl border border-info-soft bg-info-soft p-3">
+          <Icon as={Info} className="mt-0.5 size-4 text-brand dark:text-brand-secondary " />
           <View className="flex-1 gap-1">
-            <Text className="text-sm text-blue-800 dark:text-blue-300">{plainMessage('school.public_pages.activation_notice.text', { link: u('activation_notice.link_text'), bold: u('title') })}</Text>
+            <Text className="text-sm text-brand dark:text-brand-secondary ">{plainMessage('school.public_pages.activation_notice.text', { link: u('activation_notice.link_text'), bold: u('title') })}</Text>
             {publicUrl ? (
-              <Text className="font-mono text-xs text-blue-700 dark:text-blue-400" selectable>
+              <Text className="font-mono text-xs text-brand dark:text-brand-secondary " selectable>
                 {publicUrl}
               </Text>
             ) : null}

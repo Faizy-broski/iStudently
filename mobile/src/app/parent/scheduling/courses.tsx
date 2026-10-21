@@ -1,10 +1,14 @@
 import { Stack } from 'expo-router';
+import { BookOpen, CircleCheck, Hash, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent } from '@/components/ui/card';
+import { IconTile, Initials, Section } from '@/components/app/layout';
+import { InfoRow, Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { NoChild, useChild } from '@/features/parent/child';
 import { parent } from '@/lib/api';
@@ -27,58 +31,59 @@ export default function ParentCourses() {
     <>
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => courses.mutate()} />}>
-        <Text variant="muted">{`${child.first_name} ${child.last_name}`}</Text>
+        <Text variant="muted" className="text-sm">{`${child.first_name} ${child.last_name}`}</Text>
         {course ? (
-          <Card>
-            <CardContent className="gap-3 p-4">
-              <Text className="text-primary text-lg font-semibold">{course.subject_name}</Text>
-              <View className="flex-row flex-wrap gap-y-3">
-                <Field label={k('subject')} value={course.subject_name} />
-                <Field label={k('code')} value={course.subject_code || '—'} />
-                <Field label={k('teacher')} value={course.teacher_name || k('unassigned')} />
-                <View className="w-1/2">
-                  <Text className="text-muted-foreground mb-1 text-xs font-semibold tracking-wider uppercase">{k('status')}</Text>
-                  <View className="self-start rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 dark:bg-emerald-950/30">
-                    <Text className="text-xs font-medium text-emerald-600">{k('enrolled')}</Text>
-                  </View>
+          <Panel>
+            <View className="flex-row items-center gap-3 p-4 pb-2">
+              <IconTile icon={BookOpen} size={44} />
+              <Text className="text-brand dark:text-foreground flex-1 text-lg font-bold">{course.subject_name}</Text>
+            </View>
+            <InfoRow icon={BookOpen} label={k('subject')} value={course.subject_name} />
+            <InfoRow icon={Hash} label={k('code')} value={course.subject_code || '—'} />
+            <InfoRow icon={User} label={k('teacher')} value={course.teacher_name || k('unassigned')} />
+            <View className="flex-row items-center gap-3 px-4 py-2.5">
+              <View className="bg-info-soft size-8 items-center justify-center rounded-full">
+                <Icon as={CircleCheck} className="text-brand dark:text-brand-secondary size-4" />
+              </View>
+              <View className="flex-1 gap-1">
+                <Text variant="muted" className="text-[11px]">
+                  {k('status')}
+                </Text>
+                <View className="flex-row">
+                  <StatusChip label={k('enrolled')} tone="success" />
                 </View>
               </View>
-            </CardContent>
-          </Card>
+            </View>
+          </Panel>
         ) : (
-          <Text className="text-muted-foreground text-center text-sm">{k('pick')}</Text>
+          <EmptyState icon={BookOpen} title={k('pick')} />
         )}
-        <Card>
-          <CardContent className="px-0 py-0">
-            <Text className="text-muted-foreground border-border border-b px-4 py-2 text-xs">{k('found', { count: list.length })}</Text>
-            {courses.isLoading ? (
-              <LoadingList rows={4} />
-            ) : !list.length ? (
-              <Text className="text-muted-foreground py-6 text-center text-xs">{k('none')}</Text>
-            ) : (
-              list.map((c) => (
-                <Pressable
-                  key={c.subject_id}
-                  onPress={() => setSelected((v) => (v === c.subject_id ? null : c.subject_id))}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: selected === c.subject_id }}
-                  className={cn('border-border border-b px-4 py-3 last:border-b-0', selected === c.subject_id && 'bg-primary/10')}>
-                  <Text className={cn('text-primary text-sm', selected === c.subject_id && 'font-semibold')}>{c.subject_name}</Text>
-                </Pressable>
-              ))
-            )}
-          </CardContent>
-        </Card>
+        <Section title={k('found', { count: list.length })}>
+          {courses.isLoading ? (
+            <LoadingList rows={4} />
+          ) : !list.length ? (
+            <EmptyState icon={BookOpen} title={k('none')} />
+          ) : (
+            <Panel>
+              {list.map((c, i) => {
+                const on = selected === c.subject_id;
+                return (
+                  <Pressable
+                    key={c.subject_id}
+                    onPress={() => setSelected((v) => (v === c.subject_id ? null : c.subject_id))}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < list.length - 1 && 'border-info-soft dark:border-border border-b', on && 'bg-info-soft')}>
+                    <Initials name={c.subject_name} size={36} />
+                    <Text className={cn('flex-1 text-sm', on ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')}>{c.subject_name}</Text>
+                    {on ? <Icon as={CircleCheck} className="text-brand dark:text-brand-secondary size-4" /> : null}
+                  </Pressable>
+                );
+              })}
+            </Panel>
+          )}
+        </Section>
       </ScrollView>
     </>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="w-1/2 pe-2">
-      <Text className="text-muted-foreground mb-1 text-xs font-semibold tracking-wider uppercase">{label}</Text>
-      <Text className="text-sm font-medium">{value}</Text>
-    </View>
   );
 }

@@ -105,7 +105,7 @@ export const ADMIN_GROUP_WAVE: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7> = {
   // 2 Fees & accounting
   student_billing: 2, billing_elements: 2, accounting: 2, salary: 2,
   // 3 Academics
-  grades: 3, scheduling: 3, quiz: 3, online_classes: 3, activities: 3,
+  grades: 3, jahbadh_grades: 3, scheduling: 3, quiz: 3, online_classes: 3, activities: 3,
   // 4 Attendance & discipline
   attendance: 4, staff_absences: 4, discipline: 4, entry_exit: 4, miqat: 4, grievances: 4, inspections: 4, performance_efficiency: 4,
   // 5 School & settings

@@ -4,15 +4,17 @@ import { Stack } from 'expo-router';
 import { ChevronRight, Download } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
+import { Breadcrumbs } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAcademicYears } from '@/features/admin/grades';
 import { studentFullName } from '@/features/admin/scheduling-tools';
@@ -88,14 +90,14 @@ export default function ScheduleReport() {
   const row = (key: string, label: string, nums: (string | number)[], on: boolean, onPress: () => void) => (
     <View key={key}>
       <Separator />
-      <Pressable onPress={onPress} className={cn('flex-row items-center gap-2 py-2', on && 'bg-primary/10 rounded')}>
-        <Text className={cn('flex-1 text-sm', on && 'font-semibold')}>{label}</Text>
+      <Pressable onPress={onPress} className={cn('flex-row items-center gap-2 rounded-xl px-2 py-2.5 active:opacity-70', on && 'bg-info-soft')}>
+        <Text className={cn('flex-1 text-sm', on ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')}>{label}</Text>
         {nums.map((n, i) => (
           <Text key={i} className="w-11 text-center text-xs">
             {n}
           </Text>
         ))}
-        <Icon as={ChevronRight} className="text-muted-foreground size-3.5 rtl:rotate-180" />
+        <Icon flipRtl as={ChevronRight} className="text-muted-foreground size-3.5" />
       </Pressable>
     </View>
   );
@@ -115,30 +117,30 @@ export default function ScheduleReport() {
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: s('title') }} />
       <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => (requests.mutate(), seats.mutate(), classList.mutate())} />}>
-        <View className="flex-row flex-wrap items-center">
-          <Pressable
-            onPress={() => {
-              setSubjectId(null);
-              setCourseId(null);
-              setCpId(null);
-            }}>
-            <Text className="text-primary text-sm">{s('top')}</Text>
-          </Pressable>
-          {subject ? (
-            <Pressable
-              onPress={() => {
+        <Breadcrumbs
+          items={[
+            {
+              label: s('top'),
+              onPress: () => {
+                setSubjectId(null);
                 setCourseId(null);
                 setCpId(null);
-              }}>
-              <Text className="text-primary text-sm"> › {subject.name}</Text>
-            </Pressable>
-          ) : null}
-          {course ? (
-            <Pressable onPress={() => setCpId(null)}>
-              <Text className="text-primary text-sm"> › {course.title}</Text>
-            </Pressable>
-          ) : null}
-        </View>
+              },
+            },
+            ...(subject
+              ? [
+                  {
+                    label: subject.name,
+                    onPress: () => {
+                      setCourseId(null);
+                      setCpId(null);
+                    },
+                  },
+                ]
+              : []),
+            ...(course ? [{ label: course.title, onPress: () => setCpId(null) }] : []),
+          ]}
+        />
 
         <Card>
           <CardContent className="py-2">
@@ -210,7 +212,7 @@ export default function ScheduleReport() {
             ) : (
               <Card>
                 <CardContent className="py-1">
-                  {(mode === 'students' ? enrolled : unscheduled).length === 0 ? <Text className="text-muted-foreground py-4 text-center text-sm">{s('no_students_found')}</Text> : null}
+                  {(mode === 'students' ? enrolled : unscheduled).length === 0 ? <EmptyState title={s('no_students_found')} /> : null}
                   {mode === 'students'
                     ? enrolled.map((x, i) => (
                         <View key={x.schedule_id}>

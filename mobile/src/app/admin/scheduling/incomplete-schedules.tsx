@@ -3,9 +3,11 @@ import { Check, Download, X } from 'lucide-react-native';
 import { toCsv } from '@studently/shared-utils';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
+import { Initials } from '@/components/app/layout';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Card, CardContent } from '@/components/ui/card';
@@ -92,15 +94,20 @@ export default function IncompleteSchedules() {
               {shown.map((r, i) => (
                 <View key={r.id}>
                   {i > 0 ? <Separator /> : null}
-                  <View className="gap-1.5 py-2.5">
-                    <Text className="font-medium">{r.name}</Text>
-                    <Text className="text-muted-foreground text-xs">
-                      {r.number} · {r.grade}
-                    </Text>
+                  <View className="gap-2 py-2.5">
+                    <View className="flex-row items-center gap-3">
+                      <Initials name={r.name} size={36} tone="warning" />
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold">{r.name}</Text>
+                        <Text variant="muted" className="text-[11px]">
+                          {r.number} · {r.grade}
+                        </Text>
+                      </View>
+                    </View>
                     <View className="flex-row flex-wrap gap-1.5">
                       {periods.map((p) => (
-                        <View key={p.id} className={cn('flex-row items-center gap-0.5 rounded px-1.5 py-0.5', r.has[p.id] ? 'bg-green-100 dark:bg-green-950' : 'bg-red-100 dark:bg-red-950')}>
-                          <Icon as={r.has[p.id] ? Check : X} className={cn('size-3', r.has[p.id] ? 'text-green-700' : 'text-red-600')} />
+                        <View key={p.id} className={cn('flex-row items-center gap-0.5 rounded-full px-2 py-0.5', r.has[p.id] ? 'bg-success-soft' : 'bg-destructive-soft')}>
+                          <Icon as={r.has[p.id] ? Check : X} className={cn('size-3', r.has[p.id] ? 'text-success' : 'text-destructive')} />
                           <Text className="text-[11px]">{label(p)}</Text>
                         </View>
                       ))}

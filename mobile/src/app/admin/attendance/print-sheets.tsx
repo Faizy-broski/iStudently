@@ -102,7 +102,7 @@ export default function PrintAttendanceSheets() {
             <Pressable onPress={() => toggle(cp.id)} className="flex-row items-center gap-3 px-4 py-3">
               <CheckRow checked={selected.has(cp.id)} onPress={() => toggle(cp.id)} label="" />
               <View className="flex-1">
-                <Text className="font-medium" numberOfLines={1}>
+                <Text className="text-sm font-semibold" numberOfLines={1}>
                   {cp.label}
                 </Text>
                 <Text className="text-muted-foreground text-xs" numberOfLines={2}>

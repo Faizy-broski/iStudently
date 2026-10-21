@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { RotateCcw, Save, ShieldCheck } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
@@ -103,7 +104,7 @@ export default function TwoFactorAuthSettings() {
               <>
                 <View className="flex-row flex-wrap gap-2">
                   {ALL_ROLES.map((r) => (
-                    <Pressable key={r} onPress={() => toggleRole(r)} className="border-border active:bg-muted min-w-[46%] flex-1 flex-row items-center gap-2.5 rounded-lg border p-3">
+                    <Pressable key={r} onPress={() => toggleRole(r)} className="border-info-soft dark:border-border active:bg-muted min-w-[46%] flex-1 flex-row items-center gap-2.5 rounded-xl border p-3">
                       <Switch checked={config.roles_required.includes(r)} onCheckedChange={() => toggleRole(r)} />
                       <Text className="flex-1 text-sm font-medium capitalize">{roleLabel(r)}</Text>
                     </Pressable>
@@ -150,9 +151,9 @@ export default function TwoFactorAuthSettings() {
                 ) : (
                   <Text className="text-muted-foreground text-sm">{f('admin_no_users')}</Text>
                 )}
-                <Button variant="outline" className="self-start border-red-200" disabled={!target || resetting} onPress={reset}>
-                  <Icon as={RotateCcw} className="size-4 text-red-600" />
-                  <Text className="text-red-600">{f('admin_reset_btn')}</Text>
+                <Button variant="outline" className="self-start border-destructive/30" disabled={!target || resetting} onPress={reset}>
+                  <Icon as={RotateCcw} className="size-4 text-destructive" />
+                  <Text className="text-destructive">{f('admin_reset_btn')}</Text>
                 </Button>
               </>
             )}

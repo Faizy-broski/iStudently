@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { colors } from '@/lib/colors';
 import { InfoCard } from '@/components/app/info';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
@@ -32,9 +33,9 @@ export function ConfidentialBadge({ status }: { status?: string | null }) {
   const { t } = useTranslation();
   if (!status || status === 'NONE') return null;
   return (
-    <View className="flex-row items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 dark:bg-amber-900/40">
-      <Icon as={Lock} className="size-3 text-amber-800 dark:text-amber-300" />
-      <Text className="text-xs text-amber-800 dark:text-amber-300">{t(pf(`cfs_${status}`))}</Text>
+    <View className="flex-row items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 ">
+      <Icon as={Lock} className="size-3 text-warning " />
+      <Text className="text-xs text-warning ">{t(pf(`cfs_${status}`))}</Text>
     </View>
   );
 }
@@ -191,7 +192,7 @@ export function MiqatCard({ personId, name }: { personId: string; name: string }
   const qr = reissued?.qr ?? res.data?.qr?.[personId] ?? null;
   const revision = reissued?.revision ?? null;
   const html = () =>
-    `<!doctype html><html dir="${i18n.language === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;text-align:center;padding:24px}.qr{width:260px;height:260px;margin:16px auto}.qr svg{width:100%;height:100%}h1{font-size:20px;margin:0}p{color:#555;font-size:13px}</style></head><body><h1>${escapeHtml(name)}</h1><div class="qr">${qrSvg(qr ?? '')}</div>${revision != null ? `<p>${escapeHtml(c('revisionLabel'))}: ${revision}</p>` : ''}</body></html>`;
+    `<!doctype html><html dir="${i18n.language === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;text-align:center;padding:24px}.qr{width:260px;height:260px;margin:16px auto}.qr svg{width:100%;height:100%}h1{font-size:20px;margin:0}p{color:${colors.printMuted};font-size:13px}</style></head><body><h1>${escapeHtml(name)}</h1><div class="qr">${qrSvg(qr ?? '')}</div>${revision != null ? `<p>${escapeHtml(c('revisionLabel'))}: ${revision}</p>` : ''}</body></html>`;
   async function out(kind: 'print' | 'pdf') {
     try {
       if (kind === 'print') await printHtml(html());
@@ -213,15 +214,15 @@ export function MiqatCard({ personId, name }: { personId: string; name: string }
     }
   }
   return (
-    <View className="border-border items-center gap-2 rounded-lg border p-3">
+    <View className="border-info-soft dark:border-border items-center gap-2 rounded-xl border p-3">
       {res.isLoading ? (
         <LoadingList rows={1} />
       ) : failed && !qr ? (
-        <Text className="text-center text-xs text-red-600">{failed}</Text>
+        <Text className="text-center text-xs text-destructive">{failed}</Text>
       ) : qr ? (
         <>
           <View className="rounded bg-white p-2">
-            <QRCode value={qr} size={110} bgColor="#FFFFFF" fgColor="#000000" />
+            <QRCode value={qr} size={110} bgColor={colors.white} fgColor={colors.black} />
           </View>
           <Text className="text-muted-foreground max-w-[200px] text-center text-xs" numberOfLines={1}>
             {name}
@@ -246,11 +247,11 @@ export function MiqatCard({ personId, name }: { personId: string; name: string }
 // ── Discipline score ─────────────────────────────────────────────────────────
 
 const TIERS = [
-  { min: 100, key: 'excellent', bg: 'bg-blue-50 dark:bg-blue-950', text: 'text-blue-700 dark:text-blue-300' },
-  { min: 90, key: 'good', bg: 'bg-green-50 dark:bg-green-950', text: 'text-green-700 dark:text-green-300' },
-  { min: 70, key: 'fair', bg: 'bg-yellow-50 dark:bg-yellow-950', text: 'text-yellow-700 dark:text-yellow-300' },
-  { min: 50, key: 'poor', bg: 'bg-orange-50 dark:bg-orange-950', text: 'text-orange-700 dark:text-orange-300' },
-  { min: -Infinity, key: 'critical', bg: 'bg-red-50 dark:bg-red-950', text: 'text-red-700 dark:text-red-300' },
+  { min: 100, key: 'excellent', bg: 'bg-info-soft ', text: 'text-brand dark:text-brand-secondary ' },
+  { min: 90, key: 'good', bg: 'bg-success-soft ', text: 'text-success ' },
+  { min: 70, key: 'fair', bg: 'bg-warning-soft ', text: 'text-warning ' },
+  { min: 50, key: 'poor', bg: 'bg-warning-soft ', text: 'text-warning ' },
+  { min: -Infinity, key: 'critical', bg: 'bg-destructive-soft ', text: 'text-destructive ' },
 ];
 
 /** 100-point discipline score with the penalty breakdown (web: DisciplineScoreTab). */
@@ -281,7 +282,7 @@ export function DisciplineScoreCard({ studentId, academicYearId }: { studentId: 
                 <Text className={cn('text-xs', tier.text)}>{t(pf(`ds_${tier.key}`))}</Text>
               </Badge>
               <Text className="text-sm">
-                {t(pf('ds_total_penalty'))}: <Text className={cn('text-sm', r.total_delta < 0 ? 'font-semibold text-red-600' : 'text-green-600')}>{r.total_delta < 0 ? r.total_delta : '+0'}</Text>
+                {t(pf('ds_total_penalty'))}: <Text className={cn('text-sm', r.total_delta < 0 ? 'font-semibold text-destructive' : 'text-success')}>{r.total_delta < 0 ? r.total_delta : '+0'}</Text>
               </Text>
               <Text className="text-sm">
                 {t(pf('ds_referrals'))}: {r.referral_count}
@@ -291,7 +292,7 @@ export function DisciplineScoreCard({ studentId, academicYearId }: { studentId: 
           {r.breakdown.length ? (
             <View>
               <View className="flex-row items-center gap-1.5 pb-1">
-                <Icon as={TrendingDown} className="size-4 text-red-500" />
+                <Icon as={TrendingDown} className="size-4 text-destructive" />
                 <Text className="text-sm font-semibold">{t(pf('ds_breakdown'))}</Text>
               </View>
               {r.breakdown.map((b, i) => (
@@ -299,12 +300,12 @@ export function DisciplineScoreCard({ studentId, academicYearId }: { studentId: 
                   <Separator />
                   <View className="flex-row items-start gap-3 py-2">
                     <View className="flex-1">
-                      <Text className="text-sm font-medium">{b.field_name}</Text>
+                      <Text className="text-sm font-semibold">{b.field_name}</Text>
                       <Text className="text-muted-foreground text-xs">{b.detail}</Text>
                     </View>
                     <View className="items-end">
                       <Text className="text-muted-foreground text-xs">{formatDate(b.incident_date)}</Text>
-                      <Text className="text-sm font-semibold text-red-600">{b.delta}</Text>
+                      <Text className="text-sm font-semibold text-destructive">{b.delta}</Text>
                     </View>
                   </View>
                 </View>

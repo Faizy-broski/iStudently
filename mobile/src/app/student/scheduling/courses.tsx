@@ -1,11 +1,14 @@
 import type { StudentCourse } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { AlertCircle, ChevronRight } from 'lucide-react-native';
+import { AlertCircle, BookOpen, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { IconTile, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { student } from '@/lib/api';
@@ -28,11 +31,11 @@ export default function StudentCourses() {
   if (courses.error) {
     return (
       <View className="bg-background flex-1 p-4">
-        <View className="flex-row items-center gap-3 rounded-md border border-red-200 bg-red-50 p-4 dark:bg-red-950/20">
-          <Icon as={AlertCircle} className="size-8 text-red-600" />
+        <View className="border-destructive/30 bg-destructive-soft flex-row items-center gap-3 rounded-2xl border p-4">
+          <Icon as={AlertCircle} className="text-destructive size-8" />
           <View className="flex-1">
-            <Text className="font-semibold text-red-900 dark:text-red-200">{k('error')}</Text>
-            <Text className="text-sm text-red-700 dark:text-red-300">{courses.error.message}</Text>
+            <Text className="text-destructive font-semibold">{k('error')}</Text>
+            <Text className="text-destructive text-sm">{courses.error.message}</Text>
           </View>
         </View>
       </View>
@@ -46,18 +49,22 @@ export default function StudentCourses() {
   return (
     <>
       <Stack.Screen options={{ title: k('title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => courses.mutate()} />}>
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => courses.mutate()} />}>
         {subject || course || periodId ? (
-          <View className="border-border bg-background overflow-hidden rounded-md border">
-            <View className="bg-muted/20 border-border border-b px-4 py-3">
-              <Text className="text-primary text-lg font-semibold">{periodId ? `${course?.subject_name} - ${teacher(course)}` : course ? course.subject_name : subject?.subject_name}</Text>
+          <Panel>
+            <View className="border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3">
+              <IconTile icon={BookOpen} size={40} />
+              <Text className="text-brand dark:text-foreground flex-1 text-base font-bold">{periodId ? `${course?.subject_name} - ${teacher(course)}` : course ? course.subject_name : subject?.subject_name}</Text>
             </View>
             <View className="gap-3 p-4">
               {periodId ? (
                 <>
                   <Detail label={k('title_label')} value={`${course?.subject_name} - ${teacher(course)}`} />
                   <Detail label={k('teacher')} value={teacher(course)} />
-                  <Detail label={k('status')} value={k('enrolled')} valueClass="text-emerald-600" />
+                  <View className="gap-1">
+                    <Text className="text-muted-foreground text-[11px]">{k('status')}</Text>
+                    <StatusChip label={k('enrolled')} tone="success" className="self-start" />
+                  </View>
                 </>
               ) : (
                 <>
@@ -68,11 +75,11 @@ export default function StudentCourses() {
                 </>
               )}
             </View>
-          </View>
+          </Panel>
         ) : null}
 
         <Level title={k('subject')} count={k('subjects_found', { count: list.length })}>
-          {list.length === 0 ? <Text className="text-muted-foreground px-3 py-4 text-sm">{k('no_subjects')}</Text> : null}
+          {list.length === 0 ? <Text className="text-muted-foreground px-4 py-4 text-sm">{k('no_subjects')}</Text> : null}
           {list.map((c) => (
             <Row
               key={c.subject_id}
@@ -99,7 +106,7 @@ export default function StudentCourses() {
             />
           </Level>
         ) : (
-          <Text className="text-muted-foreground py-6 text-center text-sm">{k('select_subject')}</Text>
+          <EmptyState title={k('select_subject')} />
         )}
 
         {course ? (
@@ -112,31 +119,34 @@ export default function StudentCourses() {
   );
 }
 
-function Detail({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <View>
-      <Text className="text-muted-foreground mb-1 text-xs font-semibold uppercase">{label}</Text>
-      <Text className={cn('font-medium', valueClass)}>{value}</Text>
+    <View className="gap-0.5">
+      <Text className="text-muted-foreground text-[11px]">{label}</Text>
+      <Text className="text-sm font-medium">{value}</Text>
     </View>
   );
 }
 
 function Level({ title, count, children }: { title: string; count: string; children: React.ReactNode }) {
   return (
-    <View className="border-border bg-background overflow-hidden rounded-md border">
-      <Text className="text-muted-foreground border-border border-b px-3 py-2 text-xs">{count}</Text>
-      <Text className="border-border border-b px-3 py-2 text-xs font-semibold text-teal-700 uppercase">{title}</Text>
-      {children}
-    </View>
+    <Section title={title}>
+      <Text className="text-muted-foreground -mt-1 text-xs">{count}</Text>
+      <Panel className="overflow-hidden">{children}</Panel>
+    </Section>
   );
 }
 
 function Row({ label, trailing, selected, onPress }: { label: string; trailing?: string; selected: boolean; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} className={cn('border-border flex-row items-center gap-2 border-b px-3 py-3', selected && 'bg-primary/10')}>
-      <Text className={cn('text-primary flex-1', selected && 'font-medium')}>{label}</Text>
-      {trailing ? <Text className="text-xs font-medium text-amber-600">{trailing}</Text> : null}
-      <Icon as={ChevronRight} className="text-muted-foreground size-4 rtl:rotate-180" />
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      className={cn('border-info-soft dark:border-border flex-row items-center gap-2 border-b px-4 py-3 active:opacity-70', selected && 'bg-info-soft')}>
+      <Text className={cn('flex-1 text-sm', selected ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')}>{label}</Text>
+      {trailing ? <StatusChip label={trailing} tone="warning" className="px-2 py-0.5" /> : null}
+      <Icon flipRtl as={ChevronRight} className="text-muted-foreground size-4" />
     </Pressable>
   );
 }

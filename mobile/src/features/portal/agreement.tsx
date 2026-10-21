@@ -4,7 +4,7 @@ import { FileText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -22,7 +22,7 @@ export function AgreementScreen() {
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
         <View className="flex-row items-center gap-2">
-          <Icon as={FileText} className="size-5 text-[#022172] dark:text-blue-400" />
+          <Icon as={FileText} className="size-5 text-brand dark:text-brand-secondary " />
           <Text variant="muted">{k('subtitle')}</Text>
         </View>
         {data.isLoading ? (
@@ -30,7 +30,7 @@ export function AgreementScreen() {
         ) : list.length === 0 ? (
           <Card>
             <CardContent className="py-10">
-              <Text className="text-muted-foreground text-center">{k('none')}</Text>
+              <EmptyState title={k('none')} />
             </CardContent>
           </Card>
         ) : (

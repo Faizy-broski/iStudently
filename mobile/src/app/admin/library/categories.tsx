@@ -3,8 +3,10 @@ import { Stack } from 'expo-router';
 import { FolderOpen, Pencil, Plus, Save, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -15,6 +17,8 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Text } from '@/components/ui/text';
 import { CheckRow } from '@/features/admin/attendance';
 import { ColorSwatches, useLibraryCategories } from '@/features/admin/library';
@@ -38,7 +42,7 @@ export default function LibraryCategories() {
   const [editing, setEditing] = useState<LibraryCategory | null>(null);
   const [title, setTitle] = useState('');
   const [sort, setSort] = useState('0');
-  const [color, setColor] = useState('#3B82F6');
+  const [color, setColor] = useState(colors.brandSecondary);
   const [roles, setRoles] = useState<string[]>([]);
   const [gradeIds, setGradeIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -51,7 +55,7 @@ export default function LibraryCategories() {
     setEditing(cat);
     setTitle(cat?.name ?? '');
     setSort(String(cat ? (cat.sort_order ?? 0) : list.length + 1));
-    setColor(cat?.color_code || '#3B82F6');
+    setColor(cat?.color_code || colors.brandSecondary);
     setRoles(cat?.visible_to_roles ?? []);
     setGradeIds(cat?.visible_to_grade_levels ?? []);
     setOpen(true);
@@ -108,15 +112,17 @@ export default function LibraryCategories() {
         ) : !list.length ? (
           <EmptyState icon={FolderOpen} title={c('no_categories')} body={c('no_categories_desc')} />
         ) : (
-          <Card className="py-0">
+          <Panel>
             {list.map((cat, i) => (
               <View key={cat.id}>
                 {i > 0 ? <Separator /> : null}
                 <Pressable onPress={() => openForm(cat)} className="active:bg-muted flex-row items-start gap-3 px-4 py-3">
-                  <Text className="text-muted-foreground w-5 text-xs">{i + 1}</Text>
-                  <View className="mt-1 size-4 rounded-full" style={{ backgroundColor: cat.color_code || '#6B7280' }} />
+                  <View className="relative">
+                    <IconTile icon={FolderOpen} size={40} />
+                    <View className="border-card absolute -end-0.5 -top-0.5 size-3.5 rounded-full border-2" style={{ backgroundColor: cat.color_code || colors.printMuted }} />
+                  </View>
                   <View className="flex-1 gap-1">
-                    <Text className="font-medium">{cat.name}</Text>
+                    <Text className="text-sm font-semibold">{cat.name}</Text>
                     <Text className="text-muted-foreground text-xs">
                       {c('table.sort_order')}: {cat.sort_order ?? 0}
                     </Text>
@@ -136,22 +142,22 @@ export default function LibraryCategories() {
                       )}
                     </View>
                   </View>
-                  <Button size="icon" variant="ghost" onPress={() => openForm(cat)} accessibilityLabel={t('common.edit')}>
-                    <Icon as={Pencil} className="text-foreground size-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onPress={() => remove(cat)} accessibilityLabel={t('common.delete')}>
+                  <Pressable onPress={() => openForm(cat)} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                  </Pressable>
+                  <Pressable onPress={() => remove(cat)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
-                  </Button>
+                  </Pressable>
                 </Pressable>
               </View>
             ))}
-          </Card>
+          </Panel>
         )}
       </ScrollView>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <ScrollView contentContainerClassName="gap-4" keyboardShouldPersistTaps="handled">
               <DialogHeader>
                 <DialogTitle>{editing ? c('dialog.edit_title') : c('dialog.new_title')}</DialogTitle>

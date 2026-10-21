@@ -3,8 +3,10 @@ import { Stack } from 'expo-router';
 import { BarChart3, Eye, Plus, Star, Trash2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View, Pressable } from 'react-native';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { EmptyState, LoadingList } from '@/components/app/states';
@@ -157,9 +159,9 @@ export default function PortalPolls() {
               <CardContent className="gap-3 pt-4">
                 <View className="flex-row items-center gap-2">
                   {row.id ? (
-                    <Button size="icon" variant="ghost" onPress={() => remove(row)} accessibilityLabel={t('common.delete')}>
+                    <Pressable onPress={() => remove(row)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
-                    </Button>
+                    </Pressable>
                   ) : (
                     <Icon as={Plus} className="text-muted-foreground size-5" />
                   )}
@@ -174,16 +176,16 @@ export default function PortalPolls() {
                 </View>
                 <Label>{p('table_poll')}</Label>
                 {row.questions.map((q) => (
-                  <View key={q.key} className="border-border gap-2 rounded-lg border p-3">
+                  <View key={q.key} className="border-info-soft dark:border-border gap-2 rounded-xl border p-3">
                     <View className="flex-row items-end gap-2">
                       <View className="flex-1 gap-1">
                         <Label className="text-xs">{p('label_question_title')}</Label>
                         <Input value={q.question_text} onChangeText={(v) => updateQ(row.key, q.key, { question_text: v })} />
                       </View>
                       {row.questions.length > 1 ? (
-                        <Button size="icon" variant="ghost" onPress={() => removeQ(row.key, q.key)} accessibilityLabel={t('common.delete')}>
+                        <Pressable onPress={() => removeQ(row.key, q.key)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                           <Icon as={Trash2} className="text-destructive size-4" />
-                        </Button>
+                        </Pressable>
                       ) : null}
                     </View>
                     <Label className="text-xs">{p('label_options_help')}</Label>
@@ -248,12 +250,12 @@ function ResultsDialog({ pollId, onClose }: { pollId: string | null; onClose: ()
                 <Text className="text-muted-foreground text-sm">{p('total_responses', { count: data.total_responses })}</Text>
               </View>
               {!data.questions.length ? (
-                <Text className="text-muted-foreground py-4 text-center">{p('no_questions')}</Text>
+                <EmptyState title={p('no_questions')} />
               ) : (
                 data.questions.map((q, i) => (
                   <View key={q.question_id} className="gap-2">
                     {i > 0 ? <Separator /> : null}
-                    <Text className="font-medium">{q.question_text}</Text>
+                    <Text className="text-sm font-semibold">{q.question_text}</Text>
                     <Text className="text-muted-foreground text-xs">
                       {p('total_responses_short', { count: q.total_responses })} • {TYPES.includes(q.question_type as PollQuestionType) ? p(`data_types.${q.question_type}`) : q.question_type}
                     </Text>
@@ -282,7 +284,7 @@ function ResultsDialog({ pollId, onClose }: { pollId: string | null; onClose: ()
                             <View key={r.rating} className="flex-row items-center gap-2">
                               <View className="w-20 flex-row">
                                 {Array.from({ length: r.rating }).map((_, k) => (
-                                  <Icon key={k} as={Star} size={12} color="#f59e0b" />
+                                  <Icon key={k} as={Star} size={12} color={colors.brandAccent} />
                                 ))}
                               </View>
                               <View className="flex-1">

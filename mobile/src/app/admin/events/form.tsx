@@ -3,9 +3,11 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Save } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
@@ -26,7 +28,7 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 const HEX = /^#[0-9A-Fa-f]{6}$/;
-const SWATCHES = ['#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6', '#10b981', '#6b7280', '#16a34a', '#f97316', '#dc2626', '#2563eb', '#9333ea', '#0891b2'];
+const SWATCHES = [colors.brandSecondary, colors.destructive, colors.brandAccent, colors.chart6, colors.success, colors.printMuted, colors.success, colors.warning, colors.destructive, colors.brand, colors.chart6, colors.chart7];
 
 type Form = {
   title: string;
@@ -181,8 +183,8 @@ export default function EventForm() {
                 ))}
               </View>
               <View className="flex-row items-center gap-2">
-                <View className="border-border size-9 rounded-md border" style={{ backgroundColor: HEX.test(form.color_code) ? form.color_code : 'transparent' }} />
-                <Input className="flex-1" value={form.color_code} onChangeText={(v) => set({ color_code: v.trim() })} placeholder="#000000" autoCapitalize="none" maxLength={7} />
+                <View className="border-info-soft dark:border-border size-9 rounded-xl border" style={{ backgroundColor: HEX.test(form.color_code) ? form.color_code : 'transparent' }} />
+                <Input className="flex-1" value={form.color_code} onChangeText={(v) => set({ color_code: v.trim() })} placeholder={colors.black} autoCapitalize="none" maxLength={7} />
               </View>
               {err('color_code')}
             </View>

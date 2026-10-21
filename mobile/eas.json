@@ -12,12 +12,21 @@
     "preview": {
       "distribution": "internal",
       "environment": "preview",
-      "channel": "preview"
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
       "autoIncrement": true,
       "environment": "production",
       "channel": "production"
+    },
+    "preview-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      }
     }
   },
   "submit": {

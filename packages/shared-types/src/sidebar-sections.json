@@ -18,6 +18,7 @@
     "parents",
     "attendance",
     "grades",
+    "jahbadh_grades",
     "student_billing",
     "billing_elements",
     "salary",

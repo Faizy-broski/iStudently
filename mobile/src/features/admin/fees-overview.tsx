@@ -1,14 +1,13 @@
 import { router } from 'expo-router';
-import { AlertTriangle, CheckCircle2, Clock, Wallet } from 'lucide-react-native';
+import { Receipt, Scale } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { ListRow } from '@/components/app/list-row';
-import { StatCard } from '@/components/app/stat-card';
+import { HeroCard, StatTile, StatTiles } from '@/components/app/layout';
+import { ActionRow, Panel } from '@/components/app/panel';
 import { ErrorState } from '@/components/app/states';
-import { Card } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
 import { useCurrency } from '@/features/admin/use-currency';
 import { useCampus } from '@/features/campus/campus';
 import { adminFees } from '@/lib/api';
@@ -22,33 +21,37 @@ export function FeesOverview() {
   const stats = useApi(scopeId ? ['admin', 'fees-dashboard', scopeId] : null, ([, , sid]) => adminFees.dashboard(sid as string));
   const s = stats.data;
   if (stats.error && !s) return <ErrorState message={stats.error.message} onRetry={() => stats.mutate()} />;
+  const pct = s && s.total_fees > 0 ? Math.min(100, (s.total_collected / s.total_fees) * 100) : 0;
 
   return (
-    <>
-      <View className="gap-3 p-4">
-        {!s ? (
-          <View className="gap-3">
-            <Skeleton className="h-28 rounded-xl" />
-            <Skeleton className="h-28 rounded-xl" />
-          </View>
-        ) : (
-          <>
-            <View className="flex-row gap-3">
-              <StatCard icon={Wallet} label={t('fees.totalFees')} value={money(s.total_fees)} />
-              <StatCard icon={CheckCircle2} label={t('fees.statusCollected')} value={money(s.total_collected)} />
+    <View className="gap-3 pb-5">
+      {!s ? (
+        <View className="gap-3">
+          <Skeleton className="h-36 rounded-3xl" />
+          <Skeleton className="h-20 rounded-2xl" />
+        </View>
+      ) : (
+        <>
+          <HeroCard>
+            <Text className="text-white text-xs opacity-80">{t('fees.totalFees')}</Text>
+            <Text className="text-white text-3xl font-bold" numberOfLines={1} adjustsFontSizeToFit>
+              {money(s.total_fees)}
+            </Text>
+            <View className="h-2 overflow-hidden rounded-full bg-white/20">
+              <View className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
             </View>
-            <View className="flex-row gap-3">
-              <StatCard icon={Clock} label={t('fees.statusPending')} value={money(s.total_pending)} detail={t('app.fe_count', { count: (s.counts?.pending ?? 0) + (s.counts?.partial ?? 0) })} />
-              <StatCard icon={AlertTriangle} label={t('fees.statusOverdue')} value={money(s.total_overdue)} detail={t('app.fe_count', { count: s.counts?.overdue ?? 0 })} tone="destructive" />
-            </View>
-          </>
-        )}
-        <Card className="gap-0 py-0">
-          <ListRow title={t('fees.payments.title')} subtitle={t('app.fe_payments_hint')} onPress={() => router.push('/admin/billing/payments')} />
-          <Separator />
-          <ListRow title={t('fees.studentBalances')} subtitle={t('app.fe_balances_hint')} onPress={() => router.push('/admin/billing/balances')} />
-        </Card>
-      </View>
-    </>
+            <Text className="text-white text-xs">{`${t('fees.statusCollected')}: ${money(s.total_collected)} · ${Math.round(pct)}%`}</Text>
+          </HeroCard>
+          <StatTiles>
+            <StatTile label={t('fees.statusPending')} value={money(s.total_pending)} tone="warning" note={t('app.fe_count', { count: (s.counts?.pending ?? 0) + (s.counts?.partial ?? 0) })} />
+            <StatTile label={t('fees.statusOverdue')} value={money(s.total_overdue)} tone="destructive" note={t('app.fe_count', { count: s.counts?.overdue ?? 0 })} />
+          </StatTiles>
+        </>
+      )}
+      <Panel>
+        <ActionRow icon={Receipt} title={t('fees.payments.title')} subtitle={t('app.fe_payments_hint')} onPress={() => router.push('/admin/billing/payments')} />
+        <ActionRow icon={Scale} title={t('fees.studentBalances')} subtitle={t('app.fe_balances_hint')} onPress={() => router.push('/admin/billing/balances')} last />
+      </Panel>
+    </View>
   );
 }

@@ -4,12 +4,13 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, BookX } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
+import { FormSection } from '@/components/app/layout';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,9 +56,11 @@ export default function LibrarianLost() {
   return (
     <>
       <Stack.Screen options={{ title: k('lost_books') }} />
-      <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-          <Text variant="muted">{k('lost_subtitle')}</Text>
+          <Text variant="muted" className="text-sm">
+            {k('lost_subtitle')}
+          </Text>
           <StudentSelectCard
             tone="orange"
             value={student}
@@ -68,47 +71,41 @@ export default function LibrarianLost() {
           />
           <ActiveLoansCard studentId={student?.id ?? null} selected={loan} onSelect={setLoan} now={now} />
           {loan ? (
-            <Card>
-              <CardHeader className="flex-row items-center gap-2">
-                <Icon as={BookX} className="size-5 text-red-600" />
-                <CardTitle className="text-base">{k('mark_book_lost')}</CardTitle>
-              </CardHeader>
-              <CardContent className="gap-3">
-                <View className="bg-muted/50 gap-1 rounded-lg p-3">
-                  <Text className="font-medium">{k('book_details')}</Text>
-                  <Text className="text-sm">{`${k('title')}: ${loan.book_title ?? ''}`}</Text>
-                  <Text className="text-sm">{`${k('copy')}: ${loan.accession_number ?? '—'}`}</Text>
-                  <Text className="text-sm">{`${k('due_date')}: ${formatDate(loan.due_date)}`}</Text>
+            <FormSection title={k('mark_book_lost')} icon={BookX}>
+              <View className="bg-muted/50 gap-1 rounded-xl p-3">
+                <Text className="text-sm font-semibold">{k('book_details')}</Text>
+                <Text className="text-sm">{`${k('title')}: ${loan.book_title ?? ''}`}</Text>
+                <Text className="text-sm">{`${k('copy')}: ${loan.accession_number ?? '—'}`}</Text>
+                <Text className="text-sm">{`${k('due_date')}: ${formatDate(loan.due_date)}`}</Text>
+              </View>
+              <View className="gap-1.5">
+                <Label>{k('replacement_cost')}</Label>
+                <Input value={cost} onChangeText={(v) => setCost(v.replace(/[^0-9.]/g, ''))} keyboardType="decimal-pad" placeholder="0.00" />
+              </View>
+              <View className="gap-1.5">
+                <Label>{k('notes_optional')}</Label>
+                <Textarea value={notes} onChangeText={setNotes} placeholder={k('lost_notes_placeholder')} />
+              </View>
+              <View className="bg-destructive-soft gap-1 rounded-2xl p-3.5">
+                <View className="flex-row items-center gap-2">
+                  <Icon as={AlertTriangle} className="size-4 text-destructive" />
+                  <Text className="font-medium text-destructive">{k('important_notice')}</Text>
                 </View>
-                <View className="gap-1.5">
-                  <Label>{k('replacement_cost')}</Label>
-                  <Input value={cost} onChangeText={(v) => setCost(v.replace(/[^0-9.]/g, ''))} keyboardType="decimal-pad" placeholder="0.00" />
-                </View>
-                <View className="gap-1.5">
-                  <Label>{k('notes_optional')}</Label>
-                  <Textarea value={notes} onChangeText={setNotes} placeholder={k('lost_notes_placeholder')} />
-                </View>
-                <View className="gap-1 rounded-lg border border-red-200 bg-red-50 p-3 dark:bg-red-950/30">
-                  <View className="flex-row items-center gap-2">
-                    <Icon as={AlertTriangle} className="size-4 text-red-600" />
-                    <Text className="font-medium text-red-800 dark:text-red-200">{k('important_notice')}</Text>
-                  </View>
-                  <Text className="text-sm text-red-700 dark:text-red-300">{k('lost_notice_intro')}</Text>
-                  {(['lost_notice_1', 'lost_notice_2', 'lost_notice_3'] as const).map((n) => (
-                    <Text key={n} className="ms-3 text-sm text-red-700 dark:text-red-300">{`• ${k(n)}`}</Text>
-                  ))}
-                  <Text className="mt-1 text-sm text-red-700 dark:text-red-300">{k('lost_notice_4')}</Text>
-                </View>
-                <View className="flex-row gap-2">
-                  <Button variant="outline" className="flex-1" onPress={() => setLoan(null)}>
-                    <Text>{t('common.cancel')}</Text>
-                  </Button>
-                  <Button variant="destructive" className="flex-1" onPress={markLost} disabled={busy}>
-                    <Text className="text-white">{busy ? k('processing') : k('mark_as_lost')}</Text>
-                  </Button>
-                </View>
-              </CardContent>
-            </Card>
+                <Text className="text-sm text-destructive">{k('lost_notice_intro')}</Text>
+                {(['lost_notice_1', 'lost_notice_2', 'lost_notice_3'] as const).map((n) => (
+                  <Text key={n} className="ms-3 text-sm text-destructive">{`• ${k(n)}`}</Text>
+                ))}
+                <Text className="mt-1 text-sm text-destructive">{k('lost_notice_4')}</Text>
+              </View>
+              <View className="flex-row gap-2">
+                <Button variant="outline" className="flex-1" onPress={() => setLoan(null)}>
+                  <Text>{t('common.cancel')}</Text>
+                </Button>
+                <Button variant="destructive" className="flex-1" onPress={markLost} disabled={busy}>
+                  <Text className="text-white">{busy ? k('processing') : k('mark_as_lost')}</Text>
+                </Button>
+              </View>
+            </FormSection>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>

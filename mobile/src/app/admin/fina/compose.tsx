@@ -2,8 +2,9 @@ import type { FinaAudienceType, FinaPostInput, FinaPostType } from '@studently/a
 import { router, Stack } from 'expo-router';
 import { ArrowLeft, Check, ImagePlus, RefreshCw, Upload, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
 import { TimeField } from '@/components/app/time-field';
@@ -30,7 +31,7 @@ const joinDateTime = (d: string, t: string) => (d ? `${d}T${t || '00:00'}` : '')
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className={cn('rounded-full border px-3 py-1', on ? 'border-[#022172] bg-[#022172]' : 'border-border')}>
+    <Pressable onPress={onPress} className={cn('rounded-full border px-3 py-1', on ? 'border-brand bg-brand' : 'border-border')}>
       <Text className={cn('text-xs', on && 'text-white')}>{label}</Text>
     </Pressable>
   );
@@ -89,10 +90,10 @@ function MediaDialog({ selected, onToggle, onClose }: { selected: string[]; onTo
                 {readyList.map((m) => {
                   const on = selected.includes(m.id);
                   return (
-                    <Pressable key={m.id} onPress={() => onToggle(m.id)} className={cn('aspect-square w-[31.5%] overflow-hidden rounded-md border-2', on ? 'border-[#022172]' : 'border-transparent')}>
+                    <Pressable key={m.id} onPress={() => onToggle(m.id)} className={cn('aspect-square w-[31.5%] overflow-hidden rounded-md border-2', on ? 'border-brand' : 'border-transparent')}>
                       <GatedImage mediaId={m.id} variant="thumb" className="size-full" />
                       {on ? (
-                        <View className="absolute end-1 top-1 rounded-full bg-[#022172] p-0.5">
+                        <View className="absolute end-1 top-1 rounded-full bg-brand p-0.5">
                           <Icon as={Check} className="size-3 text-white" />
                         </View>
                       ) : null}
@@ -102,7 +103,7 @@ function MediaDialog({ selected, onToggle, onClose }: { selected: string[]; onTo
               </View>
               {pendingList.length ? (
                 <View className="gap-2">
-                  <Text className="text-xs text-amber-700 dark:text-amber-300">{f('needs_tagging_notice')}</Text>
+                  <Text className="text-xs text-warning ">{f('needs_tagging_notice')}</Text>
                   <View className="flex-row flex-wrap gap-1.5">
                     {pendingList.map((m) => (
                       <Pressable key={m.id} onPress={() => setTagging(m.id)} className="aspect-square w-[31.5%] overflow-hidden rounded-md">
@@ -225,12 +226,12 @@ export default function FinaCompose() {
           title: t(`fina.posts.type_${type}`),
           headerLeft: () => (
             <Pressable onPress={() => setType(null)} hitSlop={8} className="p-1" accessibilityLabel={f('back_button')}>
-              <Icon as={ArrowLeft} className="text-foreground size-5 rtl:rotate-180" />
+              <Icon flipRtl as={ArrowLeft} className="text-foreground size-5" />
             </Pressable>
           ),
         }}
       />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <View className="flex-row items-center gap-2">
             <View className="size-9 items-center justify-center rounded-full" style={{ backgroundColor: meta.bg }}>

@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { FilterChips, MultiChips } from '@/components/app/filter-chips';
+import { FormSection } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -104,11 +104,8 @@ export function CustomFieldInputs({
       {[...groups.entries()]
         .sort((a, b) => a[1].order - b[1].order)
         .map(([categoryId, g]) => (
-          <Card key={categoryId} className="gap-3 py-4">
-            <CardHeader className="px-4">
-              <CardTitle>{tabName(categoryId, g.name)}</CardTitle>
-            </CardHeader>
-            <CardContent className="gap-3 px-4">
+          <FormSection key={categoryId} title={tabName(categoryId, g.name)}>
+            <View className="gap-3">
               {g.fields
                 .sort((a, b) => a.sort_order - b.sort_order)
                 .map((d) => (
@@ -117,8 +114,8 @@ export function CustomFieldInputs({
                     <FieldInput def={d} value={values[d.id]} onChange={(v) => onChange(d.id, v)} />
                   </View>
                 ))}
-            </CardContent>
-          </Card>
+            </View>
+          </FormSection>
         ))}
     </>
   );

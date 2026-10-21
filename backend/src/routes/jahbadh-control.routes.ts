@@ -1,0 +1,88 @@
+import { Router } from 'express'
+
+import { jahbadhControlController as c } from '../controllers/jahbadh-control.controller'
+import { authenticate } from '../middlewares/auth.middleware'
+import { requireJahbadhControlEnabled } from '../middlewares/jahbadh-grades-enabled.middleware'
+import { requireRole } from '../middlewares/role.middleware'
+
+/**
+ * Jahbadh exam control (brief Part C, routes C10). Admins act as control chief; teachers and staff work
+ * only in sessions where the chief added them (control / entry / invigilator / secret) — checked in the
+ * service on every call. Score endpoints never return names, seats or the secret mapping to grade-entry
+ * users before the session is unmasked. Every write goes to the append-only jc_audit_log.
+ */
+const router = Router()
+router.use(authenticate)
+router.use(requireJahbadhControlEnabled)
+router.use(requireRole('admin', 'super_admin', 'teacher', 'librarian'))
+
+router.get('/sessions', c.listSessions)
+router.post('/sessions', c.createSession)
+router.get('/sessions/:sessionId', c.overview)
+router.put('/sessions/:sessionId', c.updateSession)
+router.delete('/sessions/:sessionId', c.deleteSession)
+router.put('/sessions/:sessionId/key', c.setKey)
+router.get('/sessions/:sessionId/members', c.members)
+router.put('/sessions/:sessionId/members', c.setMembers)
+router.get('/sessions/:sessionId/grade-choices', c.gradeChoices)
+router.get('/sessions/:sessionId/grades', c.grades)
+router.put('/sessions/:sessionId/grades', c.setGrades)
+router.get('/sessions/:sessionId/students', c.students)
+router.post('/sessions/:sessionId/students/pull', c.pullStudents)
+router.put('/sessions/:sessionId/students', c.updateStudents)
+router.post('/sessions/:sessionId/numbers/generate', c.generateNumbers)
+router.get('/sessions/:sessionId/committees', c.committees)
+router.put('/sessions/:sessionId/committees', c.saveCommittees)
+router.get('/sessions/:sessionId/committees/status', c.committeeStatus)
+router.post('/sessions/:sessionId/distribution', c.distribute)
+router.post('/sessions/:sessionId/committees/lock', c.lock)
+router.post('/sessions/:sessionId/committees/unlock', c.unlock)
+router.get('/sessions/:sessionId/alerts', c.alerts)
+router.get('/sessions/:sessionId/schedule', c.days)
+router.put('/sessions/:sessionId/schedule', c.saveDays)
+router.get('/sessions/:sessionId/invigilators', c.invigilators)
+router.put('/sessions/:sessionId/invigilators', c.saveInvigilators)
+router.get('/sessions/:sessionId/staff', c.staff)
+router.get('/sessions/:sessionId/invigilation', c.invigilation)
+router.post('/sessions/:sessionId/invigilation/generate', c.generateInvigilation)
+router.put('/sessions/:sessionId/invigilation/duty', c.setDuty)
+router.get('/sessions/:sessionId/print/:doc', c.print)
+router.get('/sessions/:sessionId/examday/:dayId/dashboard', c.dayDashboard)
+router.get('/sessions/:sessionId/examday/:dayId/attendance', c.attendance)
+router.put('/sessions/:sessionId/examday/:dayId/attendance', c.saveAttendance)
+router.get('/sessions/:sessionId/examday/:dayId/envelopes', c.envelopes)
+router.put('/sessions/:sessionId/examday/:dayId/envelopes', c.saveEnvelope)
+router.get('/sessions/:sessionId/seat/:seat', c.bySeat)
+router.get('/sessions/:sessionId/violations', c.violations)
+router.post('/sessions/:sessionId/violations', c.addViolation)
+router.delete('/sessions/:sessionId/violations/:violationId', c.deleteViolation)
+router.get('/sessions/:sessionId/scores', c.entryGrid)
+router.put('/sessions/:sessionId/scores', c.saveEntry)
+router.get('/sessions/:sessionId/scores/mismatches', c.mismatches)
+router.get('/sessions/:sessionId/unmask', c.gate)
+router.post('/sessions/:sessionId/unmask/approve', c.approveUnmask)
+router.post('/sessions/:sessionId/unmask', c.unmask)
+router.post('/sessions/:sessionId/unmask/revoke', c.revokeUnmask)
+router.get('/sessions/:sessionId/appeals', c.appeals)
+router.post('/sessions/:sessionId/appeals', c.addAppeal)
+router.get('/sessions/:sessionId/audit-sample', c.auditSample)
+router.post('/sessions/:sessionId/audit-sample/draw', c.drawAuditSample)
+router.put('/sessions/:sessionId/audit-sample', c.reviewAuditSample)
+router.get('/sessions/:sessionId/graders', c.graders)
+router.put('/sessions/:sessionId/graders', c.saveGraders)
+router.get('/sessions/:sessionId/quality', c.quality)
+router.get('/sessions/:sessionId/results', c.results)
+router.post('/sessions/:sessionId/second-round', c.secondRound)
+router.get('/sessions/:sessionId/messages', c.messages)
+router.post('/sessions/:sessionId/messages/send', c.sendMessages)
+router.get('/sessions/:sessionId/export-to-grades', c.exportPreview)
+router.post('/sessions/:sessionId/export-to-grades', c.exportCommit)
+router.post('/sessions/:sessionId/scan', c.scan)
+router.post('/sessions/:sessionId/session-code', c.regenerateCode)
+router.post('/sessions/:sessionId/examday/:dayId/envelopes/check', c.envelopeCheck)
+router.get('/sessions/:sessionId/timer-feed', c.timerFeed)
+router.get('/sessions/:sessionId/examday/:dayId/timer-minutes', c.timerMinutes)
+router.post('/sessions/:sessionId/examday/:dayId/timer-minutes', c.saveTimerMinutes)
+router.get('/sessions/:sessionId/audit', c.auditLog)
+
+export default router

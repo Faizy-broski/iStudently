@@ -25,10 +25,10 @@ export default function EntryExitDashboard() {
 
   const s = stats.data;
   const tiles = [
-    { title: e('stat_entries_today'), value: s?.entries, icon: DoorOpen, fg: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { title: e('stat_exits_today'), value: s?.exits, icon: DoorClosed, fg: 'text-orange-500', bg: 'bg-orange-50' },
-    { title: e('stat_inside'), value: s?.inside, icon: Users, fg: 'text-blue-500', bg: 'bg-blue-50' },
-    { title: e('stat_packages'), value: s?.packages, icon: Package, fg: 'text-purple-500', bg: 'bg-purple-50' },
+    { title: e('stat_entries_today'), value: s?.entries, icon: DoorOpen, fg: 'text-success', bg: 'bg-success-soft' },
+    { title: e('stat_exits_today'), value: s?.exits, icon: DoorClosed, fg: 'text-warning', bg: 'bg-warning-soft' },
+    { title: e('stat_inside'), value: s?.inside, icon: Users, fg: 'text-brand dark:text-brand-secondary', bg: 'bg-info-soft' },
+    { title: e('stat_packages'), value: s?.packages, icon: Package, fg: 'text-chart-6', bg: 'bg-chart-6/10' },
   ];
 
   return (

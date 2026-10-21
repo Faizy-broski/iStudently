@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@studently/shared-types": "*"
+    "@studently/shared-types": "*",
+    "@studently/shared-utils": "*"
   }
 }

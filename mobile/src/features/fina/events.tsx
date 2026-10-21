@@ -1,10 +1,11 @@
 import { Stack } from 'expo-router';
 import { CalendarDays, Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { TimeField } from '@/components/app/time-field';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -87,7 +88,7 @@ export function FinaEventsScreen({ canCreate }: { canCreate: boolean }) {
         {res.isLoading ? (
           <LoadingList rows={3} />
         ) : !list.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{f('empty')}</Text>
+          <EmptyState title={f('empty')} />
         ) : (
           list.map((e) => (
             <Card key={e.id}>
@@ -95,7 +96,7 @@ export function FinaEventsScreen({ canCreate }: { canCreate: boolean }) {
                 <View className="flex-row items-start gap-3">
                   <Icon as={CalendarDays} className="text-primary mt-0.5 size-5" />
                   <View className="flex-1">
-                    <Text className="font-medium">{e.title}</Text>
+                    <Text className="text-sm font-semibold">{e.title}</Text>
                     <Text className="text-muted-foreground text-xs">
                       {new Date(e.starts_at).toLocaleString(lang)}
                       {e.location ? ` · ${e.location}` : ''}
@@ -108,7 +109,7 @@ export function FinaEventsScreen({ canCreate }: { canCreate: boolean }) {
                       key={o}
                       onPress={() => rsvp(e.id, o)}
                       disabled={busy === e.id}
-                      className={cn('flex-1 items-center rounded-md border py-1.5', e.myRsvp === o ? 'border-[#022172] bg-[#022172]' : 'border-border')}>
+                      className={cn('flex-1 items-center rounded-md border py-1.5', e.myRsvp === o ? 'border-brand bg-brand' : 'border-border')}>
                       <Text className={cn('text-xs', e.myRsvp === o && 'text-white')}>
                         {f(`rsvp_${o}`)} {e.rsvpCounts?.[o] ? `(${e.rsvpCounts[o]})` : ''}
                       </Text>
@@ -122,7 +123,7 @@ export function FinaEventsScreen({ canCreate }: { canCreate: boolean }) {
       </ScrollView>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <View className="gap-3">
               <DialogHeader>
                 <DialogTitle>{f('create_button')}</DialogTitle>

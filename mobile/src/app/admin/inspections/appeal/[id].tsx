@@ -3,8 +3,9 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { ArrowUpCircle, Check, Lock, MessageSquare, Send, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
@@ -103,8 +104,8 @@ export default function AppealThread() {
               {isAdmin && isOpen ? (
                 <>
                   <Button size="sm" variant="outline" onPress={() => setResolve('upheld')}>
-                    <Icon as={Check} className="size-4 text-green-700" />
-                    <Text className="text-green-700">{p('btn_uphold')}</Text>
+                    <Icon as={Check} className="size-4 text-success" />
+                    <Text className="text-success">{p('btn_uphold')}</Text>
                   </Button>
                   <Button size="sm" variant="outline" onPress={() => setResolve('denied')}>
                     <Icon as={X} className="text-destructive size-4" />
@@ -127,13 +128,13 @@ export default function AppealThread() {
 
         <Card>
           <CardHeader className="flex-row items-center gap-2">
-            <Icon as={MessageSquare} className="size-4 text-[#022172]" />
+            <Icon as={MessageSquare} className="size-4 text-brand dark:text-brand-secondary" />
             <CardTitle>{p('comments_title')}</CardTitle>
           </CardHeader>
           <CardContent className="gap-2">
             {!ap.comments.length ? <Text variant="muted" className="text-sm">{p('no_comments')}</Text> : null}
             {ap.comments.map((c) => (
-              <View key={c.id} className={cn('gap-1 rounded-md border p-2.5', c.is_internal_note ? 'border-amber-200 bg-amber-50' : 'border-border')}>
+              <View key={c.id} className={cn('gap-1 rounded-md border p-2.5', c.is_internal_note ? 'border-warning/30 bg-warning-soft' : 'border-border')}>
                 <View className="flex-row items-center gap-2">
                   {c.is_internal_note ? (
                     <Badge variant="outline">

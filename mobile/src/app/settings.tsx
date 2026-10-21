@@ -2,7 +2,7 @@ import { isPlaceholderEmail } from '@studently/shared-utils';
 import Constants from 'expo-constants';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { FileText, KeyRound, QrCode, LifeBuoy, LogOut, ShieldCheck, UserX } from 'lucide-react-native';
+import { Bell, FileText, KeyRound, QrCode, LifeBuoy, LogOut, ShieldCheck, UserX } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, View } from 'react-native';
@@ -16,10 +16,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { IconTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAppConfig } from '@/features/app-config/app-config';
 import { useAppLock } from '@/features/auth/app-lock';
+import { pushEnabled, setPushEnabled } from '@/features/push/push';
+import { DeleteAccountSheet } from '@/features/auth/delete-account';
 import { auth } from '@/lib/api';
+import { env } from '@/lib/env';
 import { useSession } from '@/features/auth/session';
 import { locale, setLocale } from '@/i18n';
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/theme-preference';
@@ -31,6 +35,7 @@ export default function Settings() {
   const confirm = useConfirm();
   const config = useAppConfig();
   const lock = useAppLock();
+  const [push, setPush] = useState(pushEnabled);
   const { me, signOut } = useSession();
   const [theme, setTheme] = useState<ThemePreference>(getThemePreference);
   const profile = me.status === 'ready' ? me.me.profile : null;
@@ -48,7 +53,10 @@ export default function Settings() {
 
   const open = (url: string) => WebBrowser.openBrowserAsync(url).catch(() => toast.error(t('app.error_title')));
 
+  // Everyone deletes in the app; the platform super admin account goes through support instead.
+  const [deleting, setDeleting] = useState(false);
   async function requestDeletion() {
+    if (profile?.role !== 'super_admin') return setDeleting(true);
     if (links?.account_deletion_url) return open(links.account_deletion_url);
     if (links?.support_email) {
       const subject = encodeURIComponent('Account deletion request');
@@ -99,10 +107,26 @@ export default function Settings() {
         </Card>
 
         <Card className="gap-0 py-0">
+          <View className="flex-row items-center gap-3 px-4 py-3">
+            <IconTile icon={Bell} size={40} />
+            <View className="flex-1 gap-0.5">
+              <Text>{t('app.set_push')}</Text>
+              <Text className="text-muted-foreground text-sm">{t('app.set_push_hint')}</Text>
+            </View>
+            <Switch
+              checked={push}
+              onCheckedChange={async (on) => {
+                setPush(on);
+                if (!(await setPushEnabled(on)) && on) toast.error(t('app.set_push_denied'));
+              }}
+              accessibilityLabel={t('app.set_push')}
+            />
+          </View>
+          <Separator />
           {lock.available ? (
             <>
               <View className="flex-row items-center gap-3 px-4 py-3">
-                <Icon as={ShieldCheck} className="text-muted-foreground size-5" />
+                <IconTile icon={ShieldCheck} size={40} />
                 <View className="flex-1 gap-0.5">
                   <Text>{t('app.set_app_lock')}</Text>
                   <Text className="text-muted-foreground text-sm">{t('app.set_app_lock_hint')}</Text>
@@ -128,18 +152,11 @@ export default function Settings() {
         </Card>
 
         <Card className="gap-0 py-0">
-          {links?.privacy_url ? (
-            <>
-              <ListRow title={t('app.set_privacy')} leading={<Icon as={FileText} className="text-muted-foreground size-5" />} onPress={() => open(links.privacy_url!)} />
-              <Separator />
-            </>
-          ) : null}
-          {links?.terms_url ? (
-            <>
-              <ListRow title={t('app.set_terms')} leading={<Icon as={FileText} className="text-muted-foreground size-5" />} onPress={() => open(links.terms_url!)} />
-              <Separator />
-            </>
-          ) : null}
+          {/* Always shown: the website's pages are the fallback when app-config is unavailable. */}
+          <ListRow title={t('app.set_privacy')} leading={<Icon as={FileText} className="text-muted-foreground size-5" />} onPress={() => open(links?.privacy_url ?? `${env.webUrl}/privacy`)} />
+          <Separator />
+          <ListRow title={t('app.set_terms')} leading={<Icon as={FileText} className="text-muted-foreground size-5" />} onPress={() => open(links?.terms_url ?? `${env.webUrl}/terms`)} />
+          <Separator />
           {links?.support_email ? (
             <>
               <ListRow
@@ -169,6 +186,8 @@ export default function Settings() {
             }}
           />
         </Card>
+
+        <DeleteAccountSheet open={deleting} onClose={() => setDeleting(false)} />
 
         <Text variant="muted" className="text-center text-xs">
           {t('app.set_version', { version: Constants.expoConfig?.version ?? '?' })}

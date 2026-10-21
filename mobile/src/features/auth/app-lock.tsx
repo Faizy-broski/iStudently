@@ -1,4 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as ScreenCapture from 'expo-screen-capture';
+import * as SecureStore from 'expo-secure-store';
 import Storage from 'expo-sqlite/kv-store';
 import { Image } from 'expo-image';
 import { Fingerprint } from 'lucide-react-native';
@@ -32,6 +34,31 @@ export function useAppLock() {
   return ctx;
 }
 
+/** The lock setting lives in the keychain/keystore so it can't be switched off by editing app storage. */
+function readEnabled() {
+  try {
+    const v = SecureStore.getItem(KEY);
+    if (v != null) return v === 'on';
+  } catch {
+    // Keychain unavailable: fall through to the legacy value.
+  }
+  // Older builds kept it in plain storage: move it to the keychain.
+  const legacy = Storage.getItemSync(KEY) === 'on';
+  if (legacy) {
+    try {
+      writeEnabled(true);
+    } catch {
+      // Keep using the legacy value this launch.
+    }
+  }
+  return legacy;
+}
+
+function writeEnabled(on: boolean) {
+  SecureStore.setItem(KEY, on ? 'on' : 'off');
+  Storage.removeItemSync(KEY);
+}
+
 async function isAvailable() {
   const level = await LocalAuthentication.getEnrolledLevelAsync();
   return level !== LocalAuthentication.SecurityLevel.NONE;
@@ -44,15 +71,24 @@ async function isAvailable() {
 export function AppLockProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const { session, loading, signOut } = useSession();
-  const [enabled, setEnabledState] = useState(() => Storage.getItemSync(KEY) === 'on');
+  const [enabled, setEnabledState] = useState(readEnabled);
   const [available, setAvailable] = useState(false);
-  const [locked, setLocked] = useState(() => Storage.getItemSync(KEY) === 'on');
+  const [locked, setLocked] = useState(readEnabled);
   const [prompting, setPrompting] = useState(false);
   const backgroundedAt = useRef<number | null>(null);
 
   useEffect(() => {
     isAvailable().then(setAvailable);
   }, []);
+
+  // With the lock on, iOS blurs the app in the app switcher so its last screen isn't visible there.
+  useEffect(() => {
+    if (!enabled) return;
+    ScreenCapture.enableAppSwitcherProtectionAsync().catch(() => {});
+    return () => {
+      ScreenCapture.disableAppSwitcherProtectionAsync().catch(() => {});
+    };
+  }, [enabled]);
 
   // A fresh sign-in (not the session restored at launch) has just proved who the user is.
   const hadSession = useRef<boolean | null>(null);
@@ -104,7 +140,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         const res = await LocalAuthentication.authenticateAsync({ promptMessage: t('app.lock_enable_prompt'), disableDeviceFallback: false });
         if (!res.success) return false;
       }
-      Storage.setItemSync(KEY, on ? 'on' : 'off');
+      writeEnabled(on);
       setEnabledState(on);
       setLocked(false);
       return true;

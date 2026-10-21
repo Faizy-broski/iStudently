@@ -25,7 +25,7 @@ export function OwnTotals({ totalSalaries, totalPayments, balance }: { totalSala
   const cell = (label: string, value: string, tone?: string) => (
     <Card className="min-w-[45%] flex-1">
       <CardContent className="gap-1 p-4">
-        <Text className="text-muted-foreground text-xs font-medium uppercase">{label}</Text>
+        <Text className="text-muted-foreground text-xs font-medium">{label}</Text>
         <Text className={cn('text-xl font-bold', tone)}>{value}</Text>
       </CardContent>
     </Card>
@@ -33,8 +33,8 @@ export function OwnTotals({ totalSalaries, totalPayments, balance }: { totalSala
   return (
     <View className="flex-row flex-wrap gap-2">
       {cell(k('total_salaries'), money(totalSalaries))}
-      {cell(k('less_total_payments'), money(totalPayments), 'text-emerald-600')}
-      {cell(k('balance'), money(balance), 'text-purple-600')}
+      {cell(k('less_total_payments'), money(totalPayments), 'text-success')}
+      {cell(k('balance'), money(balance), 'text-chart-6')}
     </View>
   );
 }

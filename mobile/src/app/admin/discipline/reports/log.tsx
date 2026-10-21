@@ -3,8 +3,10 @@ import { Stack } from 'expo-router';
 import { Printer, RefreshCcw, Search } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, formatYmd, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
@@ -14,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { CheckRow, useAttendanceScope } from '@/features/admin/attendance';
 import { logValue, referralPersonName } from '@/features/admin/discipline';
@@ -90,18 +93,18 @@ export default function DisciplineLog() {
     setBusy(true);
     try {
       const range = from && to ? `${from} ${d('to')} ${to}` : to ? `${d('upTo')} ${to}` : '';
-      const th = columns.map((c) => `<th style="text-align:start;padding:5px;border-bottom:2px solid #111;font-size:11px">${escapeHtml(c)}</th>`).join('');
+      const th = columns.map((c) => `<th style="text-align:start;padding:5px;border-bottom:2px solid ${colors.printText};font-size:11px">${escapeHtml(c)}</th>`).join('');
       const body =
-        `<h2 style="margin:0">${escapeHtml(d('title'))}</h2><p style="color:#666;margin:2px 0 12px">${escapeHtml(range)}</p>` +
+        `<h2 style="margin:0">${escapeHtml(d('title'))}</h2><p style="color:${colors.printMuted};margin:2px 0 12px">${escapeHtml(range)}</p>` +
         [...groups.values()]
           .map((list) => {
             const first = list[0];
-            const head = `<h3 style="margin:14px 0 4px">${escapeHtml(referralPersonName(first))} ${first.students?.student_number ? `#${escapeHtml(first.students.student_number)}` : ''} ${first.students?.grade_level ? `· ${escapeHtml(first.students.grade_level)}` : ''} <span style="font-weight:400;color:#666">(${escapeHtml(d('referralsCount', { count: list.length }))})</span></h3>`;
-            const rows = list.map((r) => `<tr>${cells(r).map((c) => `<td style="padding:5px;border-bottom:1px solid #eee;font-size:11px">${escapeHtml(c)}</td>`).join('')}</tr>`).join('');
+            const head = `<h3 style="margin:14px 0 4px">${escapeHtml(referralPersonName(first))} ${first.students?.student_number ? `#${escapeHtml(first.students.student_number)}` : ''} ${first.students?.grade_level ? `· ${escapeHtml(first.students.grade_level)}` : ''} <span style="font-weight:400;color:${colors.printMuted}">(${escapeHtml(d('referralsCount', { count: list.length }))})</span></h3>`;
+            const rows = list.map((r) => `<tr>${cells(r).map((c) => `<td style="padding:5px;border-bottom:1px solid ${colors.printBorder};font-size:11px">${escapeHtml(c)}</td>`).join('')}</tr>`).join('');
             return `${head}<table style="width:100%;border-collapse:collapse"><tr>${th}</tr>${rows}</table>`;
           })
           .join('') +
-        `<p style="margin-top:14px;color:#666">${escapeHtml(d('referralsAcrossStudents', { referrals: filtered.length, students: groups.size }))}</p>`;
+        `<p style="margin-top:14px;color:${colors.printMuted}">${escapeHtml(d('referralsAcrossStudents', { referrals: filtered.length, students: groups.size }))}</p>`;
       await sharePdf(buildPrintHtml({ title: d('title'), pages: [body], school: print.school, layout: print.layout, withHeader: true, reportLabel: d('title') }), 'discipline-log.pdf');
     } catch (e) {
       toast.error(e instanceof Error && e.message === 'print-unavailable' ? t('app.pr_rebuild') : t('app.error_title'));
@@ -116,7 +119,7 @@ export default function DisciplineLog() {
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-sm uppercase">{d('filters')}</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">{d('filters')}</CardTitle>
           </CardHeader>
           <CardContent className="gap-3">
             <View className="gap-1.5">
@@ -132,7 +135,7 @@ export default function DisciplineLog() {
               <SearchBar value={search} onChangeText={setSearch} placeholder={d('search_placeholder')} />
             </View>
             <View className="gap-1">
-              <Text className="text-muted-foreground text-xs font-semibold uppercase">{d('email.includeInLog')}</Text>
+              <Text className="text-muted-foreground text-sm font-semibold">{d('email.includeInLog')}</Text>
               <View className="flex-row flex-wrap gap-x-4">
                 <CheckRow checked={!!include.entry_date} onPress={() => setInclude((x) => ({ ...x, entry_date: !x.entry_date }))} label={d('entryDate')} />
                 <CheckRow checked={!!include.reporter} onPress={() => setInclude((x) => ({ ...x, reporter: !x.reporter }))} label={d('reporter')} />
@@ -156,7 +159,7 @@ export default function DisciplineLog() {
 
         {referrals ? (
           groups.size === 0 ? (
-            <Text variant="muted" className="py-8 text-center">{d('noStudentsMatchingFilters')}</Text>
+            <EmptyState title={d('noStudentsMatchingFilters')} />
           ) : (
             <>
               <Button variant="outline" onPress={sharePrint} disabled={busy || !print.ready}>
@@ -198,7 +201,7 @@ export default function DisciplineLog() {
                   </Card>
                 );
               })}
-              <Text variant="muted" className="text-center">{d('referralsAcrossStudents', { referrals: filtered.length, students: groups.size })}</Text>
+              <EmptyState title={d('referralsAcrossStudents', { referrals: filtered.length, students: groups.size })} />
             </>
           )
         ) : null}

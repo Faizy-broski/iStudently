@@ -4,8 +4,9 @@ import { type Href, router } from 'expo-router';
 import { Archive, ArrowDownWideNarrow, ArrowLeft, ArrowUpNarrowWide, FileText, Inbox, MailOpen, Paperclip, PenSquare, Reply, Send, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { SearchBar } from '@/components/app/search-bar';
@@ -106,7 +107,7 @@ export function MessagingInboxScreen({ writeHref, openId }: { writeHref: Href; o
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
         <View className="flex-row flex-wrap items-center gap-2">
           <Button size="sm" variant="ghost" onPress={() => setOpenMessage(null)}>
-            <Icon as={ArrowLeft} className="text-foreground size-4 rtl:rotate-180" />
+            <Icon flipRtl as={ArrowLeft} className="text-foreground size-4" />
             <Text>{m('back')}</Text>
           </Button>
           <View className="flex-1" />
@@ -156,7 +157,7 @@ export function MessagingInboxScreen({ writeHref, openId }: { writeHref: Href; o
                 {x.attachments.length ? (
                   <View className="flex-row flex-wrap gap-2">
                     {x.attachments.map((att) => (
-                      <Pressable key={att.id} onPress={() => Linking.openURL(att.url)} className="border-border flex-row items-center gap-1.5 rounded-md border px-2.5 py-1.5">
+                      <Pressable key={att.id} onPress={() => Linking.openURL(att.url)} className="border-info-soft dark:border-border flex-row items-center gap-1.5 rounded-xl border px-2.5 py-1.5">
                         <Icon as={FileText} className="text-muted-foreground size-3.5" />
                         <Text className="max-w-44 text-xs" numberOfLines={1}>
                           {att.file_name}

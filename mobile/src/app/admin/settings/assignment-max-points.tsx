@@ -2,8 +2,9 @@ import { Stack } from 'expo-router';
 import { Save, ShieldCheck } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -43,8 +44,8 @@ export default function AssignmentMaxPoints() {
 
   const rules: [string, string, string][] = [
     ['bg-primary', t('app.ps_mp_rule1'), t('app.ps_mp_rule1_body')],
-    ['bg-sky-500', t('app.ps_mp_rule2'), t('app.ps_mp_rule2_body')],
-    ['bg-green-500', t('app.ps_mp_rule3'), t('app.ps_mp_rule3_body')],
+    ['bg-brand', t('app.ps_mp_rule2'), t('app.ps_mp_rule2_body')],
+    ['bg-success', t('app.ps_mp_rule3'), t('app.ps_mp_rule3_body')],
   ];
 
   return (

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { IconTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAttendanceScope } from '@/features/admin/attendance';
 import { PersonPicker, type PickedPerson } from '@/features/admin/entry-exit';
@@ -67,8 +68,8 @@ export default function Packages() {
               <View className="flex-row flex-wrap items-center gap-2">
                 <Text variant="muted">{p('page_subtitle')}</Text>
                 {pending ? (
-                  <View className="rounded-full bg-amber-100 px-2 py-0.5">
-                    <Text className="text-xs font-medium text-amber-700">{p('stat_pending', { count: pending })}</Text>
+                  <View className="rounded-full bg-warning-soft px-2 py-0.5">
+                    <Text className="text-xs font-medium text-warning">{p('stat_pending', { count: pending })}</Text>
                   </View>
                 ) : null}
               </View>
@@ -100,11 +101,12 @@ export default function Packages() {
             const name = x.student_name || (x.students?.profiles ? `${x.students.profiles.first_name} ${x.students.profiles.last_name}` : x.student_id.slice(0, 8));
             return (
               <View className="gap-1.5 px-4 py-3">
-                <View className="flex-row items-start gap-2">
-                  <Text className="flex-1 font-medium">{name}</Text>
-                  <View className={cn('flex-row items-center gap-1 rounded-full px-2 py-0.5', isPending ? 'bg-amber-100' : 'bg-emerald-100')}>
-                    <Icon as={isPending ? Package : PackageCheck} className={cn('size-3', isPending ? 'text-amber-700' : 'text-emerald-700')} />
-                    <Text className={cn('text-xs', isPending ? 'text-amber-700' : 'text-emerald-700')}>{isPending ? p('status_pending') : p('status_collected')}</Text>
+                <View className="flex-row items-center gap-3">
+                  <IconTile icon={isPending ? Package : PackageCheck} tone={isPending ? 'warning' : 'success'} />
+                  <Text className="flex-1 text-sm font-semibold">{name}</Text>
+                  <View className={cn('flex-row items-center gap-1 rounded-full px-2 py-0.5', isPending ? 'bg-warning-soft' : 'bg-success-soft')}>
+                    <Icon as={isPending ? Package : PackageCheck} className={cn('size-3', isPending ? 'text-warning' : 'text-success')} />
+                    <Text className={cn('text-xs', isPending ? 'text-warning' : 'text-success')}>{isPending ? p('status_pending') : p('status_collected')}</Text>
                   </View>
                 </View>
                 <Text className="text-sm">{`${p('table_col_description')}: ${x.description || '—'}`}</Text>

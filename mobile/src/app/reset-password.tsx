@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { passwordPair } from '@studently/shared-utils';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { KeyRound, LinkIcon } from 'lucide-react-native';
+import { LinkIcon } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -53,7 +54,7 @@ export default function ResetPassword() {
 
   if (state === 'verifying') {
     return (
-      <Screen contentContainerClassName="justify-center p-6">
+      <Screen auth contentContainerClassName="justify-center p-6">
         <LoadingList rows={2} />
       </Screen>
     );
@@ -61,7 +62,7 @@ export default function ResetPassword() {
 
   if (state === 'invalid') {
     return (
-      <Screen contentContainerClassName="flex-1 items-center justify-center gap-4 p-6">
+      <Screen auth contentContainerClassName="flex-1 items-center justify-center gap-4 p-6">
         <Icon as={LinkIcon} className="text-destructive size-12" />
         <Text variant="h3" className="text-center">
           {t('app.rp_invalid_title')}
@@ -81,9 +82,9 @@ export default function ResetPassword() {
   }
 
   return (
-    <Screen scroll contentContainerClassName="gap-6 p-6">
+    <Screen auth scroll contentContainerClassName="gap-6 p-6">
       <View className="items-center gap-3 pt-8">
-        <Icon as={KeyRound} className="text-primary size-12" />
+        <Image source={require('@/assets/images/reset-password.png')} style={{ width: 150, height: 150 }} contentFit="contain" accessibilityIgnoresInvertColors />
         <Text variant="h3" className="text-center">
           {t('app.rp_title')}
         </Text>

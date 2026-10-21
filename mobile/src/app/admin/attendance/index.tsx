@@ -1,10 +1,14 @@
-import { Stack } from 'expo-router';
-import { Eye } from 'lucide-react-native';
+import { router, Stack } from 'expo-router';
+import { BookOpen, Eye, PenLine } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { DataList } from '@/components/app/data-list';
+import { Initials, StickyActions } from '@/components/app/layout';
+import { StatusChip } from '@/components/app/status-chip';
 import { DateField, formatYmd, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
@@ -99,7 +103,7 @@ export default function AttendanceAdministration() {
 
   const stateLabel = (v: number | null) =>
     v === null || v === undefined ? '-' : v === 1 ? a('statePresent') : v === 0.5 ? a('stateHalf') : v === 0 ? a('stateNone') : `${Math.round(v * 100)}%`;
-  const stateBg = (v: number | null) => (v === null || v === undefined ? '#9ca3af' : v === 1 ? '#22c55e' : v === 0.5 ? '#eab308' : '#ef4444');
+  const stateBg = (v: number | null) => (v === null || v === undefined ? colors.printMuted : v === 1 ? colors.success : v === 0.5 ? colors.warning : colors.destructive);
 
   async function update() {
     if (!pendingCount) {
@@ -108,16 +112,24 @@ export default function AttendanceAdministration() {
     }
     setUpdating(true);
     try {
+      let codesSaved = true;
       if (changes.size) {
         const res = await adminAttendance.bulkOverride([...changes.entries()].map(([record_id, attendance_code_id]) => ({ record_id, attendance_code_id })));
         if (res.success) toast.success(a('updatedRecords', { count: res.data?.updated ?? 0 }));
-        else toast.error(res.error || a('failedUpdate'));
+        else {
+          codesSaved = false;
+          toast.error(res.error || a('failedUpdate'));
+        }
       }
+      // Keep comments that failed to save so the user can retry them.
+      const unsaved = new Map<string, string>();
       for (const [student_id, comment] of comments) {
-        await adminAttendance.updateDailyComment({ school_id: schoolId, student_id, date, comment });
+        const r = await adminAttendance.updateDailyComment({ school_id: schoolId, student_id, date, comment });
+        if (!r.success) unsaved.set(student_id, comment);
       }
-      setChanges(new Map());
-      setComments(new Map());
+      if (unsaved.size) toast.error(a('failedUpdate'));
+      if (codesSaved) setChanges(new Map());
+      setComments(unsaved);
       grid.mutate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : a('failedUpdateMsg'));
@@ -147,10 +159,9 @@ export default function AttendanceAdministration() {
       <GradeSectionPickers gs={gs} />
       <SearchBar value={search} onChangeText={setSearch} placeholder={a('searchStudents')} />
       <View className="flex-row items-center justify-between">
-        <Text variant="muted" className="flex-1">
-          {a('studentsShown', { count: rows.length })}
-          {!expanded && students.length > rows.length ? ` (${students.length})` : ''}
-        </Text>
+        <View className="flex-1 flex-row">
+          <StatusChip label={`${a('studentsShown', { count: rows.length })}${!expanded && students.length > rows.length ? ` (${students.length})` : ''}`} tone="info" className="px-2.5 py-1" />
+        </View>
         {!expanded && students.length > rows.length ? (
           <Button size="sm" variant="ghost" onPress={() => setExpanded(true)}>
             <Text className="text-primary">{a('showAll')}</Text>
@@ -162,7 +173,21 @@ export default function AttendanceAdministration() {
 
   return (
     <>
-      <Stack.Screen options={{ title: a('administration') }} />
+      <Stack.Screen
+        options={{
+          title: a('administration'),
+          headerRight: () => (
+            <View className="flex-row">
+              <Button size="sm" variant="ghost" onPress={() => router.push('/admin/attendance/class-diary')} accessibilityLabel={a('classDiaryRead')}>
+                <Icon as={BookOpen} className="size-5" />
+              </Button>
+              <Button size="sm" variant="ghost" onPress={() => router.push('/admin/attendance/class-diary-write')} accessibilityLabel={a('diary_title')}>
+                <Icon as={PenLine} className="size-5" />
+              </Button>
+            </View>
+          ),
+        }}
+      />
       <View className="bg-background flex-1">
         <DataList
           header={header}
@@ -175,17 +200,24 @@ export default function AttendanceAdministration() {
           emptyBody={students.length === 0 ? a('noRecordsForDate') : expanded ? a('totalRecordsFilter', { total: students.length }) : a('noNonPresentStudents')}
           keyExtractor={(s) => s.student_id}
           renderItem={(s) => (
-            <View className={cn('gap-2 px-4 py-3', rowChanged(s) && 'bg-yellow-500/10')}>
-              <View className="flex-row items-center gap-2">
-                <Pressable className="flex-1" onPress={() => setDetail(s)}>
-                  <Text className="font-medium">{s.student_name}</Text>
-                  <Text className="text-muted-foreground text-xs">{[s.student_number, s.grade_name, s.section_name].filter(Boolean).join(' · ') || '-'}</Text>
+            <View className={cn('gap-2 px-4 py-3', rowChanged(s) && 'bg-warning-soft')}>
+              <View className="flex-row items-center gap-3">
+                <Pressable className="flex-1 flex-row items-center gap-3 active:opacity-70" onPress={() => setDetail(s)}>
+                  <Initials name={s.student_name} size={38} />
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold" numberOfLines={1}>
+                      {s.student_name}
+                    </Text>
+                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      {[s.student_number, s.grade_name, s.section_name].filter(Boolean).join(' · ') || '-'}
+                    </Text>
+                  </View>
                 </Pressable>
-                <View className="rounded px-2 py-0.5" style={{ backgroundColor: stateBg(s.state_value) }}>
+                <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: stateBg(s.state_value) }}>
                   <Text className="text-xs font-medium text-white">{stateLabel(s.state_value)}</Text>
                 </View>
-                <Pressable onPress={() => setDetail(s)} hitSlop={8} accessibilityLabel={a('viewPeriodDetails')} className="p-1">
-                  <Icon as={Eye} className="text-muted-foreground size-5" />
+                <Pressable onPress={() => setDetail(s)} hitSlop={4} accessibilityLabel={a('viewPeriodDetails')} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                  <Icon as={Eye} className="text-brand dark:text-brand-secondary size-4" />
                 </Pressable>
               </View>
               {periods.length ? (
@@ -211,21 +243,18 @@ export default function AttendanceAdministration() {
                 value={commentOf(s)}
                 onChangeText={(v) => setComments((m) => new Map(m).set(s.student_id, v))}
                 placeholder={a('th_dayComment')}
-                className={cn('h-9 text-sm', comments.has(s.student_id) && 'border-yellow-500')}
+                className={cn('h-9 text-sm', comments.has(s.student_id) && 'border-warning')}
               />
             </View>
           )}
           contentContainerClassName="flex-grow pb-24"
         />
-        <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
-          <Button onPress={update} disabled={updating || !pendingCount}>
-            <Text>{a('update')}</Text>
-            {pendingCount ? (
-              <Badge variant="secondary">
-                <Text>{pendingCount}</Text>
-              </Badge>
-            ) : null}
-          </Button>
+        <View className="absolute inset-x-0 bottom-0">
+          <StickyActions>
+            <Button className="flex-1" onPress={update} disabled={updating || !pendingCount}>
+              <Text>{pendingCount ? `${a('update')} (${pendingCount})` : a('update')}</Text>
+            </Button>
+          </StickyActions>
         </View>
       </View>
 
@@ -244,7 +273,7 @@ export default function AttendanceAdministration() {
                 return (
                   <View key={p.id} className="border-border gap-1.5 border-b pb-2">
                     <View className="flex-row items-center justify-between">
-                      <Text className="font-medium">{periodLabel(p)}</Text>
+                      <Text className="text-sm font-semibold">{periodLabel(p)}</Text>
                       <Text className="text-muted-foreground text-xs">{`${p.start_time?.slice(0, 5) ?? ''} – ${p.end_time?.slice(0, 5) ?? ''}`}</Text>
                     </View>
                     <View className="flex-row items-center gap-2">

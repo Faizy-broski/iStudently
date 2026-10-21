@@ -3,10 +3,10 @@ import { CheckCircle, ShieldAlert } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import type { StudentReferral } from '@studently/api-client';
 import i18n from '@/i18n';
@@ -27,43 +27,37 @@ export function DisciplineView({ data, text }: { data: Res; text?: { subtitle: s
     <>
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
-        <Text variant="muted">{text?.subtitle ?? k('subtitle')}</Text>
+        <Text variant="muted" className="text-sm">
+          {text?.subtitle ?? k('subtitle')}
+        </Text>
         {list.length === 0 ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Icon as={CheckCircle} className="mb-3 size-12 text-green-500" />
-              <Text className="text-lg font-semibold">{k('clean')}</Text>
-              <Text className="text-muted-foreground mt-1 text-center">{text?.cleanBody ?? k('clean_body')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={CheckCircle} title={k('clean')} body={text?.cleanBody ?? k('clean_body')} />
         ) : (
           <>
-            <Text className="text-muted-foreground text-sm">{k('count', { count: list.length })}</Text>
+            <Text className="text-muted-foreground text-xs">{k('count', { count: list.length })}</Text>
             {list.map((r) => {
               const reporter = r.reporter ? `${r.reporter.first_name ?? ''} ${r.reporter.last_name ?? ''}`.trim() || k('staff') : k('staff');
               const entries = Object.entries(r.field_values ?? {}).filter(([, v]) => fmt(v) !== '');
               return (
-                <Card key={r.id} className="border-s-4 border-s-orange-400">
-                  <CardHeader className="gap-2">
-                    <View className="flex-row items-center gap-2">
-                      <Icon as={ShieldAlert} className="size-4 text-orange-500" />
-                      <CardTitle className="flex-1 text-base">{k('referral', { date: longDate(r.incident_date) })}</CardTitle>
+                <Panel key={r.id} className="gap-3 p-4">
+                  <View className="flex-row items-center gap-3">
+                    <IconTile icon={ShieldAlert} tone="warning" size={40} />
+                    <View className="flex-1 gap-1">
+                      <Text className="text-sm font-semibold">{k('referral', { date: longDate(r.incident_date) })}</Text>
+                      <StatusChip label={k('by', { name: reporter })} tone="muted" className="self-start" />
                     </View>
-                    <Badge variant="outline" className="self-start">
-                      <Text className="text-xs">{k('by', { name: reporter })}</Text>
-                    </Badge>
-                  </CardHeader>
+                  </View>
                   {entries.length ? (
-                    <CardContent className="gap-1.5">
+                    <View className="bg-muted/40 gap-1.5 rounded-xl p-3">
                       {entries.map(([key, v]) => (
                         <Text key={key} className="text-sm">
                           <Text className="text-muted-foreground text-sm font-medium">{`${r.field_names?.[key] || key.replace(/_/g, ' ')}: `}</Text>
                           {fmt(v)}
                         </Text>
                       ))}
-                    </CardContent>
+                    </View>
                   ) : null}
-                </Card>
+                </Panel>
               );
             })}
           </>

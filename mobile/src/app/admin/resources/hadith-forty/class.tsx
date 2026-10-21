@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
@@ -27,7 +27,7 @@ export default function HadithFortyClass() {
         ) : res.error ? (
           <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : !rows.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{h('empty')}</Text>
+          <EmptyState title={h('empty')} />
         ) : (
           <Card>
             <CardContent className="py-1">
@@ -35,7 +35,7 @@ export default function HadithFortyClass() {
                 <View key={r.profileId}>
                   {i > 0 ? <Separator /> : null}
                   <View className="gap-1 py-2.5">
-                    <Text className="font-medium">
+                    <Text className="text-sm font-semibold">
                       {r.firstName} {r.lastName}
                     </Text>
                     <View className="flex-row flex-wrap gap-x-3 gap-y-0.5">
@@ -48,7 +48,7 @@ export default function HadithFortyClass() {
                       <Text className="text-muted-foreground text-xs">
                         {h('colRepetitions')}: {r.totalRepetitions}
                       </Text>
-                      <Text className={cn('text-xs', r.dueToday > 0 ? 'font-semibold text-amber-600' : 'text-muted-foreground')}>
+                      <Text className={cn('text-xs', r.dueToday > 0 ? 'font-semibold text-warning' : 'text-muted-foreground')}>
                         {h('colDueToday')}: {r.dueToday}
                       </Text>
                     </View>

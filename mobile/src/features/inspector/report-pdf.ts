@@ -1,5 +1,6 @@
 import type { CoachingNote, InspectionReportDetail, TeacherEvaluation } from '@studently/api-client';
 
+import { colors } from '@/lib/colors';
 import { escapeHtml } from '@/lib/print';
 
 type T = (key: string, o?: Record<string, unknown>) => string;
@@ -33,12 +34,12 @@ export function reportPdfHtml({ report, evaluation, notes, t, locale }: { report
     })
     .join('');
   return `<!doctype html><html dir="${locale === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><style>
-    body{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:12px;color:#111;margin:32px}
+    body{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:12px;color:${colors.printText};margin:32px}
     h1{text-align:center;font-size:20px;margin:0}.school{text-align:center;margin:6px 0 18px}
-    h2{font-size:15px;margin:18px 0 8px}.cat{background:#f0f0f0;font-weight:bold;padding:4px 8px;margin-top:12px}
+    h2{font-size:15px;margin:18px 0 8px}.cat{background:${colors.printSurface};font-weight:bold;padding:4px 8px;margin-top:12px}
     .row{display:flex;justify-content:space-between;gap:12px;padding:4px 8px}.grow{flex:1}
     .cm{font-style:italic;font-size:11px;padding:0 12px 4px}.sigs{display:flex;gap:12px}.sig{flex:1}
-    .small{font-size:10px;color:#666}.muted{color:#999}.foot{text-align:center;font-size:10px;color:#888;margin-top:24px;font-style:italic}
+    .small{font-size:10px;color:${colors.printMuted}}.muted{color:${colors.printMuted}}.foot{text-align:center;font-size:10px;color:${colors.printMuted};margin-top:24px;font-style:italic}
   </style></head><body>
     <h1>${escapeHtml(r('page_title'))}</h1><div class="school">${escapeHtml(report.school?.name ?? '')}</div>
     <div>${escapeHtml(t('app.in_pdf_teacher'))}: ${escapeHtml(teacher)}</div>

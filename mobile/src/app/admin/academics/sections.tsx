@@ -1,18 +1,20 @@
 import type { Section } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { Plus, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
+import { FilterChips } from '@/components/app/filter-chips';
+import { HeaderButton, Initials, RowActions, StatTile, StatTiles, UsageBar } from '@/components/app/layout';
+import { CARD_LIST_PROPS, Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
@@ -40,7 +42,7 @@ export default function Sections() {
 
   const color = (x: Section) => {
     const u = ((x.current_strength ?? 0) / (x.capacity || 1)) * 100;
-    return u >= 90 ? 'text-destructive' : u >= 75 ? 'text-yellow-600' : 'text-green-600';
+    return u >= 90 ? 'text-destructive' : u >= 75 ? 'text-warning' : 'text-success';
   };
 
   async function save() {
@@ -69,23 +71,30 @@ export default function Sections() {
     list.mutate();
   }
 
+  const rows = list.data ?? [];
+  const seats = rows.reduce((n, x) => n + (x.capacity ?? 0), 0);
+  const filled = rows.reduce((n, x) => n + (x.current_strength ?? 0), 0);
+  const add = () => {
+    setEditing(null);
+    setForm({ grade_level_id: grade !== 'all' ? grade : '', name: '', capacity: '30' });
+  };
+
   return (
     <>
-      <Stack.Screen options={{ title: s('title') }} />
+      <Stack.Screen options={{ title: s('title'), headerRight: () => <HeaderButton icon={Plus} label={s('add_section')} onPress={add} /> }} />
       <View className="bg-background flex-1">
         <DataList
           header={
-            <View className="gap-3 p-4">
-              <Text variant="muted">{s('subtitle')}</Text>
-              <Button
-                onPress={() => {
-                  setEditing(null);
-                  setForm({ grade_level_id: grade !== 'all' ? grade : '', name: '', capacity: '30' });
-                }}>
-                <Icon as={Plus} className="text-primary-foreground size-4" />
-                <Text>{s('add_section')}</Text>
-              </Button>
-              <Picker value={grade} onChange={setGrade} options={[{ value: 'all', label: s('all_grades') }, ...active.map((x) => ({ value: x.id, label: x.name }))]} />
+            <View className="gap-3 px-4 pt-3 pb-3">
+              <Text variant="muted" className="text-sm">
+                {s('subtitle')}
+              </Text>
+              <StatTiles>
+                <StatTile icon={Users} label={s('title')} value={list.data ? String(rows.length) : '—'} />
+                <StatTile tone="success" label={s('strength')} value={list.data ? `${filled}/${seats}` : '—'} />
+                <StatTile tone="warning" label={s('available')} value={list.data ? String(Math.max(0, seats - filled)) : '—'} />
+              </StatTiles>
+              <FilterChips value={grade} onChange={setGrade} options={[{ value: 'all', label: s('all_grades') }, ...active.map((x) => ({ value: x.id, label: x.name }))]} />
             </View>
           }
           items={list.data}
@@ -94,36 +103,37 @@ export default function Sections() {
           onRefresh={() => list.mutate()}
           emptyTitle={s('no_sections')}
           keyExtractor={(x) => x.id}
+          {...CARD_LIST_PROPS}
           renderItem={(x) => (
-            <View className="gap-1.5 px-4 py-3">
-              <View className="flex-row items-center gap-2">
-                <View className="flex-1">
-                  <Text className="font-medium">{x.name}</Text>
-                  <Text className="text-muted-foreground text-xs">{x.grade_name ?? ''}</Text>
+            <Panel className="gap-2.5 p-3">
+              <View className="flex-row items-center gap-3">
+                <Initials name={x.name} size={40} />
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-sm font-semibold" numberOfLines={1}>
+                    {x.name}
+                  </Text>
+                  <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                    {x.grade_name ?? ''}
+                  </Text>
                 </View>
-                <Badge variant={x.is_active !== false ? 'default' : 'secondary'}>
-                  <Text>{x.is_active !== false ? s('active') : s('inactive')}</Text>
-                </Badge>
+                <StatusChip label={x.is_active !== false ? s('active') : s('inactive')} tone={x.is_active !== false ? 'success' : 'muted'} className="px-2 py-0.5" />
               </View>
-              <View className="flex-row flex-wrap gap-3">
-                <Text className="text-muted-foreground text-xs">{`${s('capacity')}: ${x.capacity ?? '—'}`}</Text>
-                <Text className={cn('text-xs font-medium', color(x))}>{`${s('strength')}: ${x.current_strength ?? 0}`}</Text>
-                <Text className="text-muted-foreground text-xs">{`${s('available')}: ${s('seats', { count: x.available_seats ?? 0 })}`}</Text>
-              </View>
-              <View className="flex-row justify-end gap-4">
-                <Pressable
-                  onPress={() => {
+              <UsageBar used={x.current_strength ?? 0} total={x.capacity ?? 0} />
+              <View className="flex-row items-center justify-between gap-2">
+                <Text className={cn('text-[11px] font-medium', color(x))}>
+                  {`${s('strength')} ${x.current_strength ?? 0}/${x.capacity ?? '—'} · ${s('available')} ${s('seats', { count: x.available_seats ?? 0 })}`}
+                </Text>
+                <RowActions
+                  onEdit={() => {
                     setEditing(x);
                     setForm({ grade_level_id: x.grade_level_id, name: x.name, capacity: String(x.capacity ?? '') });
                   }}
-                  hitSlop={8}>
-                  <Icon as={Pencil} className="text-muted-foreground size-4" />
-                </Pressable>
-                <Pressable onPress={() => remove(x)} hitSlop={8}>
-                  <Icon as={Trash2} className="text-destructive size-4" />
-                </Pressable>
+                  onDelete={() => remove(x)}
+                  editLabel={s('edit_title')}
+                  deleteLabel={s('delete')}
+                />
               </View>
-            </View>
+            </Panel>
           )}
         />
       </View>

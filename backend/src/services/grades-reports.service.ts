@@ -242,6 +242,20 @@ class GradesReportsService {
    * Courses with affects_class_rank = false are left out. Rank (1 = best, ties share a rank) is by weighted
    * GPA within the returned group (the whole campus, or one grade level when filtered).
    */
+  /** Students currently enrolled in any course period the teacher teaches (main or secondary teacher). */
+  async studentsOfTeacher(staffId: string): Promise<Set<string>> {
+    const { data: cps, error } = await supabase
+      .from('course_periods')
+      .select('id')
+      .or(`teacher_id.eq.${staffId},secondary_teacher_id.eq.${staffId}`)
+    if (error) throw new Error(`Failed to load classes: ${error.message}`)
+    const ids = (cps || []).map((c) => c.id as string)
+    if (!ids.length) return new Set()
+    const { data: rows, error: e2 } = await supabase.from('student_schedules').select('student_id').in('course_period_id', ids).is('end_date', null)
+    if (e2) throw new Error(`Failed to load class lists: ${e2.message}`)
+    return new Set((rows || []).map((r) => r.student_id as string))
+  }
+
   async getGpaRankList(
     schoolId: string,
     markingPeriodId: string,

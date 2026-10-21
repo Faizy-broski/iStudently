@@ -559,6 +559,39 @@ export class SchoolController {
     }
   }
 
+  /** GET /api/schools/settings/library — the school's library policies (admins and librarians). */
+  async getLibrarySettings(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id;
+      if (!schoolId) return res.status(400).json({ success: false, error: 'School ID is required' });
+      res.json({ success: true, data: await schoolService.getLibrarySettings(schoolId) });
+    } catch (error: any) {
+      console.error('Get library settings error:', error);
+      res.status(500).json({ success: false, error: 'Failed to load library settings' });
+    }
+  }
+
+  /** PUT /api/schools/settings/library { fine_per_day, max_books_per_student, loan_duration_days } */
+  async updateLibrarySettings(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id;
+      if (!schoolId) return res.status(400).json({ success: false, error: 'School ID is required' });
+      const b = req.body ?? {};
+      const fine = Number(b.fine_per_day);
+      const maxBooks = Number(b.max_books_per_student);
+      const days = Number(b.loan_duration_days);
+      // Same limits as the website form.
+      if (!Number.isFinite(fine) || fine < 0 || fine > 100) return res.status(400).json({ success: false, error: 'fine_per_day must be between 0 and 100' });
+      if (!Number.isInteger(maxBooks) || maxBooks < 1 || maxBooks > 20) return res.status(400).json({ success: false, error: 'max_books_per_student must be a whole number from 1 to 20' });
+      if (!Number.isInteger(days) || days < 1 || days > 365) return res.status(400).json({ success: false, error: 'loan_duration_days must be a whole number from 1 to 365' });
+      const data = await schoolService.updateLibrarySettings(schoolId, { fine_per_day: fine, max_books_per_student: maxBooks, loan_duration_days: days });
+      res.json({ success: true, data, message: 'Library settings saved' });
+    } catch (error: any) {
+      console.error('Update library settings error:', error);
+      res.status(500).json({ success: false, error: 'Failed to save library settings' });
+    }
+  }
+
   /**
    * Update school settings for the admin's school
    * PUT /api/schools/settings

@@ -160,8 +160,8 @@ export default function MassEveningLeaves() {
                 <View className="flex-row items-center gap-2">
                   <Text variant="muted">{students.isLoading ? m('msg_loading_students') : m('stat_students_found', { count: rows.length })}</Text>
                   {selected.size ? (
-                    <Badge className="bg-blue-100">
-                      <Text className="text-blue-700">{m('stat_selected', { count: selected.size })}</Text>
+                    <Badge className="bg-info-soft">
+                      <Text className="text-brand dark:text-brand-secondary">{m('stat_selected', { count: selected.size })}</Text>
                     </Badge>
                   ) : null}
                 </View>

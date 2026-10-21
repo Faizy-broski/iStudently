@@ -1,8 +1,9 @@
 import type { FeeAdjustment, FeeAdjustmentType, StudentFeeStatus } from '@studently/api-client';
 import { useTranslation } from 'react-i18next';
+
+import { StatusChip } from '@/components/app/status-chip';
 import { View } from 'react-native';
 
-import { Badge } from '@/components/ui/badge';
 import { Text } from '@/components/ui/text';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -10,13 +11,11 @@ import { cn } from '@/lib/utils';
 /** Status badge with the web's colours and labels (admin.fees.page). */
 export function FeeStatusBadge({ status }: { status: StudentFeeStatus | string }) {
   const { t } = useTranslation();
-  const variant = status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : status === 'partial' ? 'outline' : 'secondary';
+  const tone = status === 'paid' ? 'success' : status === 'overdue' ? 'destructive' : status === 'partial' || status === 'pending' ? 'warning' : 'muted';
   const label =
     status === 'pending' ? t('common.pending') : status === 'paid' ? t('common.paid') : ['partial', 'overdue', 'waived'].includes(status) ? t(`admin.fees.page.status.${status}`) : status;
   return (
-    <Badge variant={variant}>
-      <Text>{label}</Text>
-    </Badge>
+    <StatusChip label={label} tone={tone} className="px-2 py-0.5" />
   );
 }
 
@@ -35,17 +34,17 @@ export function DueDateBadge({ dueDate, status }: { dueDate?: string | null; sta
     <View
       className={cn(
         'flex-row items-center gap-1 self-start rounded-full px-2 py-0.5',
-        tone === 'green' && 'bg-green-100 dark:bg-green-900/30',
-        tone === 'yellow' && 'bg-yellow-100 dark:bg-yellow-900/30',
-        tone === 'red' && 'bg-red-100 dark:bg-red-900/30',
+        tone === 'green' && 'bg-success-soft ',
+        tone === 'yellow' && 'bg-warning-soft ',
+        tone === 'red' && 'bg-destructive-soft ',
       )}>
-      <View className={cn('size-1.5 rounded-full', tone === 'green' ? 'bg-green-500' : tone === 'yellow' ? 'bg-yellow-500' : 'bg-red-500')} />
+      <View className={cn('size-1.5 rounded-full', tone === 'green' ? 'bg-success' : tone === 'yellow' ? 'bg-warning' : 'bg-destructive')} />
       <Text
         className={cn(
           'text-xs font-semibold',
-          tone === 'green' && 'text-green-700 dark:text-green-400',
-          tone === 'yellow' && 'text-yellow-700 dark:text-yellow-400',
-          tone === 'red' && 'text-red-700 dark:text-red-400',
+          tone === 'green' && 'text-success ',
+          tone === 'yellow' && 'text-warning ',
+          tone === 'red' && 'text-destructive ',
         )}>
         {text}
       </Text>
@@ -62,14 +61,14 @@ export function AdjustmentRow({ adj, money, showBeforeAfter }: { adj: FeeAdjustm
   const { t } = useTranslation();
   const negative = adj.adjustment_amount < 0;
   return (
-    <View className="border-border bg-card gap-1 rounded-lg border p-3">
+    <View className="border-info-soft dark:border-border bg-card gap-1 rounded-xl border p-3">
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
           <Text className="text-sm font-medium">{adjustmentLabel(t, adj.adjustment_type)}</Text>
           <Text className="text-muted-foreground text-xs">{adj.reason}</Text>
         </View>
         <View className="items-end">
-          <Text className={cn('text-sm font-semibold', negative ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+          <Text className={cn('text-sm font-semibold', negative ? 'text-success ' : 'text-destructive ')}>
             {`${negative ? '-' : '+'}${money(Math.abs(adj.adjustment_amount))}`}
           </Text>
           <Text className="text-muted-foreground text-xs">{formatDate(adj.created_at)}</Text>

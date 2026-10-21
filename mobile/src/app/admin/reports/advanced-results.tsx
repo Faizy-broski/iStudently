@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { colors } from '@/lib/colors';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
@@ -21,7 +22,7 @@ import { ConfidentialBadge } from '@/features/admin/people-extras';
 import { usePrintContext } from '@/features/admin/print-context';
 import { useCampus } from '@/features/campus/campus';
 import { locale } from '@/i18n';
-import { adminAnalytics, adminCustomFields, adminMiqat } from '@/lib/api';
+import { adminAnalytics, adminCustomFields, adminMiqat, adminStudents } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate } from '@/lib/format';
 import { buildPrintHtml, escapeHtml, qrSvg, sharePdf } from '@/lib/print';
@@ -91,6 +92,20 @@ export default function AdvancedReportResults() {
   // A stale signing key means no QR for this school; the report itself is still valid (web: a warning toast).
   const qrNotice = qr.error ? qr.error.message || t('app.error_title') : qrWarning;
 
+  // Login credentials, only when the username/password columns were picked (chunks of 200, as on the web).
+  const wantsCredentials = fields.includes('username') || fields.includes('password');
+  const creds = useApi(wantsCredentials && profileIds.length ? ['admin', 'advanced-report-credentials', key, profileIds.join(',')] : null, async () => {
+    const merged: Record<string, { username: string; password: string }> = {};
+    for (let i = 0; i < profileIds.length; i += 200) {
+      const res = await adminStudents.bulkCredentials(profileIds.slice(i, i + 200));
+      if (!res.success || !res.data) return { success: false as const, error: res.error };
+      for (const c of res.data.credentials) merged[c.id] = c;
+    }
+    return { success: true as const, data: merged };
+  });
+  const credMap = creds.data ?? {};
+  const credOf = (row: ReportRow, f: 'username' | 'password') => (typeof row.profile_id === 'string' ? (credMap[row.profile_id]?.[f] ?? '') : '');
+
   const [query, setQuery] = useState('');
   const [sortField, setSortField] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -101,9 +116,12 @@ export default function AdvancedReportResults() {
       const d = custom.find((x) => `custom_${x.field_key}` === f);
       return (d && ((locale === 'ar' && d.label_ar) || d.label)) || f.slice(7);
     }
+    if (f === 'username') return t('common.username');
+    if (f === 'password') return t('app.sl_password');
     return r(`fields.${f}`, { defaultValue: f.replace(/_/g, ' ') });
   };
-  const raw = (row: ReportRow, f: string): unknown => (f.startsWith('custom_') ? row.custom_fields?.[f.slice(7)] : row[f]) ?? '';
+  const raw = (row: ReportRow, f: string): unknown =>
+    f === 'username' || f === 'password' ? credOf(row, f) : ((f.startsWith('custom_') ? row.custom_fields?.[f.slice(7)] : row[f]) ?? '');
   // Select options are stored by their English value; show the Arabic option label when there is one (web: getFieldOptions).
   const optionLabel = (f: string, v: unknown): string => {
     const d = custom.find((x) => `custom_${x.field_key}` === f);
@@ -118,6 +136,7 @@ export default function AdvancedReportResults() {
       const v = row.custom_fields?.[f.slice(7)];
       return v == null || v === '' ? '—' : optionLabel(f, v);
     }
+    if (f === 'username' || f === 'password') return credOf(row, f) || (creds.isLoading ? '…' : '—');
     const v = row[f];
     if (f === 'is_active') return v ? t('common.active') : t('common.inactive');
     if (f === 'confidential_family_status') return v && v !== 'NONE' ? t(`app.pe_cfs_${String(v)}`, { defaultValue: String(v) }) : '—';
@@ -147,17 +166,17 @@ export default function AdvancedReportResults() {
       if (kind === 'csv') return await shareTextFile(`${fileBase}.csv`, toCsv(header, data), 'text/csv', 'public.comma-separated-values-text');
       // Excel leaves the QR column out, as on the web.
       if (kind === 'excel') return await shareTextFile(`${fileBase}.xls`, toExcelXml(title, header, data), 'application/vnd.ms-excel', 'com.microsoft.excel.xls');
-      const th = ['S.N', ...fields.map(label)].map((c) => `<th style="text-align:start;padding:4px;border-bottom:2px solid #111;font-size:10px">${escapeHtml(c)}</th>`).join('');
+      const th = ['S.N', ...fields.map(label)].map((c) => `<th style="text-align:start;padding:4px;border-bottom:2px solid ${colors.printText};font-size:10px">${escapeHtml(c)}</th>`).join('');
       const tr = shown
         .map((row, i) => {
           const cells = fields.map((f) => {
             if (f === 'miqat_qr') {
               const payload = typeof row.profile_id === 'string' ? qrMap[row.profile_id] : undefined;
-              return `<td style="padding:4px;border-bottom:1px solid #eee">${payload ? qrSvg(payload, 2) : '—'}</td>`;
+              return `<td style="padding:4px;border-bottom:1px solid ${colors.printBorder}">${payload ? qrSvg(payload, 2) : '—'}</td>`;
             }
-            return `<td style="padding:4px;border-bottom:1px solid #eee;font-size:10px">${escapeHtml(display(row, f))}</td>`;
+            return `<td style="padding:4px;border-bottom:1px solid ${colors.printBorder};font-size:10px">${escapeHtml(display(row, f))}</td>`;
           });
-          return `<tr><td style="padding:4px;border-bottom:1px solid #eee;font-size:10px">${i + 1}</td>${cells.join('')}</tr>`;
+          return `<tr><td style="padding:4px;border-bottom:1px solid ${colors.printBorder};font-size:10px">${i + 1}</td>${cells.join('')}</tr>`;
         })
         .join('');
       const body = `<h2 style="margin:0 0 10px">${escapeHtml(title)}</h2><table style="width:100%;border-collapse:collapse"><tr>${th}</tr>${tr}</table>`;
@@ -173,7 +192,7 @@ export default function AdvancedReportResults() {
       <>
         <Stack.Screen options={{ title }} />
         <View className="bg-background flex-1 gap-2 p-4">
-          <Text className="text-muted-foreground text-center">{r('results.loading', { role: roleLabel })}</Text>
+          <EmptyState title={r('results.loading', { role: roleLabel })} />
           <LoadingList rows={6} />
         </View>
       </>
@@ -223,7 +242,7 @@ export default function AdvancedReportResults() {
           <Text>CSV</Text>
         </Button>
       </View>
-      {wantsQr && qrNotice ? <Text className="text-sm text-amber-700 dark:text-amber-400">{qrNotice}</Text> : null}
+      {wantsQr && qrNotice ? <Text className="text-sm text-warning ">{qrNotice}</Text> : null}
       <SearchBar value={query} onChangeText={setQuery} placeholder={r('results.search_placeholder', { role: roleLabel.toLowerCase() })} />
       <View className="flex-row items-center gap-2">
         <View className="flex-1">
@@ -265,8 +284,8 @@ export default function AdvancedReportResults() {
                   <View className="flex-1">
                     {f === 'miqat_qr' ? (
                       typeof item.profile_id === 'string' && qrMap[item.profile_id] ? (
-                        <View className="self-start rounded border border-neutral-200 bg-white p-1">
-                          <QRCode value={qrMap[item.profile_id]} size={72} bgColor="#FFFFFF" fgColor="#000000" />
+                        <View className="self-start rounded border border-border bg-white p-1">
+                          <QRCode value={qrMap[item.profile_id]} size={72} bgColor={colors.white} fgColor={colors.black} />
                         </View>
                       ) : qr.isLoading ? (
                         <ActivityIndicator className="self-start" />

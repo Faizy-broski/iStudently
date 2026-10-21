@@ -4,6 +4,45 @@ import { qs } from '../../query'
 
 export type SignupRole = 'teacher' | 'student' | 'parent' | 'staff' | 'librarian'
 
+export interface SignupCustomField {
+  id: string
+  label: string
+  label_ar?: string
+  type: 'text' | 'select' | 'textarea' | 'date' | 'checkbox' | 'multi-select'
+  required: boolean
+  options?: string[]
+  options_ar?: string[]
+  placeholder?: string
+  source?: 'custom' | 'profile_field'
+  mapping?: { table: 'profiles' | 'parents' | 'staff'; column: string }
+}
+
+/** A profile or school custom field that a link can ask for (GET /signup-links/profile-fields). */
+export interface SignupProfileField {
+  source?: 'registry' | 'custom_field'
+  table?: 'profiles' | 'parents' | 'staff'
+  column?: string
+  field_key?: string
+  label_en: string
+  label_ar: string
+  type: SignupCustomField['type']
+  options?: { id: string; label_en: string; label_ar: string }[]
+  appliesToRoles: string[]
+}
+
+export interface SignupLinkMeta {
+  poster_url?: string | null
+  description?: string | null
+  custom_fields?: SignupCustomField[]
+  standard_fields?: {
+    first_name?: { required: boolean }
+    last_name?: { required: boolean }
+    phone?: { enabled: boolean; required: boolean }
+    email?: { enabled: boolean; required: boolean }
+    username?: { enabled: boolean; required: boolean }
+  }
+}
+
 export interface SignupLink {
   id: string
   school_id: string
@@ -18,6 +57,7 @@ export interface SignupLink {
   created_at: string
   campus_name?: string | null
   creator_name?: string | null
+  meta?: SignupLinkMeta
 }
 
 export interface SignupLinkInput {
@@ -26,6 +66,7 @@ export interface SignupLinkInput {
   max_uses?: number | null
   expires_at?: string | null
   campus_id?: string | null
+  meta?: SignupLinkMeta
 }
 
 export type PendingStatus = 'pending' | 'approved' | 'rejected'
@@ -66,6 +107,10 @@ export function adminSignupsApi(api: ApiClient) {
   return {
     links: (campusId?: string) => api.get<SignupLink[]>(`/signup-links${qs({ campus_id: campusId })}`),
     createLink: (input: SignupLinkInput) => api.post<SignupLink>('/signup-links', input),
+    link: (linkId: string) => api.get<SignupLink>(`/signup-links/${id(linkId)}`),
+    /** Role and token can't change (backend updateSignupLink). */
+    updateLink: (linkId: string, input: Omit<SignupLinkInput, 'role'>) => api.put<SignupLink>(`/signup-links/${id(linkId)}`, input),
+    profileFields: (role: string, campusId?: string) => api.get<SignupProfileField[]>(`/signup-links/profile-fields${qs({ role, campus_id: campusId })}`),
     setLinkActive: (linkId: string, active: boolean) => api.put<void>(`/signup-links/${id(linkId)}/${active ? 'activate' : 'deactivate'}`),
     deleteLink: (linkId: string) => api.del<void>(`/signup-links/${id(linkId)}`),
 

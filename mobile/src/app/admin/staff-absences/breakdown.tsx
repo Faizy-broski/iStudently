@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { BarChart } from '@/components/app/charts';
 import { DateField, parseYmd, todayYmd } from '@/components/app/date-field';
 import { EmptyState, LoadingList } from '@/components/app/states';
@@ -60,8 +61,8 @@ export default function AbsenceBreakdown() {
               </CardHeader>
               <CardContent className="gap-0">
                 <View className="border-border flex-row border-b py-2">
-                  <Text className="flex-1 font-medium">{s('table.staffMember')}</Text>
-                  <Text className="font-medium">{s('breakdown.totalDays')}</Text>
+                  <Text className="flex-1 text-sm font-semibold">{s('table.staffMember')}</Text>
+                  <Text className="text-sm font-semibold">{s('breakdown.totalDays')}</Text>
                 </View>
                 {totals.map((r) => (
                   <View key={r.n} className="border-border flex-row border-b py-2">

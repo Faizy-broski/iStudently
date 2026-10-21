@@ -1,12 +1,13 @@
 import type { JitsiRoom, JitsiRoomInput } from '@studently/api-client';
-import { Lock, Mic, Users } from 'lucide-react-native';
+import { Lock, Mic, Users, Video } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { IconTile, RowActions } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,35 +31,36 @@ export function audienceLabel(room: JitsiRoom, l: (k: string) => string) {
 export function RoomCard({ room, onJoin, onEdit, onDelete }: { room: JitsiRoom; onJoin: () => void; onEdit?: () => void; onDelete?: () => void }) {
   const l = useLc();
   return (
-    <Card>
-      <CardContent className="gap-2 pt-4">
-        <View className="flex-row items-center gap-1.5">
-          <Text className="flex-1 font-semibold">{room.title || l('default_title')}</Text>
-          {room.password ? <Icon as={Lock} className="text-muted-foreground size-3.5" /> : null}
-          {room.start_audio_only ? <Icon as={Mic} className="text-muted-foreground size-3.5" /> : null}
+    <Panel className="gap-3 p-4">
+      <View className="flex-row items-center gap-3">
+        <IconTile icon={Video} size={40} />
+        <View className="flex-1 gap-0.5">
+          <Text className="text-sm font-semibold">{room.title || l('default_title')}</Text>
+          <View className="flex-row items-center gap-1">
+            <Icon as={Users} className="text-muted-foreground size-3" />
+            <Text className="text-muted-foreground text-[11px]">{audienceLabel(room, l)}</Text>
+          </View>
         </View>
-        {room.description ? <Text className="text-muted-foreground text-sm">{room.description}</Text> : null}
-        <View className="flex-row items-center gap-1">
-          <Icon as={Users} className="text-muted-foreground size-3.5" />
-          <Text className="text-muted-foreground text-xs">{audienceLabel(room, l)}</Text>
-        </View>
-        <View className="flex-row gap-2">
-          {onEdit ? (
-            <Button size="sm" variant="outline" onPress={onEdit}>
-              <Text>{l('edit')}</Text>
-            </Button>
-          ) : null}
-          {onDelete ? (
-            <Button size="sm" variant="outline" onPress={onDelete}>
-              <Text>{l('delete')}</Text>
-            </Button>
-          ) : null}
-          <Button size="sm" className="ms-auto" onPress={onJoin}>
-            <Text>{l('join')}</Text>
-          </Button>
-        </View>
-      </CardContent>
-    </Card>
+        {room.password ? (
+          <View className="bg-muted size-7 items-center justify-center rounded-full">
+            <Icon as={Lock} className="text-muted-foreground size-3.5" />
+          </View>
+        ) : null}
+        {room.start_audio_only ? (
+          <View className="bg-muted size-7 items-center justify-center rounded-full">
+            <Icon as={Mic} className="text-muted-foreground size-3.5" />
+          </View>
+        ) : null}
+      </View>
+      {room.description ? <Text className="text-muted-foreground text-sm">{room.description}</Text> : null}
+      <View className="flex-row items-center gap-2">
+        <RowActions onEdit={onEdit} onDelete={onDelete} editLabel={l('edit')} deleteLabel={l('delete')} />
+        <Button size="sm" className="ms-auto rounded-full" onPress={onJoin}>
+          <Icon as={Video} className="text-primary-foreground size-4" />
+          <Text>{l('join')}</Text>
+        </Button>
+      </View>
+    </Panel>
   );
 }
 
@@ -90,9 +92,10 @@ export function RoomForm({ initial, submitting, onSubmit, onCancel }: { initial?
         <Label>{l('room_password_label')}</Label>
         <Input value={password} onChangeText={setPassword} placeholder={l('room_password_placeholder')} autoCapitalize="none" />
       </View>
-      <View className="flex-row items-center gap-3">
+      <View className="border-info-soft dark:border-border bg-card flex-row items-center gap-3 rounded-2xl border px-3 py-2.5">
+        <Icon as={Mic} className="text-brand dark:text-brand-secondary size-4" />
+        <Text className="flex-1 text-sm font-medium">{l('start_audio_only_label')}</Text>
         <Switch checked={audioOnly} onCheckedChange={setAudioOnly} />
-        <Text className="flex-1 text-sm">{l('start_audio_only_label')}</Text>
       </View>
       <View className="gap-1.5">
         <Label>{l('audience_label')}</Label>

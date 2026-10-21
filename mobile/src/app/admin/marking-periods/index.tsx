@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { Plus, Printer, Save, Trash2 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View, type ScrollView as RNScrollView } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
@@ -39,7 +40,7 @@ export default function MarkingPeriods() {
   const pluralLabel = (x: MarkingPeriodType) => t(`school.marking_periods.types_plural.${x}`);
   const toast = useToast();
   const confirm = useConfirm();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<RNScrollView>(null);
   const { campusId, campus } = useCampus();
   const groupsActive = usePluginActive('marking_period_groups');
   const [groupId, setGroupId] = useState<string | null>(null);
@@ -193,7 +194,7 @@ export default function MarkingPeriods() {
         {selected && form ? (
           <Card>
             <CardContent className="gap-4 pt-4">
-              <Text className="text-primary text-sm font-semibold uppercase">
+              <Text className="text-primary text-sm font-semibold">
                 {typeLabel(selected.mp_type)} — {selected.title}
               </Text>
               <View className="gap-1.5">
@@ -246,9 +247,9 @@ export default function MarkingPeriods() {
             return (
               <Card key={type}>
                 <View className="bg-muted/50 flex-row items-center justify-between rounded-t-xl px-4 py-2">
-                  <Text className="text-primary text-xs font-semibold uppercase">{pluralLabel(type)}</Text>
+                  <Text className="text-primary text-xs font-semibold">{pluralLabel(type)}</Text>
                   <Pressable onPress={() => add(type)} hitSlop={8} accessibilityLabel={m('new_placeholder', { type: typeLabel(type) })}>
-                    <Icon as={Plus} className="size-5 text-green-600" />
+                    <Icon as={Plus} className="size-5 text-success" />
                   </Pressable>
                 </View>
                 {items.length === 0 ? (
@@ -266,9 +267,9 @@ export default function MarkingPeriods() {
                               {mp.title}
                             </Text>
                             <View className="flex-row items-center gap-1.5">
-                              {current ? <View className="size-2 rounded-full bg-green-500" accessibilityLabel={m('active_tooltip')} /> : null}
-                              {mp.does_grades ? <Text className="text-[10px] font-medium text-blue-500">G</Text> : null}
-                              {mp.does_comments ? <Text className="text-[10px] font-medium text-purple-500">C</Text> : null}
+                              {current ? <View className="size-2 rounded-full bg-success" accessibilityLabel={m('active_tooltip')} /> : null}
+                              {mp.does_grades ? <Text className="text-[10px] font-medium text-brand dark:text-brand-secondary">G</Text> : null}
+                              {mp.does_comments ? <Text className="text-[10px] font-medium text-chart-6">C</Text> : null}
                             </View>
                           </View>
                           {mp.start_date || mp.end_date ? (
@@ -289,7 +290,7 @@ export default function MarkingPeriods() {
         <View className="gap-1">
           <Text className="text-muted-foreground text-xs">{m('help_hierarchy', { icon: '+' })}</Text>
           <View className="flex-row items-center gap-1.5">
-            <View className="size-2 rounded-full bg-green-500" />
+            <View className="size-2 rounded-full bg-success" />
             <Text className="text-muted-foreground flex-1 text-xs">{m('help_legend')}</Text>
           </View>
         </View>

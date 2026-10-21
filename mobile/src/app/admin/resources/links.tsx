@@ -3,12 +3,13 @@ import { Stack } from 'expo-router';
 import { Link2, Pencil, Plus, Save, Tags, Trash2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FilterChips } from '@/components/app/filter-chips';
+import { IconTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { LinkAudienceEditor } from '@/features/admin/link-audience';
 import { useCampus } from '@/features/campus/campus';
@@ -28,11 +31,11 @@ let seq = 0;
 const newKey = () => `new-${Date.now()}-${seq++}`;
 
 const ROLE_TONE: Record<string, string> = {
-  admin: 'bg-purple-100 dark:bg-purple-900/40',
-  teacher: 'bg-amber-100 dark:bg-amber-900/40',
-  student: 'bg-green-100 dark:bg-green-900/40',
-  parent: 'bg-blue-100 dark:bg-blue-900/40',
-  librarian: 'bg-rose-100 dark:bg-rose-900/40',
+  admin: 'bg-chart-6/10 ',
+  teacher: 'bg-warning-soft ',
+  student: 'bg-success-soft ',
+  parent: 'bg-info-soft ',
+  librarian: 'bg-destructive-soft ',
 };
 
 /** Resource links with categories and per-link audience; edits are saved together (web: /admin/resources/links). */
@@ -147,39 +150,33 @@ export default function ResourceLinks() {
             <Text>{l('add_resource')}</Text>
           </Button>
         </View>
-        <View className="flex-row gap-2">
-          <View className="flex-1">
-            <SearchBar value={search} onChangeText={setSearch} placeholder={l('search_placeholder')} />
-          </View>
-          <View className="w-40">
-            <Picker value={catFilter} onChange={setCatFilter} options={[{ value: 'all', label: l('all_categories') }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
-          </View>
-        </View>
+        <SearchBar value={search} onChangeText={setSearch} placeholder={l('search_placeholder')} />
+        <FilterChips value={catFilter} onChange={setCatFilter} options={[{ value: 'all', label: l('all_categories') }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
         <Text className="text-muted-foreground text-xs">{server.isLoading ? l('loading') : `${rows.length} ${l('resource')}`}</Text>
 
         {server.isLoading ? (
           <LoadingList />
         ) : !shown.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{l('add_row_prompt')}</Text>
+          <EmptyState icon={Link2} title={l('add_row_prompt')} />
         ) : (
           shown.map((r) => (
             <Card key={r.key}>
               <CardContent className="gap-2 pt-4">
-                <View className="flex-row items-start gap-2">
-                  <Icon as={Link2} className="text-primary mt-0.5 size-4" />
+                <View className="flex-row items-center gap-3">
+                  <IconTile icon={Link2} size={40} />
                   <View className="flex-1">
-                    <Text className="font-medium">{r.title || l('resource_name_placeholder')}</Text>
+                    <Text className="text-sm font-semibold">{r.title || l('resource_name_placeholder')}</Text>
                     <Text className="text-muted-foreground text-xs" numberOfLines={1}>
                       {r.url || l('url_placeholder')}
                     </Text>
                   </View>
                   <Text className="text-muted-foreground text-xs">#{r.sort_order}</Text>
-                  <Button size="icon" variant="ghost" onPress={() => setEditing(r)} accessibilityLabel={t('common.edit')}>
-                    <Icon as={Pencil} className="text-foreground size-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onPress={() => remove(r)} accessibilityLabel={l('btn_delete')}>
+                  <Pressable onPress={() => setEditing(r)} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
+                  </Pressable>
+                  <Pressable onPress={() => remove(r)} accessibilityLabel={l('btn_delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
-                  </Button>
+                  </Pressable>
                 </View>
                 <View className="flex-row flex-wrap gap-1">
                   {r.category_id ? (
@@ -197,13 +194,13 @@ export default function ResourceLinks() {
                     <Text className="text-muted-foreground text-[11px]">{l('no_one')}</Text>
                   )}
                   {r.visible_to_student_ids.length ? (
-                    <Text className="text-[11px] text-orange-600">· {r.visible_to_student_ids.length} {l('tab_students')}</Text>
+                    <Text className="text-[11px] text-warning">· {r.visible_to_student_ids.length} {l('tab_students')}</Text>
                   ) : r.visible_to_section_ids.length ? (
-                    <Text className="text-[11px] text-teal-600">· {r.visible_to_section_ids.length} §</Text>
+                    <Text className="text-[11px] text-success">· {r.visible_to_section_ids.length} §</Text>
                   ) : r.visible_to_grade_ids.length ? (
-                    <Text className="text-[11px] text-indigo-600">· {t('app.rl_grades', { count: r.visible_to_grade_ids.length })}</Text>
+                    <Text className="text-[11px] text-brand dark:text-brand-secondary">· {t('app.rl_grades', { count: r.visible_to_grade_ids.length })}</Text>
                   ) : null}
-                  {r.visible_to_teacher_ids.length ? <Text className="text-[11px] text-amber-600">· 👤 {r.visible_to_teacher_ids.length}</Text> : null}
+                  {r.visible_to_teacher_ids.length ? <Text className="text-[11px] text-warning">· 👤 {r.visible_to_teacher_ids.length}</Text> : null}
                 </View>
               </CardContent>
             </Card>
@@ -219,7 +216,7 @@ export default function ResourceLinks() {
 
       <Dialog open={!!current} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView>
             <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
               <DialogHeader>
                 <DialogTitle>{l('header_title')}</DialogTitle>
@@ -283,10 +280,10 @@ export default function ResourceLinks() {
               ) : (
                 <>
                   <Text className="flex-1">{c.name}</Text>
-                  <Pressable onPress={() => setRenaming({ id: c.id, name: c.name })} hitSlop={8} className="p-1" accessibilityLabel={t('common.edit')}>
-                    <Icon as={Pencil} className="text-muted-foreground size-4" />
+                  <Pressable onPress={() => setRenaming({ id: c.id, name: c.name })} accessibilityLabel={t('common.edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                   </Pressable>
-                  <Pressable onPress={() => deleteCategory(c.id)} hitSlop={8} className="p-1" accessibilityLabel={t('common.delete')}>
+                  <Pressable onPress={() => deleteCategory(c.id)} accessibilityLabel={t('common.delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </>

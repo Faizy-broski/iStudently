@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { Picker } from '@/components/app/picker';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -135,13 +136,13 @@ export function CalendarGrid({
       </View>
       <View className="flex-row items-center justify-end gap-2">
         <Button variant="outline" size="sm" onPress={() => canPrev && onMonthChange(prev)} disabled={!canPrev} accessibilityLabel={t('app.cal_prev')}>
-          <Icon as={ChevronLeft} className="size-4 rtl:rotate-180" />
+          <Icon flipRtl as={ChevronLeft} className="size-4" />
         </Button>
         <Button variant="outline" size="sm" onPress={goToday}>
           <Text>{t('app.cal_today')}</Text>
         </Button>
         <Button variant="outline" size="sm" onPress={() => canNext && onMonthChange(next)} disabled={!canNext} accessibilityLabel={t('app.cal_next')}>
-          <Icon as={ChevronRight} className="size-4 rtl:rotate-180" />
+          <Icon flipRtl as={ChevronRight} className="size-4" />
         </Button>
       </View>
 
@@ -177,17 +178,17 @@ export function CalendarGrid({
                     inMonth
                       ? school
                         ? partial
-                          ? 'border-[#B8B8FF] bg-[#D4D4FF] dark:border-indigo-800/50 dark:bg-indigo-900/30'
-                          : 'border-[#B8FFB8] bg-[#D4FFD4] dark:border-green-800/50 dark:bg-green-900/30'
+                          ? 'border-brand-secondary bg-info-soft'
+                          : 'border-success-soft bg-success-soft'
                         : holiday
-                          ? 'border-[#FFB8B8] bg-[#FFD4D4] dark:border-red-800/50 dark:bg-red-900/30'
+                          ? 'border-destructive-soft bg-destructive-soft'
                           : 'border-border bg-background'
                       : 'border-border bg-muted/30 opacity-50',
-                    today && 'border-2 border-[#022172] dark:border-[#57A3CC]',
+                    today && 'border-2 border-brand dark:border-brand-secondary',
                   )}>
                   <View className="flex-row items-start justify-between">
-                    <View className={cn(today && 'size-5 items-center justify-center rounded-full bg-[#022172] dark:bg-[#57A3CC]')}>
-                      <Text className={cn('text-xs font-semibold', today ? 'text-white' : inMonth && (school || holiday) ? 'text-gray-900 dark:text-gray-200' : 'text-foreground')}>
+                    <View className={cn(today && 'size-5 items-center justify-center rounded-full bg-brand dark:bg-brand-secondary')}>
+                      <Text className={cn('text-xs font-semibold', today ? 'text-white' : inMonth && (school || holiday) ? 'text-foreground' : 'text-foreground')}>
                         {String(hijri ? h.day : day.getDate())}
                       </Text>
                     </View>
@@ -202,7 +203,7 @@ export function CalendarGrid({
                   </Text>
                   <View className="mt-auto flex-row flex-wrap gap-0.5">
                     {dayEvents.slice(0, 3).map((ev) => (
-                      <View key={ev.id} className="size-1.5 rounded-full" style={{ backgroundColor: ev.color_code || '#3B82F6' }} />
+                      <View key={ev.id} className="size-1.5 rounded-full" style={{ backgroundColor: ev.color_code || colors.brandSecondary }} />
                     ))}
                   </View>
                 </Pressable>
@@ -237,7 +238,7 @@ export function CalendarGrid({
                   }}
                   accessibilityRole={onEventPress ? 'button' : undefined}
                   className="border-border flex-row gap-3 rounded-lg border p-3">
-                  <View className="w-1 self-stretch rounded-full" style={{ backgroundColor: ev.color_code || '#3B82F6' }} />
+                  <View className="w-1 self-stretch rounded-full" style={{ backgroundColor: ev.color_code || colors.brandSecondary }} />
                   <View className="flex-1">
                     <Text className="text-sm font-medium">{ev.title}</Text>
                     {ev.description ? (

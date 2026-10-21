@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { adminSpeedReading } from '@/lib/api';
 import { usePagedApi } from '@/lib/data';
@@ -44,14 +45,15 @@ export default function SpeedReadingSessions() {
         renderItem={({ item: l }) => (
           <Card>
             <CardContent className="gap-2 pt-4">
-              <View className="flex-row items-start gap-2">
+              <View className="flex-row items-start gap-3">
+                <Initials name={l.student_name || '?'} />
                 <View className="flex-1">
-                  <Text className="font-semibold">{l.student_name ?? '—'}</Text>
+                  <Text className="text-sm font-semibold">{l.student_name ?? '—'}</Text>
                   <Text className="text-muted-foreground text-xs">
                     {l.text_title ?? '—'} · {new Date(l.created_at).toLocaleDateString(i18n.language)}
                   </Text>
                 </View>
-                <Icon as={l.audio_url ? Mic : MicOff} className={l.audio_url ? 'size-4 text-green-600' : 'text-muted-foreground size-4'} />
+                <Icon as={l.audio_url ? Mic : MicOff} className={l.audio_url ? 'size-4 text-success' : 'text-muted-foreground size-4'} />
               </View>
               <View className="flex-row flex-wrap items-center gap-2">
                 <Badge variant="secondary">
@@ -66,7 +68,7 @@ export default function SpeedReadingSessions() {
                   <Icon as={Eye} className="text-foreground size-4" />
                   <Text>{s('review')}</Text>
                 </Button>
-                <Pressable onPress={() => remove(l.id)} hitSlop={6} className="items-center justify-center px-3" accessibilityLabel={s('delete')}>
+                <Pressable onPress={() => remove(l.id)} accessibilityLabel={s('delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                   <Icon as={Trash2} className="text-destructive size-4" />
                 </Pressable>
               </View>

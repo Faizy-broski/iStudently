@@ -1,11 +1,11 @@
 import { Stack } from 'expo-router';
-import { DollarSign, Receipt, ReceiptText } from 'lucide-react-native';
+import { CheckCircle2, DollarSign, Receipt, ReceiptText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { HeroCard, IconTile, Section, StatTile, StatTiles } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { usePortalCurrency } from '@/features/portal/currency';
 import { FeeDueDateBadge, FeeStatus } from '@/features/portal/fees';
@@ -36,7 +36,7 @@ export default function StudentFees() {
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView
         className="bg-background flex-1"
-        contentContainerClassName="gap-3 p-4 pb-10"
+        contentContainerClassName="gap-4 p-4 pb-10"
         refreshControl={
           <RefreshControl
             refreshing={false}
@@ -46,87 +46,76 @@ export default function StudentFees() {
             }}
           />
         }>
-        <Text variant="muted">{k('subtitle')}</Text>
-        <Card>
-          <CardContent className="p-4">
-            <Text className="text-muted-foreground mb-1 text-sm">{k('total_outstanding')}</Text>
-            <Text className={cn('text-3xl font-bold', due > 0 && 'text-red-600')}>{money(due)}</Text>
-            {overdue > 0 ? <Text className="mt-1 text-xs text-red-500">{k('overdue_count', { count: overdue })}</Text> : null}
-          </CardContent>
-        </Card>
-        <View className="flex-row gap-3">
-          <Card className="flex-1">
-            <CardContent className="p-4">
-              <Text className="text-muted-foreground mb-1 text-sm">{k('total_paid')}</Text>
-              <Text className="text-2xl font-bold text-green-600">{money(paid)}</Text>
-            </CardContent>
-          </Card>
-          <Card className="flex-1">
-            <CardContent className="p-4">
-              <Text className="text-muted-foreground mb-1 text-sm">{k('total_invoices')}</Text>
-              <Text className="text-2xl font-bold">{String(list.length)}</Text>
-            </CardContent>
-          </Card>
-        </View>
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={Receipt} className="size-5" />
-            <CardTitle>{k('fee_invoices')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {list.length === 0 ? (
-              <View className="items-center py-10">
-                <Icon as={DollarSign} className="text-muted-foreground mb-3 size-12" />
-                <Text className="text-muted-foreground">{k('no_records')}</Text>
-              </View>
-            ) : (
-              list.map((f) => (
-                <View key={f.id} className="border-border gap-1.5 border-t py-3 first:border-t-0">
-                  <View className="flex-row items-start justify-between gap-2">
-                    <View className="flex-1">
-                      <Text className="font-medium">{f.fee_name}</Text>
-                      <Text className="text-muted-foreground text-xs">{f.academic_year}</Text>
+        <Text className="text-muted-foreground text-sm">{k('subtitle')}</Text>
+        <HeroCard>
+          <Text className="text-sm font-semibold text-white/85">{k('total_outstanding')}</Text>
+          <Text className="text-3xl font-bold text-white" numberOfLines={1} adjustsFontSizeToFit>
+            {money(due)}
+          </Text>
+          {overdue > 0 ? (
+            <View className="self-start rounded-full bg-white/15 px-3 py-1">
+              <Text className="text-xs font-semibold text-white">{k('overdue_count', { count: overdue })}</Text>
+            </View>
+          ) : null}
+        </HeroCard>
+        <StatTiles>
+          <StatTile icon={CheckCircle2} tone="success" label={k('total_paid')} value={money(paid)} />
+          <StatTile icon={Receipt} label={k('total_invoices')} value={String(list.length)} />
+        </StatTiles>
+        <Section title={k('fee_invoices')}>
+          {list.length === 0 ? (
+            <EmptyState icon={DollarSign} title={k('no_records')} />
+          ) : (
+            <Panel>
+              {list.map((f, i) => (
+                <View key={f.id} className={cn('flex-row items-start gap-3 px-4 py-3', i < list.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                  <IconTile icon={Receipt} tone={f.status === 'paid' ? 'success' : f.status === 'overdue' ? 'destructive' : 'brand'} size={40} />
+                  <View className="flex-1 gap-1.5">
+                    <View className="flex-row items-start justify-between gap-2">
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold">{f.fee_name}</Text>
+                        <Text className="text-muted-foreground text-xs">{f.academic_year}</Text>
+                      </View>
+                      <FeeStatus status={f.status} />
                     </View>
-                    <FeeStatus status={f.status} />
-                  </View>
-                  <View className="flex-row flex-wrap items-center gap-2">
-                    <Text className="text-muted-foreground text-xs">{`${k('col_due_date')}: ${f.due_date ? formatDate(f.due_date) : '—'}`}</Text>
-                    <FeeDueDateBadge dueDate={f.due_date} status={f.status} />
-                  </View>
-                  <View className="flex-row justify-between">
-                    <Amount label={k('col_amount')} value={money(f.final_amount)} />
-                    <Amount label={k('col_paid')} value={money(f.amount_paid)} tone="text-green-600" />
-                    <Amount label={k('col_balance')} value={money(f.balance)} tone="font-semibold text-red-600" />
-                  </View>
-                </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
-        {extra.length ? (
-          <Card>
-            <CardHeader className="flex-row items-center gap-2">
-              <Icon as={ReceiptText} className="size-5" />
-              <CardTitle>{k('additional_charges')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {extra.map((el) => (
-                <View key={el.id} className="border-border gap-1.5 border-t py-3 first:border-t-0">
-                  <View className="flex-row items-start justify-between gap-2">
-                    <View className="flex-1">
-                      <Text className="font-medium">{el.element_title}</Text>
-                      {el.category_title ? <Text className="text-muted-foreground text-xs">{el.category_title}</Text> : null}
+                    <View className="flex-row flex-wrap items-center gap-2">
+                      <Text className="text-muted-foreground text-xs">{`${k('col_due_date')}: ${f.due_date ? formatDate(f.due_date) : '—'}`}</Text>
+                      <FeeDueDateBadge dueDate={f.due_date} status={f.status} />
                     </View>
-                    <FeeStatus status={el.status} />
-                  </View>
-                  <View className="flex-row gap-6">
-                    <Amount label={k('col_amount')} value={money(el.amount)} />
-                    <Amount label={k('col_paid')} value={money(el.amount_paid)} tone="text-green-600" />
+                    <View className="bg-muted/50 flex-row justify-between rounded-xl px-3 py-2">
+                      <Amount label={k('col_amount')} value={money(f.final_amount)} />
+                      <Amount label={k('col_paid')} value={money(f.amount_paid)} tone="text-success" />
+                      <Amount label={k('col_balance')} value={money(f.balance)} tone="font-semibold text-destructive" />
+                    </View>
                   </View>
                 </View>
               ))}
-            </CardContent>
-          </Card>
+            </Panel>
+          )}
+        </Section>
+        {extra.length ? (
+          <Section title={k('additional_charges')}>
+            <Panel>
+              {extra.map((el, i) => (
+                <View key={el.id} className={cn('flex-row items-start gap-3 px-4 py-3', i < extra.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                  <IconTile icon={ReceiptText} tone="warning" size={40} />
+                  <View className="flex-1 gap-1.5">
+                    <View className="flex-row items-start justify-between gap-2">
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold">{el.element_title}</Text>
+                        {el.category_title ? <Text className="text-muted-foreground text-xs">{el.category_title}</Text> : null}
+                      </View>
+                      <FeeStatus status={el.status} />
+                    </View>
+                    <View className="flex-row gap-6">
+                      <Amount label={k('col_amount')} value={money(el.amount)} />
+                      <Amount label={k('col_paid')} value={money(el.amount_paid)} tone="text-success" />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </Panel>
+          </Section>
         ) : null}
       </ScrollView>
     </>
@@ -136,7 +125,7 @@ export default function StudentFees() {
 function Amount({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <View>
-      <Text className="text-muted-foreground text-[11px] uppercase">{label}</Text>
+      <Text className="text-muted-foreground text-[11px]">{label}</Text>
       <Text className={cn('text-sm font-medium', tone)}>{value}</Text>
     </View>
   );

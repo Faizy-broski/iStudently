@@ -38,6 +38,8 @@ router.post('/', limiter, (req: Request, res: Response) => {
     // Who the app says was signed in: for triage only, not trusted.
     profile_id: str(b.profile_id, 64),
     role: str(b.role, 40),
+    // Reference shown to the user on the error screen ("Error ref: STU-1234"), to find this report.
+    ref: str(b.ref, 20),
     at: new Date().toISOString(),
   }
   console.error(`[client-error] ${JSON.stringify(report)}`)

@@ -1,11 +1,12 @@
 import { Stack } from 'expo-router';
 import { Clock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
-import { Card, CardContent } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
+import { IconTile, RowItem } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminPeriods } from '@/lib/api';
@@ -29,29 +30,27 @@ export default function TeacherPeriods() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        <Text variant="muted">{campus ? k('schoolPeriodsWithCampus', { campus: campus.name }) : k('schoolPeriods')}</Text>
+        <Text variant="muted" className="text-sm">
+          {campus ? k('schoolPeriodsWithCampus', { campus: campus.name }) : k('schoolPeriods')}
+        </Text>
         {res.isLoading ? (
           <LoadingList rows={5} />
         ) : !list.length ? (
-          <Card>
-            <CardContent className="items-center py-12">
-              <Icon as={Clock} className="text-muted-foreground mb-3 size-10" />
-              <Text className="text-muted-foreground">{k('noPeriodsDefined')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={Clock} title={k('noPeriodsDefined')} />
         ) : (
-          list.map((p) => (
-            <Card key={p.id}>
-              <CardContent className="gap-1 p-4">
-                <View className="flex-row items-center justify-between gap-2">
-                  <Text className="flex-1 font-semibold">{p.title || p.period_name || '—'}</Text>
-                  <Text className="text-muted-foreground text-xs">{`${k('order')}: ${p.sort_order ?? '—'}`}</Text>
-                </View>
-                <Text className="text-muted-foreground text-xs">{`${k('shortName')}: ${p.short_name || '—'} · ${k('block')}: ${p.block || '—'}`}</Text>
-                <Text className="text-sm">{`${time12(p.start_time)} – ${time12(p.end_time)} · ${k('lengthMin')}: ${p.length_minutes ?? '—'}`}</Text>
-              </CardContent>
-            </Card>
-          ))
+          <Panel>
+            {list.map((p, i) => (
+              <RowItem
+                key={p.id}
+                leading={<IconTile icon={Clock} size={40} />}
+                title={p.title || p.period_name || '—'}
+                meta={`${k('shortName')}: ${p.short_name || '—'} · ${k('block')}: ${p.block || '—'} · ${k('lengthMin')}: ${p.length_minutes ?? '—'}`}
+                trailing={<StatusChip label={`${k('order')}: ${p.sort_order ?? '—'}`} tone="muted" />}
+                last={i === list.length - 1}>
+                <Text className="text-brand dark:text-brand-secondary ps-[52px] text-sm font-semibold">{`${time12(p.start_time)} – ${time12(p.end_time)}`}</Text>
+              </RowItem>
+            ))}
+          </Panel>
         )}
       </ScrollView>
     </>

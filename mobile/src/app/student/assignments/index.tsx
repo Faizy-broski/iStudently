@@ -1,12 +1,14 @@
 import { router, Stack } from 'expo-router';
-import { Check, X } from 'lucide-react-native';
+import { ClipboardList } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 
+import { IconTile } from '@/components/app/layout';
+import { ListCard } from '@/components/app/panel';
 import { SearchBar } from '@/components/app/search-bar';
-import { LoadingList } from '@/components/app/states';
-import { Icon } from '@/components/ui/icon';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { longDate, teacherOf, useStudentAssignmentList } from '@/features/portal/assignments';
 import { PortalError } from '@/features/portal/ui';
@@ -31,26 +33,26 @@ export default function StudentAssignments() {
         data={shown}
         keyExtractor={(a) => a.id}
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => q.mutate()} />}
-        contentContainerClassName="gap-2 p-4 pb-10"
+        contentContainerClassName="gap-2.5 p-4 pb-10"
         ListHeaderComponent={
           <View className="mb-2 gap-2">
             <SearchBar value={search} onChangeText={setSearch} placeholder={t('common.search')} />
             <Text className="text-muted-foreground text-sm">{k('found', { count: shown.length })}</Text>
           </View>
         }
-        ListEmptyComponent={<Text className="text-muted-foreground py-16 text-center">{k('empty')}</Text>}
+        ListEmptyComponent={<EmptyState icon={ClipboardList} title={k('empty')} />}
         renderItem={({ item: a }) => (
-          <Pressable
-            onPress={() => router.push({ pathname: '/student/assignments/[id]', params: { id: a.id } })}
-            accessibilityRole="button"
-            className="border-border bg-card gap-1.5 rounded-lg border p-3">
-            <View className="flex-row items-start gap-2">
-              <Text className="flex-1 font-medium text-[#4A90E2]">{a.title}</Text>
-              <Icon as={a.submission ? Check : X} className={a.submission ? 'size-5 text-green-600' : 'size-5 text-red-600'} accessibilityLabel={a.submission ? k('submitted') : k('not_submitted')} />
+          <ListCard onPress={() => router.push({ pathname: '/student/assignments/[id]', params: { id: a.id } })}>
+            <IconTile icon={ClipboardList} tone={a.submission ? 'success' : 'brand'} size={40} />
+            <View className="flex-1 gap-0.5">
+              <Text className="text-sm font-semibold" numberOfLines={2}>
+                {a.title}
+              </Text>
+              <Text className="text-muted-foreground text-xs">{`${k('course')}: ${a.subject?.name || '—'} · ${k('teacher')}: ${teacherOf(a)}`}</Text>
+              <Text className="text-muted-foreground text-xs">{`${k('due')}: ${longDate(a.due_date)} · ${k('assigned')}: ${longDate(a.assigned_date)}`}</Text>
+              <StatusChip label={a.submission ? k('submitted') : k('not_submitted')} tone={a.submission ? 'success' : 'destructive'} className="mt-1 self-start" />
             </View>
-            <Text className="text-muted-foreground text-xs">{`${k('course')}: ${a.subject?.name || '—'} · ${k('teacher')}: ${teacherOf(a)}`}</Text>
-            <Text className="text-muted-foreground text-xs">{`${k('due')}: ${longDate(a.due_date)} · ${k('assigned')}: ${longDate(a.assigned_date)}`}</Text>
-          </Pressable>
+          </ListCard>
         )}
       />
     </>

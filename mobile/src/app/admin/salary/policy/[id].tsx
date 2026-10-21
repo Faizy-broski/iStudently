@@ -2,9 +2,10 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { SearchBar } from '@/components/app/search-bar';
 import { ErrorState, LoadingList } from '@/components/app/states';
@@ -78,7 +79,7 @@ export default function PolicyMembers() {
                 <View className="flex-row items-center gap-3 px-4 py-2.5">
                   <PersonAvatar url={a.staff.profile.profile_photo_url} name={fullName(a.staff.profile)} size={32} />
                   <View className="flex-1">
-                    <Text className="font-medium">{fullName(a.staff.profile)}</Text>
+                    <Text className="text-sm font-semibold">{fullName(a.staff.profile)}</Text>
                     <Text className="text-muted-foreground text-xs">{[a.staff.employee_number, a.staff.title].filter(Boolean).join(' · ')}</Text>
                   </View>
                   <Pressable hitSlop={8} disabled={remove.running} onPress={() => remove.run(a.staff_id)} accessibilityLabel={t('app.bl_delete')}>
@@ -111,7 +112,7 @@ export default function PolicyMembers() {
                   <Pressable onPress={toggle} className="flex-row items-center gap-3 px-4 py-2.5" accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
                     <Checkbox checked={on} onCheckedChange={toggle} />
                     <View className="flex-1">
-                      <Text className="font-medium">{fullName(x.profile)}</Text>
+                      <Text className="text-sm font-semibold">{fullName(x.profile)}</Text>
                       <Text className="text-muted-foreground text-xs">{[x.employee_number, x.assigned_policy?.policy_name ?? s('unassigned')].filter(Boolean).join(' · ')}</Text>
                     </View>
                   </Pressable>

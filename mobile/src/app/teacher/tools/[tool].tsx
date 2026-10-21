@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { Wrench } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
@@ -15,7 +16,7 @@ export default function TeacherToolScreen() {
   const { tool } = useLocalSearchParams<{ tool: string }>();
   const { campusId } = useCampus();
   const def = tool ? TOOLS[tool] : undefined;
-  if (!def) return <EmptyState title={t('app.wv_unknown')} />;
+  if (!def) return <EmptyState icon={Wrench} title={t('app.wv_unknown')} />;
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: t(`sidebar.${def.title}`, { defaultValue: def.title.replace(/_/g, ' ') }) }} />

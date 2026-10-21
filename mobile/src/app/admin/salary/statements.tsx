@@ -120,7 +120,7 @@ export default function FinancialStatements() {
               accessibilityRole="button"
               onPress={() => router.push({ pathname: '/admin/salary/payslip', params: { staffId: r.staff_id, month: String(r.month), year: String(r.year) } })}>
               <View className="flex-1">
-                <Text className="font-medium">{staffName(r)}</Text>
+                <Text className="text-sm font-semibold">{staffName(r)}</Text>
                 <Text className="text-muted-foreground text-xs">{[r.staff?.employee_number, r.staff?.department, `${f('col_net_payable')}: ${money(r.net_salary)}`].filter(Boolean).join(' · ')}</Text>
               </View>
               <Badge variant={SALARY_STATUS_VARIANT[r.status]}>

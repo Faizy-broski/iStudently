@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { FilterChips } from '@/components/app/filter-chips';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FormSection } from '@/components/app/layout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -47,13 +47,9 @@ export const rulesValid = (r: PayrollRules) => HHMM.test(r.expected_check_in);
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="px-4">
-        <CardTitle className="text-base">{title}</CardTitle>
-        {hint ? <Text className="text-muted-foreground text-xs">{hint}</Text> : null}
-      </CardHeader>
-      <CardContent className="gap-3 px-4">{children}</CardContent>
-    </Card>
+    <FormSection title={title} description={hint}>
+      <View className="gap-3">{children}</View>
+    </FormSection>
   );
 }
 
@@ -76,7 +72,7 @@ function Num({ label, hint, value, onChange, decimal }: { label: string; hint?: 
 
 function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <View className="flex-row items-center justify-between gap-3">
+    <View className="bg-muted/50 flex-row items-center justify-between gap-3 rounded-xl px-3 py-2.5">
       <Label className="flex-1">{label}</Label>
       <Switch checked={value} onCheckedChange={onChange} />
     </View>

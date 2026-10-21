@@ -100,7 +100,7 @@ export default function EntryExitRecords() {
                   <Text>{r('btn_export')}</Text>
                 </Button>
               </View>
-              <Text className="text-muted-foreground text-xs font-semibold uppercase">{r('filters_title')}</Text>
+              <Text className="text-muted-foreground text-sm font-semibold">{r('filters_title')}</Text>
               <Picker value={checkpoint} onChange={setCheckpoint} options={[{ value: ALL, label: r('filter_all_checkpoints') }, ...(checkpoints.data ?? []).map((c) => ({ value: c.id, label: c.name }))]} />
               <View className="flex-row gap-2">
                 <Picker
@@ -157,7 +157,7 @@ export default function EntryExitRecords() {
                 <RecordRow
                   r={x}
                   trailing={
-                    <Pressable onPress={() => removeOne(x)} hitSlop={8} className="p-1">
+                    <Pressable onPress={() => removeOne(x)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                       <Icon as={Trash2} className="text-destructive size-4" />
                     </Pressable>
                   }

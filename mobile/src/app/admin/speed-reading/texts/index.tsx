@@ -68,10 +68,10 @@ export default function SpeedReadingTexts() {
               <CardContent className="gap-2 pt-4">
                 <View className="flex-row items-start gap-2">
                   <Text className="flex-1 font-semibold">{x.title}</Text>
-                  <Pressable onPress={() => router.push({ pathname: '/admin/speed-reading/texts/form', params: { id: x.id } })} hitSlop={6} className="p-1" accessibilityLabel={t('app.sr_edit')}>
-                    <Icon as={Pencil} className="text-muted-foreground size-4" />
+                  <Pressable onPress={() => router.push({ pathname: '/admin/speed-reading/texts/form', params: { id: x.id } })} accessibilityLabel={t('app.sr_edit')} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                    <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
                   </Pressable>
-                  <Pressable onPress={() => remove(x.id)} hitSlop={6} className="p-1" accessibilityLabel={s('deleteText')}>
+                  <Pressable onPress={() => remove(x.id)} accessibilityLabel={s('deleteText')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                     <Icon as={Trash2} className="text-destructive size-4" />
                   </Pressable>
                 </View>

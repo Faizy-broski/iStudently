@@ -1,73 +1,89 @@
 import { router, Stack } from 'expo-router';
-import { ArrowRight, BookOpen, GraduationCap, Users, type LucideIcon } from 'lucide-react-native';
+import { BookOpen, GraduationCap, TriangleAlert, Users, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { HeroCard, IconTile, RowItem, Section, type Tone } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { useCampus } from '@/features/campus/campus';
+import { adminAcademics } from '@/lib/api';
+import { useApi } from '@/lib/data';
+
+type Href = '/admin/academics/grades' | '/admin/academics/sections' | '/admin/academics/subjects';
 
 /** School setup overview: grade levels → sections → subjects (web: /admin/academics). */
 export default function AcademicsOverview() {
   const { t } = useTranslation();
   const o = (k: string, v?: Record<string, unknown>) => t(`school.overview.${k}`, v);
-  const items: { title: string; desc: string; icon: LucideIcon; href: '/admin/academics/grades' | '/admin/academics/sections' | '/admin/academics/subjects'; fg: string; bg: string }[] = [
-    { title: o('grades_title'), desc: o('grades_desc'), icon: GraduationCap, href: '/admin/academics/grades', fg: 'text-blue-600', bg: 'bg-blue-100' },
-    { title: o('sections_title'), desc: o('sections_desc'), icon: Users, href: '/admin/academics/sections', fg: 'text-green-600', bg: 'bg-green-100' },
-    { title: o('subjects_title'), desc: o('subjects_desc'), icon: BookOpen, href: '/admin/academics/subjects', fg: 'text-purple-600', bg: 'bg-purple-100' },
+  const { campusId } = useCampus();
+  const c = campusId ?? undefined;
+  const grades = useApi(['admin', 'grades', campusId ?? 'school'], () => adminAcademics.grades(c));
+  const sections = useApi(['admin', 'sections-all', campusId ?? 'school'], () => adminAcademics.sections(c));
+  const subjects = useApi(['admin', 'subjects-all', campusId ?? 'school'], () => adminAcademics.subjects(c));
+  const count = (d: unknown[] | undefined) => (d ? String(d.length) : '—');
+
+  const items: { title: string; desc: string; icon: LucideIcon; tone: Tone; href: Href; n: string }[] = [
+    { title: o('grades_title'), desc: o('grades_desc'), icon: GraduationCap, tone: 'brand', href: '/admin/academics/grades', n: count(grades.data) },
+    { title: o('sections_title'), desc: o('sections_desc'), icon: Users, tone: 'success', href: '/admin/academics/sections', n: count(sections.data) },
+    { title: o('subjects_title'), desc: o('subjects_desc'), icon: BookOpen, tone: 'warning', href: '/admin/academics/subjects', n: count(subjects.data) },
   ];
-  const steps: [LucideIcon, string, string, string][] = [
-    [GraduationCap, 'text-blue-600', o('step1_title'), o('step1_desc')],
-    [Users, 'text-green-600', o('step2_title'), o('step2_desc')],
-    [BookOpen, 'text-purple-600', o('step3_title'), o('step3_desc')],
+  const steps: [LucideIcon, Tone, string, string][] = [
+    [GraduationCap, 'brand', o('step1_title'), o('step1_desc')],
+    [Users, 'success', o('step2_title'), o('step2_desc')],
+    [BookOpen, 'warning', o('step3_title'), o('step3_desc')],
   ];
+
   return (
     <>
       <Stack.Screen options={{ title: o('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
-        <Text variant="muted">{o('subtitle')}</Text>
-        {items.map((s) => (
-          <Card key={s.href}>
-            <CardHeader className="gap-2">
-              <View className={cn('size-12 items-center justify-center rounded-lg', s.bg)}>
-                <Icon as={s.icon} className={cn('size-6', s.fg)} />
-              </View>
-              <CardTitle>{s.title}</CardTitle>
-              <CardDescription>{s.desc}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" onPress={() => router.push(s.href)}>
-                <Text>{o('manage', { title: s.title })}</Text>
-                <Icon as={ArrowRight} className="text-foreground size-4" />
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-        <Card className="border-s-4 border-s-blue-600">
-          <CardHeader>
-            <CardTitle>{o('dependency_title')}</CardTitle>
-            <CardDescription>{o('dependency_subtitle')}</CardDescription>
-          </CardHeader>
-          <CardContent className="gap-4">
-            {steps.map(([icon, fg, title, desc]) => (
-              <View key={title} className="gap-1">
-                <View className="flex-row items-center gap-2">
-                  <Icon as={icon} className={cn('size-5', fg)} />
-                  <Text className="font-semibold">{title}</Text>
-                </View>
-                <Text variant="muted" className="text-sm">{desc}</Text>
+        <HeroCard>
+          <Text className="text-lg font-bold text-white">{o('title')}</Text>
+          <Text className="text-sm text-white/80">{o('subtitle')}</Text>
+          <View className="flex-row gap-2">
+            {items.map((s) => (
+              <View key={s.href} className="flex-1 rounded-2xl bg-white/15 px-3 py-2">
+                <Text className="text-xl font-bold text-white">{s.n}</Text>
+                <Text className="text-[11px] text-white/80" numberOfLines={1}>
+                  {s.title}
+                </Text>
               </View>
             ))}
-            <View className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <Text className="text-sm text-amber-900">
-                <Text className="text-sm font-bold text-amber-900">{`${o('important')} `}</Text>
-                {o('rule')}
-              </Text>
-            </View>
-          </CardContent>
-        </Card>
+          </View>
+        </HeroCard>
+
+        <Panel>
+          {items.map((s, i) => (
+            <RowItem
+              key={s.href}
+              leading={<IconTile icon={s.icon} tone={s.tone} size={40} />}
+              title={o('manage', { title: s.title })}
+              meta={s.desc}
+              onPress={() => router.push(s.href)}
+              last={i === items.length - 1}
+            />
+          ))}
+        </Panel>
+
+        <Section title={o('dependency_title')}>
+          <Text variant="muted" className="text-sm">
+            {o('dependency_subtitle')}
+          </Text>
+          <Panel>
+            {steps.map(([icon, tone, title, desc], i) => (
+              <RowItem key={title} leading={<IconTile icon={icon} tone={tone} round />} title={`${i + 1}. ${title}`} meta={desc} last={i === steps.length - 1} />
+            ))}
+          </Panel>
+          <View className="bg-warning-soft flex-row gap-3 rounded-2xl p-4">
+            <Icon as={TriangleAlert} className="text-warning size-5" />
+            <Text className="text-warning flex-1 text-sm">
+              <Text className="text-warning text-sm font-bold">{`${o('important')} `}</Text>
+              {o('rule')}
+            </Text>
+          </View>
+        </Section>
       </ScrollView>
     </>
   );

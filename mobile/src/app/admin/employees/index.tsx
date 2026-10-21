@@ -1,16 +1,18 @@
 import type { Employee, EmployeeKind } from '@studently/api-client';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowDown, ArrowUp, Plus } from 'lucide-react-native';
+import { Plus, SlidersHorizontal } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { DataList } from '@/components/app/data-list';
-import { FilterChips } from '@/components/app/filter-chips';
+import { BottomSheet } from '@/components/app/bottom-sheet';
+import { FilterTag, RoundIcon, SortChips } from '@/components/app/layout';
 import { ListRow } from '@/components/app/list-row';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { SearchBar } from '@/components/app/search-bar';
-import { Badge } from '@/components/ui/badge';
+import { Segmented } from '@/components/app/segmented';
+import { StatusChip } from '@/components/app/status-chip';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
@@ -20,7 +22,6 @@ import { useCampus } from '@/features/campus/campus';
 import { adminEmployees } from '@/lib/api';
 import { usePagedApi } from '@/lib/data';
 import { useDebounced } from '@/lib/use-debounced';
-import { cn } from '@/lib/utils';
 
 /** Teachers (kind=teacher) or other staff (kind=staff) for the selected campus. */
 export default function EmployeesList() {
@@ -32,6 +33,7 @@ export default function EmployeesList() {
   const [search, setSearch] = useState('');
   const [staffRole, setStaffRole] = useState<EmployeeKind>('all');
   const [showInactive, setShowInactive] = useState(false);
+  const [sheet, setSheet] = useState(false);
   const [sort, setSort] = useState<{ key: 'name' | 'number' | 'type' | 'department' | 'status'; dir: 1 | -1 }>({ key: 'name', dir: 1 });
   const q = useDebounced(search.trim());
   const kind: EmployeeKind = isTeacher ? 'teacher' : staffRole;
@@ -57,10 +59,15 @@ export default function EmployeesList() {
         }}
       />
       <View className="bg-background flex-1">
-        <View className="gap-3 px-4 pt-3 pb-2">
-          <SearchBar value={search} onChangeText={setSearch} placeholder={t(`${ns}.searchPlaceholder`)} />
+        <View className="gap-3 px-4 pt-3 pb-3">
+          <View className="flex-row items-center gap-2">
+            <View className="flex-1">
+              <SearchBar value={search} onChangeText={setSearch} placeholder={t(`${ns}.searchPlaceholder`)} />
+            </View>
+            <RoundIcon icon={SlidersHorizontal} label={t('app.st_filters')} count={showInactive ? 1 : 0} onPress={() => setSheet(true)} />
+          </View>
           {!isTeacher ? (
-            <FilterChips<EmployeeKind>
+            <Segmented<EmployeeKind>
               value={staffRole}
               onChange={setStaffRole}
               options={[
@@ -70,30 +77,12 @@ export default function EmployeesList() {
               ]}
             />
           ) : null}
-          <View className="flex-row items-center gap-3">
-            <Switch checked={showInactive} onCheckedChange={setShowInactive} />
-            <Text className="flex-1 text-sm">{t('teachers.showInactive')}</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-1.5">
-            {(
-              [
-                ['name', t('teachers.table.name')],
-                ['number', t('teachers.table.employeeNumber')],
-                ['type', t('teachers.table.type')],
-                ['department', t('teachers.table.department')],
-                ['status', t('teachers.table.status')],
-              ] as const
-            ).map(([key, label]) => (
-              <Pressable key={key} onPress={() => setSort((p) => (p.key === key ? { key, dir: p.dir === 1 ? -1 : 1 } : { key, dir: 1 }))} className={cn('flex-row items-center gap-1 rounded-full border px-2.5 py-1', sort.key === key ? 'border-primary bg-primary' : 'border-border')}>
-                <Text className={cn('text-xs', sort.key === key ? 'text-primary-foreground' : 'text-foreground')}>{label}</Text>
-                {sort.key === key ? <Icon as={sort.dir === 1 ? ArrowUp : ArrowDown} className="text-primary-foreground size-3" /> : null}
-              </Pressable>
-            ))}
-          </ScrollView>
           {list.data ? (
-            <Text className="text-muted-foreground text-xs">
-              {isTeacher ? t('teachers.totalTeachers') : t('school.grades_module.common.total')}: {list.total ?? list.items.length} · {isTeacher ? t('teachers.activeTeachers') : t('staff.active')}: {list.items.filter((x) => x.is_active !== false).length}
-            </Text>
+            <View className="flex-row flex-wrap gap-1.5">
+              <StatusChip label={`${isTeacher ? t('teachers.totalTeachers') : t('school.grades_module.common.total')}: ${list.total ?? list.items.length}`} tone="info" className="px-2.5 py-1" />
+              <StatusChip label={`${isTeacher ? t('teachers.activeTeachers') : t('staff.active')}: ${list.items.filter((x) => x.is_active !== false).length}`} tone="success" className="px-2.5 py-1" />
+              {showInactive ? <FilterTag label={t('teachers.showInactive')} onClear={() => setShowInactive(false)} /> : null}
+            </View>
           ) : null}
         </View>
         <DataList
@@ -114,19 +103,39 @@ export default function EmployeesList() {
                 title={name}
                 subtitle={[e.employee_number, e.title, e.department].filter(Boolean).join(' · ')}
                 leading={<PersonAvatar url={e.profile?.profile_photo_url ?? e.profile?.avatar_url} name={name} />}
-                trailing={
-                  !e.is_active ? (
-                    <Badge variant="secondary">
-                      <Text>{t(`${ns}.inactive`)}</Text>
-                    </Badge>
-                  ) : undefined
-                }
+                trailing={!e.is_active ? <StatusChip label={t(`${ns}.inactive`)} tone="muted" className="px-2 py-0.5" /> : undefined}
                 onPress={() => router.push({ pathname: '/admin/employees/[id]', params: { id: e.id, kind: isTeacher ? 'teacher' : 'staff' } })}
               />
             );
           }}
         />
       </View>
+      <BottomSheet open={sheet} onClose={() => setSheet(false)} title={t('app.st_filters')}>
+        <View className="gap-4 pb-2">
+          <View className="flex-row items-center gap-3">
+            <Switch checked={showInactive} onCheckedChange={setShowInactive} />
+            <Text className="flex-1 text-sm">{t('teachers.showInactive')}</Text>
+          </View>
+          <View className="gap-1.5">
+            <Text className="text-sm font-semibold">{t('app.st_sort_by')}</Text>
+            <SortChips
+              options={[
+                ['name', t('teachers.table.name')],
+                ['number', t('teachers.table.employeeNumber')],
+                ['type', t('teachers.table.type')],
+                ['department', t('teachers.table.department')],
+                ['status', t('teachers.table.status')],
+              ]}
+              value={sort.key}
+              dir={sort.dir === 1 ? 'asc' : 'desc'}
+              onChange={(key, dir) => setSort({ key, dir: dir === 'asc' ? 1 : -1 })}
+            />
+          </View>
+          <Button onPress={() => setSheet(false)}>
+            <Text>{t('app.st_show_results')}</Text>
+          </Button>
+        </View>
+      </BottomSheet>
     </>
   );
 }

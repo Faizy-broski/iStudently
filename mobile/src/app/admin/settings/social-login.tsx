@@ -4,8 +4,9 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { Copy, Eye, EyeOff, Save } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -75,9 +76,9 @@ export default function SocialLogin() {
         <Text variant="muted">{s('subtitle')}</Text>
         <InfoBanner title={c('setup')}>
           <View className="gap-1">
-            <Text className="text-sm text-blue-800 dark:text-blue-300">{`1. ${s('step1')}`}</Text>
-            <Text className="text-sm text-blue-800 dark:text-blue-300">{`2. ${s('step2')}`}</Text>
-            <Text className="text-sm text-blue-800 dark:text-blue-300">{`3. ${s('step3')}`}</Text>
+            <Text className="text-sm text-brand dark:text-brand-secondary ">{`1. ${s('step1')}`}</Text>
+            <Text className="text-sm text-brand dark:text-brand-secondary ">{`2. ${s('step2')}`}</Text>
+            <Text className="text-sm text-brand dark:text-brand-secondary ">{`3. ${s('step3')}`}</Text>
             <Pressable
               onPress={async () => {
                 await Clipboard.setStringAsync(redirect);
@@ -88,9 +89,9 @@ export default function SocialLogin() {
               <Text className="flex-1 font-mono text-xs" selectable>
                 {redirect}
               </Text>
-              <Icon as={Copy} className="size-4 text-blue-700" />
+              <Icon as={Copy} className="size-4 text-brand dark:text-brand-secondary" />
             </Pressable>
-            <Text className="text-sm text-blue-800 dark:text-blue-300">{`4. ${s('step4')}`}</Text>
+            <Text className="text-sm text-brand dark:text-brand-secondary ">{`4. ${s('step4')}`}</Text>
           </View>
         </InfoBanner>
         <SwitchRow label={s('enable')} hint={c('enable_hint', { provider: s('name') })} value={v.enabled} onChange={(enabled) => set({ enabled })} />
@@ -120,7 +121,7 @@ export default function SocialLogin() {
               <Label>{s('restrict_label')}</Label>
               <Input value={v.restrict} onChangeText={(restrict) => set({ restrict })} placeholder={s('restrict_ph')} autoCapitalize="none" autoCorrect={false} />
               <Text className="text-muted-foreground text-xs">{s('restrict_hint')}</Text>
-              <Text className="text-xs text-amber-700 dark:text-amber-400">{c('important')}</Text>
+              <Text className="text-xs text-warning ">{c('important')}</Text>
             </SettingsCard>
             <SettingsCard title={c('how_title')}>
               {[1, 2, 3, 4, 5].map((n) => (

@@ -3,21 +3,24 @@ import { Stack } from 'expo-router';
 import { Plus, UserMinus, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Initials } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { scopeKey, useHostelScope } from '@/features/admin/hostel';
 import { StudentSearchSelect, type PickedStudent } from '@/features/admin/student-search';
@@ -88,10 +91,7 @@ export default function HostelAssignments() {
             <Text>{a('btn_add')}</Text>
           </Button>
         </View>
-        <View className="gap-1.5">
-          <Label>{a('filter_building')}</Label>
-          <Picker value={building || 'ALL'} onChange={(v) => setBuilding(v === 'ALL' ? '' : v)} options={[{ value: 'ALL', label: a('filter_all') }, ...(buildings.data ?? []).map((b) => ({ value: b.id, label: b.name }))]} />
-        </View>
+        <FilterChips value={building || 'ALL'} onChange={(v) => setBuilding(v === 'ALL' ? '' : v)} options={[{ value: 'ALL', label: a('filter_all') }, ...(buildings.data ?? []).map((b) => ({ value: b.id, label: b.name }))]} />
         <FilterChips
           value={activeOnly ? 'active' : 'all'}
           onChange={(v) => setActiveOnly(v === 'active')}
@@ -105,32 +105,31 @@ export default function HostelAssignments() {
         ) : !data.length ? (
           <EmptyState icon={Users} title={a('msg_no_data')} body={a('msg_no_data_desc')} />
         ) : (
-          <Card className="py-0">
+          <Panel>
             {data.map((x, i) => (
               <View key={x.id}>
                 {i > 0 ? <Separator /> : null}
-                <View className="flex-row items-center gap-2 px-4 py-3">
+                <View className="flex-row items-center gap-3 px-4 py-3">
+                  <Initials name={x.student_name || '?'} />
                   <View className="flex-1 gap-1">
-                    <Text className="font-medium">{x.student_name || x.student_id}</Text>
+                    <Text className="text-sm font-semibold">{x.student_name || x.student_id}</Text>
                     <Text className="text-muted-foreground text-sm">
                       {[x.building_name, x.room_number ? `${a('th_room')} ${x.room_number}` : null, `${a('th_assigned')}: ${date(x.assigned_date)}`].filter(Boolean).join(' · ')}
                     </Text>
-                    <View className={`self-start rounded-full px-2 py-0.5 ${x.is_active ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-secondary'}`}>
-                      <Text className={`text-xs ${x.is_active ? 'text-emerald-700 dark:text-emerald-400' : ''}`}>
-                        {x.is_active ? a('status_active') : `${a('status_released')} ${date(x.released_date)}`.trim()}
-                      </Text>
+                    <View className="flex-row">
+                      <StatusChip label={x.is_active ? a('status_active') : `${a('status_released')} ${date(x.released_date)}`.trim()} tone={x.is_active ? 'success' : 'muted'} />
                     </View>
                   </View>
                   {x.is_active ? (
                     <Button size="sm" variant="ghost" onPress={() => release(x)}>
-                      <Icon as={UserMinus} className="size-4 text-red-500" />
-                      <Text className="text-red-500">{a('btn_release')}</Text>
+                      <Icon as={UserMinus} className="size-4 text-destructive" />
+                      <Text className="text-destructive">{a('btn_release')}</Text>
                     </Button>
                   ) : null}
                 </View>
               </View>
             ))}
-          </Card>
+          </Panel>
         )}
       </ScrollView>
       <Dialog open={open} onOpenChange={setOpen}>

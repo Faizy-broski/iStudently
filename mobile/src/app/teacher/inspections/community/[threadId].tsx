@@ -1,14 +1,16 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Send, User } from 'lucide-react-native';
+import { MessagesSquare, Send } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
+import { HeroCard, Initials } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,50 +40,47 @@ export default function TeacherForumThread() {
   }
 
   if (res.isLoading) return <LoadingList rows={4} />;
-  if (!th) return <Text className="text-muted-foreground p-6 text-center">{k('thread_not_found')}</Text>;
+  if (!th) return <EmptyState icon={MessagesSquare} title={k('thread_not_found')} />;
   return (
     <>
       <Stack.Screen options={{ title: th.title }} />
-      <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-          <Card>
-            <CardContent className="gap-2 p-4">
-              <Text className="text-lg font-semibold">{th.title}</Text>
-              {th.subject ? (
-                <Badge variant="outline" className="self-start">
-                  <Text className="text-xs">{th.subject.name}</Text>
-                </Badge>
-              ) : null}
-            </CardContent>
-          </Card>
-          {th.posts.map((p) => (
-            <Card key={p.id}>
-              <CardContent className="gap-2 p-3">
-                <View className="flex-row items-center gap-2">
-                  <View className="size-7 items-center justify-center rounded-full bg-[#022172]/10">
-                    <Icon as={User} className="size-3.5 text-[#022172] dark:text-blue-300" />
+          <HeroCard>
+            <Text className="text-lg font-bold text-white">{th.title}</Text>
+            {th.subject ? (
+              <View className="self-start rounded-full bg-white/15 px-2.5 py-1">
+                <Text className="text-[11px] font-semibold text-white">{th.subject.name}</Text>
+              </View>
+            ) : null}
+          </HeroCard>
+          {th.posts.map((p) => {
+            const author = p.author ? `${p.author.first_name} ${p.author.last_name}` : '';
+            return (
+              <Panel key={p.id} className="gap-2 p-4">
+                <View className="flex-row items-center gap-2.5">
+                  <Initials name={author || '?'} tone={p.author?.role === 'inspector' ? 'warning' : 'brand'} size={32} />
+                  <View className="flex-1 gap-0.5">
+                    <View className="flex-row flex-wrap items-center gap-1.5">
+                      <Text className="text-sm font-semibold">{author}</Text>
+                      {p.author?.role === 'inspector' ? <StatusChip label={k('inspector_badge')} tone="warning" /> : null}
+                    </View>
+                    <Text variant="muted" className="text-[11px]">
+                      {formatDateTime(p.created_at)}
+                    </Text>
                   </View>
-                  <Text className="text-sm font-medium">{p.author ? `${p.author.first_name} ${p.author.last_name}` : ''}</Text>
-                  {p.author?.role === 'inspector' ? (
-                    <Badge variant="secondary">
-                      <Text className="text-[10px]">{k('inspector_badge')}</Text>
-                    </Badge>
-                  ) : null}
-                  <Text className="text-muted-foreground ms-auto text-xs">{formatDateTime(p.created_at)}</Text>
                 </View>
                 <Text className="text-sm">{p.body}</Text>
-              </CardContent>
-            </Card>
-          ))}
-          <Card>
-            <CardContent className="gap-2 p-3">
-              <Textarea value={reply} onChangeText={setReply} placeholder={k('field_reply_placeholder')} numberOfLines={3} />
-              <Button size="sm" className="self-end" onPress={send} disabled={busy || !reply.trim()}>
-                <Icon as={Send} className="text-primary-foreground size-4 rtl:-scale-x-100" />
-                <Text>{k('btn_reply')}</Text>
-              </Button>
-            </CardContent>
-          </Card>
+              </Panel>
+            );
+          })}
+          <Panel className="gap-2 p-3">
+            <Textarea value={reply} onChangeText={setReply} placeholder={k('field_reply_placeholder')} numberOfLines={3} />
+            <Button size="sm" className="self-end rounded-full" onPress={send} disabled={busy || !reply.trim()}>
+              <Icon flipRtl as={Send} className="text-primary-foreground size-4" />
+              <Text>{k('btn_reply')}</Text>
+            </Button>
+          </Panel>
         </ScrollView>
       </KeyboardAvoidingView>
     </>

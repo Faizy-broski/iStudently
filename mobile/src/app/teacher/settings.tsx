@@ -1,15 +1,18 @@
 import Storage from 'expo-sqlite/kv-store';
 import { router, Stack } from 'expo-router';
-import { Bell, Clock, Lock, Mail, Phone, Save, Settings, User } from 'lucide-react-native';
+import { Bell, Camera, Clock, Fingerprint, Hash, KeyRound, Mail, Phone, QrCode, Save, Settings, ShieldCheck, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
+import { FormSection, RowPill } from '@/components/app/layout';
+import { ActionRow, InfoRow, Panel, PanelTitle } from '@/components/app/panel';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -102,158 +105,93 @@ export default function TeacherSettings() {
     <>
       <Stack.Screen options={{ title: k('settings') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        <Text variant="muted">{k('manageProfileAndPreferences')}</Text>
+        <Text variant="muted" className="text-sm">
+          {k('manageProfileAndPreferences')}
+        </Text>
 
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={User} className="size-5" />
-            <View className="flex-1">
-              <CardTitle>{k('profileInformation')}</CardTitle>
-              <Text className="text-muted-foreground text-sm">{k('updateYourPersonalDetails')}</Text>
+        <FormSection title={k('profileInformation')} description={k('updateYourPersonalDetails')} icon={User}>
+          <View className="flex-row items-center gap-4">
+            <View className="border-info-soft rounded-full border-2">
+              <PersonAvatar url={profile.profile_photo_url} name={name} size={72} />
             </View>
-          </CardHeader>
-          <CardContent className="gap-4">
-            <View className="flex-row items-center gap-4">
-              <PersonAvatar url={profile.profile_photo_url} name={name} size={80} />
-              <View className="flex-1 gap-1">
-                <Button variant="outline" size="sm" className="self-start" onPress={changePhoto} disabled={saving === 'photo'}>
-                  <Text>{k('changePhoto')}</Text>
-                </Button>
-                <Text className="text-muted-foreground text-xs">{k('photoFormatHint')}</Text>
-              </View>
+            <View className="flex-1 items-start gap-1.5">
+              <RowPill icon={Camera} label={k('changePhoto')} onPress={() => (saving === 'photo' ? undefined : changePhoto())} />
+              <Text variant="muted" className="text-[11px]">
+                {k('photoFormatHint')}
+              </Text>
             </View>
-            <Separator />
-            <Field label={k('firstName')} value={form.first} onChange={(v) => setForm({ ...form, first: v })} placeholder={k('enterFirstName')} />
-            <Field label={k('lastName')} value={form.last} onChange={(v) => setForm({ ...form, last: v })} placeholder={k('enterLastName')} />
-            <Field label={k('emailAddress')} icon={Mail} value={profile.email ?? ''} editable={false} />
-            <Field label={k('phoneNumber')} icon={Phone} value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} keyboardType="phone-pad" placeholder={k('enterPhoneNumber')} />
-            <Button className="self-end" onPress={saveProfile} disabled={saving === 'profile'}>
-              <Icon as={Save} className="text-primary-foreground size-4" />
-              <Text>{k('saveProfile')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
+          </View>
+          <Separator />
+          <Field label={k('firstName')} value={form.first} onChange={(v) => setForm({ ...form, first: v })} placeholder={k('enterFirstName')} />
+          <Field label={k('lastName')} value={form.last} onChange={(v) => setForm({ ...form, last: v })} placeholder={k('enterLastName')} />
+          <Field label={k('emailAddress')} icon={Mail} value={profile.email ?? ''} editable={false} />
+          <Field label={k('phoneNumber')} icon={Phone} value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} keyboardType="phone-pad" placeholder={k('enterPhoneNumber')} />
+          <Button className="self-end rounded-full" onPress={saveProfile} disabled={saving === 'profile'}>
+            <Icon as={Save} className="text-primary-foreground size-4" />
+            <Text>{k('saveProfile')}</Text>
+          </Button>
+        </FormSection>
 
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={Bell} className="size-5" />
-            <View className="flex-1">
-              <CardTitle>{k('notificationPreferences')}</CardTitle>
-              <Text className="text-muted-foreground text-sm">{k('chooseWhatNotifications')}</Text>
-            </View>
-          </CardHeader>
-          <CardContent className="gap-4">
-            {NOTIFY.map(([key, title, desc]) => (
-              <View key={key} className="flex-row items-center gap-3">
-                <View className="flex-1">
-                  <Text className="font-medium">{k(title)}</Text>
-                  <Text className="text-muted-foreground text-xs">{k(desc)}</Text>
-                </View>
-                <Switch checked={notify[key]} onCheckedChange={(v) => setNotify({ ...notify, [key]: v })} />
-              </View>
-            ))}
-            <Button className="self-end" onPress={saveNotify}>
-              <Icon as={Save} className="text-primary-foreground size-4" />
-              <Text>{k('savePreferences')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center gap-2">
-            <Icon as={Lock} className="size-5" />
-            <View className="flex-1">
-              <CardTitle>{k('changePassword')}</CardTitle>
-              <Text className="text-muted-foreground text-sm">{k('updateYourAccountPassword')}</Text>
-            </View>
-          </CardHeader>
-          <CardContent className="gap-4">
-            <Button variant="outline" className="self-start" onPress={() => router.push('/change-password')}>
-              <Text>{k('changePassword')}</Text>
-            </Button>
-            <Separator />
-            <View className="flex-row items-center gap-3">
+        <FormSection title={k('notificationPreferences')} description={k('chooseWhatNotifications')} icon={Bell}>
+          {NOTIFY.map(([key, title, desc]) => (
+            <View key={key} className="flex-row items-center gap-3">
               <View className="flex-1">
-                <Text className="font-medium">{t('app.pa_set_two_fa')}</Text>
-                <Text className="text-muted-foreground text-xs">{t('app.pa_set_two_fa_desc')}</Text>
+                <Text className="text-sm font-semibold">{k(title)}</Text>
+                <Text variant="muted" className="text-[11px]">
+                  {k(desc)}
+                </Text>
               </View>
-              <Button variant="outline" size="sm" onPress={() => router.push({ pathname: '/two-fa', params: { mode: 'setup' } })}>
-                <Text>{t('app.pa_set_enable_2fa')}</Text>
-              </Button>
+              <Switch checked={notify[key]} onCheckedChange={(v) => setNotify({ ...notify, [key]: v })} />
             </View>
-            <Separator />
-            <Button variant="ghost" size="sm" className="self-start" onPress={() => router.push('/settings')}>
-              <Icon as={Settings} className="size-4" />
-              <Text>{t('app.pa_set_app_settings')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
+          ))}
+          <Button className="self-end rounded-full" onPress={saveNotify}>
+            <Icon as={Save} className="text-primary-foreground size-4" />
+            <Text>{k('savePreferences')}</Text>
+          </Button>
+        </FormSection>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{k('accountInformation')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-2">
-            <Info label={k('userId')} value={`${profile.id.slice(0, 8)}...`} />
-            <Info label={k('role')} value={t(`app.role_${profile.role}`, { defaultValue: profile.role })} />
-            <Info label={k('campusId')} value={profile.school_id ? `${profile.school_id.slice(0, 8)}...` : '—'} />
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-row items-center gap-1">
-                <Icon as={Clock} className="text-muted-foreground size-3.5" />
-                <Text className="text-muted-foreground text-sm">{k('lastLogin')}</Text>
-              </View>
-              <Text className="text-sm font-medium">{last.data?.last_sign_in ? formatDateTime(last.data.last_sign_in) : '—'}</Text>
-            </View>
-          </CardContent>
-        </Card>
+        <Panel>
+          <PanelTitle title={k('changePassword')} />
+          <Text variant="muted" className="px-4 pb-2 text-xs">
+            {k('updateYourAccountPassword')}
+          </Text>
+          <ActionRow icon={KeyRound} title={k('changePassword')} onPress={() => router.push('/change-password')} />
+          <ActionRow
+            icon={ShieldCheck}
+            title={t('app.pa_set_two_fa')}
+            subtitle={t('app.pa_set_two_fa_desc')}
+            onPress={() => router.push({ pathname: '/two-fa', params: { mode: 'setup' } })}
+            trailing={<RowPill label={t('app.pa_set_enable_2fa')} onPress={() => router.push({ pathname: '/two-fa', params: { mode: 'setup' } })} />}
+          />
+          <ActionRow icon={Settings} title={t('app.pa_set_app_settings')} onPress={() => router.push('/settings')} last />
+        </Panel>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{k('myQrCode')}</CardTitle>
-            <Text className="text-muted-foreground text-sm">{k('scanToVerifyIdentity')}</Text>
-          </CardHeader>
-          <CardContent className="items-center gap-3">
-            <View className="rounded-xl bg-white p-4" accessibilityRole="image" accessibilityLabel={k('myQrCode')}>
-              <QRCode value={`${env.webUrl}/verify/${profile.id}`} size={180} bgColor="#FFFFFF" fgColor="#000000" />
+        <Panel>
+          <PanelTitle title={k('accountInformation')} />
+          <InfoRow icon={Fingerprint} label={k('userId')} value={`${profile.id.slice(0, 8)}...`} />
+          <InfoRow icon={User} label={k('role')} value={t(`app.role_${profile.role}`, { defaultValue: profile.role })} />
+          <InfoRow icon={Hash} label={k('campusId')} value={profile.school_id ? `${profile.school_id.slice(0, 8)}...` : '—'} />
+          <InfoRow icon={Clock} label={k('lastLogin')} value={last.data?.last_sign_in ? formatDateTime(last.data.last_sign_in) : '—'} last />
+        </Panel>
+
+        <FormSection title={k('myQrCode')} description={k('scanToVerifyIdentity')} icon={QrCode}>
+          <View className="items-center gap-3">
+            <View className="rounded-2xl bg-white p-4" accessibilityRole="image" accessibilityLabel={k('myQrCode')}>
+              <QRCode value={`${env.webUrl}/verify/${profile.id}`} size={180} bgColor={colors.white} fgColor={colors.black} />
             </View>
-            <Text className="font-medium">{`${name} · ${t(`app.role_${profile.role}`, { defaultValue: profile.role })}`}</Text>
-          </CardContent>
-        </Card>
+            <Text className="text-sm font-semibold">{`${name} · ${t(`app.role_${profile.role}`, { defaultValue: profile.role })}`}</Text>
+          </View>
+        </FormSection>
       </ScrollView>
     </>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="flex-row items-center justify-between gap-2">
-      <Text className="text-muted-foreground text-sm">{label}</Text>
-      <Text className="text-sm font-medium">{value}</Text>
-    </View>
-  );
-}
-
-function Field({
-  label,
-  icon,
-  value,
-  onChange,
-  editable = true,
-  placeholder,
-  keyboardType,
-}: {
-  label: string;
-  icon?: typeof Mail;
-  value: string;
-  onChange?: (v: string) => void;
-  editable?: boolean;
-  placeholder?: string;
-  keyboardType?: 'phone-pad';
-}) {
+function Field({ label, icon, value, onChange, editable = true, placeholder, keyboardType }: { label: string; icon?: typeof Mail; value: string; onChange?: (v: string) => void; editable?: boolean; placeholder?: string; keyboardType?: 'phone-pad' }) {
   return (
     <View className="gap-1.5">
       <View className="flex-row items-center gap-2">
-        {icon ? <Icon as={icon} className="size-4" /> : null}
+        {icon ? <Icon as={icon} className="text-brand dark:text-brand-secondary size-4" /> : null}
         <Label>{label}</Label>
       </View>
       <Input value={value} onChangeText={onChange} editable={editable} placeholder={placeholder} keyboardType={keyboardType} className={editable ? undefined : 'opacity-60'} />

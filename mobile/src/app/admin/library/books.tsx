@@ -1,12 +1,14 @@
 import type { Book, LibraryCategory } from '@studently/shared-types';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
-import { AlertTriangle, Barcode, BookOpen, CheckCircle, FolderOpen, ImageIcon, Layers, Pencil, Plus, RotateCcw, Trash2, Upload, Users, Zap } from 'lucide-react-native';
+import { Barcode, BookOpen, FolderOpen, Layers, Pencil, Plus, RotateCcw, Trash2, Upload, Users, Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
@@ -18,6 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { StatusChip } from '@/components/app/status-chip';
+import { FilterTag, UsageBar } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { ColorSwatches, isLibraryKey, useLibraryCategories } from '@/features/admin/library';
 import { useRoleBase } from '@/features/portal/role-base';
@@ -42,7 +46,7 @@ export default function LibraryBooks() {
   const [catOpen, setCatOpen] = useState(false);
   const [editing, setEditing] = useState<LibraryCategory | null>(null);
   const [catName, setCatName] = useState('');
-  const [catColor, setCatColor] = useState('#3B82F6');
+  const [catColor, setCatColor] = useState(colors.brandSecondary);
   const [catParent, setCatParent] = useState<string | null>(null);
   const [savingCat, setSavingCat] = useState(false);
 
@@ -54,7 +58,7 @@ export default function LibraryBooks() {
   const openCat = (cat: LibraryCategory | null, parentId: string | null = null) => {
     setEditing(cat);
     setCatName(cat?.name ?? '');
-    setCatColor(cat?.color_code || '#3B82F6');
+    setCatColor(cat?.color_code || colors.brandSecondary);
     setCatParent(cat ? cat.parent_category_id : parentId);
     setCatOpen(true);
   };
@@ -99,10 +103,10 @@ export default function LibraryBooks() {
     const active = category === cat.id;
     const readOnly = cat.is_global;
     return (
-      <View key={cat.id} className={cn('flex-row items-center gap-1 rounded-full border px-3 py-1', child && 'ms-4', active ? 'border-primary/30 bg-primary/10' : 'border-border bg-background')}>
+      <View key={cat.id} className={cn('flex-row items-center gap-1 rounded-full border px-3 py-1', child && 'ms-4', active ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border bg-card')}>
         <Pressable onPress={() => setCategory(cat.id)} className="flex-row items-center gap-2">
-          <View className="size-2.5 rounded-full" style={{ backgroundColor: cat.color_code || '#6B7280' }} />
-          <Text className={cn('text-sm', active ? 'text-primary font-medium' : 'text-muted-foreground')}>{cat.name}</Text>
+          <View className="size-2.5 rounded-full" style={{ backgroundColor: cat.color_code || colors.printMuted }} />
+          <Text className={cn('text-sm', active ? 'text-brand dark:text-brand-secondary font-semibold' : 'text-muted-foreground')}>{cat.name}</Text>
         </Pressable>
         {!readOnly ? (
           <>
@@ -124,10 +128,15 @@ export default function LibraryBooks() {
   };
 
   const action = (icon: typeof Pencil, label: string, onPress: () => void, opts: { destructive?: boolean; disabled?: boolean } = {}) => (
-    <Button size="sm" variant={opts.destructive ? 'destructive' : 'outline'} disabled={opts.disabled} onPress={onPress} accessibilityLabel={label}>
-      <Icon as={icon} className={cn('size-3.5', opts.destructive ? 'text-white' : 'text-foreground')} />
-      <Text className="text-xs">{label}</Text>
-    </Button>
+    <Pressable
+      disabled={opts.disabled}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className={cn('flex-row items-center gap-1 rounded-full px-3 py-1.5 active:opacity-70', opts.destructive ? 'bg-destructive-soft' : 'bg-info-soft', opts.disabled && 'opacity-40')}>
+      <Icon as={icon} className={cn('size-3.5', opts.destructive ? 'text-destructive' : 'text-brand dark:text-brand-secondary')} />
+      <Text className={cn('text-xs font-semibold', opts.destructive ? 'text-destructive' : 'text-brand dark:text-brand-secondary')}>{label}</Text>
+    </Pressable>
   );
 
   return (
@@ -172,11 +181,11 @@ export default function LibraryBooks() {
             </View>
             <Pressable
               onPress={() => setCategory(null)}
-              className={cn('flex-row items-center gap-2 self-start rounded-full border px-3 py-1', category === null ? 'border-primary bg-primary' : 'border-border')}>
-              <Icon as={FolderOpen} className={cn('size-3.5', category === null ? 'text-primary-foreground' : 'text-muted-foreground')} />
-              <Text className={cn('text-sm', category === null ? 'text-primary-foreground' : 'text-muted-foreground')}>{t('app.lb_all_documents')}</Text>
-              <View className="bg-secondary rounded-full px-1.5">
-                <Text className="text-xs">{categories.length}</Text>
+              className={cn('flex-row items-center gap-2 self-start rounded-full border px-3 py-1.5', category === null ? 'border-brand bg-brand dark:border-brand-secondary dark:bg-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
+              <Icon as={FolderOpen} className={cn('size-3.5', category === null ? 'text-white' : 'text-muted-foreground')} />
+              <Text className={cn('text-sm font-semibold', category === null ? 'text-white' : 'text-muted-foreground')}>{t('app.lb_all_documents')}</Text>
+              <View className={cn('rounded-full px-1.5', category === null ? 'bg-white/25' : 'bg-muted')}>
+                <Text className={cn('text-xs', category === null ? 'text-white' : 'text-muted-foreground')}>{categories.length}</Text>
               </View>
             </Pressable>
             {cats.isLoading ? (
@@ -199,14 +208,9 @@ export default function LibraryBooks() {
         </Card>
 
         <SearchBar value={search} onChangeText={setSearch} placeholder={v('search_placeholder')} />
-        <View className="flex-row items-center gap-2">
-          <Icon as={BookOpen} className="text-foreground size-4" />
-          <Text className="font-semibold">{v('documents_count', { count: list.length })}</Text>
-          {category ? (
-            <View className="bg-secondary rounded-full px-2 py-0.5">
-              <Text className="text-xs">{catOf(category)?.name}</Text>
-            </View>
-          ) : null}
+        <View className="flex-row flex-wrap items-center gap-1.5">
+          <StatusChip label={v('documents_count', { count: list.length })} tone="info" className="px-2.5 py-1" />
+          {category ? <FilterTag label={catOf(category)?.name ?? ''} onClear={() => setCategory(null)} /> : null}
         </View>
 
         {books.isLoading ? (
@@ -221,27 +225,28 @@ export default function LibraryBooks() {
               <Card key={b.id}>
                 <CardContent className="gap-3 pt-4">
                   <View className="flex-row gap-3">
-                    <View className="bg-muted h-16 w-12 items-center justify-center overflow-hidden rounded">
-                      {b.cover_image_url ? <Image source={{ uri: b.cover_image_url }} style={{ width: 48, height: 64 }} contentFit="cover" /> : <Icon as={ImageIcon} className="text-muted-foreground size-5" />}
+                    <View className="bg-info-soft h-20 w-14 items-center justify-center overflow-hidden rounded-xl">
+                      {b.cover_image_url ? <Image source={{ uri: b.cover_image_url }} style={{ width: 56, height: 80 }} contentFit="cover" /> : <Icon as={BookOpen} className="text-brand dark:text-brand-secondary size-6" />}
                     </View>
                     <View className="flex-1 gap-1">
                       <View className="flex-row flex-wrap items-center gap-1.5">
-                        {cat ? <View className="size-2.5 rounded-full" style={{ backgroundColor: cat.color_code || '#6B7280' }} /> : null}
+                        {cat ? <View className="size-2.5 rounded-full" style={{ backgroundColor: cat.color_code || colors.printMuted }} /> : null}
                         <Text className="font-semibold">{b.title}</Text>
                         {b.document_type && b.document_type !== 'book' ? (
-                          <View className="border-border rounded border px-1.5">
-                            <Text className="text-[10px]">{b.document_type}</Text>
-                          </View>
+                          <StatusChip label={b.document_type} tone="muted" className="px-2 py-0.5" />
                         ) : null}
                       </View>
                       <Text className="text-muted-foreground text-sm">{b.author}</Text>
-                      <Text className="text-muted-foreground text-xs">
-                        {t('app.lb_ref_isbn')}: {b.reference || b.isbn || t('common.na', { defaultValue: 'N/A' })} · {t('app.lb_copies')}: {b.available_copies} / {b.total_copies}
+                      <Text variant="muted" className="text-[11px]">
+                        {t('app.lb_ref_isbn')}: {b.reference || b.isbn || t('common.na', { defaultValue: 'N/A' })}
                       </Text>
-                      <View className={cn('flex-row items-center gap-1 self-start rounded-full px-2 py-0.5', available ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30')}>
-                        <Icon as={available ? CheckCircle : AlertTriangle} className={cn('size-3', available ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400')} />
-                        <Text className={cn('text-xs', available ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400')}>{available ? v('status.available') : v('status.unavailable')}</Text>
+                      <View className="flex-row items-center gap-2">
+                        <View className="flex-1">
+                          <UsageBar used={b.total_copies - b.available_copies} total={b.total_copies || 1} />
+                        </View>
+                        <Text variant="muted" className="text-[11px]">{`${b.available_copies}/${b.total_copies}`}</Text>
                       </View>
+                      <StatusChip label={available ? v('status.available') : v('status.unavailable')} tone={available ? 'success' : 'destructive'} className="self-start px-2 py-0.5" />
                     </View>
                   </View>
                   <View className="flex-row flex-wrap gap-1.5">

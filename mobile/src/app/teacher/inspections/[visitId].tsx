@@ -1,15 +1,17 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Camera, MessageSquareWarning, Mic, TrendingUp } from 'lucide-react-native';
+import { Camera, ClipboardCheck, FileText, MessageSquareWarning, Mic } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { ScrollView } from '@/components/app/keyboard';
+import { HeroCard, RowItem, RowPill, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { ErrorState, EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -52,79 +54,69 @@ export default function TeacherInspectionEvaluation() {
     <>
       <Stack.Screen options={{ title: k('page_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        {res.error ? <Text className="text-destructive text-sm">{res.error.message}</Text> : null}
+        {res.error ? <ErrorState message={res.error.message} onRetry={() => res.mutate()} /> : null}
         {!ev ? (
-          <Text className="text-muted-foreground py-12 text-center text-sm">{k('not_available')}</Text>
+          <EmptyState icon={ClipboardCheck} title={k('not_available')} />
         ) : (
           <>
-            <Card>
-              <CardContent className="flex-row items-center justify-between p-4">
-                <Text className="text-lg font-semibold">{k('page_title')}</Text>
+            <HeroCard>
+              <View className="flex-row items-center justify-between gap-3">
+                <View className="flex-row flex-1 items-center gap-2.5">
+                  <View className="size-10 items-center justify-center rounded-xl bg-white/15">
+                    <Icon as={ClipboardCheck} className="size-5 text-white" />
+                  </View>
+                  <Text className="flex-1 text-base font-semibold text-white">{k('page_title')}</Text>
+                </View>
                 {ev.overall_score !== null ? (
-                  <View className="flex-row items-center gap-1">
-                    <Icon as={TrendingUp} className="size-4 text-[#022172] dark:text-blue-300" />
-                    <Text className="text-xl font-bold">{String(ev.overall_score)}</Text>
-                    <Text className="text-muted-foreground text-xs">/ 100</Text>
+                  <View className="flex-row items-baseline gap-1">
+                    <Text className="text-3xl font-bold text-white">{String(ev.overall_score)}</Text>
+                    <Text className="text-xs text-white/80">/ 100</Text>
                   </View>
                 ) : null}
-              </CardContent>
-            </Card>
+              </View>
+            </HeroCard>
             {(ev.rubric_template?.categories ?? []).map((cat) => (
-              <Card key={cat.id}>
-                <CardHeader>
-                  <View className="flex-row items-center gap-2">
-                    <CardTitle className="text-base">{cat.name}</CardTitle>
-                    <Badge variant="outline">
-                      <Text className="text-[10px]">{`${cat.weight}%`}</Text>
-                    </Badge>
-                  </View>
-                </CardHeader>
-                <CardContent className="gap-3">
-                  {cat.criteria.map((crit) => {
-                    const s = scores.get(crit.id);
-                    return (
-                      <View key={crit.id} className="flex-row items-start justify-between gap-3">
-                        <View className="flex-1">
-                          <Text className="text-sm font-medium">{crit.name}</Text>
-                          {s?.comment ? <Text className="text-muted-foreground text-xs">{s.comment}</Text> : null}
+              <Panel key={cat.id}>
+                <View className="flex-row items-center gap-2 px-4 pb-1 pt-4">
+                  <Text className="flex-1 text-base font-semibold">{cat.name}</Text>
+                  <StatusChip label={`${cat.weight}%`} tone="info" />
+                </View>
+                {cat.criteria.map((crit, i) => {
+                  const s = scores.get(crit.id);
+                  return (
+                    <RowItem
+                      key={crit.id}
+                      title={crit.name}
+                      meta={s?.comment || null}
+                      last={i === cat.criteria.length - 1}
+                      trailing={
+                        <View className="bg-info-soft size-9 items-center justify-center rounded-full">
+                          <Text className="text-brand dark:text-brand-secondary text-sm font-bold">{s ? String(s.score) : '—'}</Text>
                         </View>
-                        <View className="size-8 items-center justify-center rounded-full bg-[#022172]/10">
-                          <Text className="text-sm font-semibold text-[#022172] dark:text-blue-300">{s ? String(s.score) : '—'}</Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </CardContent>
-              </Card>
+                      }
+                    />
+                  );
+                })}
+              </Panel>
             ))}
             {ev.evidence.length ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{k('evidence_title')}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-row flex-wrap gap-2">
+              <Section title={k('evidence_title')}>
+                <View className="flex-row flex-wrap gap-2">
                   {ev.evidence.map((e) => (
-                    <Button key={e.id} size="sm" variant="outline" onPress={() => openEvidence(e.id)}>
-                      <Icon as={e.file_type === 'photo' ? Camera : Mic} className="size-3" />
-                      <Text className="max-w-[140px]" numberOfLines={1}>
-                        {e.file_name}
-                      </Text>
-                    </Button>
+                    <RowPill key={e.id} icon={e.file_type === 'photo' ? Camera : Mic} label={e.file_name.length > 24 ? `${e.file_name.slice(0, 22)}…` : e.file_name} onPress={() => openEvidence(e.id)} />
                   ))}
-                </CardContent>
-              </Card>
+                </View>
+              </Section>
             ) : null}
             {ev.inspector_notes ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{k('notes_title')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Text className="text-sm">{ev.inspector_notes}</Text>
-                </CardContent>
-              </Card>
+              <Section title={k('notes_title')}>
+                <Panel className="flex-row gap-3 p-4">
+                  <Icon as={FileText} className="text-brand dark:text-brand-secondary mt-0.5 size-4" />
+                  <Text className="flex-1 text-sm">{ev.inspector_notes}</Text>
+                </Panel>
+              </Section>
             ) : null}
-            <Button variant="outline" className="self-end" onPress={() => setAppealOpen(true)}>
+            <Button variant="outline" className="border-destructive/30 bg-destructive-soft self-stretch rounded-full" onPress={() => setAppealOpen(true)}>
               <Icon as={MessageSquareWarning} className="text-destructive size-4" />
               <Text className="text-destructive">{k('btn_file_appeal')}</Text>
             </Button>

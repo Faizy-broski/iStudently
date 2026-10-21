@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { Picker } from '@/components/app/picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,19 +88,19 @@ export function payslipPageHtml(p: Payslip, t: TFunction, money: (n: number) => 
     list
       .map(
         (r) =>
-          `<tr><td style="padding:4px ${r.sub ? '0 4px 16px' : '0'};border-bottom:1px solid #eee;${r.sub ? 'color:#666;font-size:11px' : ''}">${escapeHtml(r.label)}</td><td style="padding:4px 0;border-bottom:1px solid #eee;text-align:end;color:${color};${r.sub ? 'font-size:11px' : ''}">${escapeHtml(money(r.amount))}</td></tr>`,
+          `<tr><td style="padding:4px ${r.sub ? '0 4px 16px' : '0'};border-bottom:1px solid ${colors.printBorder};${r.sub ? `color:${colors.printMuted};font-size:11px` : ''}">${escapeHtml(r.label)}</td><td style="padding:4px 0;border-bottom:1px solid ${colors.printBorder};text-align:end;color:${color};${r.sub ? 'font-size:11px' : ''}">${escapeHtml(money(r.amount))}</td></tr>`,
       )
       .join('');
   const table = (title: string, list: Row[], total: number, color: string, empty?: string) =>
     `<table style="width:100%;border-collapse:collapse;margin-top:14px"><tr><th colspan="2" style="text-align:start;padding:6px 0;border-bottom:2px solid ${color};color:${color};font-size:12px">${escapeHtml(title)}</th></tr>${
-      list.length ? rows(list, color) : `<tr><td colspan="2" style="padding:12px 0;color:#94a3b8;text-align:center">${escapeHtml(empty ?? '')}</td></tr>`
+      list.length ? rows(list, color) : `<tr><td colspan="2" style="padding:12px 0;color:${colors.printMuted};text-align:center">${escapeHtml(empty ?? '')}</td></tr>`
     }<tr><td style="padding:6px 0;font-weight:700">${escapeHtml(t('payslip.label_total'))}</td><td style="padding:6px 0;text-align:end;font-weight:700;color:${color}">${escapeHtml(money(total))}</td></tr></table>`;
   return `<div class="record-header"><span>${escapeHtml(t('payslip.title', { name, period: monthLabel(t, p.month, p.year) }))}</span><span class="rh-right">${escapeHtml(t(`common.${p.status}`))}</span></div>
     <table style="width:100%;margin-top:10px"><tr>
-      <td style="vertical-align:top"><div style="color:#666;font-size:10px">${escapeHtml(t('payslip.label_employee'))}</div><div style="font-weight:600">${escapeHtml(name)}</div><div style="color:#666">${escapeHtml(p.staff?.title ?? p.staff?.designation ?? '')}</div></td>
-      <td style="vertical-align:top;text-align:end"><div style="color:#666;font-size:10px">${escapeHtml(t('payslip.label_id_period'))}</div><div style="font-weight:600">${escapeHtml(p.staff?.employee_number ?? '')}</div><div style="color:#666">${escapeHtml(monthLabel(t, p.month, p.year))}</div></td>
+      <td style="vertical-align:top"><div style="color:${colors.printMuted};font-size:10px">${escapeHtml(t('payslip.label_employee'))}</div><div style="font-weight:600">${escapeHtml(name)}</div><div style="color:${colors.printMuted}">${escapeHtml(p.staff?.title ?? p.staff?.designation ?? '')}</div></td>
+      <td style="vertical-align:top;text-align:end"><div style="color:${colors.printMuted};font-size:10px">${escapeHtml(t('payslip.label_id_period'))}</div><div style="font-weight:600">${escapeHtml(p.staff?.employee_number ?? '')}</div><div style="color:${colors.printMuted}">${escapeHtml(monthLabel(t, p.month, p.year))}</div></td>
     </tr></table>
-    ${table(t('payslip.label_earnings'), earnings, totalEarnings, '#16a34a')}
-    ${table(t('payslip.label_deductions'), deductions, totalDeductions, '#dc2626', t('payslip.label_no_deductions'))}
-    <div style="margin-top:18px;padding:12px;border:2px solid #111;display:flex;justify-content:space-between;font-weight:700;font-size:15px"><span>${escapeHtml(t('payslip.label_net_salary'))}</span><span>${escapeHtml(money(net))}</span></div>`;
+    ${table(t('payslip.label_earnings'), earnings, totalEarnings, colors.success)}
+    ${table(t('payslip.label_deductions'), deductions, totalDeductions, colors.destructive, t('payslip.label_no_deductions'))}
+    <div style="margin-top:18px;padding:12px;border:2px solid ${colors.printText};display:flex;justify-content:space-between;font-weight:700;font-size:15px"><span>${escapeHtml(t('payslip.label_net_salary'))}</span><span>${escapeHtml(money(net))}</span></div>`;
 }

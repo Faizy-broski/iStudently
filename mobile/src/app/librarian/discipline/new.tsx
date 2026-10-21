@@ -1,16 +1,17 @@
 import type { LibraryStudentHit } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
-import { Info } from 'lucide-react-native';
+import { CalendarDays, Info } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
+import { FormSection, StickyActions } from '@/components/app/layout';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -50,41 +51,39 @@ export default function LibraryIncidentForm() {
   }
 
   return (
-    <>
+    <View className="bg-background flex-1">
       <Stack.Screen options={{ title: k('report_incident') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        <View className="flex-row items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:bg-blue-950/30">
-          <Icon as={Info} className="size-4 text-blue-700" />
-          <Text className="flex-1 text-sm text-blue-800 dark:text-blue-200">{k('incident_note')}</Text>
+        <View className="bg-info-soft flex-row items-start gap-2.5 rounded-2xl p-3.5">
+          <Icon as={Info} className="size-4 text-brand dark:text-brand-secondary" />
+          <Text className="flex-1 text-sm text-brand dark:text-brand-secondary">{k('incident_note')}</Text>
         </View>
         <StudentSelectCard value={student} onChange={setStudent} />
-        <Card>
-          <CardContent className="gap-4 pt-5">
-            <DateField label={`${t('discipline.incidentDate')} *`} value={date} onChange={(v) => v && setDate(v)} />
-            {fields.isLoading ? (
-              <LoadingList rows={2} />
-            ) : !(fields.data ?? []).length ? (
-              <Text className="text-muted-foreground text-sm">{t('teacherPages.disciplineAddReferral.noFieldsConfigured')}</Text>
-            ) : (
-              (fields.data ?? []).map((f, i) => (
-                <View key={f.id} className="gap-1.5">
-                  {i > 0 ? <Separator className="mb-2" /> : null}
-                  <Label>{f.name}</Label>
-                  <DisciplineFieldInput field={f} value={values[f.id]} onChange={(v) => setValues((x) => ({ ...x, [f.id]: v }))} />
-                </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
-        <View className="flex-row gap-2">
-          <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={busy}>
-            <Text>{t('common.cancel')}</Text>
-          </Button>
-          <Button className="flex-1" onPress={submit} disabled={busy || !student}>
-            <Text>{busy ? t('discipline.submitting') : k('report_incident')}</Text>
-          </Button>
-        </View>
+        <FormSection title={t('common.details')} icon={CalendarDays}>
+          <DateField label={`${t('discipline.incidentDate')} *`} value={date} onChange={(v) => v && setDate(v)} />
+          {fields.isLoading ? (
+            <LoadingList rows={2} />
+          ) : !(fields.data ?? []).length ? (
+            <Text className="text-muted-foreground text-sm">{t('teacherPages.disciplineAddReferral.noFieldsConfigured')}</Text>
+          ) : (
+            (fields.data ?? []).map((f, i) => (
+              <View key={f.id} className="gap-1.5">
+                {i > 0 ? <Separator className="mb-2" /> : null}
+                <Label>{f.name}</Label>
+                <DisciplineFieldInput field={f} value={values[f.id]} onChange={(v) => setValues((x) => ({ ...x, [f.id]: v }))} />
+              </View>
+            ))
+          )}
+        </FormSection>
       </ScrollView>
-    </>
+      <StickyActions>
+        <Button variant="outline" className="flex-1" onPress={() => router.back()} disabled={busy}>
+          <Text>{t('common.cancel')}</Text>
+        </Button>
+        <Button className="flex-1" onPress={submit} disabled={busy || !student}>
+          <Text>{busy ? t('discipline.submitting') : k('report_incident')}</Text>
+        </Button>
+      </StickyActions>
+    </View>
   );
 }

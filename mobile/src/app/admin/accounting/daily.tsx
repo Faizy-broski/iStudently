@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
@@ -13,6 +14,7 @@ import { Text } from '@/components/ui/text';
 import { useAcademicYear } from '@/features/admin/use-academic-year';
 import { useCurrency } from '@/features/admin/use-currency';
 import { useCampus } from '@/features/campus/campus';
+import { PrintTableButton } from '@/features/admin/print-table';
 import { adminAccounting } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate } from '@/lib/format';
@@ -56,13 +58,35 @@ export default function AccountingDaily() {
   const line = (label: string, value: number, tone: 'green' | 'red' | 'auto', bold?: boolean) => (
     <View className={cn('flex-row justify-between', bold && 'border-border border-t pt-1')}>
       <Text className={bold ? 'font-bold' : 'text-sm'}>{label}</Text>
-      <Text className={cn(bold ? 'font-bold' : 'text-sm', tone === 'green' || (tone === 'auto' && value >= 0) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>{money(value)}</Text>
+      <Text className={cn(bold ? 'font-bold' : 'text-sm', tone === 'green' || (tone === 'auto' && value >= 0) ? 'text-success ' : 'text-destructive ')}>{money(value)}</Text>
     </View>
   );
 
   return (
     <>
-      <Stack.Screen options={{ title: d('title') }} />
+      <Stack.Screen
+        options={{
+          title: d('title'),
+          headerRight: () => (
+            <PrintTableButton
+              title={d('title')}
+              subtitle={[campus?.name, start || end ? `${start || '…'} – ${end || '…'}` : null].filter(Boolean).join(' · ')}
+              disabled={loading}
+              sections={() =>
+                days.map((day) => {
+                  const list = byDate.get(day) ?? [];
+                  return {
+                    heading: day ? formatDate(day) : '—',
+                    columns: [t('common.type', { defaultValue: 'Type' }), t('common.title'), t('common.details'), t('common.amount', { defaultValue: 'Amount' })],
+                    rows: list.map((tx) => [d(`type_${tx.type}`), tx.title, tx.detail ?? '', money(tx.amount)]),
+                    footer: [`${d('day_income')}: ${money(sum(list, 'income'))}`, `${d('day_expenses')}: ${money(sum(list, 'expense'))}`, `${d('day_staff')}: ${money(sum(list, 'staff_payment'))}`, ''],
+                  };
+                })
+              }
+            />
+          ),
+        }}
+      />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
         <Text variant="muted">{d('subtitle', { campus: campus?.name ?? '' })}</Text>
         <Picker value={ay.id} onChange={ay.pick} options={ay.options} />
@@ -99,7 +123,7 @@ export default function AccountingDaily() {
                         <Text className="text-sm">{tx.title}</Text>
                         {tx.detail ? <Text className="text-muted-foreground text-xs">{tx.detail}</Text> : null}
                       </View>
-                      <Text className={tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{money(tx.amount)}</Text>
+                      <Text className={tx.type === 'income' ? 'text-success ' : 'text-destructive '}>{money(tx.amount)}</Text>
                     </View>
                   </View>
                 ))}

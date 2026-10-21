@@ -19,6 +19,7 @@ import { useCampus } from '@/features/campus/campus';
 import { adminSchool } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { setHijriOffset } from '@/lib/hijri';
+import { IconTile } from '@/components/app/layout';
 
 /** Campus-wide preferences: date format, Hijri offset, payment reminder, currency, payment method (web: /admin/settings). */
 export default function SystemSettings() {
@@ -70,7 +71,7 @@ export default function SystemSettings() {
     <Card>
       <CardContent className="gap-3 pt-4">
         <View className="flex-row items-center gap-2">
-          <Icon as={icon} className="text-primary size-5" />
+          <IconTile icon={icon} size={32} />
           <Text className="font-semibold">{title}</Text>
         </View>
         <Text className="text-muted-foreground text-sm">{desc}</Text>
@@ -79,9 +80,9 @@ export default function SystemSettings() {
     </Card>
   );
   const note = (text: string) => (
-    <View className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
-      <Text className="text-sm text-blue-900 dark:text-blue-100">
-        <Text className="text-sm font-bold text-blue-900 dark:text-blue-100">{s('note')}</Text> {text}
+    <View className="rounded-xl border border-info-soft bg-info-soft p-3">
+      <Text className="text-sm text-brand dark:text-brand-secondary ">
+        <Text className="text-sm font-bold text-brand dark:text-brand-secondary ">{s('note')}</Text> {text}
       </Text>
     </View>
   );

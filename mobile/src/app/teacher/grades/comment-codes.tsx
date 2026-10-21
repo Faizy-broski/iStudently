@@ -1,16 +1,18 @@
 import type { TeacherCommentCode, TeacherCommentCodeScale } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { ChevronDown, ChevronRight, Lock, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Lock, MessageSquareText, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
-import { LoadingList } from '@/components/app/states';
+import { IconTile, RowActions, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -18,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { teacher } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { cn } from '@/lib/utils';
 
 type ScaleForm = { id?: string; title: string; comment: string };
 type CodeForm = { id?: string; scaleId?: string; title: string; short: string; comment: string };
@@ -77,98 +80,79 @@ export default function TeacherCommentCodes() {
     <>
       <Stack.Screen options={{ title: k('pageTitle') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
-        <Text variant="muted">{k('pageSubtitle')}</Text>
-        <Button className="self-start" onPress={() => setScaleForm({ title: '', comment: '' })}>
-          <Icon as={Plus} className="text-primary-foreground size-4" />
-          <Text>{k('newScale')}</Text>
-        </Button>
-        <Card>
-          <CardHeader>
-            <CardTitle>{k('commentCodeScales')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-3">
-            {res.isLoading ? (
-              <LoadingList rows={3} />
-            ) : !scales.length ? (
-              <View className="items-center gap-2 py-6">
-                <Text className="text-muted-foreground text-sm">{k('noScalesYet')}</Text>
-                <Button variant="outline" size="sm" onPress={() => setScaleForm({ title: '', comment: '' })}>
-                  <Text>{k('createFirstScale')}</Text>
-                </Button>
-              </View>
-            ) : (
-              scales.map((s) => {
-                const mine = !!s.staff_id;
-                const codes = [...(s.codes ?? [])].sort((a, b) => a.sort_order - b.sort_order);
-                const expanded = open === s.id;
-                return (
-                  <View key={s.id} className="border-border overflow-hidden rounded-lg border">
-                    <View className="flex-row items-center gap-2 px-3 py-2.5">
-                      <Pressable onPress={() => setOpen(expanded ? null : s.id)} accessibilityRole="button" accessibilityState={{ expanded }} className="flex-1 flex-row items-center gap-2">
-                        <Icon as={expanded ? ChevronDown : ChevronRight} className="text-muted-foreground size-4 rtl:rotate-180" />
-                        <Text className="font-medium">{s.title}</Text>
-                        {!mine ? (
-                          <Badge variant="secondary" className="flex-row items-center gap-1">
-                            <Icon as={Lock} className="text-foreground size-3" />
-                            <Text className="text-xs">{k('schoolWide')}</Text>
-                          </Badge>
-                        ) : null}
-                        <Text className="text-muted-foreground text-xs">{k('codeCount', { count: codes.length })}</Text>
-                      </Pressable>
-                      {mine ? (
-                        <>
-                          <Pressable onPress={() => setCodeForm({ scaleId: s.id, title: '', short: '', comment: '' })} hitSlop={6} className="p-1" accessibilityLabel={k('addCode')}>
-                            <Icon as={Plus} className="text-primary size-4" />
-                          </Pressable>
-                          <Pressable onPress={() => setScaleForm({ id: s.id, title: s.title, comment: s.comment ?? '' })} hitSlop={6} className="p-1" accessibilityLabel={k('editScale')}>
-                            <Icon as={Pencil} className="text-muted-foreground size-4" />
-                          </Pressable>
-                          <Pressable onPress={() => deleteScale(s)} hitSlop={6} className="p-1" accessibilityLabel={k('deleteScale')}>
-                            <Icon as={Trash2} className="text-destructive size-4" />
-                          </Pressable>
-                        </>
-                      ) : null}
-                    </View>
-                    {expanded ? (
-                      <View className="border-border bg-muted/30 border-t px-3 py-2">
-                        {!codes.length ? (
-                          <View className="items-center gap-2 py-3">
-                            <Text className="text-muted-foreground text-sm">{k('noCodesYet')}</Text>
-                            {mine ? (
-                              <Button size="sm" variant="outline" onPress={() => setCodeForm({ scaleId: s.id, title: '', short: '', comment: '' })}>
-                                <Text>{k('addFirstCode')}</Text>
-                              </Button>
-                            ) : null}
-                          </View>
-                        ) : (
-                          codes.map((c) => (
-                            <View key={c.id} className="border-border flex-row items-center gap-2 border-b py-2 last:border-b-0">
-                              <Text className="w-10 font-mono text-sm font-semibold">{c.short_name || '—'}</Text>
-                              <View className="flex-1">
-                                <Text className="text-sm">{c.title}</Text>
-                                {c.comment ? <Text className="text-muted-foreground text-xs">{c.comment}</Text> : null}
-                              </View>
-                              {mine ? (
-                                <>
-                                  <Pressable onPress={() => setCodeForm({ id: c.id, title: c.title, short: c.short_name ?? '', comment: c.comment ?? '' })} hitSlop={6} className="p-1" accessibilityLabel={k('edit')}>
-                                    <Icon as={Pencil} className="text-muted-foreground size-3.5" />
-                                  </Pressable>
-                                  <Pressable onPress={() => deleteCode(c)} hitSlop={6} className="p-1" accessibilityLabel={k('delete')}>
-                                    <Icon as={Trash2} className="text-destructive size-3.5" />
-                                  </Pressable>
-                                </>
-                              ) : null}
-                            </View>
-                          ))
-                        )}
+        <View className="flex-row items-start gap-3">
+          <Text className="text-muted-foreground flex-1 text-sm">{k('pageSubtitle')}</Text>
+          <Button size="sm" onPress={() => setScaleForm({ title: '', comment: '' })}>
+            <Icon as={Plus} className="text-primary-foreground size-4" />
+            <Text>{k('newScale')}</Text>
+          </Button>
+        </View>
+        <Section title={k('commentCodeScales')}>
+          {res.isLoading ? (
+            <LoadingList rows={3} />
+          ) : !scales.length ? (
+            <EmptyState icon={MessageSquareText} title={k('noScalesYet')} actionLabel={k('createFirstScale')} onAction={() => setScaleForm({ title: '', comment: '' })} />
+          ) : (
+            scales.map((s) => {
+              const mine = !!s.staff_id;
+              const codes = [...(s.codes ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+              const expanded = open === s.id;
+              return (
+                <Panel key={s.id} className="overflow-hidden">
+                  <View className="flex-row items-center gap-3 px-4 py-3">
+                    <Pressable onPress={() => setOpen(expanded ? null : s.id)} accessibilityRole="button" accessibilityState={{ expanded }} className="flex-1 flex-row items-center gap-3 active:opacity-70">
+                      <IconTile icon={mine ? MessageSquareText : Lock} tone={mine ? 'brand' : 'muted'} size={40} />
+                      <View className="flex-1 gap-1">
+                        <Text className="text-sm font-semibold">{s.title}</Text>
+                        <View className="flex-row flex-wrap items-center gap-1.5">
+                          {!mine ? <StatusChip label={k('schoolWide')} tone="muted" /> : null}
+                          <Text className="text-muted-foreground text-xs">{k('codeCount', { count: codes.length })}</Text>
+                        </View>
                       </View>
-                    ) : null}
+                      <Icon flipRtl as={expanded ? ChevronDown : ChevronRight} className="text-muted-foreground size-4" />
+                    </Pressable>
                   </View>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
+                  {mine ? (
+                    <View className="px-4 pb-3">
+                      <RowActions onEdit={() => setScaleForm({ id: s.id, title: s.title, comment: s.comment ?? '' })} onDelete={() => deleteScale(s)} editLabel={k('editScale')} deleteLabel={k('deleteScale')}>
+                        <Pressable onPress={() => setCodeForm({ scaleId: s.id, title: '', short: '', comment: '' })} hitSlop={4} accessibilityRole="button" accessibilityLabel={k('addCode')} className="bg-success-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                          <Icon as={Plus} className="text-success size-4" />
+                        </Pressable>
+                      </RowActions>
+                    </View>
+                  ) : null}
+                  {expanded ? (
+                    <View className="border-info-soft dark:border-border bg-muted/30 border-t">
+                      {!codes.length ? (
+                        <View className="items-center gap-2 py-4">
+                          <Text className="text-muted-foreground text-sm">{k('noCodesYet')}</Text>
+                          {mine ? (
+                            <Button size="sm" variant="outline" onPress={() => setCodeForm({ scaleId: s.id, title: '', short: '', comment: '' })}>
+                              <Text>{k('addFirstCode')}</Text>
+                            </Button>
+                          ) : null}
+                        </View>
+                      ) : (
+                        codes.map((c, i) => (
+                          <View key={c.id} className={cn('flex-row items-center gap-3 px-4 py-2.5', i < codes.length - 1 && 'border-info-soft dark:border-border border-b')}>
+                            <View className="bg-info-soft min-w-10 items-center rounded-lg px-2 py-1">
+                              <Text className="text-brand dark:text-brand-secondary font-mono text-xs font-bold">{c.short_name || '—'}</Text>
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-sm font-medium">{c.title}</Text>
+                              {c.comment ? <Text className="text-muted-foreground text-xs">{c.comment}</Text> : null}
+                            </View>
+                            {mine ? <RowActions onEdit={() => setCodeForm({ id: c.id, title: c.title, short: c.short_name ?? '', comment: c.comment ?? '' })} onDelete={() => deleteCode(c)} editLabel={k('edit')} deleteLabel={k('delete')} /> : null}
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  ) : null}
+                </Panel>
+              );
+            })
+          )}
+        </Section>
       </ScrollView>
 
       <Dialog open={!!scaleForm} onOpenChange={(v) => !v && setScaleForm(null)}>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { Panel } from '@/components/app/panel';
 import { LoadingList } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { adminGrades } from '@/lib/api';
@@ -63,22 +64,24 @@ export function MarkingPeriodsView({ campusId, campusName, selectCurrentQuarter 
     <>
       <Stack.Screen options={{ title: m('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => data.mutate()} />}>
-        <Text variant="muted">{campusName ? `${s('subtitle')} — ${campusName}` : s('subtitle')}</Text>
+        <Text variant="muted" className="text-sm">
+          {campusName ? `${s('subtitle')} — ${campusName}` : s('subtitle')}
+        </Text>
 
         {selected ? (
-          <View className="border-border bg-card gap-3 rounded-lg border p-4">
+          <Panel className="gap-3 p-4">
             <View className="flex-row flex-wrap items-center gap-2">
-              <Text className="text-xs font-semibold text-[#022172] uppercase dark:text-white">{m(`types.${selected.mp_type}`)}</Text>
-              <Text className="text-sm font-medium">{selected.title}</Text>
+              <Pill box="bg-brand dark:bg-brand-secondary" text="text-white" label={m(`types.${selected.mp_type}`)} />
+              <Text className="text-sm font-semibold">{selected.title}</Text>
               <Text className="text-muted-foreground text-xs">{`(${selected.short_name})`}</Text>
               {isCurrent(selected) ? (
-                <View className="flex-row items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 dark:bg-green-950/30">
-                  <View className="size-1.5 rounded-full bg-green-500" />
-                  <Text className="text-xs font-medium text-green-600">{s('current')}</Text>
+                <View className="bg-success-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
+                  <View className="bg-success size-1.5 rounded-full" />
+                  <Text className="text-success text-[11px] font-semibold">{s('current')}</Text>
                 </View>
               ) : null}
-              {selected.does_grades ? <Pill box="bg-blue-50 dark:bg-blue-950/30" text="text-blue-600" label={s('graded')} /> : null}
-              {selected.does_comments ? <Pill box="bg-purple-50 dark:bg-purple-950/30" text="text-purple-600" label={s('comments')} /> : null}
+              {selected.does_grades ? <Pill box="bg-info-soft" text="text-brand dark:text-brand-secondary" label={s('graded')} /> : null}
+              {selected.does_comments ? <Pill box="bg-chart-6/10" text="text-chart-6" label={s('comments')} /> : null}
             </View>
             <View className="flex-row flex-wrap gap-y-3">
               <Field label={s('starts')} value={fmt(selected.start_date)} />
@@ -90,18 +93,18 @@ export function MarkingPeriodsView({ campusId, campusName, selectCurrentQuarter 
                 </>
               ) : null}
             </View>
-          </View>
+          </Panel>
         ) : null}
 
         {TYPES.map((type) => {
           const items = itemsFor(type);
           return (
-            <View key={type} className="border-border bg-card overflow-hidden rounded-lg border">
-              <View className="border-border border-b bg-[#022172]/10 px-3 py-2">
-                <Text className="text-xs font-semibold text-[#022172] uppercase dark:text-white">{m(`types_plural.${type}`)}</Text>
+            <Panel key={type} className="overflow-hidden">
+              <View className="bg-info-soft px-4 py-2.5">
+                <Text className="text-brand dark:text-brand-secondary text-sm font-semibold">{m(`types_plural.${type}`)}</Text>
               </View>
               {items.length === 0 ? (
-                <Text className="text-muted-foreground px-3 py-6 text-center text-xs">{m('no_items', { type: m(`types_plural.${type}`).toLowerCase() })}</Text>
+                <Text className="text-muted-foreground px-4 py-6 text-center text-xs">{m('no_items', { type: m(`types_plural.${type}`).toLowerCase() })}</Text>
               ) : (
                 items.map((mp) => {
                   const sel = selectedId === mp.id;
@@ -111,14 +114,14 @@ export function MarkingPeriodsView({ campusId, campusName, selectCurrentQuarter 
                       onPress={() => setSelectedId(sel ? null : mp.id)}
                       accessibilityRole="button"
                       accessibilityState={{ selected: sel }}
-                      className={cn('border-border border-t px-3 py-2 first:border-t-0', sel && 'bg-[#022172]/10 dark:bg-[#022172]/30')}>
+                      className={cn('border-info-soft dark:border-border border-t px-4 py-2.5 first:border-t-0 active:opacity-70', sel && 'bg-info-soft')}>
                       <View className="flex-row items-center justify-between gap-2">
-                        <Text className={cn('flex-1 text-sm', sel ? 'font-bold text-[#022172] dark:text-white' : '')} numberOfLines={1}>
+                        <Text className={cn('flex-1 text-sm font-medium', sel ? 'text-brand dark:text-brand-secondary font-bold' : '')} numberOfLines={1}>
                           {mp.title}
                         </Text>
                         <View className="flex-row items-center gap-1">
-                          {isCurrent(mp) ? <View className="size-2 rounded-full bg-green-500" accessibilityLabel={m('active_tooltip')} /> : null}
-                          {mp.does_grades ? <Text className="text-[10px] font-medium text-blue-500">G</Text> : null}
+                          {isCurrent(mp) ? <View className="size-2 rounded-full bg-success" accessibilityLabel={m('active_tooltip')} /> : null}
+                          {mp.does_grades ? <Text className="text-[10px] font-medium text-brand dark:text-brand-secondary">G</Text> : null}
                         </View>
                       </View>
                       {mp.start_date || mp.end_date ? <Text className="text-muted-foreground mt-0.5 text-[10px]">{`${fmt(mp.start_date)} – ${fmt(mp.end_date)}`}</Text> : null}
@@ -126,17 +129,17 @@ export function MarkingPeriodsView({ campusId, campusName, selectCurrentQuarter 
                   );
                 })
               )}
-            </View>
+            </Panel>
           );
         })}
         {selectCurrentQuarter ? (
           <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1">
             <View className="flex-row items-center gap-1">
-              <View className="size-2 rounded-full bg-green-500" />
+              <View className="size-2 rounded-full bg-success" />
               <Text className="text-muted-foreground text-xs">{m('active_tooltip')}</Text>
             </View>
             <View className="flex-row items-center gap-1">
-              <Text className="text-xs font-medium text-blue-500">G</Text>
+              <Text className="text-xs font-medium text-brand dark:text-brand-secondary">G</Text>
               <Text className="text-muted-foreground text-xs">{t('app.pa_mp_graded')}</Text>
             </View>
             <Text className="text-muted-foreground text-xs italic">{t('app.pa_mp_tap')}</Text>
@@ -149,8 +152,8 @@ export function MarkingPeriodsView({ campusId, campusName, selectCurrentQuarter 
 
 function Pill({ label, box, text }: { label: string; box: string; text: string }) {
   return (
-    <View className={cn('rounded-full px-2 py-0.5', box)}>
-      <Text className={cn('text-xs font-medium', text)}>{label}</Text>
+    <View className={cn('rounded-full px-2.5 py-1', box)}>
+      <Text className={cn('text-[11px] font-semibold', text)}>{label}</Text>
     </View>
   );
 }
@@ -158,8 +161,8 @@ function Pill({ label, box, text }: { label: string; box: string; text: string }
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <View className="w-1/2">
-      <Text className="text-muted-foreground mb-0.5 text-xs uppercase">{label}</Text>
-      <Text className="text-sm font-medium">{value}</Text>
+      <Text className="text-muted-foreground mb-0.5 text-xs">{label}</Text>
+      <Text className="text-sm font-semibold">{value}</Text>
     </View>
   );
 }

@@ -2,14 +2,16 @@ import type { DisciplineReferral } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { ALL, useAttendanceScope } from '@/features/admin/attendance';
 import { CountsBreakdown } from '@/features/admin/report-views';
@@ -108,7 +110,7 @@ export default function DisciplineByStudentField() {
             </CardHeader>
             <CardContent>
               {data.length === 0 ? (
-                <Text variant="muted" className="py-8 text-center">{d('noReferralsForFilters')}</Text>
+                <EmptyState title={d('noReferralsForFilters')} />
               ) : (
                 <CountsBreakdown data={data} nameHeader={fieldLabel} valueHeader={d('numberOfReferrals')} labels={{ column: d('column'), pie: d('pie'), list: d('list'), total: d('total') }} />
               )}

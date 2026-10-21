@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { TeacherCoursePeriodPicker, useTeacherSelection } from '@/features/admin/teacher-programs';
 import { adminTeacherPrograms } from '@/lib/api';
@@ -14,11 +15,11 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 const TYPE_CLASS: Record<string, string> = {
-  Missing: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400',
-  Excused: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
-  Negative: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
-  'Exceeds Max': 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400',
-  'Extra Credit': 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400',
+  Missing: 'bg-destructive-soft text-destructive  ',
+  Excused: 'bg-warning-soft text-warning  ',
+  Negative: 'bg-warning-soft text-warning  ',
+  'Exceeds Max': 'bg-success-soft text-success  ',
+  'Extra Credit': 'bg-success-soft text-success  ',
 };
 
 /** Missing, excused/negative and over-max grades of one teacher's courses (web: /admin/teacher-programs/anomalous-grades). */
@@ -59,11 +60,11 @@ export default function AdminAnomalousGrades() {
           </CardContent>
         </Card>
         {!sel.teacherId ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{a('selectPrompt')}</Text>
+          <EmptyState title={a('selectPrompt')} />
         ) : res.isLoading ? (
           <LoadingList rows={4} />
         ) : !rows.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{a('noResults')}</Text>
+          <EmptyState title={a('noResults')} />
         ) : (
           <Card>
             <CardContent className="py-1">
@@ -71,8 +72,9 @@ export default function AdminAnomalousGrades() {
                 <View key={`${r.student_id}-${i}`}>
                   {i > 0 ? <Separator /> : null}
                   <View className="gap-1 py-2.5">
-                    <View className="flex-row items-center gap-2">
-                      <Text className="flex-1 font-medium">{r.student_name}</Text>
+                    <View className="flex-row items-center gap-3">
+                      <Initials name={(r.student_name) || '?'} />
+                      <Text className="flex-1 text-sm font-semibold">{r.student_name}</Text>
                       <Text className={cn('rounded px-2 py-0.5 text-xs font-medium', TYPE_CLASS[r.anomaly_type])}>{r.anomaly_type}</Text>
                     </View>
                     <Text className="text-muted-foreground text-xs">

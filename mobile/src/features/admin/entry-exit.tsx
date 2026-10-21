@@ -1,9 +1,10 @@
 import type { ApiResponse, EntryExitRecord, PersonType, RecordType } from '@studently/api-client';
-import { ArrowRightLeft, Check, Clock, DoorClosed, DoorOpen, Users, X } from 'lucide-react-native';
+import { ArrowRightLeft, Clock, DoorClosed, DoorOpen, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
@@ -13,6 +14,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { CheckMark, IconTile, Initials } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { shortName } from '@/features/admin/people';
 import { useCampus } from '@/features/campus/campus';
@@ -26,16 +28,16 @@ export function useCheckpoints(schoolId: string) {
 }
 
 const STATUS_CLS: Record<string, [string, string]> = {
-  authorized: ['bg-emerald-100', 'text-emerald-700'],
-  late: ['bg-amber-100', 'text-amber-700'],
-  unauthorized: ['bg-red-100', 'text-red-700'],
+  authorized: ['bg-success-soft', 'text-success'],
+  late: ['bg-warning-soft', 'text-warning'],
+  unauthorized: ['bg-destructive-soft', 'text-destructive'],
 };
 
 export function EntryStatusPill({ status }: { status: string }) {
   const [bg, fg] = STATUS_CLS[status] ?? STATUS_CLS.unauthorized;
   return (
-    <View className={cn('rounded-full px-2 py-0.5', bg)}>
-      <Text className={cn('text-xs font-medium', fg)}>{status}</Text>
+    <View className={cn('rounded-full px-2.5 py-1', bg)}>
+      <Text className={cn('text-[11px] font-semibold', fg)}>{status}</Text>
     </View>
   );
 }
@@ -46,14 +48,12 @@ export function RecordRow({ r, trailing }: { r: EntryExitRecord; trailing?: Reac
   const entry = r.record_type === 'ENTRY';
   return (
     <View className="flex-row items-center gap-3 px-4 py-3">
-      <View className={cn('rounded-lg p-2', entry ? 'bg-emerald-50' : 'bg-orange-50')}>
-        <Icon as={entry ? DoorOpen : DoorClosed} className={cn('size-4', entry ? 'text-emerald-500' : 'text-orange-500')} />
-      </View>
+      <IconTile icon={entry ? DoorOpen : DoorClosed} tone={entry ? 'success' : 'warning'} size={40} />
       <View className="flex-1">
-        <Text className="font-medium" numberOfLines={1}>
+        <Text className="text-sm font-semibold" numberOfLines={1}>
           {r.person_name || r.person_id}
         </Text>
-        <Text className="text-muted-foreground text-xs" numberOfLines={1}>
+        <Text className="text-muted-foreground text-[11px]" numberOfLines={1}>
           {[r.person_type, r.checkpoint_name || r.checkpoint_id, r.student_number].filter(Boolean).join(' · ')}
         </Text>
         {r.description ? <Text className="text-muted-foreground text-xs" numberOfLines={2}>{r.description}</Text> : null}
@@ -62,7 +62,7 @@ export function RecordRow({ r, trailing }: { r: EntryExitRecord; trailing?: Reac
         <EntryStatusPill status={r.status} />
         <View className="flex-row items-center gap-1">
           <Icon as={Clock} className="text-muted-foreground size-3" />
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-muted-foreground text-[11px]">
             {new Intl.DateTimeFormat(i18n.language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(r.recorded_at))}
           </Text>
         </View>
@@ -96,13 +96,13 @@ export function PersonPicker({ type, value, onChange }: { type: PersonType; valu
   const results = usePersonSearch(type, term, !value);
   if (value) {
     return (
-      <View className="border-border bg-muted/50 flex-row items-center gap-2 rounded-md border p-2">
-        <Icon as={Users} className="text-muted-foreground size-4" />
+      <View className="border-brand-secondary bg-info-soft flex-row items-center gap-3 rounded-2xl border p-2.5">
+        <Initials name={value.name} />
         <View className="flex-1">
-          <Text className="text-sm font-medium">{value.name}</Text>
-          {value.sub ? <Text className="text-muted-foreground text-xs">{value.sub}</Text> : null}
+          <Text className="text-sm font-semibold">{value.name}</Text>
+          {value.sub ? <Text className="text-muted-foreground text-[11px]">{value.sub}</Text> : null}
         </View>
-        <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('school.entry_exit.dashboard.btn_change')}>
+        <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('school.entry_exit.dashboard.btn_change')} className="bg-card size-8 items-center justify-center rounded-full active:opacity-70">
           <Icon as={X} className="text-muted-foreground size-4" />
         </Pressable>
       </View>
@@ -112,20 +112,27 @@ export function PersonPicker({ type, value, onChange }: { type: PersonType; valu
     <View className="gap-1">
       <SearchBar value={q} onChangeText={setQ} placeholder={t('school.entry_exit.dashboard.placeholder_search')} />
       {results.isLoading ? <Text className="text-muted-foreground px-2 text-sm">{t('school.entry_exit.dashboard.msg_loading')}</Text> : null}
-      {(results.data ?? []).map((p, i) => (
-        <View key={p.id}>
-          {i > 0 ? <Separator /> : null}
-          <Pressable
-            className="px-2 py-2.5"
-            onPress={() => {
-              onChange(p);
-              setQ('');
-            }}>
-            <Text className="font-medium">{p.name}</Text>
-            {p.sub ? <Text className="text-muted-foreground text-xs">{p.sub}</Text> : null}
-          </Pressable>
+      {(results.data ?? []).length ? (
+        <View className="border-info-soft dark:border-border bg-card overflow-hidden rounded-2xl border">
+          {(results.data ?? []).map((p, i) => (
+            <View key={p.id}>
+              {i > 0 ? <Separator /> : null}
+              <Pressable
+                className="flex-row items-center gap-3 px-3 py-2.5 active:opacity-70"
+                onPress={() => {
+                  onChange(p);
+                  setQ('');
+                }}>
+                <Initials name={p.name} size={32} />
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold">{p.name}</Text>
+                  {p.sub ? <Text className="text-muted-foreground text-[11px]">{p.sub}</Text> : null}
+                </View>
+              </Pressable>
+            </View>
+          ))}
         </View>
-      ))}
+      ) : null}
     </View>
   );
 }
@@ -233,16 +240,14 @@ export function useStudentRoster(term: string, gradeName?: string, sectionId?: s
 /** Selectable roster row with initials avatar (web bulk tables). */
 export function RosterRow({ name, sub, selected, onToggle }: { name: string; sub: string; selected: boolean; onToggle: () => void }) {
   return (
-    <Pressable onPress={onToggle} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} className={cn('flex-row items-center gap-3 px-4 py-3', selected && 'bg-blue-50 dark:bg-blue-950/20')}>
-      <View className={cn('size-5 items-center justify-center rounded border', selected ? 'border-primary bg-primary' : 'border-input')}>
-        {selected ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}
-      </View>
-      <View className={cn('size-8 items-center justify-center rounded-full', selected ? 'bg-[#022172]' : 'bg-slate-400')}>
-        <Text className="text-xs font-semibold text-white">{initials(name)}</Text>
+    <Pressable onPress={onToggle} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', selected && 'bg-info-soft')}>
+      <CheckMark on={selected} />
+      <View className={cn('size-9 items-center justify-center rounded-full', selected ? 'bg-brand dark:bg-brand-secondary' : 'bg-info-soft')}>
+        <Text className={cn('text-[11px] font-bold', selected ? 'text-white' : 'text-brand dark:text-brand-secondary')}>{initials(name)}</Text>
       </View>
       <View className="flex-1">
-        <Text className="font-medium">{name}</Text>
-        <Text className="text-muted-foreground text-xs">{sub || '—'}</Text>
+        <Text className="text-sm font-semibold">{name}</Text>
+        <Text className="text-muted-foreground text-[11px]">{sub || '—'}</Text>
       </View>
     </Pressable>
   );

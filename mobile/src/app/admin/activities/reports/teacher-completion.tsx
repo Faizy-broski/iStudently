@@ -1,21 +1,23 @@
 import { coursePeriodTeacherName, type CoursePeriod, type EligibilityCompleted } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
-import { LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { PrintButtons, tableHtml, useAc } from '@/features/admin/activities';
 import { useCampus } from '@/features/campus/campus';
 import { adminAcademics, adminActivities, adminCourses } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { escapeHtml } from '@/lib/print';
-import { cn } from '@/lib/utils';
 
 /** Which course periods have entered eligibility for a date, and by whom (web: /admin/activities/reports/teacher-completion). */
 export default function EligibilityTeacherCompletion() {
@@ -59,7 +61,7 @@ export default function EligibilityTeacherCompletion() {
         escapeHtml(cpName(r.cp)),
         escapeHtml(r.subject),
         escapeHtml(r.done?.staff?.full_name ?? '-'),
-        r.done ? `<span class="pill" style="background:#dcfce7;color:#166534">${escapeHtml(a('completed'))}</span>` : `<span class="pill" style="background:#f9fafb;color:#4b5563">${escapeHtml(a('pending'))}</span>`,
+        r.done ? `<span class="pill" style="background:${colors.successSoft};color:${colors.success}">${escapeHtml(a('completed'))}</span>` : `<span class="pill" style="background:${colors.printSurface};color:${colors.printMuted}">${escapeHtml(a('pending'))}</span>`,
       ]),
       [3],
     );
@@ -84,7 +86,7 @@ export default function EligibilityTeacherCompletion() {
                 {heading} <Text className="text-muted-foreground text-sm font-normal">({summary})</Text>
               </Text>
               <PrintButtons title={heading} fileName="eligibility-teacher-completion.pdf" body={printBody} />
-              {!rows.length ? <Text className="text-muted-foreground py-6 text-center text-sm">{a('noCoursePeriodsFound')}</Text> : null}
+              {!rows.length ? <EmptyState title={a('noCoursePeriodsFound')} /> : null}
               {rows.map((r) => (
                 <View key={r.cp.id}>
                   <Separator />
@@ -95,9 +97,7 @@ export default function EligibilityTeacherCompletion() {
                         {a('subject')}: {r.subject} · {a('completedBy')}: {r.done?.staff?.full_name ?? '-'}
                       </Text>
                     </View>
-                    <View className={cn('rounded-full px-2 py-0.5', r.done ? 'bg-green-100 dark:bg-green-900/40' : 'bg-muted')}>
-                      <Text className={cn('text-xs font-medium', r.done ? 'text-green-800 dark:text-green-300' : 'text-muted-foreground')}>{r.done ? a('completed') : a('pending')}</Text>
-                    </View>
+                    <StatusChip label={r.done ? a('completed') : a('pending')} tone={r.done ? 'success' : 'muted'} />
                   </View>
                 </View>
               ))}

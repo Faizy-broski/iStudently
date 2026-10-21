@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { LineChart } from '@/components/app/charts';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
-import { StatCard } from '@/components/app/stat-card';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { StatTile } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminAcademics, adminAnalytics } from '@/lib/api';
@@ -75,14 +76,14 @@ export default function WithdrawalReport() {
         {compare ? <Picker value={compareId} onChange={setCompareId} placeholder={w('compareWith')} options={(years.data ?? []).filter((y) => y.id !== yearId).map((y) => ({ value: y.id, label: y.name }))} /> : null}
         {s ? (
           <View className="flex-row flex-wrap gap-3">
-            <StatCard icon={Users} label={w('totalWithdrawals')} value={formatNumber(s.total)} />
-            <StatCard
+            <StatTile icon={Users} label={w('totalWithdrawals')} value={formatNumber(s.total)} />
+            <StatTile
               icon={trendIcon}
               label={w('vsLastYear')}
               value={s.vsLastYear === null ? '—' : `${s.vsLastYear > 0 ? '+' : ''}${s.vsLastYear}%`}
-              detail={s.vsLastYear === null ? undefined : w(s.trend === 'up' ? 'trendUp' : s.trend === 'down' ? 'trendDown' : 'trendStable')}
+              note={s.vsLastYear === null ? undefined : w(s.trend === 'up' ? 'trendUp' : s.trend === 'down' ? 'trendDown' : 'trendStable')}
             />
-            <StatCard icon={Calendar} label={w('peakMonth')} value={s.peakMonth ?? '—'} />
+            <StatTile icon={Calendar} label={w('peakMonth')} value={s.peakMonth ?? '—'} />
           </View>
         ) : null}
         <Card className="gap-3 py-4">
@@ -94,13 +95,13 @@ export default function WithdrawalReport() {
             {isComparison ? (
               <LineChart
                 categories={Array.from({ length: len }, (_, i) => comp[0][1][i]?.label ?? comp[1][1][i]?.label ?? String(i + 1))}
-                series={comp.slice(0, 2).map(([name, pts], i) => ({ name, values: Array.from({ length: len }, (_, k) => pts[k]?.cumulative ?? null), color: i === 0 ? '#ef4444' : '#3b82f6' }))}
+                series={comp.slice(0, 2).map(([name, pts], i) => ({ name, values: Array.from({ length: len }, (_, k) => pts[k]?.cumulative ?? null), color: i === 0 ? colors.destructive : colors.brandSecondary }))}
               />
             ) : points.data && points.data.every((p) => p.cumulative === 0) ? (
               <EmptyState title={w('emptyTitle')} body={w('emptyDesc')} />
             ) : points.data ? (
               <>
-                <LineChart area categories={points.data.map((p) => p.label)} series={[{ name: w('tooltipCumulative'), values: points.data.map((p) => p.cumulative), color: '#ef4444' }]} />
+                <LineChart area categories={points.data.map((p) => p.label)} series={[{ name: w('tooltipCumulative'), values: points.data.map((p) => p.cumulative), color: colors.destructive }]} />
                 {points.data.map((p) => (p.count ? <Text key={p.date} className="text-muted-foreground text-xs">{`${p.label}: ${w('tooltipNew')} +${p.count} · ${w('tooltipCumulative')} ${p.cumulative}`}</Text> : null))}
               </>
             ) : null}

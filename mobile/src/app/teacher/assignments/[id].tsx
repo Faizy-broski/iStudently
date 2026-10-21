@@ -1,20 +1,22 @@
 import type { HomeworkAttachment } from '@studently/api-client';
 import { htmlToText } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Calendar, Clock, Edit, FileText, Trash2, Users } from 'lucide-react-native';
+import { Calendar, ClipboardList, Clock, Edit, FileText, Paperclip, Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { HtmlEditorField } from '@/components/app/html-editor-field';
+import { DetailHeader, FormSection } from '@/components/app/layout';
+import { InfoRow, Panel, PanelTitle } from '@/components/app/panel';
 import { LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { TimeField } from '@/components/app/time-field';
 import { useToast } from '@/components/app/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -110,37 +112,38 @@ export default function TeacherHomeworkDetail() {
   return (
     <>
       <Stack.Screen options={{ title: form ? k('editAssignmentTitle') : a.title }} />
-      <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="bg-background flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
           {form ? (
             <>
-              <View className="gap-1.5">
-                <Label>{`${t('teacherPages.assignments.assignmentTitle')} *`}</Label>
-                <Input value={form.title} onChangeText={(v) => set({ title: v })} />
-              </View>
-              <View className="gap-1.5">
-                <Label>{t('teacherPages.assignments.description')}</Label>
-                <Textarea value={form.description} onChangeText={(v) => set({ description: v })} />
-              </View>
-              <View className="gap-1.5">
-                <Label>{t('teacherPages.assignments.instructionsRichText')}</Label>
-                <HtmlEditorField value={form.instructions} onChange={(v) => set({ instructions: v })} />
-              </View>
-              <View className="flex-row gap-2">
-                <View className="flex-1">
-                  <DateField label={`${t('teacherPages.assignments.dueDate')} *`} value={form.due} onChange={(v) => set({ due: v })} />
+              <FormSection title={k('editAssignmentTitle')} icon={ClipboardList}>
+                <View className="gap-1.5">
+                  <Label>{`${t('teacherPages.assignments.assignmentTitle')} *`}</Label>
+                  <Input value={form.title} onChangeText={(v) => set({ title: v })} />
                 </View>
-                <View className="flex-1 gap-1.5">
-                  <Label>{t('teacherPages.assignments.dueTime')}</Label>
-                  <TimeField value={form.time} onChange={(v) => set({ time: v })} />
+                <View className="gap-1.5">
+                  <Label>{t('teacherPages.assignments.description')}</Label>
+                  <Textarea value={form.description} onChangeText={(v) => set({ description: v })} />
                 </View>
-              </View>
-              <View className="gap-1.5">
-                <Label>{t('teacherPages.assignments.maxScore')}</Label>
-                <Input value={form.max} onChangeText={(v) => set({ max: v.replace(/[^0-9]/g, '') })} keyboardType="number-pad" />
-              </View>
-              <View className="gap-1.5">
-                <Label>{k('attachments')}</Label>
+                <View className="gap-1.5">
+                  <Label>{t('teacherPages.assignments.instructionsRichText')}</Label>
+                  <HtmlEditorField value={form.instructions} onChange={(v) => set({ instructions: v })} />
+                </View>
+                <View className="flex-row gap-2">
+                  <View className="flex-1">
+                    <DateField label={`${t('teacherPages.assignments.dueDate')} *`} value={form.due} onChange={(v) => set({ due: v })} />
+                  </View>
+                  <View className="flex-1 gap-1.5">
+                    <Label>{t('teacherPages.assignments.dueTime')}</Label>
+                    <TimeField value={form.time} onChange={(v) => set({ time: v })} />
+                  </View>
+                </View>
+                <View className="gap-1.5">
+                  <Label>{t('teacherPages.assignments.maxScore')}</Label>
+                  <Input value={form.max} onChangeText={(v) => set({ max: v.replace(/[^0-9]/g, '') })} keyboardType="number-pad" />
+                </View>
+              </FormSection>
+              <FormSection title={k('attachments')} icon={Paperclip}>
                 <AttachmentField
                   existing={form.attachments}
                   onRemoveExisting={(i) => set({ attachments: form.attachments.filter((_, j) => j !== i) })}
@@ -148,19 +151,21 @@ export default function TeacherHomeworkDetail() {
                   onPick={(d) => setFiles((x) => [...x, ...d])}
                   onRemove={(i) => setFiles((x) => x.filter((_, j) => j !== i))}
                 />
-              </View>
-              {(
-                [
-                  ['graded', t('teacherPages.assignments.gradedAssignment')],
-                  ['late', t('teacherPages.assignments.allowLateSubmissions')],
-                  ['published', k('published')],
-                ] as const
-              ).map(([key, label]) => (
-                <View key={key} className="flex-row items-center gap-3">
-                  <Switch checked={form[key]} onCheckedChange={(v) => set({ [key]: v })} />
-                  <Text className="flex-1 text-sm">{label}</Text>
-                </View>
-              ))}
+              </FormSection>
+              <Panel>
+                {(
+                  [
+                    ['graded', t('teacherPages.assignments.gradedAssignment')],
+                    ['late', t('teacherPages.assignments.allowLateSubmissions')],
+                    ['published', k('published')],
+                  ] as const
+                ).map(([key, label], i) => (
+                  <View key={key} className={i < 2 ? 'border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3' : 'flex-row items-center gap-3 px-4 py-3'}>
+                    <Text className="flex-1 text-sm font-medium">{label}</Text>
+                    <Switch checked={form[key]} onCheckedChange={(v) => set({ [key]: v })} />
+                  </View>
+                ))}
+              </Panel>
               <View className="flex-row gap-2">
                 <Button variant="outline" className="flex-1" onPress={() => setForm(null)} disabled={busy}>
                   <Text>{k('cancel')}</Text>
@@ -172,22 +177,18 @@ export default function TeacherHomeworkDetail() {
             </>
           ) : (
             <>
-              <View className="flex-row flex-wrap gap-1.5">
-                <Badge variant={a.is_published ? 'default' : 'secondary'}>
-                  <Text className="text-xs">{a.is_published ? k('published') : k('draft')}</Text>
-                </Badge>
-                {a.is_graded ? (
-                  <Badge variant="outline">
-                    <Text className="text-xs">{k('graded')}</Text>
-                  </Badge>
-                ) : null}
-                {a.allow_late_submission ? (
-                  <Badge variant="outline">
-                    <Text className="text-xs">{k('lateSubmissionsAllowed')}</Text>
-                  </Badge>
-                ) : null}
-              </View>
-              <Text className="text-muted-foreground text-sm">{[a.subject?.name, a.section?.name, a.section?.grade_level?.name].filter(Boolean).join(' • ')}</Text>
+              <DetailHeader
+                name={a.title}
+                icon={ClipboardList}
+                subtitle={[a.subject?.name, a.section?.name, a.section?.grade_level?.name].filter(Boolean).join(' • ')}
+                chips={
+                  <>
+                    <StatusChip label={a.is_published ? k('published') : k('draft')} tone={a.is_published ? 'success' : 'muted'} />
+                    {a.is_graded ? <StatusChip label={k('graded')} tone="info" /> : null}
+                    {a.allow_late_submission ? <StatusChip label={k('lateSubmissionsAllowed')} tone="warning" /> : null}
+                  </>
+                }
+              />
               <View className="flex-row gap-2">
                 <Button variant="outline" className="flex-1" onPress={startEdit}>
                   <Icon as={Edit} className="size-4" />
@@ -202,54 +203,34 @@ export default function TeacherHomeworkDetail() {
                 <Icon as={Users} className="text-primary-foreground size-4" />
                 <Text>{k('submissions')}</Text>
               </Button>
-              <Card>
-                <CardContent className="gap-2 p-4">
-                  <Row icon={Calendar} label={k('dueDate')} value={formatDate(a.due_date)} />
-                  <Row icon={Clock} label={k('dueTime')} value={a.due_time?.slice(0, 5) || k('noSpecificTime')} />
-                  <Row icon={FileText} label={k('maxScore')} value={`${a.max_score} ${k('points')}`} />
-                  <Row icon={Calendar} label={t('app.te_hw_assigned')} value={formatDate(a.assigned_date)} />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{k('description')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Text className="text-muted-foreground text-sm">{a.description || k('noDescriptionProvided')}</Text>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{k('instructions')}</CardTitle>
-                </CardHeader>
-                <CardContent>{a.instructions ? <Text className="text-sm">{htmlToText(a.instructions)}</Text> : <Text className="text-muted-foreground text-sm">{k('noInstructionsProvided')}</Text>}</CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{k('attachments')}</CardTitle>
-                </CardHeader>
-                <CardContent>
+              <Panel>
+                <InfoRow icon={Calendar} label={k('dueDate')} value={formatDate(a.due_date)} />
+                <InfoRow icon={Clock} label={k('dueTime')} value={a.due_time?.slice(0, 5) || k('noSpecificTime')} />
+                <InfoRow icon={FileText} label={k('maxScore')} value={`${a.max_score} ${k('points')}`} />
+                <InfoRow icon={Calendar} label={t('app.te_hw_assigned')} value={formatDate(a.assigned_date)} last />
+              </Panel>
+              <Panel>
+                <PanelTitle title={k('description')} />
+                <Text className="text-muted-foreground px-4 pb-4 text-sm">{a.description || k('noDescriptionProvided')}</Text>
+              </Panel>
+              <Panel>
+                <PanelTitle title={k('instructions')} />
+                <View className="px-4 pb-4">{a.instructions ? <Text className="text-sm">{htmlToText(a.instructions)}</Text> : <Text className="text-muted-foreground text-sm">{k('noInstructionsProvided')}</Text>}</View>
+              </Panel>
+              <Panel>
+                <PanelTitle title={k('attachments')} />
+                <View className="px-4 pb-4">
                   {(a.attachments ?? []).length ? (
                     <AttachmentField existing={a.attachments ?? []} picked={[]} onPick={() => {}} onRemove={() => {}} readOnly />
                   ) : (
                     <Text className="text-muted-foreground text-sm">{k('noAttachments')}</Text>
                   )}
-                </CardContent>
-              </Card>
+                </View>
+              </Panel>
             </>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
     </>
-  );
-}
-
-function Row({ icon, label, value }: { icon: typeof Calendar; label: string; value: string }) {
-  return (
-    <View className="flex-row items-center gap-2">
-      <Icon as={icon} className="text-muted-foreground size-4" />
-      <Text className="text-muted-foreground flex-1 text-sm">{label}</Text>
-      <Text className="text-sm font-medium">{value}</Text>
-    </View>
   );
 }

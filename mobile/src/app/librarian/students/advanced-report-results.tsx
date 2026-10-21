@@ -1,15 +1,17 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronDown, ChevronUp, FileDown, Search } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, FileDown, Search, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
+import { FormSection } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { adminCustomFields, adminStudents } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -68,8 +70,8 @@ export default function LibrarianReportResults() {
 
   if (report.isLoading) {
     return (
-      <View className="bg-background flex-1 items-center justify-center">
-        <ActivityIndicator />
+      <View className="bg-background flex-1 p-4">
+        <LoadingList />
       </View>
     );
   }
@@ -78,53 +80,47 @@ export default function LibrarianReportResults() {
       <Stack.Screen options={{ title: t('app.pa_ar_results') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => report.mutate()} />}>
         <View className="flex-row items-center justify-between gap-2">
-          <Text variant="muted" className="flex-1">
+          <Text variant="muted" className="flex-1 text-sm">
             {t('common.found_students', { count: rows.length })}
           </Text>
-          <Button variant="outline" onPress={exportCsv} disabled={!rows.length}>
+          <Button size="sm" variant="outline" onPress={exportCsv} disabled={!rows.length}>
             <Icon as={FileDown} className="size-4" />
             <Text>{k('export')}</Text>
           </Button>
         </View>
-        {report.error ? <Text className="text-sm text-red-600">{report.error.message}</Text> : null}
-        <Card>
-          <CardHeader>
-            <CardTitle>{k('data')}</CardTitle>
-            <CardDescription>{k('count', { count: selected.length })}</CardDescription>
-          </CardHeader>
-          <CardContent className="gap-3">
-            <View className="justify-center">
-              <Icon as={Search} className="text-muted-foreground absolute start-3 size-4" />
-              <Input className="ps-9" value={query} onChangeText={setQuery} placeholder={t('common.search')} />
-            </View>
-            <View className="flex-row items-center gap-2">
-              <Picker
-                className="flex-1"
-                value={sort?.field ?? null}
-                onChange={(f) => setSort({ field: f, dir: sort?.dir ?? 'asc' })}
-                placeholder={t('app.li_sort_by')}
-                options={selected.map((f) => ({ value: f, label: labelOf(f) }))}
-              />
-              <Button size="icon" variant="outline" disabled={!sort} onPress={() => sort && setSort({ ...sort, dir: sort.dir === 'asc' ? 'desc' : 'asc' })} accessibilityLabel={t('app.li_sort_direction')}>
-                <Icon as={sort?.dir === 'desc' ? ChevronDown : ChevronUp} className="size-4" />
-              </Button>
-            </View>
-            {!rows.length ? (
-              <Text className="text-muted-foreground py-6 text-center">{t('app.pa_ar_none')}</Text>
-            ) : (
-              shown.map((r) => (
-                <View key={String(r.id)} className="border-border rounded-lg border px-3 py-1">
-                  {selected.map((f) => (
-                    <View key={f} className="border-border flex-row justify-between gap-3 border-b py-2 last:border-b-0">
-                      <Text className="text-muted-foreground flex-1 text-sm">{labelOf(f)}</Text>
-                      <Text className="flex-1 text-end text-sm font-medium">{valueOf(r, f)}</Text>
-                    </View>
-                  ))}
-                </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
+        {report.error ? <ErrorState message={report.error.message} onRetry={() => report.mutate()} /> : null}
+        <FormSection title={k('data')} description={k('count', { count: selected.length })} icon={Users}>
+          <View className="justify-center">
+            <Icon as={Search} className="text-muted-foreground absolute start-3 size-4" />
+            <Input className="ps-9" value={query} onChangeText={setQuery} placeholder={t('common.search')} />
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Picker
+              className="flex-1"
+              value={sort?.field ?? null}
+              onChange={(f) => setSort({ field: f, dir: sort?.dir ?? 'asc' })}
+              placeholder={t('app.li_sort_by')}
+              options={selected.map((f) => ({ value: f, label: labelOf(f) }))}
+            />
+            <Button size="icon" variant="outline" disabled={!sort} onPress={() => sort && setSort({ ...sort, dir: sort.dir === 'asc' ? 'desc' : 'asc' })} accessibilityLabel={t('app.li_sort_direction')}>
+              <Icon as={sort?.dir === 'desc' ? ChevronDown : ChevronUp} className="size-4" />
+            </Button>
+          </View>
+          {!rows.length ? (
+            <EmptyState icon={Users} title={t('app.pa_ar_none')} />
+          ) : (
+            shown.map((r) => (
+              <View key={String(r.id)} className="border-info-soft dark:border-border rounded-xl border px-3 py-1">
+                {selected.map((f, i) => (
+                  <View key={f} className={i < selected.length - 1 ? 'border-info-soft dark:border-border flex-row justify-between gap-3 border-b py-2' : 'flex-row justify-between gap-3 py-2'}>
+                    <Text className="text-muted-foreground flex-1 text-sm">{labelOf(f)}</Text>
+                    <Text className="flex-1 text-end text-sm font-medium">{valueOf(r, f)}</Text>
+                  </View>
+                ))}
+              </View>
+            ))
+          )}
+        </FormSection>
       </ScrollView>
     </>
   );

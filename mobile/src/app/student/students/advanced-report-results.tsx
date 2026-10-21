@@ -1,12 +1,12 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { FileDown } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
+import { HeaderButton, Section } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { adminCustomFields, adminStudents } from '@/lib/api';
@@ -59,44 +59,32 @@ export default function StudentMyReportResults() {
 
   if (data.isLoading) {
     return (
-      <View className="bg-background flex-1 items-center justify-center">
-        <ActivityIndicator />
-        <Text className="text-muted-foreground mt-3">{k('loading')}</Text>
+      <View className="bg-background flex-1" accessibilityLabel={k('loading')}>
+        <LoadingList rows={6} />
       </View>
     );
   }
   return (
     <>
-      <Stack.Screen options={{ title: k('title') }} />
-      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10">
-        <View className="flex-row items-center justify-between gap-2">
-          <Text variant="muted" className="flex-1">
-            {k('results_sub')}
-          </Text>
-          <Button variant="outline" onPress={exportCsv} disabled={!s}>
-            <Icon as={FileDown} className="size-4" />
-            <Text>{k('export')}</Text>
-          </Button>
-        </View>
-        {data.error ? <Text className="text-sm text-red-600">{data.error.message || k('failed')}</Text> : null}
-        <Card>
-          <CardHeader>
-            <CardTitle>{k('data')}</CardTitle>
-            <CardDescription>{k('count', { count: selected.length })}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!s ? (
-              <Text className="text-muted-foreground py-6 text-center">{k('none')}</Text>
-            ) : (
-              selected.map((f) => (
-                <View key={f} className="border-border flex-row justify-between gap-3 border-b py-2">
+      <Stack.Screen options={{ title: k('title'), headerRight: () => (s ? <HeaderButton icon={FileDown} label={k('export')} onPress={exportCsv} /> : null) }} />
+      <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
+        <Text className="text-muted-foreground text-sm">{k('results_sub')}</Text>
+        {data.error ? <Text className="text-destructive text-sm">{data.error.message || k('failed')}</Text> : null}
+        <Section title={k('data')}>
+          <Text className="text-muted-foreground -mt-1 text-xs">{k('count', { count: selected.length })}</Text>
+          {!s ? (
+            <EmptyState title={k('none')} />
+          ) : (
+            <Panel>
+              {selected.map((f, i) => (
+                <View key={f} className={i < selected.length - 1 ? 'border-info-soft dark:border-border flex-row justify-between gap-3 border-b px-4 py-3' : 'flex-row justify-between gap-3 px-4 py-3'}>
                   <Text className="text-muted-foreground flex-1 text-sm">{labelOf(f)}</Text>
-                  <Text className="flex-1 text-end text-sm font-medium">{valueOf(f)}</Text>
+                  <Text className="flex-1 text-end text-sm font-semibold">{valueOf(f)}</Text>
                 </View>
-              ))
-            )}
-          </CardContent>
-        </Card>
+              ))}
+            </Panel>
+          )}
+        </Section>
       </ScrollView>
     </>
   );

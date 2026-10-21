@@ -50,9 +50,9 @@ export function pointsImpact(fields: DisciplineField[], values: Record<string, u
 export function PointsBadge({ pts }: { pts: number }) {
   const up = pts > 0;
   return (
-    <View className={cn('flex-row items-center gap-0.5 rounded px-1.5 py-0.5', up ? 'bg-green-500/10' : 'bg-red-500/10')}>
-      <Icon as={up ? TrendingUp : TrendingDown} className={cn('size-3', up ? 'text-green-600' : 'text-red-500')} />
-      <Text className={cn('text-xs font-semibold', up ? 'text-green-600' : 'text-red-500')}>{`${up ? '+' : ''}${pts} pts`}</Text>
+    <View className={cn('flex-row items-center gap-1 rounded-full px-2.5 py-1', up ? 'bg-success-soft' : 'bg-destructive-soft')}>
+      <Icon as={up ? TrendingUp : TrendingDown} className={cn('size-3', up ? 'text-success' : 'text-destructive')} />
+      <Text className={cn('text-[11px] font-semibold', up ? 'text-success' : 'text-destructive')}>{`${up ? '+' : ''}${pts} pts`}</Text>
     </View>
   );
 }
@@ -78,9 +78,9 @@ export function DisciplineFieldInput({ field, value, onChange }: { field: Discip
       return (
         <View className="flex-row flex-wrap gap-2">
           {opts.map((o) => (
-            <Pressable key={o} onPress={() => onChange(o)} accessibilityRole="radio" accessibilityState={{ checked: value === o }} className={cn('flex-row items-center gap-1.5 rounded-full border px-3 py-1.5', value === o ? 'border-primary bg-primary/10' : 'border-border')}>
-              <View className={cn('size-3.5 rounded-full border', value === o ? 'border-primary bg-primary' : 'border-input')} />
-              <Text className="text-sm">{o}</Text>
+            <Pressable key={o} onPress={() => onChange(o)} accessibilityRole="radio" accessibilityState={{ checked: value === o }} className={cn('flex-row items-center gap-1.5 rounded-full border px-3 py-1.5', value === o ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border bg-card')}>
+              <View className={cn('size-3.5 rounded-full border-2', value === o ? 'border-brand bg-brand dark:border-brand-secondary dark:bg-brand-secondary' : 'border-info-soft dark:border-border')} />
+              <Text className={cn('text-sm', value === o && 'font-semibold text-brand dark:text-brand-secondary')}>{o}</Text>
             </Pressable>
           ))}
         </View>
@@ -144,9 +144,9 @@ export function LibraryRelatedSwitch({ value, onChange }: { value: boolean; onCh
 export function LibraryBadge() {
   const { t } = useTranslation();
   return (
-    <View className="flex-row items-center gap-1 self-start rounded-full bg-indigo-100 px-2 py-0.5 dark:bg-indigo-900/40">
-      <Icon as={BookOpen} className="size-3 text-indigo-700 dark:text-indigo-300" />
-      <Text className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">{t('app.dc_library_badge')}</Text>
+    <View className="flex-row items-center gap-1 self-start rounded-full bg-info-soft px-2.5 py-1">
+      <Icon as={BookOpen} className="size-3 text-brand dark:text-brand-secondary" />
+      <Text className="text-[11px] font-semibold text-brand dark:text-brand-secondary">{t('app.dc_library_badge')}</Text>
     </View>
   );
 }

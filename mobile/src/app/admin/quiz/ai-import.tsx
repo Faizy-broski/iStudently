@@ -1,11 +1,12 @@
 import type { AdminQuestionType, DifficultyLevel, DraftQuestion } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Check, FileText, Save, Sparkles, Trash2, Upload } from 'lucide-react-native';
+import { FileText, Save, Sparkles, Trash2, Upload } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CheckMark } from '@/components/app/layout';
+import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { DIFFICULTIES, GradeSubjectPickers, QUESTION_TYPES, useQz } from '@/features/admin/quiz';
 import { useCampus } from '@/features/campus/campus';
@@ -23,7 +26,7 @@ import { cn } from '@/lib/utils';
 const ACCEPTED = /\.(pdf|docx|jpe?g|png|webp|gif)$/i;
 
 function CheckBox({ on }: { on: boolean }) {
-  return <View className={cn('size-5 items-center justify-center rounded border', on ? 'border-primary bg-primary' : 'border-border')}>{on ? <Icon as={Check} className="text-primary-foreground size-3.5" /> : null}</View>;
+  return <CheckMark on={on} />;
 }
 
 /** Draft bank questions from a document or with AI, review, save the chosen ones (web: /admin/quiz/bulk-import). */
@@ -129,7 +132,7 @@ export default function AiImport() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: ai('title') }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView className="flex-1">
         <ScrollView contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled">
           <Text className="text-muted-foreground text-sm">{ai('subtitle')}</Text>
           <Card>
@@ -160,8 +163,8 @@ export default function AiImport() {
                 <>
                   <View className="items-center gap-2 py-2">
                     <Icon as={FileText} className="text-muted-foreground size-10" />
-                    <Text className="font-medium">{ai('upload_title')}</Text>
-                    <Text className="text-muted-foreground text-center text-sm">{ai('upload_hint')}</Text>
+                    <Text className="text-sm font-semibold">{ai('upload_title')}</Text>
+                    <EmptyState title={ai('upload_hint')} />
                     <Button variant="outline" onPress={choose}>
                       <Text>{ai('choose_file')}</Text>
                     </Button>
@@ -196,7 +199,7 @@ export default function AiImport() {
             </CardContent>
           </Card>
           {error ? <Text className="text-destructive text-sm">{error}</Text> : null}
-          {success ? <Text className="text-sm text-green-700 dark:text-green-400">{success}</Text> : null}
+          {success ? <Text className="text-sm text-success ">{success}</Text> : null}
           {drafts.length ? (
             <Card>
               <CardContent className="gap-3 pt-4">
@@ -216,7 +219,7 @@ export default function AiImport() {
                         <CheckBox on={selected.has(i)} />
                       </Pressable>
                       <Text className="text-muted-foreground flex-1 text-xs">#{i + 1}</Text>
-                      <Pressable onPress={() => removeDraft(i)} hitSlop={8} accessibilityLabel={q('delete')}>
+                      <Pressable onPress={() => removeDraft(i)} accessibilityLabel={q('delete')} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                         <Icon as={Trash2} className="text-destructive size-4" />
                       </Pressable>
                     </View>

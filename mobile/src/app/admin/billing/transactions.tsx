@@ -71,7 +71,7 @@ export default function DailyTransactions() {
           renderItem={(x) => (
             <View className="flex-row items-center gap-3 px-4 py-3">
               <View className="flex-1 gap-0.5">
-                <Text className="font-medium">{`${x.student_name ?? '—'} · ${money(x.amount)}`}</Text>
+                <Text className="text-sm font-semibold">{`${x.student_name ?? '—'} · ${money(x.amount)}`}</Text>
                 <Text className="text-muted-foreground text-xs">{[x.element_title, x.category_title, x.comment, x.payment_method, formatDate(x.transaction_date), x.grade_level].filter(Boolean).join(' · ')}</Text>
               </View>
               {isAdmin ? (

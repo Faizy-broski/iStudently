@@ -519,10 +519,10 @@ export const setConfigAsTeacher = async (req: Request, res: Response) => {
     if (course_period_id) {
       const { data: cp } = await supabase
         .from('course_periods')
-        .select('teacher_id')
+        .select('teacher_id, secondary_teacher_id')
         .eq('id', course_period_id)
         .single()
-      if (!cp || cp.teacher_id !== staffId) {
+      if (!cp || (cp.teacher_id !== staffId && cp.secondary_teacher_id !== staffId)) {
         return res.status(403).json({ success: false, error: 'You do not own this course period' })
       }
     }

@@ -3,8 +3,9 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { Building2, Check, Clock, FileDown, FileText, PenLine, ShieldCheck, TrendingUp } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, ScrollView, View } from 'react-native';
+import { Linking, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
@@ -109,7 +110,7 @@ export default function InspectionReportSign() {
             <View className="flex-row items-start gap-2">
               <View className="flex-1 gap-1">
                 <View className="flex-row items-center gap-2">
-                  <Icon as={Building2} className="size-5 text-[#022172]" />
+                  <Icon as={Building2} className="size-5 text-brand dark:text-brand-secondary" />
                   <CardTitle>{rep.school?.name}</CardTitle>
                 </View>
                 <CardDescription>{`${rep.teacher ? `${rep.teacher.first_name} ${rep.teacher.last_name}` : ''} · ${rep.inspector ? `${rep.inspector.first_name} ${rep.inspector.last_name}` : ''}`}</CardDescription>
@@ -138,16 +139,16 @@ export default function InspectionReportSign() {
         </Card>
         <Card>
           <CardHeader className="flex-row items-center gap-2">
-            <Icon as={TrendingUp} className="size-4 text-[#022172]" />
+            <Icon as={TrendingUp} className="size-4 text-brand dark:text-brand-secondary" />
             <CardTitle>{r('signatures_title')}</CardTitle>
           </CardHeader>
           <CardContent className="gap-3">
             {ROLES.map((role) => {
               const sig = byRole.get(role);
               return (
-                <View key={role} className={cn('rounded-md border p-3', sig ? 'border-green-200 bg-green-50' : 'border-border')}>
+                <View key={role} className={cn('rounded-md border p-3', sig ? 'border-success/30 bg-success-soft' : 'border-border')}>
                   <View className="mb-1 flex-row items-center gap-1.5">
-                    <Icon as={sig ? Check : Clock} className={cn('size-3.5', sig ? 'text-green-600' : 'text-muted-foreground')} />
+                    <Icon as={sig ? Check : Clock} className={cn('size-3.5', sig ? 'text-success' : 'text-muted-foreground')} />
                     <Text className="text-muted-foreground text-xs font-medium">{r(`role_${role}`)}</Text>
                   </View>
                   {sig ? (
@@ -174,7 +175,7 @@ export default function InspectionReportSign() {
         <DialogContent className="w-[94vw] max-w-md">
           <DialogHeader>
             <View className="flex-row items-center gap-2">
-              <Icon as={ShieldCheck} className="size-5 text-[#022172]" />
+              <Icon as={ShieldCheck} className="size-5 text-brand dark:text-brand-secondary" />
               <DialogTitle>{r('dialog_sign_title')}</DialogTitle>
             </View>
             <DialogDescription>{r('dialog_sign_desc')}</DialogDescription>

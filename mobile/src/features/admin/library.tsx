@@ -1,12 +1,14 @@
 import type { LibraryLoanRow } from '@studently/api-client';
 import type { LibraryCategory, LibraryDocumentField } from '@studently/shared-types';
-import { BookOpen, User, X } from 'lucide-react-native';
+import { BookOpen, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { DateField } from '@/components/app/date-field';
 import { FilterChips, MultiChips } from '@/components/app/filter-chips';
+import { IconTile, Initials } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
 import { Icon } from '@/components/ui/icon';
@@ -21,7 +23,7 @@ import { useDebounced } from '@/lib/use-debounced';
 
 export const DOCUMENT_TYPES = ['book', 'magazine', 'cd', 'periodical', 'thesis', 'other'] as const;
 export const RETURN_CONDITIONS = ['excellent', 'good', 'fair', 'poor'] as const;
-export const PRESET_COLORS = ['#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E', '#14B8A6', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899', '#F43F5E', '#78716C'];
+export const PRESET_COLORS = [colors.destructive, colors.warning, colors.brandAccent, colors.warning, colors.success, colors.success, colors.chart7, colors.chart7, colors.brandSecondary, colors.chart6, colors.chart6, colors.chart6, colors.chart6, colors.chart8, colors.destructive, colors.printMuted];
 
 /** Parents followed by their subcategories ("— Child"), like the web's category selects. */
 export function orderCategoriesForSelect(categories: LibraryCategory[]): { value: string; label: string }[] {
@@ -65,14 +67,14 @@ export function BorrowerSearch({ type, value, onChange }: { type: 'student' | 'u
   );
   if (value) {
     return (
-      <View className="border-border flex-row items-center gap-3 rounded-md border px-3 py-2">
-        <Icon as={User} className="text-muted-foreground size-4" />
+      <View className="border-brand-secondary bg-info-soft flex-row items-center gap-3 rounded-2xl border p-2.5">
+        <Initials name={value.name} />
         <View className="flex-1">
-          <Text className="font-medium">{value.name}</Text>
-          {value.detail ? <Text className="text-muted-foreground text-xs">{value.detail}</Text> : null}
+          <Text className="text-sm font-semibold">{value.name}</Text>
+          {value.detail ? <Text className="text-muted-foreground text-[11px]">{value.detail}</Text> : null}
         </View>
-        <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('app.ss_change')}>
-          <Icon as={X} className="text-muted-foreground size-5" />
+        <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('app.ss_change')} className="bg-card size-8 items-center justify-center rounded-full active:opacity-70">
+          <Icon as={X} className="text-muted-foreground size-4" />
         </Pressable>
       </View>
     );
@@ -82,15 +84,22 @@ export function BorrowerSearch({ type, value, onChange }: { type: 'student' | 'u
     <View className="gap-1">
       <SearchBar value={q} onChangeText={setQ} placeholder={type === 'student' ? t('app.lb_search_student') : t('app.lb_search_user')} />
       {res.isLoading ? <Text className="text-muted-foreground px-2 text-sm">{t('app.lb_searching')}</Text> : null}
-      {rows.map((b, i) => (
-        <View key={b.id}>
-          {i > 0 ? <Separator /> : null}
-          <Pressable className="px-2 py-2.5" onPress={() => onChange(b)}>
-            <Text>{b.name}</Text>
-            {b.detail ? <Text className="text-muted-foreground text-xs">{b.detail}</Text> : null}
-          </Pressable>
+      {rows.length ? (
+        <View className="border-info-soft dark:border-border bg-card overflow-hidden rounded-2xl border">
+          {rows.map((b, i) => (
+            <View key={b.id}>
+              {i > 0 ? <Separator /> : null}
+              <Pressable className="flex-row items-center gap-3 px-3 py-2.5 active:opacity-70" onPress={() => onChange(b)}>
+                <Initials name={b.name} size={32} />
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold">{b.name}</Text>
+                  {b.detail ? <Text className="text-muted-foreground text-[11px]">{b.detail}</Text> : null}
+                </View>
+              </Pressable>
+            </View>
+          ))}
         </View>
-      ))}
+      ) : null}
       {term && !res.isLoading && !rows.length ? <Text className="text-muted-foreground px-2 text-sm">{t('app.lb_no_results')}</Text> : null}
     </View>
   );
@@ -105,16 +114,16 @@ export function ActiveLoanSearch({ initial = '', value, onChange }: { initial?: 
   const date = (d: string) => new Date(d).toLocaleDateString(i18n.language);
   if (value) {
     return (
-      <View className="border-border flex-row items-center gap-3 rounded-md border px-3 py-2">
-        <Icon as={BookOpen} className="text-muted-foreground size-4" />
+      <View className="border-brand-secondary bg-info-soft flex-row items-center gap-3 rounded-2xl border p-2.5">
+        <IconTile icon={BookOpen} size={36} />
         <View className="flex-1">
-          <Text className="font-medium">{value.book_title}</Text>
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-sm font-semibold">{value.book_title}</Text>
+          <Text className="text-muted-foreground text-[11px]">
             {value.student_name} · {value.accession_number}
           </Text>
         </View>
-        <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('app.ss_change')}>
-          <Icon as={X} className="text-muted-foreground size-5" />
+        <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('app.ss_change')} className="bg-card size-8 items-center justify-center rounded-full active:opacity-70">
+          <Icon as={X} className="text-muted-foreground size-4" />
         </Pressable>
       </View>
     );
@@ -124,17 +133,24 @@ export function ActiveLoanSearch({ initial = '', value, onChange }: { initial?: 
     <View className="gap-1">
       <SearchBar value={q} onChangeText={setQ} placeholder={t('app.lb_search_loan')} />
       {res.isLoading ? <Text className="text-muted-foreground px-2 text-sm">{t('app.lb_searching')}</Text> : null}
-      {rows.map((l, i) => (
-        <View key={l.id}>
-          {i > 0 ? <Separator /> : null}
-          <Pressable className="px-2 py-2.5" onPress={() => onChange(l)}>
-            <Text className="font-medium">{l.book_title}</Text>
-            <Text className="text-muted-foreground text-xs">
-              {l.student_name} | {l.accession_number} | {t('app.lb_due')}: {date(l.due_date)}
-            </Text>
-          </Pressable>
+      {rows.length ? (
+        <View className="border-info-soft dark:border-border bg-card overflow-hidden rounded-2xl border">
+          {rows.map((l, i) => (
+            <View key={l.id}>
+              {i > 0 ? <Separator /> : null}
+              <Pressable className="flex-row items-center gap-3 px-3 py-2.5 active:opacity-70" onPress={() => onChange(l)}>
+                <IconTile icon={BookOpen} size={32} />
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold">{l.book_title}</Text>
+                  <Text className="text-muted-foreground text-[11px]">
+                    {l.student_name} | {l.accession_number} | {t('app.lb_due')}: {date(l.due_date)}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+          ))}
         </View>
-      ))}
+      ) : null}
       {term && !res.isLoading && !rows.length ? <Text className="text-muted-foreground px-2 text-sm">{t('app.lb_no_results')}</Text> : null}
     </View>
   );
@@ -180,13 +196,13 @@ export function ColorSwatches({ value, onChange }: { value: string; onChange: (c
             key={c}
             onPress={() => onChange(c)}
             accessibilityLabel={c}
-            className={value.toLowerCase() === c.toLowerCase() ? 'border-primary size-8 rounded-full border-2' : 'size-8 rounded-full border border-black/10'}
+            className={value.toLowerCase() === c.toLowerCase() ? 'border-brand dark:border-brand-secondary size-8 rounded-full border-2' : 'size-8 rounded-full border border-black/10'}
             style={{ backgroundColor: c }}
           />
         ))}
       </View>
       <View className="flex-row items-center gap-2">
-        <View className="size-8 rounded-md border border-black/10" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(value) ? value : '#6B7280' }} />
+        <View className="size-8 rounded-xl border border-black/10" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(value) ? value : colors.printMuted }} />
         <Input className="flex-1 font-mono" value={value} onChangeText={onChange} autoCapitalize="none" maxLength={7} />
       </View>
     </View>

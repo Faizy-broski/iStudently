@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Share, View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { colors } from '@/lib/colors';
 import { Screen } from '@/components/app/screen';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -28,7 +29,7 @@ export default function MyQr() {
           {t('app.qr_body')}
         </Text>
         <View className="rounded-xl bg-white p-4" accessibilityRole="image" accessibilityLabel={t('app.qr_title')}>
-          <QRCode value={value} size={220} bgColor="#FFFFFF" fgColor="#000000" />
+          <QRCode value={value} size={220} bgColor={colors.white} fgColor={colors.black} />
         </View>
         <Text className="text-center font-medium">{[name, t(`app.role_${profile.role}`, { defaultValue: profile.role })].filter(Boolean).join(' · ')}</Text>
         <Button variant="outline" onPress={() => Share.share({ message: value })}>

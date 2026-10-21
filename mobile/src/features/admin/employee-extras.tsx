@@ -6,14 +6,16 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import QRCode from 'react-qr-code';
 
+import { colors } from '@/lib/colors';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { InfoCard } from '@/components/app/info';
+import { IconTile, StatTile, StatTiles, type Tone } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,20 +48,20 @@ export function VerifyQr({ profileId, label }: { profileId: string; label: strin
     }
   };
   return (
-    <View className="border-border items-center gap-2 rounded-lg border p-3">
-      <View className="rounded bg-white p-2">
-        <QRCode value={value} size={100} bgColor="#FFFFFF" fgColor="#000000" />
+    <View className="border-info-soft dark:border-border bg-card items-center gap-2 rounded-2xl border p-3">
+      <View className="rounded-xl bg-white p-2">
+        <QRCode value={value} size={100} bgColor={colors.white} fgColor={colors.black} />
       </View>
       <Text className="text-muted-foreground text-xs" numberOfLines={1}>
         {label}
       </Text>
-      <View className="flex-row gap-1">
-        <Button size="sm" variant="ghost" onPress={() => out('print')}>
-          <Icon as={Printer} className="text-foreground size-4" />
-        </Button>
-        <Button size="sm" variant="ghost" onPress={() => out('pdf')}>
-          <Icon as={Share2} className="text-foreground size-4" />
-        </Button>
+      <View className="flex-row gap-2">
+        <Pressable onPress={() => out('print')} hitSlop={4} accessibilityRole="button" className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+          <Icon as={Printer} className="text-brand dark:text-brand-secondary size-4" />
+        </Pressable>
+        <Pressable onPress={() => out('pdf')} hitSlop={4} accessibilityRole="button" className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+          <Icon as={Share2} className="text-brand dark:text-brand-secondary size-4" />
+        </Pressable>
       </View>
     </View>
   );
@@ -138,8 +140,7 @@ export function QualificationsCard({ profileId }: { profileId: string }) {
   };
   const editor =
     editing ? (
-      <Card>
-        <CardContent className="gap-2 pt-4">
+      <View className="bg-info-soft/60 dark:bg-muted gap-2 rounded-2xl p-3">
           {editing.kind === 'skills' ? [field('title', `${t(k('skill'))} *`, 'text', t(k('ph_skill'))), field('description', t(k('description')), 'text', t(k('ph_description')))] : null}
           {editing.kind === 'education' ? [field('qualification', `${t(k('qualification'))} *`, 'text', t(k('ph_qualification'))), field('institute', t(k('institute')), 'text', t(k('ph_institute'))), field('start_date', t(k('start_date')), 'date'), field('completed_on', t(k('completed_on')), 'date')] : null}
           {editing.kind === 'certifications' ? [field('title', `${t(k('certification'))} *`, 'text', t(k('ph_certification'))), field('institute', t(k('institute')), 'text', t(k('ph_issuer'))), field('granted_on', t(k('granted_on')), 'date'), field('valid_through', t(k('valid_through')), 'date')] : null}
@@ -152,30 +153,29 @@ export function QualificationsCard({ profileId }: { profileId: string }) {
               <Text>{t('common.save')}</Text>
             </Button>
           </View>
-        </CardContent>
-      </Card>
+      </View>
     ) : null;
 
   const section = (kind: Kind, title: string, rows: { id: string; label: string; hint: string; form: Form }[]) => (
     <View className="gap-1">
       <View className="flex-row items-center">
         <Text className="flex-1 text-sm font-semibold">{title}</Text>
-        <Pressable onPress={() => setEditing({ kind, id: null, form: { ...BLANK[kind] } })} hitSlop={8} className="p-1">
-          <Icon as={Plus} className="text-foreground size-4" />
+        <Pressable onPress={() => setEditing({ kind, id: null, form: { ...BLANK[kind] } })} hitSlop={8} accessibilityRole="button" className="bg-info-soft size-8 items-center justify-center rounded-full active:opacity-70">
+          <Icon as={Plus} className="text-brand dark:text-brand-secondary size-4" />
         </Pressable>
       </View>
       {!rows.length ? <Text className="text-muted-foreground text-xs">—</Text> : null}
       {rows.map((r) => (
-        <View key={r.id} className="flex-row items-center gap-2 py-1">
+        <View key={r.id} className="flex-row items-center gap-2 py-1.5">
           <View className="flex-1">
-            <Text className="text-sm">{r.label}</Text>
+            <Text className="text-sm font-medium">{r.label}</Text>
             {r.hint ? <Text className="text-muted-foreground text-xs">{r.hint}</Text> : null}
           </View>
-          <Pressable onPress={() => setEditing({ kind, id: r.id, form: r.form })} hitSlop={6} className="p-1">
-            <Icon as={Pencil} className="text-muted-foreground size-3.5" />
+          <Pressable onPress={() => setEditing({ kind, id: r.id, form: r.form })} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+            <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
           </Pressable>
-          <Pressable onPress={() => remove(kind, r.id, r.label)} hitSlop={6} className="p-1">
-            <Icon as={Trash2} className="text-destructive size-3.5" />
+          <Pressable onPress={() => remove(kind, r.id, r.label)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+            <Icon as={Trash2} className="text-destructive size-4" />
           </Pressable>
         </View>
       ))}
@@ -216,15 +216,9 @@ export function PerformanceCard({ staffId, profileId }: { staffId: string; profi
   });
   const total = count.data ?? null;
   const sc = score.data;
-  const tone = sc ? (sc.score >= 80 ? 'text-green-600' : sc.score >= 60 ? 'text-amber-600' : 'text-red-600') : '';
-  const stat = (label: string, value: string | number, cls: string, icon: typeof TrendingDown, onPress?: () => void) => (
-    <Pressable onPress={onPress} disabled={!onPress} className="border-border min-w-[45%] flex-1 gap-1 rounded-lg border p-3">
-      <View className="flex-row items-center gap-1.5">
-        <Icon as={icon} className={cn('size-4', cls)} />
-        <Text className="text-muted-foreground text-xs">{label}</Text>
-      </View>
-      <Text className={cn('text-2xl font-bold', cls)}>{value}</Text>
-    </Pressable>
+  const tone = sc ? (sc.score >= 80 ? 'text-success' : sc.score >= 60 ? 'text-warning' : 'text-destructive') : '';
+  const stat = (label: string, value: string | number, tile: Tone, icon: typeof TrendingDown, onPress?: () => void) => (
+    <StatTile label={label} value={String(value)} tone={tile} icon={icon} onPress={onPress} />
   );
   return (
     <InfoCard title={t(k('performance'))}>
@@ -234,23 +228,23 @@ export function PerformanceCard({ staffId, profileId }: { staffId: string; profi
         <View className="gap-3 py-2">
           {sc ? (
             <>
-              <View className="items-center gap-1">
+              <View className="bg-muted/50 items-center gap-1 rounded-2xl py-4">
                 <Text className={cn('text-4xl font-bold', tone)}>{sc.score}</Text>
                 <Text className="text-muted-foreground text-xs">/ 100</Text>
                 <Text className={cn('text-sm font-semibold', tone)}>{t(k(sc.score >= 80 ? 'perf_excellent' : sc.score >= 60 ? 'perf_good' : 'perf_needs'))}</Text>
               </View>
-              <View className="flex-row flex-wrap gap-2">
-                {stat(t(k('total_demerit')), `-${sc.total_demerit}`, 'text-red-600', TrendingDown)}
-                {stat(t(k('total_redemption')), `+${sc.total_redemption}`, 'text-green-600', TrendingUp)}
-                {stat(t(k('total_incidents')), sc.log_count, 'text-blue-600', BarChart3)}
-                {stat(t(k('complaints')), total ?? '—', 'text-orange-600', AlertCircle, pid ? () => router.push('/admin/grievances') : undefined)}
-              </View>
+              <StatTiles>
+                {stat(t(k('total_demerit')), `-${sc.total_demerit}`, 'destructive', TrendingDown)}
+                {stat(t(k('total_redemption')), `+${sc.total_redemption}`, 'success', TrendingUp)}
+                {stat(t(k('total_incidents')), sc.log_count, 'brand', BarChart3)}
+                {stat(t(k('complaints')), total ?? '—', 'warning', AlertCircle, pid ? () => router.push('/admin/grievances') : undefined)}
+              </StatTiles>
             </>
           ) : null}
           <View className="flex-row items-center">
             <Text className="flex-1 text-sm font-semibold">{t(k('incident_log'))}</Text>
-            <Pressable onPress={() => router.push('/admin/performance')} hitSlop={8}>
-              <Text className="text-primary text-sm">{t(k('view_all'))}</Text>
+            <Pressable className="bg-info-soft rounded-full px-3 py-1.5 active:opacity-70" onPress={() => router.push('/admin/performance')} hitSlop={8}>
+              <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{t(k('view_all'))}</Text>
             </Pressable>
           </View>
           {!(logs.data ?? []).length ? <Text className="text-muted-foreground py-2 text-center text-sm">{t(k('no_incidents'))}</Text> : null}
@@ -260,19 +254,20 @@ export function PerformanceCard({ staffId, profileId }: { staffId: string; profi
             return (
               <View key={l.id}>
                 <Separator />
-                <View className="flex-row items-start gap-2 py-2">
+                <View className="flex-row items-center gap-3 py-2.5">
+                  <IconTile icon={demerit ? TrendingDown : TrendingUp} tone={demerit ? 'destructive' : 'success'} size={36} />
                   <View className="flex-1">
-                    <Text className="text-sm font-medium">{l.action?.action_name_en}</Text>
+                    <Text className="text-sm font-semibold">{l.action?.action_name_en}</Text>
                     {l.action?.action_name_ar ? <Text className="text-muted-foreground text-xs">{l.action.action_name_ar}</Text> : null}
                     <Text className="text-muted-foreground text-xs">
                       {formatDate(l.created_at)}
                       {l.notes ? ` · ${l.notes}` : ''}
                     </Text>
                   </View>
-                  <View className="items-end gap-0.5">
-                    <Text className={cn('text-xs', demerit ? 'text-red-700' : 'text-green-700')}>{t(k(demerit ? 'violation' : 'reward'))}</Text>
-                    <Text className={cn('font-semibold', demerit ? 'text-red-600' : 'text-green-600')}>{demerit ? pts : `+${pts}`}</Text>
-                    {l.letter_generated ? <Icon as={FileText} className="size-4 text-orange-500" /> : null}
+                  <View className="items-end gap-1">
+                    <StatusChip label={t(k(demerit ? 'violation' : 'reward'))} tone={demerit ? 'destructive' : 'success'} />
+                    <Text className={cn('text-sm font-bold', demerit ? 'text-destructive' : 'text-success')}>{demerit ? pts : `+${pts}`}</Text>
+                    {l.letter_generated ? <Icon as={FileText} className="size-4 text-warning" /> : null}
                   </View>
                 </View>
               </View>

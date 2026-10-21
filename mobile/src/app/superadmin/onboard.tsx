@@ -5,7 +5,7 @@ import { dueDateFor, planPrice, todayIso, v, vBilling } from '@studently/shared-
 import * as Clipboard from 'expo-clipboard';
 import { router, Stack } from 'expo-router';
 import * as ScreenCapture from 'expo-screen-capture';
-import { Copy, CopyPlus, ImagePlus, RefreshCw } from 'lucide-react-native';
+import { Building2, Copy, CopyPlus, CreditCard, ImagePlus, KeyRound, RefreshCw, School, UserRound } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -16,10 +16,11 @@ import { z } from 'zod';
 import { FormError, NumberField, SwitchField, TextField } from '@/components/app/form';
 import { SelectField } from '@/components/app/picker';
 import { SchoolLogo } from '@/components/app/school-logo';
+import { FormSection, HeroCard, IconTile } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
 import { Screen } from '@/components/app/screen';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
@@ -76,25 +77,26 @@ function Credentials({ result, password, onAnother }: { result: OnboardSchoolRes
   ];
   return (
     <Screen scroll edges={['bottom']}>
-      <Text variant="h4">{t('app.ob_done_title', { name: result.school.name })}</Text>
-      <Text variant="muted">{t('app.ob_done_body')}</Text>
-      <Card className="py-2">
-        <CardContent className="px-4">
-          {rows.map(([label, value]) => (
-            <View key={label} className="flex-row items-center justify-between gap-3 py-2">
-              <View className="flex-1 gap-0.5">
-                <Text className="text-muted-foreground text-xs">{label}</Text>
-                <Text selectable className="font-medium">
-                  {value}
-                </Text>
-              </View>
-              <Pressable onPress={() => copy(value)} hitSlop={8} accessibilityLabel={t('app.sa_copy')}>
-                <Icon as={Copy} className="text-muted-foreground size-4" />
-              </Pressable>
+      <HeroCard>
+        <Text className="text-lg font-bold text-white">{t('app.ob_done_title', { name: result.school.name })}</Text>
+        <Text className="text-xs text-white/80">{t('app.ob_done_body')}</Text>
+      </HeroCard>
+      <Panel>
+        {rows.map(([label, value], i) => (
+          <View key={label} className={i < rows.length - 1 ? 'border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3' : 'flex-row items-center gap-3 px-4 py-3'}>
+            <IconTile icon={i === 0 ? UserRound : KeyRound} size={36} />
+            <View className="flex-1 gap-0.5">
+              <Text className="text-muted-foreground text-[11px]">{label}</Text>
+              <Text selectable className="text-sm font-semibold">
+                {value}
+              </Text>
             </View>
-          ))}
-        </CardContent>
-      </Card>
+            <Pressable onPress={() => copy(value)} hitSlop={8} accessibilityLabel={t('app.sa_copy')} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+              <Icon as={Copy} className="text-brand dark:text-brand-secondary size-4" />
+            </Pressable>
+          </View>
+        ))}
+      </Panel>
       {/* Web: after the credentials card, offer to copy settings from another school. */}
       <Button variant="secondary" onPress={() => router.replace({ pathname: '/superadmin/school/copy-settings', params: { id: result.school.id, name: result.school.name } })}>
         <Icon as={CopyPlus} className="size-4" />
@@ -244,77 +246,73 @@ export default function OnboardSchool() {
     <>
       <Stack.Screen options={{ title: t('app.ob_title') }} />
       <Screen scroll edges={['bottom']}>
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.ob_school')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-3 px-4">
-            <TextField control={control} name="name" label={t('app.ob_name')} />
-            <TextField control={control} name="slug" label={t('app.ob_slug')} hint={t('app.ob_slug_hint')} autoCapitalize="none" autoCorrect={false} />
-            <TextField control={control} name="contact_email" label={t('app.ob_contact_email')} keyboardType="email-address" autoCapitalize="none" />
-            <TextField control={control} name="address" label={t('app.sa_address')} />
-            <TextField control={control} name="website" label={t('app.sa_website')} keyboardType="url" autoCapitalize="none" placeholder="https://" />
-            <View className="gap-1.5">
-              <Label>{t('app.ob_logo')}</Label>
-              <View className="flex-row items-center gap-3">
-                <SchoolLogo url={logoUrl} size={56} />
-                <Button variant="outline" size="sm" onPress={chooseLogo} disabled={uploading}>
-                  <Icon as={ImagePlus} className="size-4" />
-                  <Text>{uploading ? t('app.ob_uploading') : logoUrl ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
-                </Button>
-              </View>
+        <HeroCard>
+          <View className="flex-row items-center gap-3">
+            <View className="size-11 items-center justify-center rounded-2xl bg-white/15">
+              <Icon as={School} strokeWidth={2.2} className="size-5 text-white" />
             </View>
-            <SwitchField control={control} name="is_trial" label={t('app.ob_trial')} />
-            {isTrial ? (
-              <TextField control={control} name="trial_ends_at" label={t('app.ob_trial_ends')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.ob_admin')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-3 px-4">
-            <TextField control={control} name="first_name" label={t('app.ob_first_name')} />
-            <TextField control={control} name="last_name" label={t('app.ob_last_name')} />
-            <TextField control={control} name="username" label={t('app.ob_username')} hint={t('app.ob_username_hint')} autoCapitalize="none" autoCorrect={false} />
-            <TextField control={control} name="admin_email" label={t('app.ob_admin_email')} keyboardType="email-address" autoCapitalize="none" />
-            <View className="flex-row items-end gap-2">
-              <View className="flex-1">
-                <TextField control={control} name="password" label={t('app.ob_password')} hint={t('app.ob_password_hint')} autoCapitalize="none" autoCorrect={false} />
-              </View>
-              <Button variant="outline" size="icon" onPress={() => setValue('password', generatePassword(), { shouldValidate: true })} accessibilityLabel={t('app.ob_generate')} className="mb-6">
-                <Icon as={RefreshCw} className="size-4" />
+            <View className="flex-1">
+              <Text className="font-semibold text-white">{t('app.ob_intro_title')}</Text>
+              <Text className="text-xs text-white/80">{t('app.ob_intro_body')}</Text>
+            </View>
+          </View>
+        </HeroCard>
+        <FormSection title={t('app.ob_school')} icon={Building2}>
+          <TextField control={control} name="name" label={t('app.ob_name')} />
+          <TextField control={control} name="slug" label={t('app.ob_slug')} hint={t('app.ob_slug_hint')} autoCapitalize="none" autoCorrect={false} />
+          <TextField control={control} name="contact_email" label={t('app.ob_contact_email')} keyboardType="email-address" autoCapitalize="none" />
+          <TextField control={control} name="address" label={t('app.sa_address')} />
+          <TextField control={control} name="website" label={t('app.sa_website')} keyboardType="url" autoCapitalize="none" placeholder="https://" />
+          <View className="gap-1.5">
+            <Label>{t('app.ob_logo')}</Label>
+            <View className="flex-row items-center gap-3">
+              <SchoolLogo url={logoUrl} size={56} />
+              <Button variant="outline" size="sm" onPress={chooseLogo} disabled={uploading}>
+                <Icon as={ImagePlus} className="size-4" />
+                <Text>{uploading ? t('app.ob_uploading') : logoUrl ? t('app.ob_change_logo') : t('app.ob_pick_logo')}</Text>
               </Button>
             </View>
-          </CardContent>
-        </Card>
+          </View>
+          <SwitchField control={control} name="is_trial" label={t('app.ob_trial')} />
+          {isTrial ? (
+            <TextField control={control} name="trial_ends_at" label={t('app.ob_trial_ends')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
+          ) : null}
+        </FormSection>
 
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardTitle>{t('app.ob_billing')}</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-3 px-4">
-            <SwitchField control={control} name="add_billing" label={t('app.ob_add_billing')} />
-            {addBilling ? (
-              <>
-                <SelectField
-                  control={control}
-                  name="billing_plan_id"
-                  label={t('app.bl_plan')}
-                  placeholder={t('app.bl_pick_plan')}
-                  options={(plans.data ?? []).filter((p) => p.is_active).map((p) => ({ value: p.id, label: p.name }))}
-                />
-                <SelectField control={control} name="billing_cycle" label={t('app.bl_cycle')} options={CYCLES.map((c) => ({ value: c, label: t(`app.bl_cycle_${c}`) }))} />
-                <NumberField control={control} name="amount" label={t('app.bl_amount')} />
-                <TextField control={control} name="currency" label={t('app.bl_currency')} autoCapitalize="characters" maxLength={3} />
-                <TextField control={control} name="start_date" label={t('app.bl_start_date')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
-                <SelectField control={control} name="payment_status" label={t('app.bl_status')} options={STATUSES.map((s) => ({ value: s, label: t(`app.sa_pay_status_${s}`) }))} />
-              </>
-            ) : null}
-          </CardContent>
-        </Card>
+        <FormSection title={t('app.ob_admin')} icon={UserRound}>
+          <TextField control={control} name="first_name" label={t('app.ob_first_name')} />
+          <TextField control={control} name="last_name" label={t('app.ob_last_name')} />
+          <TextField control={control} name="username" label={t('app.ob_username')} hint={t('app.ob_username_hint')} autoCapitalize="none" autoCorrect={false} />
+          <TextField control={control} name="admin_email" label={t('app.ob_admin_email')} keyboardType="email-address" autoCapitalize="none" />
+          <View className="flex-row items-end gap-2">
+            <View className="flex-1">
+              <TextField control={control} name="password" label={t('app.ob_password')} hint={t('app.ob_password_hint')} autoCapitalize="none" autoCorrect={false} />
+            </View>
+            <Button variant="outline" size="icon" onPress={() => setValue('password', generatePassword(), { shouldValidate: true })} accessibilityLabel={t('app.ob_generate')} className="mb-6">
+              <Icon as={RefreshCw} className="size-4" />
+            </Button>
+          </View>
+        </FormSection>
+
+        <FormSection title={t('app.ob_billing')} icon={CreditCard}>
+          <SwitchField control={control} name="add_billing" label={t('app.ob_add_billing')} />
+          {addBilling ? (
+            <>
+              <SelectField
+                control={control}
+                name="billing_plan_id"
+                label={t('app.bl_plan')}
+                placeholder={t('app.bl_pick_plan')}
+                options={(plans.data ?? []).filter((p) => p.is_active).map((p) => ({ value: p.id, label: p.name }))}
+              />
+              <SelectField control={control} name="billing_cycle" label={t('app.bl_cycle')} options={CYCLES.map((c) => ({ value: c, label: t(`app.bl_cycle_${c}`) }))} />
+              <NumberField control={control} name="amount" label={t('app.bl_amount')} />
+              <TextField control={control} name="currency" label={t('app.bl_currency')} autoCapitalize="characters" maxLength={3} />
+              <TextField control={control} name="start_date" label={t('app.bl_start_date')} placeholder={t('app.bl_date_hint')} keyboardType="numbers-and-punctuation" />
+              <SelectField control={control} name="payment_status" label={t('app.bl_status')} options={STATUSES.map((s) => ({ value: s, label: t(`app.sa_pay_status_${s}`) }))} />
+            </>
+          ) : null}
+        </FormSection>
 
         <FormError message={serverError} />
         <Button onPress={onSubmit} disabled={submitting || uploading}>

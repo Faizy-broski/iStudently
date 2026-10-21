@@ -40,7 +40,7 @@ export function FinaNotificationsScreen() {
           <EmptyState icon={Bell} title={f('empty')} />
         ) : (
           list.map((n) => (
-            <Card key={n.id} className={cn(!n.read_at && 'border-[#022172]')}>
+            <Card key={n.id} className={cn(!n.read_at && 'border-brand')}>
               <CardContent className="flex-row items-start gap-3 pt-4">
                 <View className="flex-1 gap-0.5">
                   <Text className={cn('text-sm', !n.read_at && 'font-semibold')}>{notificationText(t, n)}</Text>

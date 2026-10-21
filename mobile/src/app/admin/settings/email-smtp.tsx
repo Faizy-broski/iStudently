@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Eye, EyeOff, FlaskConical, Info, Mail, Save } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -92,7 +93,7 @@ export default function EmailSmtpSettings() {
   );
 
   return (
-    <KeyboardAvoidingView className="bg-background flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="bg-background flex-1">
       <Stack.Screen options={{ title: m('title') }} />
       <ScrollView contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
         <View className="flex-row items-start gap-2">
@@ -157,11 +158,11 @@ export default function EmailSmtpSettings() {
           </>,
         )}
 
-        <View className="flex-row gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
-          <Icon as={Info} className="mt-0.5 size-4 text-blue-800 dark:text-blue-300" />
+        <View className="flex-row gap-2 rounded-xl border border-info-soft bg-info-soft p-3">
+          <Icon as={Info} className="mt-0.5 size-4 text-brand dark:text-brand-secondary " />
           <View className="flex-1 gap-1">
-            <Text className="text-sm font-medium text-blue-800 dark:text-blue-300">{m('studently_server_title')}</Text>
-            <Text className="text-sm text-blue-800 dark:text-blue-300" selectable>
+            <Text className="text-sm font-medium text-brand dark:text-brand-secondary ">{m('studently_server_title')}</Text>
+            <Text className="text-sm text-brand dark:text-brand-secondary " selectable>
               {plainMessage('school.email_smtp.studently_server_details', { host: 'mail.istudent.ly', port: '465', user: 'info@istudent.ly' })}
             </Text>
           </View>

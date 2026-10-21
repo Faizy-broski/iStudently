@@ -1,14 +1,15 @@
 import type { GrievancePriority } from '@studently/api-client';
-import { Send, Upload, X } from 'lucide-react-native';
+import { MessageSquareWarning, Paperclip, Send, Upload, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
+import { FormSection, Initials, RowPill, StickyActions } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -93,100 +94,96 @@ export function GrievanceSubmitScreen({ onDone }: { onDone: () => void }) {
   );
 
   return (
-    <ScrollView className="bg-background flex-1" contentContainerClassName="p-4 pb-10" keyboardShouldPersistTaps="handled">
-      <Card>
-        <CardHeader>
-          <CardTitle>{s('title')}</CardTitle>
-          <CardDescription>{s('subtitle')}</CardDescription>
-        </CardHeader>
-        <CardContent className="gap-4">
-          {field(s('label_title'), <Input value={title} onChangeText={setTitle} maxLength={200} />)}
-          {field(s('label_description'), <Textarea value={description} onChangeText={setDescription} className="min-h-28" />)}
-          {field(s('label_category'), <Picker value={categoryId} onChange={setCategoryId} placeholder={s('select_category_placeholder')} options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))} />)}
-          {field(s('label_priority'), <Picker value={priority} onChange={(v) => setPriority(v as GrievancePriority)} options={PRIORITIES.map((p) => ({ value: p, label: t(`grievances.priority.${p}`) }))} />)}
-          {field(s('label_department'), <Picker value={department} onChange={setDepartment} placeholder={s('select_department_placeholder')} options={DEPARTMENT_KEYS.map((k) => ({ value: s(k), label: s(k) }))} />)}
-          {field(
-            s('label_grade_level'),
-            <Picker
-              value={gradeId}
-              onChange={(v) => {
-                setGradeId(v);
-                setSubjectId('');
-              }}
-              placeholder={s('select_grade_level_placeholder')}
-              options={(grades.data ?? []).map((g) => ({ value: g.id, label: g.name }))}
-            />,
-          )}
-          {field(s('label_subject'), <Picker value={subjectId} onChange={setSubjectId} placeholder={s('select_subject_placeholder')} options={visibleSubjects.map((x) => ({ value: x.id, label: x.name }))} />)}
-          {field(
-            s('label_teacher'),
-            teacher ? (
-              <View className="border-border flex-row items-center justify-between rounded-md border p-2">
-                <Text className="text-sm">{teacher.name}</Text>
-                <Button size="sm" variant="ghost" onPress={() => setTeacher(null)}>
-                  <Text>{s('change_teacher')}</Text>
-                </Button>
+    <View className="bg-background flex-1">
+    <ScrollView className="flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
+      <FormSection title={s('title')} description={s('subtitle')} icon={MessageSquareWarning} className="gap-4">
+        {field(s('label_title'), <Input value={title} onChangeText={setTitle} maxLength={200} />)}
+        {field(s('label_description'), <Textarea value={description} onChangeText={setDescription} className="min-h-28" />)}
+        {field(s('label_category'), <Picker value={categoryId} onChange={setCategoryId} placeholder={s('select_category_placeholder')} options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))} />)}
+        {field(s('label_priority'), <Picker value={priority} onChange={(v) => setPriority(v as GrievancePriority)} options={PRIORITIES.map((p) => ({ value: p, label: t(`grievances.priority.${p}`) }))} />)}
+        {field(s('label_department'), <Picker value={department} onChange={setDepartment} placeholder={s('select_department_placeholder')} options={DEPARTMENT_KEYS.map((k) => ({ value: s(k), label: s(k) }))} />)}
+        {field(
+          s('label_grade_level'),
+          <Picker
+            value={gradeId}
+            onChange={(v) => {
+              setGradeId(v);
+              setSubjectId('');
+            }}
+            placeholder={s('select_grade_level_placeholder')}
+            options={(grades.data ?? []).map((g) => ({ value: g.id, label: g.name }))}
+          />,
+        )}
+        {field(s('label_subject'), <Picker value={subjectId} onChange={setSubjectId} placeholder={s('select_subject_placeholder')} options={visibleSubjects.map((x) => ({ value: x.id, label: x.name }))} />)}
+        {field(
+          s('label_teacher'),
+          teacher ? (
+            <View className="border-brand-secondary bg-info-soft flex-row items-center justify-between gap-2 rounded-xl border p-2 ps-3">
+              <Text className="flex-1 text-sm font-semibold">{teacher.name}</Text>
+              <RowPill label={s('change_teacher')} onPress={() => setTeacher(null)} />
+            </View>
+          ) : (
+            <View className="gap-1.5">
+              <SearchBar value={teacherQuery} onChangeText={setTeacherQuery} placeholder={s('search_teacher_placeholder')} />
+              {(teachers.data ?? []).map((x, i) => (
+                <View key={x.id}>
+                  {i > 0 ? <Separator /> : null}
+                  <Pressable
+                    className="flex-row items-center gap-3 px-2 py-2.5 active:opacity-70"
+                    onPress={() => {
+                      setTeacher({ profileId: x.profile_id ?? '', name: shortName(x.profile) || x.employee_number || x.id });
+                      setTeacherQuery('');
+                    }}>
+                    <Initials name={shortName(x.profile) || x.employee_number || '?'} size={32} />
+                    <Text className="flex-1 text-sm font-medium">{shortName(x.profile) || x.employee_number}</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ),
+        )}
+        <View className="bg-info-soft gap-3 rounded-2xl p-4">
+          {settings.data?.allow_confidential !== false ? (
+            <View>
+              <CheckRow checked={confidential} onPress={() => setConfidential((v) => !v)} label={s('confidential_title')} />
+              <Text className="text-muted-foreground ms-7 text-sm">{s('confidential_desc')}</Text>
+            </View>
+          ) : null}
+          {settings.data?.allow_anonymous !== false ? (
+            <View>
+              <CheckRow checked={anonymous} onPress={() => setAnonymous((v) => !v)} label={s('anonymous_title')} />
+              <Text className="text-muted-foreground ms-7 text-sm">{s('anonymous_desc')}</Text>
+            </View>
+          ) : null}
+        </View>
+      </FormSection>
+      <FormSection title={s('label_attachments')} icon={Paperclip}>
+        {files.length ? (
+          <View className="flex-row flex-wrap gap-2">
+            {files.map((f, i) => (
+              <View key={`${f.uri}-${i}`} className="bg-info-soft flex-row items-center gap-1.5 rounded-full px-3 py-1.5">
+                <Text className="max-w-40 text-sm" numberOfLines={1}>
+                  {f.name}
+                </Text>
+                <Pressable onPress={() => setFiles((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
+                  <Icon as={X} className="text-destructive size-3.5" />
+                </Pressable>
               </View>
-            ) : (
-              <View className="gap-1">
-                <SearchBar value={teacherQuery} onChangeText={setTeacherQuery} placeholder={s('search_teacher_placeholder')} />
-                {(teachers.data ?? []).map((x, i) => (
-                  <View key={x.id}>
-                    {i > 0 ? <Separator /> : null}
-                    <Pressable
-                      className="px-2 py-2.5"
-                      onPress={() => {
-                        setTeacher({ profileId: x.profile_id ?? '', name: shortName(x.profile) || x.employee_number || x.id });
-                        setTeacherQuery('');
-                      }}>
-                      <Text className="text-sm">{shortName(x.profile) || x.employee_number}</Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ),
-          )}
-          <View className="border-border gap-3 rounded-lg border p-4">
-            {settings.data?.allow_confidential !== false ? (
-              <View>
-                <CheckRow checked={confidential} onPress={() => setConfidential((v) => !v)} label={s('confidential_title')} />
-                <Text className="text-muted-foreground ms-7 text-sm">{s('confidential_desc')}</Text>
-              </View>
-            ) : null}
-            {settings.data?.allow_anonymous !== false ? (
-              <View>
-                <CheckRow checked={anonymous} onPress={() => setAnonymous((v) => !v)} label={s('anonymous_title')} />
-                <Text className="text-muted-foreground ms-7 text-sm">{s('anonymous_desc')}</Text>
-              </View>
-            ) : null}
+            ))}
           </View>
-          <View className="gap-2">
-            <Label>{s('label_attachments')}</Label>
-            {files.length ? (
-              <View className="flex-row flex-wrap gap-2">
-                {files.map((f, i) => (
-                  <View key={`${f.uri}-${i}`} className="bg-muted flex-row items-center gap-1.5 rounded-md px-2.5 py-1.5">
-                    <Text className="max-w-40 text-sm" numberOfLines={1}>
-                      {f.name}
-                    </Text>
-                    <Pressable onPress={() => setFiles((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
-                      <Icon as={X} className="text-muted-foreground size-3.5" />
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-            <Button variant="outline" size="sm" className="self-start" onPress={async () => setFiles([...files, ...(await pickDocuments())])}>
-              <Icon as={Upload} className="text-foreground size-4" />
-              <Text>{s('btn_add_files')}</Text>
-            </Button>
-          </View>
-          <Button onPress={submit} disabled={submitting}>
-            <Icon as={Send} className="text-primary-foreground size-4" />
-            <Text>{submitting ? s('btn_submitting') : s('btn_submit')}</Text>
-          </Button>
-        </CardContent>
-      </Card>
+        ) : null}
+        <Button variant="outline" size="sm" className="self-start" onPress={async () => setFiles([...files, ...(await pickDocuments())])}>
+          <Icon as={Upload} className="text-foreground size-4" />
+          <Text>{s('btn_add_files')}</Text>
+        </Button>
+      </FormSection>
     </ScrollView>
+    <StickyActions>
+      <Button className="flex-1" onPress={submit} disabled={submitting}>
+        <Icon as={Send} className="text-primary-foreground size-4" />
+        <Text>{submitting ? s('btn_submitting') : s('btn_submit')}</Text>
+      </Button>
+    </StickyActions>
+    </View>
   );
 }

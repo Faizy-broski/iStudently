@@ -4,9 +4,10 @@ import { TrendingDown } from 'lucide-react-native';
 import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
+import { colors } from '@/lib/colors';
 import { BarChart } from '@/components/app/charts';
 import { Picker } from '@/components/app/picker';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Separator } from '@/components/ui/separator';
@@ -20,9 +21,9 @@ import { cn } from '@/lib/utils';
 const NONE = '__none__';
 /** ≥75% correct reads as easy, ≥50% medium, below that hard (web: getDifficultyColor / DifficultyBadge). */
 const tier = (pct: number) => (pct >= 75 ? 'easy' : pct >= 50 ? 'medium' : 'hard');
-const TIER_COLOR = { easy: '#22c55e', medium: '#f59e0b', hard: '#ef4444' } as const;
-const TIER_CLASS = { easy: 'bg-green-100 dark:bg-green-900/40', medium: 'bg-amber-100 dark:bg-amber-900/40', hard: 'bg-red-100 dark:bg-red-900/40' } as const;
-const TIER_TEXT = { easy: 'text-green-800 dark:text-green-300', medium: 'text-amber-800 dark:text-amber-300', hard: 'text-red-800 dark:text-red-300' } as const;
+const TIER_COLOR = { easy: colors.success, medium: colors.brandAccent, hard: colors.destructive } as const;
+const TIER_CLASS = { easy: 'bg-success-soft ', medium: 'bg-warning-soft ', hard: 'bg-destructive-soft ' } as const;
+const TIER_TEXT = { easy: 'text-success ', medium: 'text-warning ', hard: 'text-destructive ' } as const;
 
 function Stat({ label, value, className }: { label: string; value: string | number; className?: string }) {
   return (
@@ -58,19 +59,19 @@ export default function AnswerBreakdown() {
           <Picker value={quizId || NONE} onChange={(v) => setQuizId(v === NONE ? '' : v)} placeholder={q('chooseQuiz')} options={[{ value: NONE, label: q('selectQuizPlaceholder') }, ...(quizzes.data ?? []).map((x) => ({ value: x.id, label: x.title }))]} />
         </View>
         {!quizId ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{q('selectQuizToViewBreakdown')}</Text>
+          <EmptyState title={q('selectQuizToViewBreakdown')} />
         ) : res.isLoading ? (
           <LoadingList rows={5} />
         ) : res.error ? (
           <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : !rows.length ? (
-          <Text className="text-muted-foreground py-8 text-center text-sm">{q('noStudentAnswersYet')}</Text>
+          <EmptyState title={q('noStudentAnswersYet')} />
         ) : (
           <>
             <View className="flex-row flex-wrap gap-2">
               <Stat label={q('questions')} value={rows.length} />
               <Stat label={q('avgCorrect')} value={`${avg}%`} />
-              <Stat label={q('difficulty.hardQuestions')} value={hard.length} className="text-red-600" />
+              <Stat label={q('difficulty.hardQuestions')} value={hard.length} className="text-destructive" />
               <Stat label={q('totalResponses')} value={rows[0]?.total_answers ?? 0} />
             </View>
             <Card>
@@ -111,16 +112,16 @@ export default function AnswerBreakdown() {
               </CardContent>
             </Card>
             {hard.length ? (
-              <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40">
+              <Card className="border-destructive/30 bg-destructive-soft  ">
                 <CardContent className="gap-2 pt-4">
                   <View className="flex-row items-center gap-1.5">
-                    <Icon as={TrendingDown} className="size-4 text-red-700" />
-                    <Text className="font-semibold text-red-800 dark:text-red-300">{q('questionsStudentsStruggledWith')}</Text>
+                    <Icon as={TrendingDown} className="size-4 text-destructive" />
+                    <Text className="font-semibold text-destructive ">{q('questionsStudentsStruggledWith')}</Text>
                   </View>
                   {hard.map((r) => (
                     <View key={r.map_id} className="flex-row gap-2">
-                      <Text className="flex-1 text-sm font-medium text-red-800 dark:text-red-300">{r.question_title}</Text>
-                      <Text className="text-sm text-red-600">
+                      <Text className="flex-1 text-sm font-medium text-destructive ">{r.question_title}</Text>
+                      <Text className="text-sm text-destructive">
                         {r.correct_pct}% {q('correct').toLowerCase()}
                       </Text>
                     </View>

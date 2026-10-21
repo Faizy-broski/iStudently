@@ -3,6 +3,7 @@ import { BookOpen, LayoutDashboard, Menu, Users, type LucideIcon } from 'lucide-
 import { useTranslation } from 'react-i18next';
 import type { ColorValue } from 'react-native';
 
+import { PillTabBar } from '@/components/app/pill-tab-bar';
 import { Icon } from '@/components/ui/icon';
 
 function tabIcon(icon: LucideIcon) {
@@ -14,11 +15,11 @@ function tabIcon(icon: LucideIcon) {
 export default function TeacherTabs() {
   const { t } = useTranslation();
   return (
-    <Tabs screenOptions={{ headerShown: true, headerTitleAlign: 'left' }}>
-      <Tabs.Screen name="index" options={{ title: t('app.ad_tab_dashboard'), tabBarIcon: tabIcon(LayoutDashboard) }} />
+    <Tabs tabBar={(props) => <PillTabBar {...props} />} screenOptions={{ headerShown: true, headerTitleAlign: 'left' }}>
+      <Tabs.Screen name="index" options={{ headerShown: false, title: t('app.ad_tab_dashboard'), tabBarIcon: tabIcon(LayoutDashboard) }} />
       <Tabs.Screen name="classes" options={{ title: t('app.te_tab_classes'), tabBarIcon: tabIcon(BookOpen) }} />
       <Tabs.Screen name="students" options={{ title: t('app.te_tab_students'), tabBarIcon: tabIcon(Users) }} />
-      <Tabs.Screen name="more" options={{ title: t('app.ad_tab_more'), tabBarIcon: tabIcon(Menu) }} />
+      <Tabs.Screen name="more" options={{ headerShown: false, title: t('app.ad_tab_more'), tabBarIcon: tabIcon(Menu) }} />
     </Tabs>
   );
 }

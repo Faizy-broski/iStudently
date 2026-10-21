@@ -1,8 +1,9 @@
 import type { ResourceLinkInput } from '@studently/api-client';
 import { useTranslation } from 'react-i18next';
+import { unstable_serialize, useSWRConfig } from 'swr';
 import { Pressable, View } from 'react-native';
 
-import { FilterChips } from '@/components/app/filter-chips';
+import { Segmented } from '@/components/app/segmented';
 import { LoadingList } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { shortName } from '@/features/admin/people';
@@ -19,10 +20,10 @@ export type LinkAudience = Pick<ResourceLinkInput, 'visible_to' | 'visible_to_gr
 const toggle = (arr: string[], v: string) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
 function Chip({ label, on, onPress, tone = 'primary' }: { label: string; on: boolean; onPress: () => void; tone?: 'primary' | 'teal' | 'orange' | 'amber' }) {
-  const onCls = { primary: 'bg-blue-600 border-blue-600', teal: 'bg-teal-600 border-teal-600', orange: 'bg-orange-500 border-orange-500', amber: 'bg-amber-500 border-amber-500' }[tone];
+  const onCls = { primary: 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary', teal: 'bg-success border-success', orange: 'bg-warning border-warning', amber: 'bg-warning border-warning' }[tone];
   return (
-    <Pressable onPress={onPress} className={cn('rounded-full border px-3 py-1', on ? onCls : 'border-border')}>
-      <Text className={cn('text-xs font-medium', on && 'text-white')}>{label}</Text>
+    <Pressable onPress={onPress} accessibilityRole="checkbox" accessibilityState={{ checked: on }} className={cn('rounded-full border px-3 py-1.5 active:opacity-80', on ? onCls : 'border-info-soft dark:border-border bg-card')}>
+      <Text className={cn('text-xs font-semibold', on ? 'text-white' : 'text-muted-foreground')}>{label}</Text>
     </Pressable>
   );
 }
@@ -58,6 +59,14 @@ function GradeBlock({ grade, link, onChange }: { grade: { id: string; name: stri
   const selected = link.visible_to_grade_ids.includes(grade.id);
   const sections = useApi(selected ? ['admin', 'sections', campusId ?? 'school', grade.id] : null, ([, , , g]) => adminAcademics.sections(campusId, g as string));
   const secs = sections.data ?? [];
+  // Students already loaded for a section (same cache as SectionStudents); the web drops these with their section.
+  const { cache } = useSWRConfig();
+  const loadedStudents = (sectionId: string) =>
+    ((cache.get(unstable_serialize(['admin', 'link-section-students', sectionId, campusId ?? 'school']))?.data as { id: string }[] | undefined) ?? []).map((x) => x.id);
+  const withoutStudentsOf = (sectionIds: string[]) => {
+    const drop = new Set(sectionIds.flatMap(loadedStudents));
+    return link.visible_to_student_ids.filter((x) => !drop.has(x));
+  };
   return (
     <View className="gap-2">
       <Chip
@@ -65,9 +74,13 @@ function GradeBlock({ grade, link, onChange }: { grade: { id: string; name: stri
         on={selected}
         onPress={() => {
           if (selected) {
-            // Dropping a grade also drops its sections (students of those sections stay unless known).
+            // Dropping a grade also drops its sections and the students of those sections (web AudiencePopover).
             const ids = new Set(secs.map((s) => s.id));
-            onChange({ visible_to_grade_ids: link.visible_to_grade_ids.filter((x) => x !== grade.id), visible_to_section_ids: link.visible_to_section_ids.filter((x) => !ids.has(x)) });
+            onChange({
+              visible_to_grade_ids: link.visible_to_grade_ids.filter((x) => x !== grade.id),
+              visible_to_section_ids: link.visible_to_section_ids.filter((x) => !ids.has(x)),
+              visible_to_student_ids: withoutStudentsOf([...ids]),
+            });
           } else onChange({ visible_to_grade_ids: [...link.visible_to_grade_ids, grade.id] });
         }}
       />
@@ -75,7 +88,14 @@ function GradeBlock({ grade, link, onChange }: { grade: { id: string; name: stri
         <View className="gap-2 ps-3">
           <View className="flex-row flex-wrap gap-1.5">
             {secs.map((s) => (
-              <Chip key={s.id} tone="teal" label={s.name} on={link.visible_to_section_ids.includes(s.id)} onPress={() => onChange({ visible_to_section_ids: toggle(link.visible_to_section_ids, s.id) })} />
+              <Chip key={s.id} tone="teal" label={s.name} on={link.visible_to_section_ids.includes(s.id)} onPress={() =>
+                  onChange(
+                    link.visible_to_section_ids.includes(s.id)
+                      ? { visible_to_section_ids: toggle(link.visible_to_section_ids, s.id), visible_to_student_ids: withoutStudentsOf([s.id]) }
+                      : { visible_to_section_ids: toggle(link.visible_to_section_ids, s.id) },
+                  )
+                }
+              />
             ))}
           </View>
           {secs
@@ -122,7 +142,7 @@ export function LinkAudienceEditor({ value, onChange }: { value: LinkAudience; o
 
   return (
     <View className="gap-3">
-      {tabs.length > 1 ? <FilterChips value={current} onChange={setTab} options={tabs} /> : null}
+      {tabs.length > 1 ? <Segmented value={current} onChange={setTab} options={tabs} /> : null}
       {current === 'roles' ? (
         <>
           <Text className="text-muted-foreground text-xs">{l('audience_roles_help')}</Text>

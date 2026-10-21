@@ -83,7 +83,7 @@ export default function AddEntryExitRecords() {
             <View className="gap-4 p-4">
               <Card>
                 <CardContent className="gap-4 pt-4">
-                  <Text className="text-muted-foreground text-xs font-semibold uppercase">{e('card_details_title')}</Text>
+                  <Text className="text-muted-foreground text-sm font-semibold">{e('card_details_title')}</Text>
                   <View className="gap-1.5">
                     <Label>{`${e('label_checkpoint')} *`}</Label>
                     <Picker
@@ -119,8 +119,8 @@ export default function AddEntryExitRecords() {
                 <View className="flex-row items-center gap-2">
                   <Text variant="muted">{students.isLoading ? e('msg_loading') : e('stat_students_found', { count: rows.length })}</Text>
                   {selected.size ? (
-                    <Badge className="bg-blue-100">
-                      <Text className="text-blue-700">{e('stat_selected', { count: selected.size })}</Text>
+                    <Badge className="bg-info-soft">
+                      <Text className="text-brand dark:text-brand-secondary">{e('stat_selected', { count: selected.size })}</Text>
                     </Badge>
                   ) : null}
                 </View>

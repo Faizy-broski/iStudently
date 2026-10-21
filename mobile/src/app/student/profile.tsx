@@ -1,14 +1,16 @@
 import { Stack } from 'expo-router';
-import { Lock, Mail, Phone, Save, Shield, User } from 'lucide-react-native';
+import { CalendarDays, Clock, IdCard, Lock, Mail, Phone, QrCode, Save, Shield, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Share, View } from 'react-native';
+import { Share, View } from 'react-native';
 import QRCode from 'react-qr-code';
 
-import { PersonAvatar } from '@/components/app/person-avatar';
+import { colors } from '@/lib/colors';
+import { ScrollView } from '@/components/app/keyboard';
+import { FormSection, PersonHero } from '@/components/app/layout';
+import { InfoRow, Panel, PanelTitle } from '@/components/app/panel';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
@@ -61,76 +63,66 @@ export default function StudentProfile() {
     <>
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
-        <Text variant="muted">{k('subtitle')}</Text>
-        <Card>
-          <CardContent className="flex-row items-center gap-4 p-4">
-            <View className={cn('rounded-xl border-2', female ? 'border-pink-300' : 'border-blue-200')}>
-              <PersonAvatar url={profile.profile_photo_url} name={name} size={72} />
+        <Text className="text-muted-foreground text-sm">{k('subtitle')}</Text>
+        <PersonHero
+          name={name}
+          subtitle={profile.email}
+          photo={profile.profile_photo_url}
+          chips={
+            <View className={cn('rounded-full px-3 py-1', female ? 'bg-chart-6/40' : 'bg-white/15')}>
+              <Text className="text-xs font-semibold capitalize text-white">{role}</Text>
             </View>
-            <View className="flex-1">
-              <Text className="text-xl font-semibold">{name}</Text>
-              <Text className="text-muted-foreground capitalize">{role}</Text>
-              <Text className="text-muted-foreground mt-1 text-sm">{profile.email}</Text>
+          }
+        />
+
+        <Panel className="gap-3 p-4">
+          <Header icon={User} tone={female ? 'bg-chart-6/15 text-chart-6' : 'bg-info-soft text-brand dark:text-brand-secondary'} title={k('contact')} desc={k('contact_desc')} />
+          <Field icon={Mail} label={k('email')}>
+            <Input value={profile.email ?? ''} editable={false} className="bg-muted" />
+            <Text className="text-muted-foreground mt-1 text-xs">{k('email_hint')}</Text>
+          </Field>
+          <Field icon={Phone} label={k('phone')}>
+            <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder={k('phone_ph')} />
+          </Field>
+          <Button onPress={save} disabled={saving} className={female ? 'bg-chart-6' : undefined}>
+            <Icon as={Save} className="size-4 text-white" />
+            <Text className="text-white">{k('save')}</Text>
+          </Button>
+        </Panel>
+
+        <Panel className="gap-3 p-4">
+          <Header icon={Lock} tone="bg-destructive-soft text-destructive" title={k('pw')} desc={k('pw_desc')} />
+          <Field label={k('new')}>
+            <Input value={pw.next} onChangeText={(next) => setPw((p) => ({ ...p, next }))} secureTextEntry placeholder={k('new_ph')} autoCapitalize="none" />
+          </Field>
+          <Field label={k('confirm')}>
+            <Input value={pw.confirm} onChangeText={(confirm) => setPw((p) => ({ ...p, confirm }))} secureTextEntry placeholder={k('confirm_ph')} autoCapitalize="none" />
+          </Field>
+          <Button variant="outline" onPress={changePassword} disabled={changing || !pw.next}>
+            <Icon as={Shield} className="size-4" />
+            <Text>{k('pw')}</Text>
+          </Button>
+        </Panel>
+
+        <Panel className="pb-1">
+          <PanelTitle title={k('account')} />
+          <InfoRow icon={IdCard} label={k('student_id')} value={profile.student_id ? `${profile.student_id.slice(0, 8)}...` : '—'} />
+          <InfoRow icon={Shield} label={k('role')} value={role} />
+          <InfoRow icon={CalendarDays} label={k('since')} value={profile.created_at ? formatDate(profile.created_at) : '—'} />
+          <InfoRow icon={Clock} label={k('last_login')} value={last.data?.last_sign_in ? formatDateTime(last.data.last_sign_in) : '—'} last />
+        </Panel>
+
+        <FormSection icon={QrCode} title={k('qr')} description={k('qr_desc')}>
+          <View className="items-center gap-3">
+            <View className="rounded-2xl bg-white p-4" accessibilityRole="image" accessibilityLabel={k('qr')}>
+              <QRCode value={qr} size={180} bgColor={colors.white} fgColor={colors.black} />
             </View>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="gap-3 p-4">
-            <Header icon={User} tone={female ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'} title={k('contact')} desc={k('contact_desc')} />
-            <Field icon={Mail} label={k('email')}>
-              <Input value={profile.email ?? ''} editable={false} className="bg-muted" />
-              <Text className="text-muted-foreground mt-1 text-xs">{k('email_hint')}</Text>
-            </Field>
-            <Field icon={Phone} label={k('phone')}>
-              <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder={k('phone_ph')} />
-            </Field>
-            <Button onPress={save} disabled={saving} className={female ? 'bg-pink-500' : undefined}>
-              <Icon as={Save} className="size-4 text-white" />
-              <Text className="text-white">{k('save')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="gap-3 p-4">
-            <Header icon={Lock} tone="bg-red-100 text-red-600" title={k('pw')} desc={k('pw_desc')} />
-            <Field label={k('new')}>
-              <Input value={pw.next} onChangeText={(next) => setPw((p) => ({ ...p, next }))} secureTextEntry placeholder={k('new_ph')} autoCapitalize="none" />
-            </Field>
-            <Field label={k('confirm')}>
-              <Input value={pw.confirm} onChangeText={(confirm) => setPw((p) => ({ ...p, confirm }))} secureTextEntry placeholder={k('confirm_ph')} autoCapitalize="none" />
-            </Field>
-            <Button variant="outline" onPress={changePassword} disabled={changing || !pw.next}>
-              <Icon as={Shield} className="size-4" />
-              <Text>{k('pw')}</Text>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-muted/50">
-          <CardContent className="gap-2 p-4">
-            <Text className="mb-2 font-semibold">{k('account')}</Text>
-            <Row label={k('student_id')} value={profile.student_id ? `${profile.student_id.slice(0, 8)}...` : '—'} />
-            <Row label={k('role')} value={role} />
-            <Row label={k('since')} value={profile.created_at ? formatDate(profile.created_at) : '—'} />
-            <Row label={k('last_login')} value={last.data?.last_sign_in ? formatDateTime(last.data.last_sign_in) : '—'} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="items-center gap-3 p-4">
-            <Text className="self-start font-semibold">{k('qr')}</Text>
-            <Text className="text-muted-foreground self-start text-sm">{k('qr_desc')}</Text>
-            <View className="rounded-xl bg-white p-4" accessibilityRole="image" accessibilityLabel={k('qr')}>
-              <QRCode value={qr} size={180} bgColor="#FFFFFF" fgColor="#000000" />
-            </View>
-            <Text className="font-medium">{`${name} · ${role}`}</Text>
+            <Text className="text-sm font-semibold">{`${name} · ${role}`}</Text>
             <Button variant="outline" onPress={() => Share.share({ message: qr })}>
               <Text>{t('app.qr_share')}</Text>
             </Button>
-          </CardContent>
-        </Card>
+          </View>
+        </FormSection>
       </ScrollView>
     </>
   );
@@ -138,13 +130,13 @@ export default function StudentProfile() {
 
 function Header({ icon, tone, title, desc }: { icon: typeof User; tone: string; title: string; desc: string }) {
   return (
-    <View className="mb-2 flex-row items-center gap-3">
-      <View className={cn('rounded-lg p-3', tone)}>
-        <Icon as={icon} className={cn('size-5', tone)} />
+    <View className="flex-row items-center gap-2.5">
+      <View className={cn('size-8 items-center justify-center rounded-xl', tone)}>
+        <Icon as={icon} strokeWidth={2.2} className={cn('size-4', tone)} />
       </View>
       <View className="flex-1">
-        <Text className="text-lg font-semibold">{title}</Text>
-        <Text className="text-muted-foreground text-sm">{desc}</Text>
+        <Text className="font-semibold">{title}</Text>
+        <Text className="text-muted-foreground text-xs">{desc}</Text>
       </View>
     </View>
   );
@@ -154,19 +146,10 @@ function Field({ icon, label, children }: { icon?: typeof User; label: string; c
   return (
     <View className="gap-1.5">
       <View className="flex-row items-center gap-2">
-        {icon ? <Icon as={icon} className="size-4" /> : null}
+        {icon ? <Icon as={icon} className="text-muted-foreground size-4" /> : null}
         <Text className="text-sm font-medium">{label}</Text>
       </View>
       {children}
-    </View>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="flex-row justify-between gap-2">
-      <Text className="text-muted-foreground text-sm">{label}</Text>
-      <Text className="text-sm font-medium capitalize">{value}</Text>
     </View>
   );
 }

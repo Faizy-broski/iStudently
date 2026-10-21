@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { AlertCircle, BarChart3, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
@@ -76,10 +77,10 @@ export default function PerformanceCatalog() {
       <CardContent className="gap-2">
         {!items.length ? <Text variant="muted" className="py-4 text-center text-sm">{reward ? p('no_rewards') : p('no_violations')}</Text> : null}
         {items.map((a) => (
-          <View key={a.id} className="border-border gap-1.5 rounded-lg border p-3">
+          <View key={a.id} className="border-info-soft dark:border-border gap-1.5 rounded-xl border p-3">
             <View className="flex-row items-start gap-2">
               <View className="flex-1">
-                <Text className="font-medium">{a.action_name_en}</Text>
+                <Text className="text-sm font-semibold">{a.action_name_en}</Text>
                 <Text className="text-muted-foreground text-sm" style={{ writingDirection: 'rtl' }}>
                   {a.action_name_ar}
                 </Text>
@@ -88,7 +89,7 @@ export default function PerformanceCatalog() {
             </View>
             <View className="flex-row flex-wrap items-center gap-2">
               <EscalationPill stage={a.escalation_stage} />
-              <Text className={reward ? 'font-semibold text-green-600' : 'font-semibold text-red-600'}>{`${reward ? '+' : ''}${a.default_points} pts`}</Text>
+              <Text className={reward ? 'font-semibold text-success' : 'font-semibold text-destructive'}>{`${reward ? '+' : ''}${a.default_points} pts`}</Text>
               <Text className="text-muted-foreground text-xs">{`${reward ? p('bonus') : p('fine')}: ${a.default_fine > 0 ? `${reward ? '+' : ''}${a.default_fine}` : '—'}`}</Text>
             </View>
             <View className="flex-row justify-end gap-4">
@@ -96,12 +97,11 @@ export default function PerformanceCatalog() {
                 onPress={() => {
                   setEditing(a);
                   setForm({ ...a });
-                }}
-                hitSlop={8}>
-                <Icon as={Pencil} className="text-muted-foreground size-4" />
+                }} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
+                <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />
               </Pressable>
               <Pressable onPress={() => remove(a.id)} hitSlop={8}>
-                <Icon as={Trash2} className="size-4 text-red-500" />
+                <Icon as={Trash2} className="size-4 text-destructive" />
               </Pressable>
             </View>
           </View>
@@ -129,8 +129,8 @@ export default function PerformanceCatalog() {
           <LoadingList rows={4} />
         ) : (
           <>
-            {section(p('violations_title'), AlertCircle, 'text-red-600', violations, false)}
-            {section(p('rewards_title'), BarChart3, 'text-green-600', rewards, true)}
+            {section(p('violations_title'), AlertCircle, 'text-destructive', violations, false)}
+            {section(p('rewards_title'), BarChart3, 'text-success', rewards, true)}
           </>
         )}
       </ScrollView>

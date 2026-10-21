@@ -13,6 +13,10 @@ router.use(authenticate)
 router.get('/settings', requireRole('admin'), (req, res) => schoolController.getSchoolSettings(req, res))
 router.put('/settings', requireRole('admin'), (req, res) => schoolController.updateSchoolSettings(req, res))
 
+// Library policies only (fine per day, loan length, books per borrower): librarians manage these too.
+router.get('/settings/library', requireRole('admin', 'librarian'), (req, res) => schoolController.getLibrarySettings(req, res))
+router.put('/settings/library', requireRole('admin', 'librarian'), (req, res) => schoolController.updateLibrarySettings(req, res))
+
 // Multi-school context routes
 router.get('/my-schools', (req, res) => schoolController.getMySchools(req, res))
 router.post('/switch-context', (req, res) => schoolController.switchSchool(req, res))

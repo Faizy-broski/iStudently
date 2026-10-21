@@ -3,8 +3,9 @@ import { Stack } from 'expo-router';
 import { Plus, Save, ShieldCheck, Trash2, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
@@ -164,8 +165,8 @@ function ExceptionsPanel({ ruleId, schoolId, userName }: { ruleId: string | unde
               <Text className="text-sm font-medium">{ex.person_name || `${ex.person_id.slice(0, 12)}…`}</Text>
               <Text className="text-muted-foreground text-xs">{`${ex.from_date} → ${ex.to_date}${ex.reason ? ` · ${ex.reason}` : ''}`}</Text>
             </View>
-            <Pressable onPress={() => remove(ex)} hitSlop={8}>
-              <Icon as={Trash2} className="text-muted-foreground size-3.5" />
+            <Pressable onPress={() => remove(ex)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+              <Icon as={Trash2} className="text-destructive size-4" />
             </Pressable>
           </View>
         ))
@@ -294,17 +295,17 @@ export default function AutomaticRecords() {
                   <CardContent className="gap-3 pt-4">
                     <View className="flex-row items-center justify-between">
                       {row.isDirty ? (
-                        <Badge variant="outline" className="border-amber-400">
-                          <Text className="text-[10px] text-amber-600">{a('badge_unsaved')}</Text>
+                        <Badge variant="outline" className="border-warning">
+                          <Text className="text-[10px] text-warning">{a('badge_unsaved')}</Text>
                         </Badge>
                       ) : (
                         <View />
                       )}
                       <View className="flex-row gap-4">
-                        <Pressable onPress={() => setExpanded(expanded === row.uid ? null : row.uid)} hitSlop={8} accessibilityLabel={a('tooltip_exceptions')} className={cn('rounded border p-1', expanded === row.uid ? 'border-blue-400 bg-blue-100' : 'border-border')}>
-                          <Icon as={Users} className={cn('size-4', expanded === row.uid ? 'text-blue-700' : 'text-muted-foreground')} />
+                        <Pressable onPress={() => setExpanded(expanded === row.uid ? null : row.uid)} hitSlop={8} accessibilityLabel={a('tooltip_exceptions')} className={cn('rounded border p-1', expanded === row.uid ? 'border-brand bg-info-soft' : 'border-border')}>
+                          <Icon as={Users} className={cn('size-4', expanded === row.uid ? 'text-brand dark:text-brand-secondary' : 'text-muted-foreground')} />
                         </Pressable>
-                        <Pressable onPress={() => remove(row)} hitSlop={8} className="p-1">
+                        <Pressable onPress={() => remove(row)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
                           <Icon as={Trash2} className="text-destructive size-4" />
                         </Pressable>
                       </View>

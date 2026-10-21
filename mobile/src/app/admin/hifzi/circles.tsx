@@ -2,11 +2,12 @@ import type { HifziCircle, HifziGender } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { CalendarClock, Plus, UserPlus, Users, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
-import { ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,9 +27,9 @@ import { cn } from '@/lib/utils';
 import { useDebounced } from '@/lib/use-debounced';
 
 const GENDER_COLORS: Record<HifziGender, string> = {
-  male: 'bg-blue-100 dark:bg-blue-900',
-  female: 'bg-pink-100 dark:bg-pink-900',
-  mixed: 'bg-gray-100 dark:bg-gray-800',
+  male: 'bg-info-soft ',
+  female: 'bg-chart-8/10 ',
+  mixed: 'bg-muted ',
 };
 
 function CreateCircle({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -62,7 +63,7 @@ function CreateCircle({ onClose, onCreated }: { onClose: () => void; onCreated: 
   return (
     <Dialog open onOpenChange={(o) => !o && !saving && onClose()}>
       <DialogContent className="max-h-[90%] w-[94vw] max-w-md">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView>
           <ScrollView contentContainerClassName="gap-3" keyboardShouldPersistTaps="handled">
             <DialogHeader>
               <DialogTitle>{h('create')}</DialogTitle>
@@ -147,7 +148,7 @@ function AssignTeachers({ circle, onClose, onChanged }: { circle: HifziCircle; o
               {active.map((ct) => {
                 const s = results.find((r) => r.profile_id === ct.teacher_profile_id);
                 return (
-                  <View key={ct.id} className="border-border flex-row items-center gap-2 rounded-md border px-3 py-2">
+                  <View key={ct.id} className="border-info-soft dark:border-border flex-row items-center gap-2 rounded-xl border px-3 py-2">
                     <Text className="flex-1 text-sm">
                       {s ? label(s) : ct.teacher_profile_id} <Text className="text-muted-foreground text-xs">({ct.role})</Text>
                     </Text>
@@ -163,7 +164,7 @@ function AssignTeachers({ circle, onClose, onChanged }: { circle: HifziCircle; o
           {res.isLoading ? (
             <LoadingList rows={2} />
           ) : !results.length ? (
-            <Text className="text-muted-foreground py-2 text-center text-sm">{a('hz_no_teachers')}</Text>
+            <EmptyState title={a('hz_no_teachers')} />
           ) : (
             results
               .filter((s) => !assigned.has(s.profile_id))
@@ -266,9 +267,9 @@ export default function HifziCircles() {
                     onPress={() => toggleMode(c)}
                     disabled={toggling === c.id}
                     accessibilityHint={h('schedulingModeToggleHint')}
-                    className={cn('flex-row items-center gap-1.5 self-start rounded-md px-2 py-1', bell ? 'bg-blue-50 dark:bg-blue-950' : 'bg-muted', toggling === c.id && 'opacity-60')}>
-                    <Icon as={CalendarClock} className={cn('size-3', bell ? 'text-blue-700 dark:text-blue-300' : 'text-muted-foreground')} />
-                    <Text className={cn('text-xs', bell ? 'text-blue-700 dark:text-blue-300' : 'text-muted-foreground')}>{bell ? h('schedulingModeBellSchedule') : h('schedulingModeFreeform')}</Text>
+                    className={cn('flex-row items-center gap-1.5 self-start rounded-md px-2 py-1', bell ? 'bg-info-soft ' : 'bg-muted', toggling === c.id && 'opacity-60')}>
+                    <Icon as={CalendarClock} className={cn('size-3', bell ? 'text-brand dark:text-brand-secondary ' : 'text-muted-foreground')} />
+                    <Text className={cn('text-xs', bell ? 'text-brand dark:text-brand-secondary ' : 'text-muted-foreground')}>{bell ? h('schedulingModeBellSchedule') : h('schedulingModeFreeform')}</Text>
                   </Pressable>
                   <View className="flex-row items-center justify-between gap-2">
                     <Pressable onPress={() => router.push({ pathname: '/admin/hifzi/students', params: { circle_id: c.id } })} hitSlop={6}>

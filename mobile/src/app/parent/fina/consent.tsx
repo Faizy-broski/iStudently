@@ -2,12 +2,15 @@ import { Stack } from 'expo-router';
 import { Circle, CircleDot, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
-import { LoadingList } from '@/components/app/states';
+import { ScrollView } from '@/components/app/keyboard';
+import { Initials, RowItem, RowPill } from '@/components/app/layout';
+import { Panel } from '@/components/app/panel';
+import { EmptyState, LoadingList } from '@/components/app/states';
+import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
@@ -71,27 +74,23 @@ export default function ParentFinaConsent() {
         {wards.isLoading ? (
           <LoadingList rows={2} />
         ) : list.length === 0 ? (
-          <Card>
-            <CardContent className="items-center gap-2 py-10">
-              <Icon as={Users} className="text-muted-foreground size-6" />
-              <Text className="text-muted-foreground text-sm">{k('empty_wards')}</Text>
-            </CardContent>
-          </Card>
+          <EmptyState icon={Users} title={k('empty_wards')} />
         ) : (
-          list.map((w) => (
-            <Card key={w.studentId}>
-              <CardContent className="flex-row items-center gap-3 py-4">
-                <View className="flex-1">
-                  <Text className="font-semibold">{nameOf(w)}</Text>
-                  {w.sectionName ? <Text className="text-muted-foreground text-xs">{k('section_label', { section: w.sectionName })}</Text> : null}
-                  <Text className="text-muted-foreground mt-1 text-sm">{k('current_label', { label: k(`${LEVELS[w.currentLevel]}_title`, { name: nameOf(w) }) })}</Text>
+          <Panel>
+            {list.map((w, i) => (
+              <RowItem
+                key={w.studentId}
+                leading={<Initials name={nameOf(w) || '?'} size={40} />}
+                title={nameOf(w)}
+                meta={w.sectionName ? k('section_label', { section: w.sectionName }) : null}
+                trailing={<RowPill label={k('change_button')} onPress={() => openWard(w)} />}
+                last={i === list.length - 1}>
+                <View className="flex-row">
+                  <StatusChip label={k('current_label', { label: k(`${LEVELS[w.currentLevel]}_title`, { name: nameOf(w) }) })} tone="info" />
                 </View>
-                <Button variant="outline" onPress={() => openWard(w)}>
-                  <Text>{k('change_button')}</Text>
-                </Button>
-              </CardContent>
-            </Card>
-          ))
+              </RowItem>
+            ))}
+          </Panel>
         )}
       </ScrollView>
 
@@ -113,8 +112,8 @@ export default function ParentFinaConsent() {
                       onPress={() => setLevel(i)}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: level === i }}
-                      className={cn('flex-row items-start gap-3 rounded-lg border p-3', level === i ? 'border-[#022172] bg-[#022172]/5' : 'border-border')}>
-                      <Icon as={level === i ? CircleDot : Circle} className={cn('mt-0.5 size-4', level === i ? 'text-[#022172]' : 'text-muted-foreground')} />
+                      className={cn('flex-row items-start gap-3 rounded-2xl border p-3 active:opacity-80', level === i ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border bg-card')}>
+                      <Icon as={level === i ? CircleDot : Circle} className={cn('mt-0.5 size-4', level === i ? 'text-brand dark:text-brand-secondary' : 'text-muted-foreground')} />
                       <View className="flex-1">
                         <Text className="text-sm font-medium">{k(`${key}_title`, { name: nameOf(active) })}</Text>
                         <Text className="text-muted-foreground mt-0.5 text-xs">{k(`${key}_desc`, { name: nameOf(active) })}</Text>
@@ -128,7 +127,7 @@ export default function ParentFinaConsent() {
                     </View>
                   ) : null}
                   <Pressable onPress={() => setTextOpen(true)} accessibilityRole="link">
-                    <Text className="text-xs text-[#022172] underline dark:text-blue-400">{k('read_text_link')}</Text>
+                    <Text className="text-brand-secondary text-xs font-medium underline">{k('read_text_link')}</Text>
                   </Pressable>
                 </>
               )}

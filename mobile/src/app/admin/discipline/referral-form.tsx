@@ -1,10 +1,11 @@
 import type { DisciplineField, DisciplineFieldType, DisciplineTargetType } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import { Info, Minus, Pencil, Plus, Trash2, TrendingDown, TrendingUp } from 'lucide-react-native';
+import { Info, ListChecks, Minus, Plus, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { DataList } from '@/components/app/data-list';
 import { FilterChips } from '@/components/app/filter-chips';
 import { Picker } from '@/components/app/picker';
@@ -18,6 +19,7 @@ import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { useAttendanceScope } from '@/features/admin/attendance';
 import { PointsBadge } from '@/features/admin/discipline';
+import { IconTile, RowActions, RowPill } from '@/components/app/layout';
 import { adminDiscipline } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -26,14 +28,14 @@ const TARGETS: DisciplineTargetType[] = ['student', 'teacher', 'staff'];
 const TYPES: DisciplineFieldType[] = ['select', 'multiple_radio', 'multiple_checkbox', 'text', 'textarea', 'checkbox', 'numeric', 'date'];
 const WITH_OPTIONS: DisciplineFieldType[] = ['select', 'multiple_radio', 'multiple_checkbox'];
 const TYPE_CLS: Record<DisciplineFieldType, string> = {
-  select: 'bg-blue-100 text-blue-800',
-  multiple_radio: 'bg-purple-100 text-purple-800',
-  multiple_checkbox: 'bg-indigo-100 text-indigo-800',
-  text: 'bg-gray-100 text-gray-700',
-  textarea: 'bg-gray-100 text-gray-700',
-  checkbox: 'bg-green-100 text-green-800',
-  numeric: 'bg-orange-100 text-orange-800',
-  date: 'bg-cyan-100 text-cyan-800',
+  select: 'bg-info-soft text-brand dark:text-brand-secondary',
+  multiple_radio: 'bg-chart-6/10 text-chart-6',
+  multiple_checkbox: 'bg-info-soft text-brand dark:text-brand-secondary',
+  text: 'bg-muted text-muted-foreground',
+  textarea: 'bg-muted text-muted-foreground',
+  checkbox: 'bg-success-soft text-success',
+  numeric: 'bg-warning-soft text-warning',
+  date: 'bg-info-soft text-brand dark:text-brand-secondary',
 };
 
 interface FormState {
@@ -120,7 +122,7 @@ export default function ReferralFormBuilder() {
                 <Text>{d('addField')}</Text>
               </Button>
               <FilterChips<DisciplineTargetType> value={target} onChange={setTarget} options={TARGETS.map((x) => ({ value: x, label: d(`targetTypes.${x}`) }))} />
-              <View className="border-border flex-row gap-2 rounded-lg border p-3">
+              <View className="border-info-soft dark:border-border flex-row gap-2 rounded-xl border p-3">
                 <Icon as={Info} className="text-muted-foreground size-4" />
                 <Text className="flex-1 text-sm">{d('fieldsInfo')}</Text>
               </View>
@@ -135,30 +137,23 @@ export default function ReferralFormBuilder() {
           renderItem={(f) => (
             <View className={cn('gap-1.5 px-4 py-3', !f.is_active && 'opacity-60')}>
               <View className="flex-row flex-wrap items-center gap-2">
-                <Text className="font-medium">{f.name}</Text>
+                <IconTile icon={ListChecks} tone={f.is_active ? 'brand' : 'muted'} size={32} />
+                <Text className="text-sm font-semibold">{f.name}</Text>
                 <View className={cn('rounded-full px-2 py-0.5', TYPE_CLS[f.field_type])}>
                   <Text className={cn('text-xs', TYPE_CLS[f.field_type].split(' ')[1])}>{d(`fieldTypes.${f.field_type}`)}</Text>
                 </View>
                 {f.penalty_points != null ? <PointsBadge pts={f.penalty_points} /> : null}
                 {!f.is_active ? (
-                  <View className="rounded-full bg-gray-100 px-2 py-0.5">
-                    <Text className="text-xs text-gray-500">{d('inactive')}</Text>
+                  <View className="rounded-full bg-muted px-2 py-0.5">
+                    <Text className="text-xs text-muted-foreground">{d('inactive')}</Text>
                   </View>
                 ) : null}
               </View>
               {f.options?.length ? <Text className="text-muted-foreground text-xs" numberOfLines={2}>{`${d('options')}: ${f.options.join(', ')}`}</Text> : null}
               <Text className="text-muted-foreground text-xs">{`${d('sort_order')}: ${f.sort_order}`}</Text>
-              <View className="flex-row justify-end gap-4">
-                <Pressable onPress={() => toggleActive(f)} hitSlop={8}>
-                  <Text className="text-primary text-sm">{f.is_active ? d('disable') : d('enable')}</Text>
-                </Pressable>
-                <Pressable onPress={() => openEdit(f)} hitSlop={8}>
-                  <Icon as={Pencil} className="text-muted-foreground size-4" />
-                </Pressable>
-                <Pressable onPress={() => remove(f)} hitSlop={8}>
-                  <Icon as={Trash2} className="text-destructive size-4" />
-                </Pressable>
-              </View>
+              <RowActions onEdit={() => openEdit(f)} onDelete={() => remove(f)}>
+                <RowPill label={f.is_active ? d('disable') : d('enable')} tone={f.is_active ? 'muted' : 'success'} onPress={() => toggleActive(f)} />
+              </RowActions>
             </View>
           )}
         />
@@ -184,25 +179,25 @@ export default function ReferralFormBuilder() {
                   <Label>{`${d('options')} (${d('onePerLine')})`}</Label>
                   <Textarea value={form.options_text} onChangeText={(v) => setForm({ ...form, options_text: v })} placeholder={'Skipping Class\nFighting\nInsubordination\nOther'} className="min-h-28" />
                 </View>
-                <View className={cn('gap-2 rounded-lg border p-3', form.penaltySign === '+' ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50')}>
+                <View className={cn('gap-2 rounded-lg border p-3', form.penaltySign === '+' ? 'border-success/30 bg-success-soft' : 'border-destructive/30 bg-destructive-soft')}>
                   <View className="flex-row items-center gap-1.5">
-                    <Icon as={form.penaltySign === '+' ? TrendingUp : TrendingDown} className={cn('size-4', form.penaltySign === '+' ? 'text-green-700' : 'text-red-700')} />
-                    <Text className={cn('text-sm font-medium', form.penaltySign === '+' ? 'text-green-700' : 'text-red-700')}>{t('app.dc_point_impact_optional')}</Text>
+                    <Icon as={form.penaltySign === '+' ? TrendingUp : TrendingDown} className={cn('size-4', form.penaltySign === '+' ? 'text-success' : 'text-destructive')} />
+                    <Text className={cn('text-sm font-medium', form.penaltySign === '+' ? 'text-success' : 'text-destructive')}>{t('app.dc_point_impact_optional')}</Text>
                   </View>
                   <Text className="text-muted-foreground text-xs">{t('app.dc_point_impact_hint')}</Text>
                   <View className="flex-row flex-wrap items-center gap-2">
                     <Button size="sm" variant={form.penaltySign === '-' ? 'destructive' : 'outline'} onPress={() => setForm({ ...form, penaltySign: '-' })}>
                       <Text>{`− ${t('app.dc_deduct')}`}</Text>
                     </Button>
-                    <Button size="sm" variant="outline" className={form.penaltySign === '+' ? 'border-green-600 bg-green-600' : undefined} onPress={() => setForm({ ...form, penaltySign: '+' })}>
+                    <Button size="sm" variant="outline" className={form.penaltySign === '+' ? 'border-success bg-success' : undefined} onPress={() => setForm({ ...form, penaltySign: '+' })}>
                       <Text className={form.penaltySign === '+' ? 'text-white' : undefined}>{`+ ${t('app.dc_add_points')}`}</Text>
                     </Button>
                     <View className="flex-row items-center">
-                      <Pressable onPress={() => step(-1)} className="border-input rounded-s-md border p-2">
+                      <Pressable onPress={() => step(-1)} className="border-input rounded-s-md border p-2" accessibilityLabel={t('common.remove')}>
                         <Icon as={Minus} className="text-foreground size-3" />
                       </Pressable>
                       <Input value={form.penalty} onChangeText={(v) => setForm({ ...form, penalty: v.replace(/[^0-9.]/g, '') })} keyboardType="decimal-pad" placeholder="0" className="h-8 w-14 rounded-none text-center" />
-                      <Pressable onPress={() => step(1)} className="border-input rounded-e-md border p-2">
+                      <Pressable onPress={() => step(1)} className="border-input rounded-e-md border p-2" accessibilityLabel={t('common.add')}>
                         <Icon as={Plus} className="text-foreground size-3" />
                       </Pressable>
                     </View>

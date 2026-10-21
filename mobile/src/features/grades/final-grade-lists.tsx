@@ -1,12 +1,13 @@
 import type { FinalGradeListOptions } from '@studently/api-client';
 import { Stack } from 'expo-router';
+import { CalendarRange, ListChecks } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
+import { FormSection } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
-import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { useMarkingPeriods } from '@/features/admin/grades';
@@ -73,9 +74,8 @@ export function FinalGradeListsView({ ctx, campusId, chosen, list, subtitle, qua
       <Stack.Screen options={{ title: f('title') }} />
       <Text className="text-muted-foreground text-sm">{subtitle ?? f('subtitle')}</Text>
       {actions}
-      <Card>
-        <CardContent className="gap-1 pt-4">
-          <Text className="pb-1 text-xs font-semibold uppercase">{f('include_section')}</Text>
+      <FormSection title={f('include_section')} icon={ListChecks}>
+        <View className="gap-1">
           <CheckRow label={f('teacher')} value={o.include_teacher} onChange={set('include_teacher')} />
           <CheckRow label={f('comments')} value={o.include_comments} onChange={set('include_comments')} />
           <CheckRow label={f('percents')} value={o.include_percents} onChange={set('include_percents')} />
@@ -88,11 +88,11 @@ export function FinalGradeListsView({ ctx, campusId, chosen, list, subtitle, qua
           <CheckRow label={f('other_attendance_mp')} value={o.include_other_attendance_mp} onChange={set('include_other_attendance_mp')} />
           {o.include_other_attendance_mp ? <Picker value={o.other_attendance_mp_type} onChange={(v) => setO({ ...o, other_attendance_mp_type: v })} options={att} /> : null}
           <CheckRow label={f('period_absences')} value={o.include_period_absences} onChange={set('include_period_absences')} />
-          <Separator className="my-1" />
-          <Text className="text-xs font-semibold uppercase">{f('marking_periods')}</Text>
-          <MarkingPeriodChecks list={mpList} value={mpIds} onChange={setMpIds} />
-        </CardContent>
-      </Card>
+        </View>
+      </FormSection>
+      <FormSection title={f('marking_periods')} icon={CalendarRange}>
+        <MarkingPeriodChecks list={mpList} value={mpIds} onChange={setMpIds} />
+      </FormSection>
       {list}
       {actions}
     </ScrollView>

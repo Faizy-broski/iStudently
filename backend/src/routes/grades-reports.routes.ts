@@ -1,7 +1,7 @@
 import express from 'express'
 import * as gradesReportsController from '../controllers/grades-reports.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireAdmin } from '../middlewares/role.middleware'
+import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 import { ownStudentsOr } from '../middlewares/student-access.middleware'
 import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
@@ -22,7 +22,8 @@ router.get('/honor-roll', gradesReportsController.getHonorRollStudents)
 
 // GET /grades-reports/class-rank?school_id=&academic_year_id=&marking_period_id=&section_id=&grade_level_id=
 router.get('/class-rank', gradesReportsController.getClassRanks)
-router.get('/gpa-rank', requireAdmin, gradesReportsController.getGpaRankList)
+// Teachers see only students in their own classes (ranks stay relative to the whole grade).
+router.get('/gpa-rank', requireTeacher, gradesReportsController.getGpaRankList)
 
 // POST /grades-reports/class-rank/recalculate (admin)
 router.post('/class-rank/recalculate', requireAdmin, gradesReportsController.recalculateRanks)
