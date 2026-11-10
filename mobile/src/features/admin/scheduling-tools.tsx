@@ -101,7 +101,7 @@ export function StudentChecklist({ students, loading, selected, onChange, countK
                   <Text className="text-sm font-medium" numberOfLines={1}>
                     {name}
                   </Text>
-                  <Text variant="muted" className="text-[11px]">
+                  <Text variant="muted" className="text-xs">
                     {s.student_number} · {s.grade_level || '—'}
                   </Text>
                 </View>

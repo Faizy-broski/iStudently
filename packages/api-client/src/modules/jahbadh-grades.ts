@@ -2,7 +2,7 @@
 // second round, stage locks, results (backend: jahbadh-grades.routes.ts; web: /admin/jahbadh-grades,
 // /teacher/jahbadh-grades). Totals and results come computed from the server; clients recompute
 // live with the same engine (@studently/shared-utils jahbadh).
-import type { JgBloomLevel, JgItemAnalysis, JgQuestion, JgRisk, JgRound2Need, JgRubricCriterion, JgScaleStep, JgSubjectAnalysis, JgSubjectMeta, JgSubjectResult, JgSubjectSummary, JgResult } from '@studently/shared-utils'
+import type { JgActMode, JgBloomLevel, JgItemAnalysis, JgMonthlyKind, JgQuestion, JgRisk, JgRound2Need, JgRubricCriterion, JgScaleStep, JgSubjectAnalysis, JgSubjectMeta, JgSubjectResult, JgSubjectSummary, JgResult, JgTrend } from '@studently/shared-utils'
 
 import type { ApiClient } from '../client'
 import { qs } from '../query'
@@ -23,6 +23,18 @@ export interface JgRule {
   rule_text: string
   certificate_name: string | null
   next_grade_name: string | null
+  /** Article 51: second round only up to this many failed subjects (0 = no limit). */
+  max_round2_subjects: number
+}
+
+/** A sub-item (brief Appendix B). `component_id` null = a branch of the second-round exam. */
+export interface JgSubItem {
+  id: string
+  subject_id: string
+  component_id: string | null
+  sort_order: number
+  name: string
+  max_score: number
 }
 
 export interface JgComponent {
@@ -33,6 +45,12 @@ export interface JgComponent {
   name: string
   max_score: number
   is_exam: boolean
+  /** Entered month by month in «سجل الأنشطة الشهري»; null = entered once in the grid. */
+  monthly_kind: JgMonthlyKind | null
+  /** Component = ROUND(Σ sub-items ÷ divisor, 2). */
+  divisor: number
+  /** Non-empty = computed from these (read-only in the grid; sub-items entered instead). */
+  subitems: JgSubItem[]
 }
 
 export interface JgSubject {
@@ -43,6 +61,8 @@ export interface JgSubject {
   weekly_periods: number
   display_order: number
   components: JgComponent[]
+  /** Branches of the second-round exam (Σ = the second-round mark). */
+  round2_subitems: JgSubItem[]
   meta: JgSubjectMeta
 }
 
@@ -58,6 +78,16 @@ export interface JgSettings {
   grading_scale: JgScaleStep[]
   /** school_name, education_office, municipality, principal, homeroom_teacher, logo_url */
   header: Record<string, string>
+  /** م 122 «جبر الكسور لصالح الطالب» (default true). */
+  jabr_kasur: boolean
+  /** م 122 «درجة واحدة في مادة واحدة للنجاح» (default true). */
+  jabr_plus_one: boolean
+  /** «حساب الأنشطة الشهرية» (default 'average'). */
+  act_mode: JgActMode
+  /** 3 stages × 4 month names; «—» = month not used. */
+  month_names: string[][]
+  /** Stage the grid and prints open on; null = «كل الكشف». */
+  default_stage: number | null
 }
 
 export interface JgSectionRef {
@@ -102,9 +132,25 @@ export interface JgStudent {
   student_number: string | null
 }
 
+/** One cell as computed by the server. `derived` cells are read-only. */
+export interface JgEffectiveCell {
+  value: number | null
+  absent: boolean
+  source: 'teacher' | 'control_import'
+  /** 'monthly' = from the monthly log; 'subitems' = Σ sub-items ÷ divisor. */
+  derived?: 'monthly' | 'subitems'
+  /** Some sub-items still empty: show the value in orange. */
+  partial?: boolean
+  /** ▲ ▼ ● first vs last month entered. */
+  trend?: JgTrend | null
+}
+
 export interface JgGridRow {
   student: JgStudent
-  cells: Record<string, { value: number | null; absent: boolean; source: 'teacher' | 'control_import' }>
+  /** Per component id. */
+  cells: Record<string, JgEffectiveCell>
+  /** Per sub-item id (entered once, or derived from months). */
+  subitem_cells: Record<string, JgEffectiveCell>
   round2: number | null
   result: JgSubjectResult
   need: JgRound2Need
@@ -113,13 +159,120 @@ export interface JgGridRow {
 export interface JgGrid {
   section: JgSectionRef
   academic_year: { id: string; name: string | null }
+  /** Memo year this academic year follows. */
+  version: string
   rule: JgRule
   subject: JgSubject
   settings: JgSettings
   can_enter: boolean
   locked_stages: number[]
+  /** Stage shown (?stage= or the school default); null = «كل الكشف». Rows always carry every stage. */
+  stage: number | null
   rows: JgGridRow[]
   summary: JgSubjectSummary
+}
+
+export interface JgSubItemCellInput {
+  student_id: string
+  subitem_id: string
+  /** null clears the cell (unless absent). */
+  value: number | null
+  absent?: boolean
+}
+
+/** ?stage= of grids, saves and the grid PDF: 1–3 or 'all'; omit for the school default. */
+export type JgStageParam = 1 | 2 | 3 | 'all'
+
+// ---- monthly activities log («سجل الأنشطة الشهري») ---------------------------------------------------
+
+export type JgMonthlyKindFilter = JgMonthlyKind | 'all'
+
+export interface JgMonthlyColumn {
+  /** Component id, or sub-item id when the component is split (send it as `target_id`). */
+  id: string
+  kind: 'component' | 'subitem'
+  component_id: string
+  component_name: string
+  name: string
+  max: number
+  monthly_kind: JgMonthlyKind
+}
+
+export interface JgMonthlyRow {
+  student: JgStudent
+  values: Record<string, { value: number | null; absent: boolean; source: string } | null>
+  months: Record<string, (number | null)[]>
+  marks: Record<string, number | null>
+  trends: Record<string, JgTrend | null>
+  component_month: Record<string, number | null>
+  month_total: number | null
+  components: Record<string, JgEffectiveCell | null>
+}
+
+export interface JgMonthlyLog {
+  section: JgSectionRef
+  academic_year: { id: string; name: string | null }
+  version: string
+  grade_code: number
+  subject: { id: string; key: string; name: string; short_name: string }
+  stage: number
+  stage_name: string
+  month_idx: number
+  month_name: string
+  months: { idx: number; name: string }[]
+  kind: JgMonthlyKindFilter
+  kinds: JgMonthlyKind[]
+  can_enter: boolean
+  locked: boolean
+  act_mode: JgActMode
+  components: { id: string; name: string; max: number; monthly_kind: JgMonthlyKind; divisor: number; subitems: number }[]
+  columns: JgMonthlyColumn[]
+  rows: JgMonthlyRow[]
+}
+
+export interface JgMonthlyQuery {
+  /** 1–3; default the first stage with monthly components. */
+  stage?: number
+  /** 0–3; default the first month in use. */
+  month?: number
+  kind?: JgMonthlyKindFilter
+}
+
+export interface JgMonthlyCellInput {
+  student_id: string
+  target_id: string
+  value: number | null
+  absent?: boolean
+}
+
+// ---- memo upgrade ------------------------------------------------------------------------------------
+
+export interface JgUpgradeGradeDiff {
+  grade_code: number
+  name: string
+  total_before: number | null
+  total_after: number
+  subjects_added: string[]
+  subjects_removed: string[]
+  components_changed: { subject: string; stage: number; sort_order: number; before: string; after: string }[]
+  marks: number
+  marks_unmapped: number
+}
+
+export interface JgUpgradePreview {
+  from: string
+  to: string
+  academic_year: { id: string; name: string | null }
+  already_linked: string | null
+  grades: JgUpgradeGradeDiff[]
+}
+
+export interface JgUpgradeResult {
+  from: string
+  to: string
+  academic_year_id: string
+  marks_moved: number
+  marks_unmapped: number
 }
 
 export interface JgCellInput {
@@ -149,19 +302,30 @@ export interface JgResultSubject {
 
 export interface JgResultStudent {
   student: JgStudent
-  subjects: Record<string, { result: JgSubjectResult; need: JgRound2Need }>
+  /** `jabr` = the Article 122 extra mark went to this subject; `missing` = stages not entered yet. */
+  subjects: Record<string, { result: JgSubjectResult; need: JgRound2Need; jabr: boolean; missing: number[] | 'all' | null }>
   total: number | null
   max: number
   pct: number | null
   estimate: string | null
+  /** Among complete students only. */
   rank: number | null
   support_subjects: string[]
+  /** '' when nothing is entered for the student. */
   decision: string
+  /** Decision plus «لم يُرصد بعد: …» when incomplete. */
+  decision_detail: string
+  missing_text: string | null
+  incomplete: boolean
+  rankable: boolean
+  /** Article 51: «راسب», left out of the second round. */
+  over_round2_limit: boolean
 }
 
 export interface JgResults {
   section: JgSectionRef
   academic_year: { id: string; name: string | null }
+  version: string
   rule: JgRule
   settings: JgSettings
   subjects: JgResultSubject[]
@@ -211,7 +375,7 @@ export type JgRuleUpdate = Partial<Pick<JgRule, 'system_name' | 'no_fail' | 'tot
     id: string
     name?: string
     weekly_periods?: number
-    components?: (Omit<JgComponent, 'id' | 'subject_id'> & { id?: string })[]
+    components?: (Omit<JgComponent, 'id' | 'subject_id' | 'monthly_kind' | 'divisor' | 'subitems'> & { id?: string })[]
   }[]
 }
 
@@ -262,9 +426,21 @@ export interface JgReportCardOptions {
   attendance: boolean
   guardianTips: boolean
   quote: boolean
+  /** Wave 2 (default off): black-and-white printing. */
+  bw?: boolean
+  /** Wave 2 (default off): «التوقع المبكر» at stage scope («يحتاج للنجاح» column, year-end projection). */
+  prediction?: boolean
+  /** Wave 2 (default off): «الملاحظات التلقائية» when the stage note is empty. */
+  autoNotes?: boolean
 }
 
-export const JG_REPORT_CARD_OPTION_KEYS: (keyof JgReportCardOptions)[] = [
+/** The three Wave 2 toggles, shown after the 12 B7 elements. */
+export const JG_REPORT_CARD_EXTRA_KEYS = ['bw', 'prediction', 'autoNotes'] as const
+
+/** The 12 B7 elements (always present in `options`). */
+export type JgReportCardOptionKey = Exclude<keyof JgReportCardOptions, (typeof JG_REPORT_CARD_EXTRA_KEYS)[number]>
+
+export const JG_REPORT_CARD_OPTION_KEYS: JgReportCardOptionKey[] = [
   'rank', 'minPass', 'subjectEstimate', 'classAverage', 'performanceBar', 'trend',
   'badges', 'insight', 'activities', 'attendance', 'guardianTips', 'quote',
 ]
@@ -462,6 +638,12 @@ export const jgPdfPath = {
     `/jahbadh-grades/sections/${encodeURIComponent(sectionId)}/tests/${encodeURIComponent(testId)}/pdf${qs({ campus_id: campusId ?? undefined })}`,
   myReportCard: (studentId: string, scope: JgScope) => `/jahbadh-grades/my/report-cards/${encodeURIComponent(studentId)}/${scope}`,
   sampleReportCard: (campusId?: string | null) => `/jahbadh-grades/sample-report-card.pdf${qs({ campus_id: campusId ?? undefined })}`,
+  /** Subject sheet; follows the stage (1–3 | 'all'; omitted = the school default). */
+  grid: (sectionId: string, subjectId: string, campusId?: string | null, stage?: JgStageParam) =>
+    `/jahbadh-grades/sections/${encodeURIComponent(sectionId)}/subjects/${encodeURIComponent(subjectId)}/grid.pdf${qs({ stage, campus_id: campusId ?? undefined })}`,
+  /** «سجل الأنشطة الشهري»: one subject × month on A4; blank = for pen entry. */
+  monthly: (sectionId: string, subjectId: string, q: JgMonthlyQuery & { blank?: boolean } = {}, campusId?: string | null) =>
+    `/jahbadh-grades/sections/${encodeURIComponent(sectionId)}/subjects/${encodeURIComponent(subjectId)}/monthly.pdf${qs({ stage: q.stage, month: q.month, kind: q.kind, blank: q.blank ? 1 : undefined, campus_id: campusId ?? undefined })}`,
 }
 
 export function jahbadhGradesApi(api: ApiClient) {
@@ -474,6 +656,11 @@ export function jahbadhGradesApi(api: ApiClient) {
     rule: (gradeCode: number, campusId?: string | null) => api.get<JgGrade>(`/jahbadh-grades/rules/${gradeCode}${qs({ campus_id: campusId ?? undefined })}`),
     updateRule: (gradeCode: number, body: JgRuleUpdate, campusId?: string | null) => api.put<JgGrade>(`/jahbadh-grades/rules/${gradeCode}`, { ...body, campus_id: campusId ?? undefined }),
     setup: (campusId?: string | null) => api.post<{ created: boolean; grades: number }>('/jahbadh-grades/setup', { campus_id: campusId ?? undefined }),
+    /** What moving to another memo year (default the current one, 2026-2027) would change; nothing is written. */
+    upgradePreview: (target?: string, academicYearId?: string | null) =>
+      api.get<JgUpgradePreview>(`/jahbadh-grades/setup/upgrade-preview${qs({ target, academic_year_id: academicYearId ?? undefined })}`),
+    upgrade: (target?: string, academicYearId?: string | null) =>
+      api.post<JgUpgradeResult>('/jahbadh-grades/setup/upgrade', { target, academic_year_id: academicYearId ?? undefined }),
 
     settings: (campusId?: string | null) => api.get<JgSettings>(`/jahbadh-grades/settings${qs({ campus_id: campusId ?? undefined })}`),
     saveSettings: (body: Partial<JgSettings>, campusId?: string | null) => api.put<JgSettings>('/jahbadh-grades/settings', { ...body, campus_id: campusId ?? null }),
@@ -487,11 +674,19 @@ export function jahbadhGradesApi(api: ApiClient) {
 
     sections: (campusId?: string | null) => api.get<JgSectionListItem[]>(`/jahbadh-grades/sections${qs({ campus_id: campusId ?? undefined })}`),
     sectionSubjects: (sectionId: string, campusId?: string | null) => api.get<JgSectionOverview>(`${sec(sectionId)}/subjects${cq(campusId)}`),
-    grid: (sectionId: string, subjectId: string, campusId?: string | null) => api.get<JgGrid>(`${sec(sectionId)}/subjects/${id(subjectId)}/grid${cq(campusId)}`),
-    saveMarks: (sectionId: string, subjectId: string, cells: JgCellInput[], campusId?: string | null) =>
-      api.put<JgGrid>(`${sec(sectionId)}/subjects/${id(subjectId)}/marks${cq(campusId)}`, { cells }),
-    saveRound2: (sectionId: string, subjectId: string, entries: { student_id: string; value: number | null }[], campusId?: string | null) =>
-      api.put<JgGrid>(`${sec(sectionId)}/subjects/${id(subjectId)}/round2${cq(campusId)}`, { entries }),
+    grid: (sectionId: string, subjectId: string, campusId?: string | null, stage?: JgStageParam) =>
+      api.get<JgGrid>(`${sec(sectionId)}/subjects/${id(subjectId)}/grid${qs({ stage, campus_id: campusId ?? undefined })}`),
+    saveSubItemMarks: (sectionId: string, subjectId: string, cells: JgSubItemCellInput[], campusId?: string | null, stage?: JgStageParam) =>
+      api.put<JgGrid>(`${sec(sectionId)}/subjects/${id(subjectId)}/subitem-marks${qs({ stage, campus_id: campusId ?? undefined })}`, { cells }),
+    monthly: (sectionId: string, subjectId: string, q: JgMonthlyQuery = {}, campusId?: string | null) =>
+      api.get<JgMonthlyLog>(`${sec(sectionId)}/subjects/${id(subjectId)}/monthly${qs({ stage: q.stage, month: q.month, kind: q.kind, campus_id: campusId ?? undefined })}`),
+    saveMonthly: (sectionId: string, subjectId: string, body: { stage: number; month_idx: number; kind?: JgMonthlyKindFilter; cells: JgMonthlyCellInput[] }, campusId?: string | null) =>
+      api.put<JgMonthlyLog>(`${sec(sectionId)}/subjects/${id(subjectId)}/monthly${cq(campusId)}`, body),
+
+    saveMarks: (sectionId: string, subjectId: string, cells: JgCellInput[], campusId?: string | null, stage?: JgStageParam) =>
+      api.put<JgGrid>(`${sec(sectionId)}/subjects/${id(subjectId)}/marks${qs({ stage, campus_id: campusId ?? undefined })}`, { cells }),
+    saveRound2: (sectionId: string, subjectId: string, entries: { student_id: string; value: number | null }[], campusId?: string | null, stage?: JgStageParam) =>
+      api.put<JgGrid>(`${sec(sectionId)}/subjects/${id(subjectId)}/round2${qs({ stage, campus_id: campusId ?? undefined })}`, { entries }),
     locks: (sectionId: string, campusId?: string | null) => api.get<JgLock[]>(`${sec(sectionId)}/locks${cq(campusId)}`),
     addLock: (sectionId: string, stage: number, subjectId?: string | null, campusId?: string | null) =>
       api.post<JgLock[]>(`${sec(sectionId)}/locks${cq(campusId)}`, { stage, subject_id: subjectId ?? null }),

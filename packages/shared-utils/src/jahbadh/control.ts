@@ -201,6 +201,8 @@ export interface JcTeacher {
 export interface JcDay {
   id: string
   subjectKey: string
+  /** Committees sitting this day's exam (grades of the day); defaults to every committee. */
+  committeeIds?: string[]
 }
 
 export interface JcDuty {
@@ -215,6 +217,8 @@ export interface JcInvigilationResult {
   duties: JcDuty[]
   shortDays: { dayId: string; needed: number; eligible: number }[]
   loads: Record<string, { duties: number; reserves: number }>
+  /** Fairness display (C9): highest and lowest total load (duties + reserves) and their gap. */
+  spread: { max: number; min: number; gap: number }
 }
 
 /**
@@ -223,17 +227,22 @@ export interface JcInvigilationResult {
  * Then a swap pass avoids the same teacher in the same committee on consecutive days where possible.
  */
 export function assignInvigilation(days: JcDay[], committeeIds: string[], teachers: JcTeacher[], perCommittee = 2, reservePerDay = 2): JcInvigilationResult {
-  const slots = committeeIds.length * perCommittee + reservePerDay
   const duties: JcDuty[] = []
   const shortDays: JcInvigilationResult['shortDays'] = []
+  // The rotation pointer continues across days (slot k of day d), whatever each day's committee count.
+  let offset = 0
   days.forEach((day, d) => {
+    const dayCommittees = day.committeeIds ?? committeeIds
+    const slots = dayCommittees.length * perCommittee + reservePerDay
+    const start = offset
+    offset += slots
     const eligible = teachers.filter((t) => t.available && !(t.unavailableDays ?? []).includes(day.id) && t.specialization !== day.subjectKey)
     if (eligible.length < slots) shortDays.push({ dayId: day.id, needed: slots, eligible: eligible.length })
     if (!eligible.length) return
     const dayDuties: JcDuty[] = []
     const used = new Set<string>()
     for (let k = 1; k <= slots; k++) {
-      let pick = eligible[(d * slots + k - 1) % eligible.length]
+      let pick = eligible[(start + k - 1) % eligible.length]
       if (used.has(pick.id)) {
         const free = eligible.find((t) => !used.has(t.id))
         if (!free) break
@@ -241,12 +250,12 @@ export function assignInvigilation(days: JcDay[], committeeIds: string[], teache
       }
       used.add(pick.id)
       const committeeIndex = Math.floor((k - 1) / perCommittee)
-      const reserve = k > committeeIds.length * perCommittee
+      const reserve = k > dayCommittees.length * perCommittee
       dayDuties.push({
         dayId: day.id,
         teacherId: pick.id,
-        committeeId: reserve ? null : committeeIds[committeeIndex] ?? null,
-        slot: reserve ? k - committeeIds.length * perCommittee : ((k - 1) % perCommittee) + 1,
+        committeeId: reserve ? null : dayCommittees[committeeIndex] ?? null,
+        slot: reserve ? k - dayCommittees.length * perCommittee : ((k - 1) % perCommittee) + 1,
         reserve,
       })
     }
@@ -269,7 +278,10 @@ export function assignInvigilation(days: JcDay[], committeeIds: string[], teache
     if (x.reserve) loads[x.teacherId].reserves++
     else loads[x.teacherId].duties++
   }
-  return { duties, shortDays, loads }
+  const totals = teachers.filter((t) => t.available).map((t) => (loads[t.id]?.duties ?? 0) + (loads[t.id]?.reserves ?? 0))
+  const max = totals.length ? Math.max(...totals) : 0
+  const min = totals.length ? Math.min(...totals) : 0
+  return { duties, shortDays, loads, spread: { max, min, gap: max - min } }
 }
 
 // ---- grade entry integrity (C6.7) ------------------------------------------------------------------
@@ -522,3 +534,36 @@ export function classifyEnvelope(committeeId: string, scanned: number[], student
   out.missing = expected.filter((x) => !seen.has(x)).sort((a, b) => a - b)
   return out
 }
+
+// ---- exam parts (C5 exam_parts, C6.7, C11-9, C11-10) -------------------------------------------------
+
+/** Score cell of one exam part: '<subject_key>~<part index>' (1-based). Subjects without parts use their key. */
+export const jcPartKey = (subjectKey: string, index: number) => `${subjectKey}~${index}`
+
+export function jcSplitCellKey(cellKey: string): { subjectKey: string; part: number | null } {
+  const i = cellKey.lastIndexOf('~')
+  if (i < 0) return { subjectKey: cellKey, part: null }
+  const part = Number(cellKey.slice(i + 1))
+  return Number.isInteger(part) && part > 0 ? { subjectKey: cellKey.slice(0, i), part } : { subjectKey: cellKey, part: null }
+}
+
+/** Parts must add up to the subject's maximum (C11-10). */
+export function jcPartsAddUp(parts: { max: number }[], subjectMax: number): boolean {
+  return Math.abs(parts.reduce((a, p) => a + Number(p.max), 0) - Number(subjectMax)) < 0.005
+}
+
+/**
+ * Subject score from its parts: null while any part has no official score; absent when every part is
+ * absent; otherwise the sum (absent parts count 0), rounded to 2 decimals (e.g. 12+6+6+6+6 = 36).
+ */
+export function jcSumParts(parts: ({ score: number | null; absent: boolean } | null | undefined)[]): { score: number | null; absent: boolean } | null {
+  if (!parts.length || parts.some((p) => !p)) return null
+  const list = parts as { score: number | null; absent: boolean }[]
+  if (list.every((p) => p.absent)) return { score: null, absent: true }
+  const total = list.reduce((a, p) => a + (p.absent ? 0 : Number(p.score ?? 0)), 0)
+  return { score: Math.round(total * 100) / 100, absent: false }
+}
+
+/** Official wording of the provisional second-round list (C6.8, E3). */
+export const JC_ROUND2_PROVISIONAL_NOTE =
+  'قائمة مبدئية من درجات الامتحانات وحدها؛ القرار النهائي لمنظومة الرصد بعد تطبيق المادة 122 (جبر الكسور وجبر +1) والمادة 51 (الحد الأقصى لعدد مواد الدور الثاني).'

@@ -204,14 +204,14 @@ export default function PhysicsLabs() {
                     <View className="flex-row items-start gap-2">
                       <Text className="flex-1 font-semibold">{txt.title}</Text>
                       <View className={cn('rounded-full px-2 py-0.5', CATEGORY_TONE[s.category])}>
-                        <Text className="text-[11px] text-muted-foreground">{txt.category}</Text>
+                        <Text className="text-xs text-muted-foreground">{txt.category}</Text>
                       </View>
                     </View>
                     <Text className="text-muted-foreground text-sm">{txt.description}</Text>
                     <View className="flex-row flex-wrap gap-1">
                       {txt.topics.slice(0, 3).map((x) => (
                         <View key={x} className="border-border rounded border px-1.5">
-                          <Text className="text-[11px]">{x}</Text>
+                          <Text className="text-xs">{x}</Text>
                         </View>
                       ))}
                     </View>
@@ -253,12 +253,12 @@ export default function PhysicsLabs() {
                     <Text className="font-semibold">{s ? sim(s).title : l.sim_key}</Text>
                     {s ? (
                       <View className={cn('rounded-full px-2 py-0.5', CATEGORY_TONE[s.category])}>
-                        <Text className="text-[11px] text-muted-foreground">{sim(s).category}</Text>
+                        <Text className="text-xs text-muted-foreground">{sim(s).category}</Text>
                       </View>
                     ) : null}
                     {!l.is_active ? (
                       <View className="border-border rounded border px-1.5">
-                        <Text className="text-[11px]">{p('inactive')}</Text>
+                        <Text className="text-xs">{p('inactive')}</Text>
                       </View>
                     ) : null}
                   </View>

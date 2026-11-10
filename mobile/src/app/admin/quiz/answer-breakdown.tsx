@@ -2,7 +2,8 @@ import type { AdminAnswerBreakdownRow } from '@studently/api-client';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { TrendingDown } from 'lucide-react-native';
 import { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { BarChart } from '@/components/app/charts';

@@ -82,7 +82,7 @@ function Feedback({ header }: { header: ReactElement }) {
               <Text className="text-sm font-semibold" numberOfLines={1}>
                 {f.title}
               </Text>
-              <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+              <Text variant="muted" className="text-xs" numberOfLines={1}>
                 {[f.submitter_name ? t('app.ib_from', { name: f.submitter_name }) : null, formatDate(f.created_at)].filter(Boolean).join(' · ')}
               </Text>
             </View>
@@ -154,7 +154,7 @@ function Quotes({ header }: { header: ReactElement }) {
             <Text className="text-sm font-semibold" numberOfLines={2}>
               {i18n.language === 'ar' ? q.text_ar : q.text_en}
             </Text>
-            <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+            <Text variant="muted" className="text-xs" numberOfLines={1}>
               {i18n.language === 'ar' ? q.text_en : q.text_ar}
             </Text>
             {!q.is_active ? <StatusChip label={t('app.ib_inactive')} tone="muted" className="mt-1 self-start px-2 py-0.5" /> : null}

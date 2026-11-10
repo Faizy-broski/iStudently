@@ -4,6 +4,15 @@ import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 import { requireBodyRowsInSchoolFamily, requireRowInSchoolFamily, requireStudentAccess } from '../middlewares/row-school-scope.middleware'
 import { ownStudentsOr } from '../middlewares/student-access.middleware'
+import { coursePeriodOf, requireOwnCoursePeriods, requireOwnStudents } from '../middlewares/own-course-period.middleware'
+import { supabase } from '../config/supabase'
+
+/** The student of a row addressed by id (teacher ownership checks). */
+async function studentOf(table: string, id: unknown): Promise<string | null> {
+  if (typeof id !== 'string' || !id) return null
+  const { data } = await supabase.from(table).select('student_id').eq('id', id).maybeSingle()
+  return (data as { student_id?: string | null } | null)?.student_id ?? null
+}
 
 const router = express.Router()
 
@@ -55,8 +64,9 @@ router.delete('/codes/:id', requireAdmin, codeRow, reportCardsController.deleteC
 // ============================================================================
 
 router.get('/student/:studentId', student, reportCardsController.getStudentComments)
-router.post('/student-comments', requireTeacher, bodyStudent, reportCardsController.saveStudentComment)
-router.delete('/student-comments/:id', requireTeacher, studentCommentRow, reportCardsController.deleteStudentComment)
+// Teachers comment only on their own classes and their own students.
+router.post('/student-comments', requireTeacher, bodyStudent, requireBodyRowsInSchoolFamily('course_periods', 'course_period_id'), requireOwnCoursePeriods((req) => req.body?.course_period_id), requireOwnStudents((req) => req.body?.student_id), reportCardsController.saveStudentComment)
+router.delete('/student-comments/:id', requireTeacher, studentCommentRow, requireOwnCoursePeriods((req) => coursePeriodOf('student_report_card_comments', req.params.id)), reportCardsController.deleteStudentComment)
 
 // ============================================================================
 // REPORT CARD GENERATION
@@ -82,9 +92,9 @@ router.get('/tutor-comments/marking-periods', reportCardsController.getEligibleM
 router.get('/tutor-comments/:studentId', student, reportCardsController.getTutorComment)
 
 // POST /report-cards/tutor-comments  (upsert — insert or update)
-router.post('/tutor-comments', requireTeacher, bodyStudent, reportCardsController.upsertTutorComment)
+router.post('/tutor-comments', requireTeacher, bodyStudent, requireOwnStudents((req) => req.body?.student_id), reportCardsController.upsertTutorComment)
 
 // DELETE /report-cards/tutor-comments/:id?campus_id=
-router.delete('/tutor-comments/:id', requireTeacher, reportCardsController.deleteTutorComment)
+router.delete('/tutor-comments/:id', requireTeacher, requireRowInSchoolFamily('student_mp_tutor_comments'), requireOwnStudents((req) => studentOf('student_mp_tutor_comments', req.params.id)), reportCardsController.deleteTutorComment)
 
 export default router

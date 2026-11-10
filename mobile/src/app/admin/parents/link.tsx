@@ -22,7 +22,7 @@ import { useCampus } from '@/features/campus/campus';
 import { adminAcademics, adminParents, adminStudents } from '@/lib/api';
 import { useApi, usePagedApi } from '@/lib/data';
 import { useDebounced } from '@/lib/use-debounced';
-import { IconTile } from '@/components/app/layout';
+import { IconTile, BottomBar } from '@/components/app/layout';
 
 /** Link one or more students to a parent with a relationship (web: /admin/parents/associate-parent). */
 export default function LinkChildren() {
@@ -136,11 +136,11 @@ export default function LinkChildren() {
             );
           }}
         />
-        <View className="border-border border-t p-4">
+        <BottomBar className="border-border border-t p-4">
           <Button onPress={link} disabled={busy || selected.size === 0}>
             <Text>{busy ? t('parents.associate.associating') : t('parents.associate.associateWithStudentsCount', { count: selected.size })}</Text>
           </Button>
-        </View>
+        </BottomBar>
       </View>
     </>
   );

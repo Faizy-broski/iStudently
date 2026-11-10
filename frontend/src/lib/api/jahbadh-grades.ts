@@ -5,6 +5,7 @@ import type {
   JgSecondRound, JgSectionListItem, JgSectionOverview, JgSettings, JgSubjectLinks,
   JgActivities, JgActivityInput, JgDashboard, JgEarlyWarning, JgLearningGroups, JgStudentProfile, JgSubjectAnalysisResponse,
   JgTestSummary, JgTest, JgTestInput, JgRubricSummary, JgRubric, JgRubricInput, JgReportCardSettings, JgReportCardPreview, JgReportCardOptions, JgPublication, JgMyReportCard, JgScope,
+  JgStageParam, JgSubItemCellInput, JgMonthlyLog, JgMonthlyQuery, JgMonthlyKindFilter, JgMonthlyCellInput, JgUpgradePreview, JgUpgradeResult,
 } from "@studently/api-client/modules/jahbadh-grades";
 import { API_URL } from "@/config/api";
 import { apiRequest, type ApiResponse } from "./index";
@@ -23,6 +24,7 @@ const q = (params: Record<string, string | number | null | undefined>) => {
   return parts.length ? `?${parts.join("&")}` : "";
 };
 const sec = (id: string) => `${BASE}/sections/${encodeURIComponent(id)}`;
+const subj = (sectionId: string, subjectId: string) => `${sec(sectionId)}/subjects/${encodeURIComponent(subjectId)}`;
 const json = (method: string, body: unknown) => ({ method, body: JSON.stringify(body) });
 
 /** Like apiRequest, but keeps the error code and details the grades API returns. */
@@ -59,12 +61,23 @@ export const jgApi = {
 
   sections: (campusId?: string | null) => apiRequest<JgSectionListItem[]>(`${BASE}/sections${q({ campus_id: campusId })}`),
   sectionSubjects: (sectionId: string, campusId?: string | null) => jgRequest<JgSectionOverview>(`${sec(sectionId)}/subjects${q({ campus_id: campusId })}`),
-  grid: (sectionId: string, subjectId: string, campusId?: string | null) =>
-    jgRequest<JgGrid>(`${sec(sectionId)}/subjects/${encodeURIComponent(subjectId)}/grid${q({ campus_id: campusId })}`),
-  saveMarks: (sectionId: string, subjectId: string, cells: JgCellInput[], campusId?: string | null) =>
-    jgRequest<JgGrid>(`${sec(sectionId)}/subjects/${encodeURIComponent(subjectId)}/marks${q({ campus_id: campusId })}`, json("PUT", { cells })),
-  saveRound2: (sectionId: string, subjectId: string, entries: { student_id: string; value: number | null }[], campusId?: string | null) =>
-    jgRequest<JgGrid>(`${sec(sectionId)}/subjects/${encodeURIComponent(subjectId)}/round2${q({ campus_id: campusId })}`, json("PUT", { entries })),
+  upgradePreview: (target?: string, academicYearId?: string | null) =>
+    jgRequest<JgUpgradePreview>(`${BASE}/setup/upgrade-preview${q({ target, academic_year_id: academicYearId })}`),
+  upgrade: (target?: string, academicYearId?: string | null) =>
+    jgRequest<JgUpgradeResult>(`${BASE}/setup/upgrade`, json("POST", { target, academic_year_id: academicYearId ?? undefined })),
+
+  grid: (sectionId: string, subjectId: string, campusId?: string | null, stage?: JgStageParam) =>
+    jgRequest<JgGrid>(`${subj(sectionId, subjectId)}/grid${q({ stage, campus_id: campusId })}`),
+  saveMarks: (sectionId: string, subjectId: string, cells: JgCellInput[], campusId?: string | null, stage?: JgStageParam) =>
+    jgRequest<JgGrid>(`${subj(sectionId, subjectId)}/marks${q({ stage, campus_id: campusId })}`, json("PUT", { cells })),
+  saveSubItemMarks: (sectionId: string, subjectId: string, cells: JgSubItemCellInput[], campusId?: string | null, stage?: JgStageParam) =>
+    jgRequest<JgGrid>(`${subj(sectionId, subjectId)}/subitem-marks${q({ stage, campus_id: campusId })}`, json("PUT", { cells })),
+  saveRound2: (sectionId: string, subjectId: string, entries: { student_id: string; value: number | null }[], campusId?: string | null, stage?: JgStageParam) =>
+    jgRequest<JgGrid>(`${subj(sectionId, subjectId)}/round2${q({ stage, campus_id: campusId })}`, json("PUT", { entries })),
+  monthly: (sectionId: string, subjectId: string, query: JgMonthlyQuery = {}, campusId?: string | null) =>
+    jgRequest<JgMonthlyLog>(`${subj(sectionId, subjectId)}/monthly${q({ stage: query.stage, month: query.month, kind: query.kind, campus_id: campusId })}`),
+  saveMonthly: (sectionId: string, subjectId: string, body: { stage: number; month_idx: number; kind?: JgMonthlyKindFilter; cells: JgMonthlyCellInput[] }, campusId?: string | null) =>
+    jgRequest<JgMonthlyLog>(`${subj(sectionId, subjectId)}/monthly${q({ campus_id: campusId })}`, json("PUT", body)),
   locks: (sectionId: string, campusId?: string | null) => apiRequest<JgLock[]>(`${sec(sectionId)}/locks${q({ campus_id: campusId })}`),
   addLock: (sectionId: string, stage: number, subjectId: string | null, campusId?: string | null) =>
     jgRequest<JgLock[]>(`${sec(sectionId)}/locks${q({ campus_id: campusId })}`, json("POST", { stage, subject_id: subjectId })),
@@ -135,6 +148,16 @@ export function openAnalyticsPdf(
 export async function openJgPdf(kind: "results" | "second-round" | "sample", sectionId?: string, campusId?: string | null) {
   const path = kind === "sample" ? `${BASE}/sample-report-card.pdf` : `${sec(sectionId!)}/${kind}.pdf`;
   return jgOpenPdfPath(`${path}${q({ campus_id: campusId })}`);
+}
+
+/** Subject sheet of one stage (or «كل الكشف» with 'all'; omitted = the school default). */
+export function openGridPdf(sectionId: string, subjectId: string, stage: JgStageParam | undefined, campusId?: string | null) {
+  return jgOpenPdfPath(`${subj(sectionId, subjectId)}/grid.pdf${q({ stage, campus_id: campusId })}`);
+}
+
+/** «سجل الأنشطة الشهري» sheet of one subject × stage × month (blank = printed empty for pen entry). */
+export function openMonthlyPdf(sectionId: string, subjectId: string, query: JgMonthlyQuery & { blank?: boolean }, campusId?: string | null) {
+  return jgOpenPdfPath(`${subj(sectionId, subjectId)}/monthly.pdf${q({ stage: query.stage, month: query.month, kind: query.kind, blank: query.blank ? 1 : undefined, campus_id: campusId })}`);
 }
 
 /** Report cards of a section as one PDF (scope, optional list-number range or one student). */

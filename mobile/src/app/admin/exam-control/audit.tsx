@@ -37,15 +37,15 @@ export default function ExamControlAudit() {
           <View className="gap-0.5 px-4 py-2.5">
             <View className="flex-row items-center gap-2">
               <Text className="flex-1 font-mono text-xs font-semibold">{e.action}</Text>
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {new Date(e.created_at).toLocaleString(locale)}
               </Text>
             </View>
-            <Text variant="muted" className="text-[11px]">
+            <Text variant="muted" className="text-xs">
               {[e.actor_name, e.actor_role].filter(Boolean).join(' · ')}
             </Text>
             {e.after ? (
-              <Text variant="muted" className="font-mono text-[10px]" numberOfLines={3}>
+              <Text variant="muted" className="font-mono text-2xs" numberOfLines={3}>
                 {JSON.stringify(e.after)}
               </Text>
             ) : null}

@@ -2,7 +2,8 @@ import { router, Stack } from 'expo-router';
 import { BookOpen, Globe, GraduationCap } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -89,7 +90,7 @@ export default function StudentSpeedReading() {
                     </View>
                     <View className="bg-muted flex-row items-center gap-1 rounded-full px-2.5 py-1">
                       <Icon as={Globe} className="text-muted-foreground size-3" />
-                      <Text className="text-muted-foreground text-[11px] font-semibold">{x.language === 'ar' ? s('languageAr') : s('languageEn')}</Text>
+                      <Text className="text-muted-foreground text-xs font-semibold">{x.language === 'ar' ? s('languageAr') : s('languageEn')}</Text>
                     </View>
                   </View>
                   {x.grade_level_name || x.quiz_questions?.length ? (
@@ -97,7 +98,7 @@ export default function StudentSpeedReading() {
                       {x.grade_level_name ? (
                         <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
                           <Icon as={GraduationCap} className="text-brand dark:text-brand-secondary size-3" />
-                          <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{x.grade_level_name}</Text>
+                          <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{x.grade_level_name}</Text>
                         </View>
                       ) : null}
                       {x.quiz_questions?.length ? <StatusChip label={a('quiz')} tone="success" /> : null}
@@ -124,12 +125,12 @@ export default function StudentSpeedReading() {
                 return (
                   <View key={e.student_id} className={cn('flex-row items-center gap-2.5 px-4 py-2.5', i < arr.length - 1 && 'border-info-soft dark:border-border border-b', me2 && 'bg-info-soft')}>
                     <View className={cn('size-7 items-center justify-center rounded-full', i < 3 ? 'bg-warning-soft' : 'bg-muted')}>
-                      <Text className={cn('text-[11px] font-bold', i < 3 ? 'text-warning' : 'text-muted-foreground')}>{String(i + 1)}</Text>
+                      <Text className={cn('text-xs font-bold', i < 3 ? 'text-warning' : 'text-muted-foreground')}>{String(i + 1)}</Text>
                     </View>
                     <PersonAvatar url={e.profile_photo_url} name={`${e.first_name} ${e.last_name}`} size={32} />
                     <View className="flex-1">
                       <Text className={cn('text-sm', me2 ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')} numberOfLines={1}>{`${e.first_name} ${e.last_name}`}</Text>
-                      <Text className="text-muted-foreground text-[11px]">{a('wpm', { wpm: e.best_wpm })}</Text>
+                      <Text className="text-muted-foreground text-xs">{a('wpm', { wpm: e.best_wpm })}</Text>
                     </View>
                     <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{a('pts', { count: e.total_points })}</Text>
                     <Text>{readingBadge(e.best_wpm).emoji}</Text>

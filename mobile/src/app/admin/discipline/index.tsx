@@ -137,7 +137,7 @@ export default function DisciplineReferrals() {
                 <Initials name={referralPersonName(r)} tone="warning" />
                 <View className="flex-1 gap-0.5">
                   <Text className="text-sm font-semibold">{referralPersonName(r)}</Text>
-                  <Text variant="muted" className="text-[11px]">
+                  <Text variant="muted" className="text-xs">
                     {[r.students?.student_number, date(r.incident_date), r.reporter?.full_name].filter(Boolean).join(' · ')}
                   </Text>
                   {r.library_related ? <LibraryBadge /> : null}

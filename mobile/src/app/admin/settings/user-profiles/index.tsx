@@ -148,11 +148,11 @@ export default function UserProfilesList() {
                       <Text className="text-sm">{item.name}</Text>
                       {item.is_system ? (
                         <View className="bg-secondary rounded px-1">
-                          <Text className="text-[10px]">sys</Text>
+                          <Text className="text-2xs">sys</Text>
                         </View>
                       ) : (
                         <View className="border-border rounded border px-1">
-                          <Text className="text-[10px]">{t(`app.up_role_${item.base_role}`, { defaultValue: item.base_role })}</Text>
+                          <Text className="text-2xs">{t(`app.up_role_${item.base_role}`, { defaultValue: item.base_role })}</Text>
                         </View>
                       )}
                     </View>

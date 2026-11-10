@@ -1,9 +1,9 @@
 import express from 'express'
 import * as assignmentsController from '../controllers/assignments.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireTeacher } from '../middlewares/role.middleware'
+import { requireRole, requireTeacher } from '../middlewares/role.middleware'
 import { requireBodyRowsInSchoolFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
-import { requireOwnRow, requireSelfTeacherId } from '../middlewares/own-course-period.middleware'
+import { requireOwnClass, requireOwnRow, requireSelfTeacherId } from '../middlewares/own-course-period.middleware'
 
 const router = express.Router()
 
@@ -23,12 +23,12 @@ router.use(authenticate)
 
 // Get assignments (by teacher or section)
 router.get('/teacher', requireTeacher, requireRowInSchoolFamily('staff', 'teacher_id', 'school_id', 'query'), requireSelfTeacherId('query'), assignmentsController.getTeacherAssignments)
-router.get('/section', assignmentsController.getSectionAssignments)
+router.get('/section', requireRowInSchoolFamily('sections', 'section_id', 'school_id', 'query'), assignmentsController.getSectionAssignments)
 
 // CRUD operations
 router.get('/:id', assignmentRow, assignmentsController.getAssignment)
-router.post('/', requireTeacher, requireBodyRowsInSchoolFamily('staff', 'teacher_id'), requireSelfTeacherId('body'), requireBodyRowsInSchoolFamily('sections', 'section_id'), assignmentsController.createAssignment)
-router.put('/:id', requireTeacher, assignmentRow, ownAssignment, requireSelfTeacherId('body'), assignmentsController.updateAssignment)
+router.post('/', requireTeacher, requireBodyRowsInSchoolFamily('staff', 'teacher_id'), requireSelfTeacherId('body'), requireBodyRowsInSchoolFamily('sections', 'section_id'), requireOwnClass('section', (req) => req.body?.section_id), assignmentsController.createAssignment)
+router.put('/:id', requireTeacher, assignmentRow, ownAssignment, requireSelfTeacherId('body'), requireBodyRowsInSchoolFamily('sections', 'section_id'), requireOwnClass('section', (req) => req.body?.section_id), assignmentsController.updateAssignment)
 router.delete('/:id', requireTeacher, assignmentRow, ownAssignment, assignmentsController.deleteAssignment)
 
 // ============================================================================
@@ -42,7 +42,7 @@ router.get('/:id/submissions', requireTeacher, assignmentRow, ownAssignment, ass
 router.get('/:id/stats', requireTeacher, assignmentRow, ownAssignment, assignmentsController.getAssignmentStats)
 
 // Submit assignment (students)
-router.post('/submit', assignmentsController.submitAssignment)
+router.post('/submit', requireRole('student'), assignmentsController.submitAssignment)
 
 // Grade submission (teachers)
 router.put('/submissions/:id/grade', requireTeacher, submissionRow, requireOwnRow('assignment_submissions', 'id', 'params', 'assignment:assignments!inner(teacher_id)'), assignmentsController.gradeSubmission)

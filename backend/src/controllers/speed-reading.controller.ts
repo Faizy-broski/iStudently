@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { campusIdsAllowed } from '../utils/campus-validation'
-import { speedReadingService, WordResult } from '../services/speed-reading.service'
+import { speedReadingService, SpeedReadingInputError, WordResult } from '../services/speed-reading.service'
 
 /** A `school_id` from the query must be the caller's school or one of its campuses (super admins: any). */
 async function schoolInFamily(req: AuthRequest, schoolId: string): Promise<boolean> {
@@ -98,6 +98,7 @@ class SpeedReadingController {
       })
       return res.status(201).json({ success: true, data })
     } catch (error: any) {
+      if (error instanceof SpeedReadingInputError) return res.status(400).json({ success: false, error: error.message })
       console.error('speed-reading submitLog error:', error)
       return res.status(500).json({ success: false, error: error.message })
     }

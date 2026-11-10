@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { Lock } from 'lucide-react-native';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useTranslation } from 'react-i18next';
 
@@ -21,6 +22,8 @@ export default function Gate() {
 
   return (
     <StatusScreen
+      icon={Lock}
+      tone="warning"
       title={t('app.gate_title')}
       body={`${t(`app.gate_${gate}`)}\n\n${t('app.gate_coming_soon')}`}
       actions={[

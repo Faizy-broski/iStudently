@@ -4,7 +4,8 @@ import { router, Stack } from 'expo-router';
 import { CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Copy, Download, Info, List, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { useConfirm } from '@/components/app/confirm';
@@ -225,7 +226,7 @@ export default function Events() {
               </View>
               <View className="flex-1">
                 <Text className="text-lg font-bold">{countsData?.[c] ?? 0}</Text>
-                <Text className="text-muted-foreground text-[10px]" numberOfLines={1}>
+                <Text className="text-muted-foreground text-2xs" numberOfLines={1}>
                   {e(`categories.${c}`)}
                 </Text>
               </View>

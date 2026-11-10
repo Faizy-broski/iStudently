@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 // The backend and the web carry copies of the engine (scripts/sync-jahbadh-engine.sh).
 const ROOT = resolve(__dirname, '../../../..')
-const FILES = ['distribution.ts', 'engine.ts', 'analytics.ts', 'ideas.ts', 'control.ts', 'timer.ts', 'index.ts']
+const FILES = ['distribution.ts', 'distribution-2026-2027.ts', 'engine.ts', 'analytics.ts', 'ideas.ts', 'control.ts', 'timer.ts', 'assessment.ts', 'infographics.ts', 'insight.ts', 'index.ts']
 
 describe('jahbadh engine copies', () => {
   for (const dest of ['backend/src/lib/jahbadh', 'frontend/src/lib/jahbadh']) {

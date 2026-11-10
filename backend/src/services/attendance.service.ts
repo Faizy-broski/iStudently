@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { getCurrentAcademicYear } from './academics.service'
 import {
   AttendanceRecord,
   CreateAttendanceDTO,
@@ -520,11 +521,9 @@ export const getTeacherAttendanceOverview = async (
     // Get all classes for teacher on this date
     const dayOfWeek = (new Date(date).getDay() + 6) % 7
 
-    const { data: academicYear } = await supabase
-      .from('academic_years')
-      .select('id')
-      .eq('is_current', true)
-      .single()
+    // The current year of the teacher's own school (there is one current year per school).
+    const { data: staff } = await supabase.from('staff').select('school_id').eq('id', teacherId).maybeSingle()
+    const academicYear = staff?.school_id ? (await getCurrentAcademicYear(staff.school_id)).data : null
 
     if (!academicYear) {
       return {
@@ -565,12 +564,12 @@ export const getTeacherAttendanceOverview = async (
 
         return {
           timetable_entry_id: entry.id,
-          period_number: entry.period.period_number,
-          start_time: entry.period.start_time,
-          end_time: entry.period.end_time,
-          section_name: entry.section.name,
-          grade_name: entry.section.grade_level.name,
-          subject_name: entry.subject.name,
+          period_number: entry.period?.period_number ?? null,
+          start_time: entry.period?.start_time ?? null,
+          end_time: entry.period?.end_time ?? null,
+          section_name: entry.section?.name ?? null,
+          grade_name: entry.section?.grade_level?.name ?? null,
+          subject_name: entry.subject?.name ?? null,
           stats: statsResult.data || {
             total_students: 0,
             present: 0,

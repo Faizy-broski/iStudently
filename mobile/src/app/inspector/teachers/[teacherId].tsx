@@ -2,7 +2,8 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { Award, FileText, GraduationCap, Languages, Sparkles, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { DetailHeader, FormSection } from '@/components/app/layout';
 import { ErrorState, LoadingList } from '@/components/app/states';

@@ -68,7 +68,7 @@ router.post('/fines/:fineId/pay', requireRole('admin', 'librarian'), libraryCont
 router.get('/stats', requireRole('admin', 'librarian'), libraryController.getLibraryStats);
 
 // ==================== PREMIUM: CATEGORIES ====================
-router.get('/categories', requireRole('admin', 'librarian'), libraryController.getCategories);
+router.get('/categories', requireRole('admin', 'librarian', 'teacher', 'student', 'parent'), libraryController.getCategories);
 router.post('/categories', requireRole('admin', 'librarian'), libraryController.createCategory);
 router.put('/categories/:id', requireRole('admin', 'librarian'), libraryController.updateCategory);
 router.delete('/categories/:id', requireRole('admin', 'librarian'), libraryController.deleteCategory);

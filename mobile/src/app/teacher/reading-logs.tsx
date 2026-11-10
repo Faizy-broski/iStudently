@@ -1,8 +1,7 @@
 import type { ReadingLog } from '@studently/api-client';
 import { Stack } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import { BookOpen, Calendar, ChevronDown, ChevronUp, Clock, FileText, MicOff, Pause, Play } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { BookOpen, Calendar, ChevronDown, ChevronUp, Clock, FileText, MicOff } from 'lucide-react-native';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, View } from 'react-native';
 
@@ -15,7 +14,7 @@ import { StatusChip } from '@/components/app/status-chip';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { audioPlayerFactory } from '@/features/speed-reading/native';
+import { AudioClip } from '@/features/reading/audio-clip';
 import { readingLogs } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate } from '@/lib/format';
@@ -128,30 +127,5 @@ function LogRow({ log, now }: { log: ReadingLog; now: number }) {
         ) : null}
       </View>
     </Panel>
-  );
-}
-
-/** Play / pause a recording in the app (expo-audio), or open it in the browser on builds without it. */
-function AudioClip({ url }: { url: string }) {
-  const { t } = useTranslation();
-  const player = useRef<ReturnType<NonNullable<ReturnType<typeof audioPlayerFactory>>> | null>(null);
-  const [playing, setPlaying] = useState(false);
-  useEffect(() => () => player.current?.remove(), []);
-  function toggle() {
-    const make = audioPlayerFactory();
-    if (!make) return WebBrowser.openBrowserAsync(url);
-    if (playing) {
-      player.current?.pause();
-      return setPlaying(false);
-    }
-    if (!player.current) player.current = make(url);
-    player.current.play();
-    setPlaying(true);
-  }
-  return (
-    <Button size="sm" variant="outline" className="self-start rounded-full" onPress={toggle}>
-      <Icon as={playing ? Pause : Play} className="text-brand dark:text-brand-secondary size-4" />
-      <Text>{playing ? t('app.srs_stop') : t('app.srs_play')}</Text>
-    </Button>
   );
 }

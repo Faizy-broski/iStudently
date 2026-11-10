@@ -1,6 +1,13 @@
 import { supabase } from '../config/supabase'
 import { getMainSchoolId } from '../utils/campus.util'
 
+/** A rejected submission; `status` is the HTTP status to answer with. */
+export class SubmissionError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+  }
+}
+
 export class StudentDashboardService {
   /**
    * Get comprehensive dashboard overview for student
@@ -425,37 +432,57 @@ export class StudentDashboardService {
   }
 
   /**
-   * Submit a gradebook assignment (Rosario-style)
-   * Upserts a record in student_assignments
+   * Submit a gradebook assignment (Rosario-style). Only assignments of the student's own course
+   * periods; a graded submission is final. On resubmission `existing_attachments` keeps files of the
+   * previous submission (only ones that were really on it) next to the new uploads.
    */
   async submitGradebookAssignment(
     studentId: string,
     assignmentId: string,
-    data: { submission_text?: string; attachments?: any[] }
+    data: { submission_text?: string; attachments?: any[]; existing_attachments?: any[] }
   ) {
     const { data: student } = await supabase
       .from('students')
-      .select('school_id')
+      .select('section_id, school_id')
       .eq('id', studentId)
-      .single()
+      .maybeSingle()
+    if (!student?.section_id) throw new SubmissionError(403, 'No student profile found')
+
+    const cpIds = await this.resolveStudentCoursePeriodIds(student.section_id, student.school_id)
+    const { data: assignment } = await supabase
+      .from('gradebook_assignments')
+      .select('id, course_period_id, is_active, enable_submission')
+      .eq('id', assignmentId)
+      .maybeSingle()
+    if (!assignment || !assignment.is_active || !cpIds.includes(assignment.course_period_id)) {
+      throw new SubmissionError(404, 'Assignment not found')
+    }
+    if ((assignment as any).enable_submission === false) throw new SubmissionError(400, 'Submissions are closed for this assignment')
+
+    const [{ data: existing }, { data: grade }] = await Promise.all([
+      supabase.from('student_assignments').select('id, attachments, status').eq('student_id', studentId).eq('assignment_id', assignmentId).maybeSingle(),
+      supabase.from('gradebook_grades').select('id').eq('student_id', studentId).eq('assignment_id', assignmentId).maybeSingle(),
+    ])
+    if (grade || existing?.status === 'graded') throw new SubmissionError(409, 'This assignment has already been graded')
+
+    const keyOf = (a: any) => (a && typeof a === 'object' ? a.url ?? a.file_url ?? a.path ?? JSON.stringify(a) : String(a))
+    const previous = Array.isArray(existing?.attachments) ? existing!.attachments : []
+    const wanted = new Set((Array.isArray(data.existing_attachments) ? data.existing_attachments : []).map(keyOf))
+    const kept = previous.filter((a: any) => wanted.has(keyOf(a)))
+    const attachments = [...kept, ...(Array.isArray(data.attachments) ? data.attachments : [])]
+    const text = typeof data.submission_text === 'string' ? data.submission_text.trim() : ''
+    if (!text && attachments.length === 0) throw new SubmissionError(400, 'Add text or a file before submitting')
 
     const payload = {
       student_id: studentId,
       assignment_id: assignmentId,
-      school_id: student?.school_id || null,
-      submission_text: data.submission_text || null,
-      attachments: data.attachments || [],
+      school_id: student.school_id || null,
+      submission_text: text || null,
+      attachments,
       submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       status: 'submitted',
     }
-
-    const { data: existing } = await supabase
-      .from('student_assignments')
-      .select('id')
-      .eq('student_id', studentId)
-      .eq('assignment_id', assignmentId)
-      .maybeSingle()
 
     if (existing) {
       const { data: updated, error } = await supabase

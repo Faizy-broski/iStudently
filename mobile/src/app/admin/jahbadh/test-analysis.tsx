@@ -150,7 +150,7 @@ export default function JahbadhTestAnalysis() {
         <FormSection title={t('grades.testName')}>
           <Input value={form.name} onChangeText={(v) => setForm({ ...form, name: v })} />
           <Text variant="muted" className="text-xs">{t('grades.date')}</Text>
-          <Input placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" value={form.date} onChangeText={(v) => setForm({ ...form, date: v })} />
+          <Input placeholder={t('app.date_placeholder')} keyboardType="numbers-and-punctuation" value={form.date} onChangeText={(v) => setForm({ ...form, date: v })} />
           <Text variant="muted" className="text-xs">{t('grades.subject')}</Text>
           <Picker
             value={form.subject ?? NONE}
@@ -190,7 +190,7 @@ export default function JahbadhTestAnalysis() {
                   const bad = v !== '' && (!(Number(v) >= 0) || Number(v) > (Number(q.max) || 0));
                   return (
                     <View key={j} className="w-14 items-center gap-0.5">
-                      <Text variant="muted" className="text-[10px]">{t('grades.questionN', { n: j + 1 })}</Text>
+                      <Text variant="muted" className="text-2xs">{t('grades.questionN', { n: j + 1 })}</Text>
                       <Input className={cn('h-10 w-14 px-1 text-center', bad && 'border-destructive')} keyboardType="decimal-pad" value={v} onChangeText={(x) => setScore(s.id, j, x)} />
                     </View>
                   );
@@ -212,7 +212,7 @@ export default function JahbadhTestAnalysis() {
           {a.items.map((it, i) => (
             <View key={i} className={i < a.items.length - 1 ? 'border-info-soft dark:border-border flex-row items-center gap-2 border-b px-4 py-2.5' : 'flex-row items-center gap-2 px-4 py-2.5'}>
               <Text className="w-10 text-sm font-semibold">{t('grades.questionN', { n: i + 1 })}</Text>
-              <Text variant="muted" className="flex-1 text-[11px]">{`p ${r2(it.p)} · D ${r2(it.d)}`}</Text>
+              <Text variant="muted" className="flex-1 text-xs">{`p ${r2(it.p)} · D ${r2(it.d)}`}</Text>
               {it.verdict ? (
                 <StatusChip
                   label={JG_ITEM_VERDICTS_AR[it.verdict]}

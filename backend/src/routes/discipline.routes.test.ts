@@ -61,7 +61,11 @@ beforeEach(() => {
   for (const k of Object.keys(rows)) delete rows[k]
   Object.assign(rows, {
     lib1: { school_id: 's1', library_related: true },
-    beh1: { school_id: 's1', library_related: false },
+    beh1: { school_id: 's1', library_related: false, reporter_id: 'me', target_type: 'student' },
+    behOther: { school_id: 's1', library_related: false, reporter_id: 'someone-else', target_type: 'student', student_id: 'st1' },
+    st1: { school_id: 's1' },
+    stX: { school_id: 's9' },
+    t1: { school_id: 's1' },
     other: { school_id: 's9', library_related: true },
     f1: { school_id: 's1' },
     fX: { school_id: 's9' },
@@ -91,6 +95,15 @@ describe('discipline referrals', () => {
     expect((await call('GET', '/referrals/beh1', 'librarian')).status).toBe(404)
     expect((await call('GET', '/referrals/other', 'teacher')).status).toBe(404)
     expect((await call('GET', '/referrals/beh1', 'teacher')).status).toBe(200)
+    // Teachers see only referrals they filed or about students of their own classes.
+    expect((await call('GET', '/referrals/behOther', 'teacher')).status).toBe(404)
+  })
+
+  it('files a teacher referral as the teacher, for students of the school family only', async () => {
+    expect((await call('POST', '/referrals', 'teacher', { student_id: 'stX' })).status).toBe(404)
+    expect((await call('POST', '/referrals', 'teacher', { student_id: 'st1', reporter_id: 'someone-else' })).status).toBe(201)
+    expect(calls.find((c) => c.op === 'insert')!.args[0][0].reporter_id).toBe('me')
+    expect((await call('GET', '/referrals?school_id=s9', 'teacher')).status).toBe(404)
   })
 
   it('files a librarian report as library-related, by the librarian, students only', async () => {

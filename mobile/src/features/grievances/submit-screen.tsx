@@ -17,11 +17,10 @@ import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckRow } from '@/features/admin/attendance';
-import { shortName } from '@/features/admin/people';
 import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
 import { PRIORITIES } from '@/features/grievances/ui';
-import { adminAcademics, adminEmployees, complaints } from '@/lib/api';
+import { adminAcademics, complaints } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { pickDocuments, type PickedDocument } from '@/lib/upload';
 import { useDebounced } from '@/lib/use-debounced';
@@ -54,7 +53,7 @@ export function GrievanceSubmitScreen({ onDone }: { onDone: () => void }) {
   const [confidential, setConfidential] = useState(false);
   const [files, setFiles] = useState<PickedDocument[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const teachers = useApi(!teacher && term.length >= 2 ? ['grievance-teacher-search', campusId ?? 'school', term] : null, () => adminEmployees.list('teacher', campusId, { search: term, limit: 10 }));
+  const teachers = useApi(!teacher && term.length >= 2 ? ['grievance-teacher-search', campusId ?? 'school', term] : null, ([, campus, q]) => complaints.searchTeachers(q as string, campus === 'school' ? null : (campus as string)));
   const visibleSubjects = (subjects.data ?? []).filter((x) => !gradeId || x.grade_level_id === gradeId);
 
   async function submit() {
@@ -125,17 +124,18 @@ export function GrievanceSubmitScreen({ onDone }: { onDone: () => void }) {
           ) : (
             <View className="gap-1.5">
               <SearchBar value={teacherQuery} onChangeText={setTeacherQuery} placeholder={s('search_teacher_placeholder')} />
+              {teachers.error ? <Text className="text-destructive px-2 text-xs">{t('app.gr_teacher_search_failed')}</Text> : null}
               {(teachers.data ?? []).map((x, i) => (
-                <View key={x.id}>
+                <View key={x.profile_id}>
                   {i > 0 ? <Separator /> : null}
                   <Pressable
                     className="flex-row items-center gap-3 px-2 py-2.5 active:opacity-70"
                     onPress={() => {
-                      setTeacher({ profileId: x.profile_id ?? '', name: shortName(x.profile) || x.employee_number || x.id });
+                      setTeacher({ profileId: x.profile_id, name: x.name || [x.first_name, x.last_name].filter(Boolean).join(' ') });
                       setTeacherQuery('');
                     }}>
-                    <Initials name={shortName(x.profile) || x.employee_number || '?'} size={32} />
-                    <Text className="flex-1 text-sm font-medium">{shortName(x.profile) || x.employee_number}</Text>
+                    <Initials name={x.name || '?'} size={32} />
+                    <Text className="flex-1 text-sm font-medium">{x.name || [x.first_name, x.last_name].filter(Boolean).join(' ')}</Text>
                   </Pressable>
                 </View>
               ))}
@@ -165,7 +165,7 @@ export function GrievanceSubmitScreen({ onDone }: { onDone: () => void }) {
                 <Text className="max-w-40 text-sm" numberOfLines={1}>
                   {f.name}
                 </Text>
-                <Pressable onPress={() => setFiles((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
+                <Pressable onPress={() => setFiles((p) => p.filter((_, j) => j !== i))} hitSlop={6} accessibilityRole="button" accessibilityLabel={t('app.st_ad_remove', { name: f.name })}>
                   <Icon as={X} className="text-destructive size-3.5" />
                 </Pressable>
               </View>

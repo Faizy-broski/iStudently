@@ -2,7 +2,8 @@ import { router, type Href } from 'expo-router';
 import { Bell, BookOpen, Bookmark, Calendar, CalendarDays, CalendarRange, FileBarChart, Search, UserPlus, Wallet, type LucideIcon } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -83,7 +84,7 @@ function QuickAction({ icon, label, href }: { icon: LucideIcon; label: string; h
   return (
     <Pressable onPress={() => go(href)} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 items-center gap-2 rounded-2xl border py-3 active:opacity-80" accessibilityRole="button">
       <Icon as={icon} strokeWidth={2.3} className="text-brand dark:text-brand-secondary size-5" />
-      <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold" numberOfLines={1}>
+      <Text className="text-brand dark:text-brand-secondary text-xs font-semibold" numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -277,7 +278,7 @@ export default function AdminDashboard() {
                         ) : (
                           <View className="bg-info-soft w-full rounded-lg" style={{ height: `${h}%` }} />
                         )}
-                        <Text variant="muted" className="text-[10px]">
+                        <Text variant="muted" className="text-2xs">
                           {m.month}
                         </Text>
                       </View>
@@ -361,7 +362,7 @@ export default function AdminDashboard() {
                       <Text className="text-sm font-semibold" numberOfLines={1}>
                         {e.title}
                       </Text>
-                      <Text variant="muted" className="text-[11px]">
+                      <Text variant="muted" className="text-xs">
                         {formatDate(e.start_at)}
                       </Text>
                     </View>
@@ -389,7 +390,7 @@ export default function AdminDashboard() {
                   <Panel key={label} className="flex-1 gap-1 p-3">
                     <Icon as={icon} className="text-brand dark:text-brand-secondary size-4" />
                     <Text className="text-lg font-bold">{formatNumber(n)}</Text>
-                    <Text variant="muted" className="text-[11px]" numberOfLines={2}>
+                    <Text variant="muted" className="text-xs" numberOfLines={2}>
                       {label}
                     </Text>
                   </Panel>

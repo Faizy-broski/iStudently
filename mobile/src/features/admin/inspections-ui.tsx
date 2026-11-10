@@ -1,5 +1,6 @@
 import type { InspectionHeatmapRow } from '@studently/api-client';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';

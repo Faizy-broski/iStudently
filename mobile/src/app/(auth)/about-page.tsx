@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { ScrollView } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { LoadingList } from '@/components/app/states';
 import { PageCard } from '@/features/pages/page-card';

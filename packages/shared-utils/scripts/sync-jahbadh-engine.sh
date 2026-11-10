@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SRC="$ROOT/packages/shared-utils/src/jahbadh"
 for DEST in "$ROOT/backend/src/lib/jahbadh" "$ROOT/frontend/src/lib/jahbadh"; do
   mkdir -p "$DEST"
-  for F in distribution.ts engine.ts analytics.ts ideas.ts control.ts timer.ts index.ts; do
+  for F in distribution.ts distribution-2026-2027.ts engine.ts analytics.ts ideas.ts control.ts timer.ts assessment.ts infographics.ts insight.ts index.ts; do
     {
       echo "// GENERATED from packages/shared-utils/src/jahbadh/$F by scripts/sync-jahbadh-engine.sh — do not edit."
       cat "$SRC/$F"

@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { CalendarRange, FileText } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FilterChips } from '@/components/app/filter-chips';
 import { useToast } from '@/components/app/toast';

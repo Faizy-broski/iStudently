@@ -58,7 +58,7 @@ export function JcStatusChip({ status, className }: { status: JcStatus; classNam
 export function usePrintDoc(sessionId: string | null) {
   const { t } = useTranslation();
   const toast = useToast();
-  return async (doc: JcDoc, opts: { committeeId?: string | null; dayId?: string | null } = {}) => {
+  return async (doc: JcDoc, opts: { committeeId?: string | null; dayId?: string | null; withSessionId?: string | null } = {}) => {
     if (!sessionId) return;
     try {
       await shareApiFile(jcPrintPath(sessionId, doc, opts), `${doc}.pdf`, 'application/pdf');
@@ -110,7 +110,7 @@ export function MiniTile({ label, value, tone = 'muted' }: { label: string; valu
   const txt = { muted: 'text-foreground', warning: 'text-warning', success: 'text-success', destructive: 'text-destructive' }[tone];
   return (
     <View className="bg-card border-border min-w-[30%] flex-1 rounded-2xl border p-3">
-      <Text variant="muted" className="text-[11px]">
+      <Text variant="muted" className="text-xs">
         {label}
       </Text>
       <Text className={`text-lg font-bold ${txt}`}>{String(value)}</Text>

@@ -220,11 +220,11 @@ export default function StudentsList() {
                   <Text className="text-sm font-semibold" numberOfLines={1}>
                     {name}
                   </Text>
-                  <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                  <Text variant="muted" className="text-xs" numberOfLines={1}>
                     {[s.student_number, s.grade?.name ?? s.grade_level, s.section?.name].filter(Boolean).join(' · ')}
                   </Text>
                   {s.profile?.phone ? (
-                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                    <Text variant="muted" className="text-xs" numberOfLines={1}>
                       {s.profile.phone}
                     </Text>
                   ) : null}
@@ -234,7 +234,7 @@ export default function StudentsList() {
                   {s.sibling_count ? (
                     <Pressable onPress={() => setFamilyOf(s)} hitSlop={6} className="bg-info-soft flex-row items-center gap-1 rounded-full px-2 py-0.5" accessibilityRole="button" accessibilityLabel={app('st_family')}>
                       <Icon as={Users} className="text-brand dark:text-brand-secondary size-3" />
-                      <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{s.sibling_count}</Text>
+                      <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{s.sibling_count}</Text>
                     </Pressable>
                   ) : null}
                   <ConfidentialBadge status={s.confidential_family_status} />

@@ -2,7 +2,8 @@ import { router, Stack } from 'expo-router';
 import { AlertTriangle, Check, ClipboardList, Clock, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 
 import { SearchBar } from '@/components/app/search-bar';
 import { IconTile, StatTile, StatTiles } from '@/components/app/layout';
@@ -70,8 +71,8 @@ export default function ParentAssignments() {
                   <Icon as={a.submission ? Check : X} className={a.submission ? 'size-3.5 text-success' : 'size-3.5 text-destructive'} />
                 </View>
               </View>
-              <Text className="text-muted-foreground text-[11px]">{`${k('course')}: ${a.subject?.name || '—'} · ${k('teacher')}: ${teacherOf(a)}`}</Text>
-              <Text className="text-muted-foreground text-[11px]">{`${k('due')}: ${longDate(a.due_date)} · ${k('assigned')}: ${longDate(a.assigned_date)}`}</Text>
+              <Text className="text-muted-foreground text-xs">{`${k('course')}: ${a.subject?.name || '—'} · ${k('teacher')}: ${teacherOf(a)}`}</Text>
+              <Text className="text-muted-foreground text-xs">{`${k('due')}: ${longDate(a.due_date)} · ${k('assigned')}: ${longDate(a.assigned_date)}`}</Text>
             </View>
           </ListCard>
         )}

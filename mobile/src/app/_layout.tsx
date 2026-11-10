@@ -1,8 +1,16 @@
 import '@/global.css';
 import '@/i18n';
 
+import {
+  IBMPlexSansArabic_300Light,
+  IBMPlexSansArabic_400Regular,
+  IBMPlexSansArabic_500Medium,
+  IBMPlexSansArabic_600SemiBold,
+  IBMPlexSansArabic_700Bold,
+} from '@expo-google-fonts/ibm-plex-sans-arabic';
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack, ThemeProvider, usePathname } from 'expo-router';
+import { useFonts } from 'expo-font';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -110,7 +118,7 @@ function AppStack({ session }: { session: ReturnType<typeof useSession>['session
         <Stack.Protected guard={home === 'superadmin'}>
           <Stack.Screen name="superadmin" />
         </Stack.Protected>
-      <Stack.Screen name="coming-soon" />
+        <Stack.Screen name="coming-soon" />
         <Stack.Screen name="gate" />
         <Stack.Screen name="web-only" />
         <Stack.Screen name="settings" />
@@ -136,6 +144,14 @@ export { AppErrorBoundary as ErrorBoundary } from '@/components/app/error-bounda
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
   const scheme = colorScheme === 'dark' ? 'dark' : 'light';
+  const [fontsLoaded] = useFonts({
+    IBMPlexSansArabic_300Light,
+    IBMPlexSansArabic_400Regular,
+    IBMPlexSansArabic_500Medium,
+    IBMPlexSansArabic_600SemiBold,
+    IBMPlexSansArabic_700Bold,
+  });
+  if (!fontsLoaded) return null;
   return (
     <KeyboardProvider>
       <ThemeProvider value={navTheme(scheme)}>

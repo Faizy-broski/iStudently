@@ -88,7 +88,7 @@ export default function SignIn() {
                 contentFit="contain"
                 accessibilityIgnoresInvertColors
               />
-              <Text className="text-brand-secondary mt-2 text-xs font-semibold uppercase tracking-widest">{title}</Text>
+              <Text className="text-brand-secondary mt-2 text-xs font-semibold uppercase">{title}</Text>
               <Text className="text-foreground text-center text-3xl font-bold">{heading}</Text>
               <Text variant="muted" className="text-center">
                 {subtitle}

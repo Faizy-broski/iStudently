@@ -9,6 +9,9 @@ import * as day from '../services/jahbadh/control/examday'
 import * as sc from '../services/jahbadh/control/scores'
 import { renderDoc, type JcDoc } from '../services/jahbadh/control/print'
 import { parseQrPayload, type JcQrKind } from '../services/jahbadh/control/qr'
+import { comparison } from '../services/jahbadh/control/comparison'
+import { secondRoundList } from '../services/jahbadh/control/round2'
+import { similarityAlert } from '../services/jahbadh/control/assessment'
 
 const handle = (fn: (req: AuthRequest, res: Response) => Promise<unknown>) => async (req: AuthRequest, res: Response) => {
   try {
@@ -54,6 +57,7 @@ export const jahbadhControlController = {
   }),
   grades: handle(async (req) => core.getGrades(await ctxOf(req))),
   setGrades: handle(async (req) => core.setGrades(await ctxOf(req), req.body?.grade_level_ids ?? [], req.body?.overrides ?? [])),
+  setParts: handle(async (req) => core.setParts(await ctxOf(req), String(req.body?.grade_level_id ?? ''), String(req.body?.subject_key ?? ''), req.body?.parts ?? [])),
   students: handle(async (req) => core.loadStudents(await managed(req))),
   pullStudents: handle(async (req) => core.pullStudents(await ctxOf(req))),
   updateStudents: handle(async (req) => core.updateStudents(await ctxOf(req), req.body?.students ?? [])),
@@ -66,7 +70,7 @@ export const jahbadhControlController = {
   unlock: handle(async (req) => core.lockCommittees(await ctxOf(req), false)),
   alerts: handle(async (req) => {
     const ctx = await managed(req)
-    return plan.alerts(ctx, await sc.scoreAlerts(ctx))
+    return plan.alerts(ctx, [...(await sc.scoreAlerts(ctx)), await similarityAlert(ctx)])
   }),
   days: handle(async (req) => plan.listDays(await ctxOf(req))),
   saveDays: handle(async (req) => plan.saveDays(await ctxOf(req), req.body?.days ?? [])),
@@ -74,12 +78,14 @@ export const jahbadhControlController = {
   saveInvigilators: handle(async (req) => plan.saveInvigilators(await ctxOf(req), req.body?.invigilators ?? [])),
   staff: handle(async (req) => plan.staffChoices(await managed(req))),
   invigilation: handle(async (req) => plan.listInvigilation(await ctxOf(req))),
+  invigilationLoads: handle(async (req) => plan.invigilationLoads(await ctxOf(req))),
   generateInvigilation: handle(async (req) => plan.generateInvigilation(await ctxOf(req))),
   setDuty: handle(async (req) => plan.setDuty(await ctxOf(req), req.body ?? {})),
   print: handle(async (req, res) => {
     const { pdf, name } = await renderDoc(await ctxOf(req), req.params.doc as JcDoc, {
       committee_id: (req.query.committee_id as string) || null,
       day_id: (req.query.day_id as string) || null,
+      with_session_id: (req.query.with_session_id as string) || null,
     })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `inline; filename="${name}"`)
@@ -110,9 +116,17 @@ export const jahbadhControlController = {
   saveGraders: handle(async (req) => sc.saveGraders(await ctxOf(req), req.body?.graders ?? [])),
   quality: handle(async (req) => sc.quality(await ctxOf(req), (req.query.grade_level_id as string) || null)),
   results: handle(async (req) => sc.results(await ctxOf(req))),
+  honorBoard: handle(async (req) => sc.honorBoardView(await ctxOf(req))),
+  secondRoundList: handle(async (req) => secondRoundList(await ctxOf(req))),
+  comparison: handle(async (req) => comparison(await ctxOf(req), (req.query.with_session_id as string) || null)),
   secondRound: handle(async (req) => sc.createSecondRound(await ctxOf(req))),
   messages: handle(async (req) => sc.messages(await ctxOf(req), { note: (req.query.note as string) || undefined })),
-  sendMessages: handle(async (req) => sc.messages(await ctxOf(req), { note: req.body?.note, send: true })),
+  // Sending results to parents is a control decision (control chief / control members), not grade entry.
+  sendMessages: handle(async (req) => {
+    const ctx = await ctxOf(req)
+    core.need(ctx.can.manage, 'Only control members can send results messages')
+    return sc.messages(ctx, { note: req.body?.note, send: true })
+  }),
   exportPreview: handle(async (req) => sc.exportToGrades(await ctxOf(req), false)),
   exportCommit: handle(async (req) => sc.exportToGrades(await ctxOf(req), true)),
   /**

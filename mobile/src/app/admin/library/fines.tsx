@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { AlertCircle, CheckCircle, DollarSign, TrendingUp, Wallet } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { LoadingList, EmptyState } from '@/components/app/states';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,7 +50,7 @@ export default function LibraryFines() {
                       <Text className="text-sm font-semibold" numberOfLines={1}>
                         {f.student_name}
                       </Text>
-                      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      <Text variant="muted" className="text-xs" numberOfLines={1}>
                         {`${f.book_title} · ${new Date(f.created_at).toLocaleDateString(i18n.language)}`}
                       </Text>
                       <View className="flex-row flex-wrap gap-1.5">

@@ -1,7 +1,8 @@
 import type { FeedbackStatus } from '@studently/api-client';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FilterChips } from '@/components/app/filter-chips';
 import { ErrorState, LoadingList } from '@/components/app/states';

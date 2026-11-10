@@ -139,3 +139,44 @@ export function requireOwnRow(table: string, param = 'id', from: 'params' | 'que
     }
   }
 }
+
+/** Section ids the teacher (staff id) teaches: a timetable entry or a course period (primary or secondary). */
+export async function teacherSectionIds(staffId: string): Promise<string[]> {
+  const [tt, cp] = await Promise.all([
+    supabase.from('timetable_entries').select('section_id').eq('teacher_id', staffId),
+    supabase.from('course_periods').select('section_id').or(`teacher_id.eq.${staffId},secondary_teacher_id.eq.${staffId}`),
+  ])
+  if (tt.error) throw tt.error
+  if (cp.error) throw cp.error
+  return [...new Set([...(tt.data ?? []), ...(cp.data ?? [])].map((r: { section_id: string | null }) => r.section_id).filter((x): x is string => !!x))]
+}
+
+/**
+ * Teachers may only read or act on students of sections they teach (see `teacherSectionIds`).
+ * Admins and other roles pass (pair with the school check); a missing id is left to the handler.
+ */
+export function requireOwnStudents(pick: (req: AuthRequest) => Ids) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (req.profile?.role !== 'teacher') return next()
+    try {
+      const ids = toIds(await pick(req))
+      if (!ids.length) return next()
+      const staffId = (req.profile as { staff_id?: string | null }).staff_id
+      if (!staffId) return res.status(403).json({ success: false, error: 'You can only manage your own classes' })
+      const [sections, students] = await Promise.all([
+        teacherSectionIds(staffId),
+        supabase.from('students').select('id, section_id').in('id', ids),
+      ])
+      if (students.error) throw students.error
+      const own = new Set(sections)
+      const rows = (students.data ?? []) as { id: string; section_id: string | null }[]
+      if (rows.length !== ids.length || rows.some((r) => !r.section_id || !own.has(r.section_id))) {
+        return res.status(403).json({ success: false, error: 'You can only manage your own classes' })
+      }
+      return next()
+    } catch (err) {
+      console.error('Student ownership check failed:', err)
+      return res.status(503).json({ success: false, retryable: true, error: 'Could not verify access' })
+    }
+  }
+}

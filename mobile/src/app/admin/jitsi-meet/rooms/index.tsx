@@ -2,9 +2,9 @@ import type { JitsiRoom, JitsiRoomInput } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
-import { KeyboardAvoidingView } from '@/components/app/keyboard';
+import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { BookOpen, CircleCheck, Hash, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, Initials, Section } from '@/components/app/layout';
 import { InfoRow, Panel } from '@/components/app/panel';
@@ -46,7 +47,7 @@ export default function ParentCourses() {
                 <Icon as={CircleCheck} className="text-brand dark:text-brand-secondary size-4" />
               </View>
               <View className="flex-1 gap-1">
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {k('status')}
                 </Text>
                 <View className="flex-row">

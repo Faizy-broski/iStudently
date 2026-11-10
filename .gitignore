@@ -28,3 +28,6 @@ build/
 .expo/
 mobile/ios/
 mobile/android/
+
+# Client Jahbadh 2026-2027 source package (214 MB; only read by dev scripts in packages/shared-utils/scripts)
+/منظومة جهبذ 2026-2027 — الحزمة الكاملة/

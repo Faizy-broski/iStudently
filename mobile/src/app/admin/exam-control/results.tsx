@@ -30,11 +30,29 @@ export default function ExamControlResults() {
   const id = useSessionId();
   const ov = useOverview(id);
   const o = ov.data;
-  const res = useApi(id ? (['jc', 'results', id] as const) : null, ([, , s]) => jahbadhControl.results(s));
+  const unmasked = !!ov.data?.rights.unmasked;
+  const res = useApi(id && unmasked ? (['jc', 'results', id] as const) : null, ([, , s]) => jahbadhControl.results(s));
   const [pane, setPane] = useState<Pane>('results');
   const print = usePrintDoc(id);
   if (ov.error) return <JcError error={ov.error} />;
   if (!o || !id) return <LoadingList />;
+  // Before unmasking only the honor board (names hidden) is available; scores need unmasking.
+  if (!o.rights.unmasked) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: t('examControl.tab_results'),
+            headerRight: () => <PrintButton label={t('examControl.print')} onPress={() => print('honor_board')} />,
+          }}
+        />
+        <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
+          <Note tone="warning" text={t('examControl.resultsAfterUnmask')} />
+          <Honor id={id} o={o} onCertificates={() => print('certificates')} />
+        </ScrollView>
+      </>
+    );
+  }
   const panes: { value: Pane; label: string }[] = [
     { value: 'results', label: t('examControl.results') },
     { value: 'honor', label: t('examControl.honorBoard') },
@@ -48,21 +66,21 @@ export default function ExamControlResults() {
       <Stack.Screen
         options={{
           title: t('examControl.tab_results'),
-          headerRight: () => <PrintButton label={t('examControl.print')} onPress={() => print(pane === 'honor' ? 'honor_board' : 'results')} />,
+          headerRight: () => <PrintButton label={t('examControl.print')} onPress={() => print(pane === 'honor' ? 'honor_board' : pane === 'second' ? 'second_round_list' : 'results')} />,
         }}
       />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
         <FilterChips value={pane} onChange={setPane} options={panes} />
-        {res.error && pane !== 'export' ? (
+        {res.error && pane === 'results' ? (
           <Note tone="warning" text={res.error.message} />
-        ) : !r && pane !== 'export' ? (
+        ) : !r && pane === 'results' ? (
           <LoadingList rows={4} />
         ) : pane === 'results' ? (
           <Sheet o={o} r={r!} />
         ) : pane === 'honor' ? (
-          <Honor o={o} r={r!} onCertificates={() => print('certificates')} />
+          <Honor id={id} o={o} onCertificates={() => print('certificates')} />
         ) : pane === 'second' ? (
-          <Second id={id} o={o} r={r!} refresh={() => ov.mutate()} />
+          <Second id={id} o={o} refresh={() => ov.mutate()} />
         ) : pane === 'messages' ? (
           <Messages id={id} o={o} />
         ) : (
@@ -100,7 +118,7 @@ function Sheet({ o, r }: { o: JcOverview; r: JcResults }) {
             {g.subjects.map((sub) => {
               const v = s.scores[sub.key];
               const low = !!v && (v.absent || (v.score !== null && v.score / sub.max + 1e-9 < pass));
-              return <Text key={sub.key} className={`text-[11px] ${low ? 'text-destructive' : 'text-muted-foreground'}`}>{`${sub.name} ${!v ? '—' : v.absent ? 'غ' : Number(v.score)}/${sub.max}`}</Text>;
+              return <Text key={sub.key} className={`text-xs ${low ? 'text-destructive' : 'text-muted-foreground'}`}>{`${sub.name} ${!v ? '—' : v.absent ? 'غ' : Number(v.score)}/${sub.max}`}</Text>;
             })}
           </View>
         </View>
@@ -109,26 +127,32 @@ function Sheet({ o, r }: { o: JcOverview; r: JcResults }) {
   );
 }
 
-function Honor({ o, r, onCertificates }: { o: JcOverview; r: JcResults; onCertificates: () => void }) {
+function Honor({ id, o, onCertificates }: { id: string; o: JcOverview; onCertificates: () => void }) {
   const { t } = useTranslation();
-  const byGrade = new Map<string, JcResults['honor_board']>();
-  for (const b of r.honor_board) byGrade.set(b.grade_level_name, [...(byGrade.get(b.grade_level_name) ?? []), b]);
+  const board = useApi(['jc', 'honor', id] as const, ([, , s]) => jahbadhControl.honorBoard(s));
+  if (board.error) return <Note tone="warning" text={board.error.message} />;
+  if (!board.data) return <LoadingList rows={3} />;
+  const b = board.data;
+  const byGrade = new Map<string, typeof b.rows>();
+  for (const x of b.rows) byGrade.set(x.grade_level_name, [...(byGrade.get(x.grade_level_name) ?? []), x]);
   return (
     <View className="gap-3">
-      <Note text={t('examControl.topNHint', { n: o.session.settings.top_n })} />
-      <Button variant="outline" onPress={onCertificates} disabled={!r.honor_board.length}>
-        <Text>{t('examControl.doc_certificates')}</Text>
-      </Button>
+      <Note text={`${t('examControl.topNHint', { n: o.session.settings.top_n })} · ${t('examControl.honorCompleteOnly')}`} />
+      {b.unmasked ? (
+        <Button variant="outline" onPress={onCertificates} disabled={!b.rows.length}>
+          <Text>{t('examControl.doc_certificates')}</Text>
+        </Button>
+      ) : null}
       {!byGrade.size ? <Note text={t('examControl.noResultsYet')} /> : null}
       {[...byGrade.entries()].map(([grade, list]) => (
         <FormSection key={grade} title={grade} icon={Trophy}>
-          {list.map((b) => (
-            <View key={b.id} className="flex-row items-center gap-3">
-              <View className={`size-7 items-center justify-center rounded-full ${b.place === 1 ? 'bg-warning/20' : 'bg-muted'}`}>
-                <Text className="text-sm font-bold">{String(b.place)}</Text>
+          {list.map((x, i) => (
+            <View key={`${x.place}-${i}`} className="flex-row items-center gap-3">
+              <View className={`size-7 items-center justify-center rounded-full ${x.place === 1 ? 'bg-warning/20' : 'bg-muted'}`}>
+                <Text className="text-sm font-bold">{String(x.place)}</Text>
               </View>
-              <Text className="flex-1 text-sm font-medium">{b.name}</Text>
-              <Text className="text-sm">{pct(b.pct)}</Text>
+              <Text className={`flex-1 text-sm font-medium ${b.unmasked ? '' : 'text-muted-foreground'}`}>{x.name}</Text>
+              <Text className="text-sm">{pct(x.pct)}</Text>
             </View>
           ))}
         </FormSection>
@@ -137,39 +161,72 @@ function Honor({ o, r, onCertificates }: { o: JcOverview; r: JcResults; onCertif
   );
 }
 
-function Second({ id, o, r, refresh }: { id: string; o: JcOverview; r: JcResults; refresh: () => void }) {
+/** Second round (E3): from the grades module's decision (Art. 122 / 51); provisional = exam scores only. */
+function Second({ id, o, refresh }: { id: string; o: JcOverview; refresh: () => void }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  const toast = useToast();
   const { to } = useJcBase();
-  const create = useAction(jahbadhControl.createSecondRound, { success: t('examControl.secondRoundCreated') });
-  const name = (k: string) => o.grades.flatMap((g) => g.subjects).find((s) => s.key === k)?.name ?? k;
-  const list = r.second_round_candidates;
+  const manage = o.rights.manage;
+  const list = useApi(manage ? (['jc', 'round2', id] as const) : null, ([, , s]) => jahbadhControl.secondRoundList(s));
+  const [creating, setCreating] = useState(false);
   const doCreate = async () => {
     if (!(await confirm({ title: t('examControl.secondRound'), body: t('examControl.confirmSecondRound') }))) return;
-    const res = await create.run(id);
+    setCreating(true);
+    const res = await jahbadhControl.createSecondRound(id);
+    setCreating(false);
+    if (!res.success) {
+      toast.error(res.code === 'round2_needs_grades' ? t('examControl.round2NeedsGrades') : res.error || t('app.error_title'));
+      return;
+    }
+    toast.success(t('examControl.secondRoundCreated'));
     const next = res.data?.session_id ?? null;
-    if (res.ok && next) {
+    if (next) {
       refresh();
       router.push(to('session', next));
     }
   };
+  if (!manage) return <Note text={t('examControl.secondRoundManageOnly')} />;
+  if (list.error) return <Note tone="warning" text={list.error.message} />;
+  if (!list.data) return <LoadingList rows={3} />;
+  const d = list.data;
+  const provisional = d.source === 'provisional';
   return (
     <View className="gap-3">
-      <Note text={t('examControl.secondRoundHint', { pass: Math.round(o.session.settings.exam_pass * 100) })} />
-      {o.rights.chief && o.session.round === 'first' && list.length ? (
-        <Button onPress={doCreate} disabled={create.running}>
-          <Text>{t('examControl.createSecondRound', { n: list.length })}</Text>
+      <Note tone={provisional ? 'warning' : 'success'} text={`${provisional ? t('examControl.round2Provisional') : t('examControl.round2FromGrades')} — ${d.note}`} />
+      {o.rights.chief && o.session.round === 'first' && d.students.length ? (
+        <Button onPress={doCreate} disabled={creating || provisional}>
+          <Text>{t('examControl.createSecondRound', { n: d.students.length })}</Text>
         </Button>
       ) : null}
-      {!list.length ? <Note text={t('examControl.noSecondRound')} /> : null}
-      {list.map((c) => (
+      {provisional && o.rights.chief ? <Note tone="warning" text={t('examControl.round2NeedsGrades')} /> : null}
+      {!d.students.length ? <Note text={t('examControl.noSecondRound')} /> : null}
+      {d.students.map((c) => (
         <View key={c.id} className="border-border gap-0.5 border-b pb-2">
           <Text className="text-sm font-medium">{c.name}</Text>
-          <Text variant="muted" className="text-[11px]">
-            {c.subjects.map(name).join('، ')}
+          <Text variant="muted" className="text-xs">
+            {[c.seat_number ? String(c.seat_number) : null, c.grade_level_name, c.section_name].filter(Boolean).join(' · ')}
+          </Text>
+          <Text className="text-xs">{c.subjects.join('، ')}</Text>
+          <Text variant="muted" className="text-xs">
+            {[c.decision, c.round2_seat ? `${t('examControl.round2Seat')}: ${c.round2_seat}` : null].filter(Boolean).join(' · ')}
           </Text>
         </View>
       ))}
+      {d.excluded_over_limit.length ? (
+        <FormSection title={t('examControl.round2OverLimit')} description={t('examControl.round2OverLimitHint')}>
+          {d.excluded_over_limit.map((x) => (
+            <Text key={x.id} className="text-destructive text-xs">{`${x.name} · ${x.grade_level_name} · ${t('examControl.failedN', { n: x.failed })}`}</Text>
+          ))}
+        </FormSection>
+      ) : null}
+      {d.incomplete.length ? (
+        <FormSection title={t('examControl.round2Incomplete')}>
+          {d.incomplete.map((x) => (
+            <Text key={x.id} className="text-xs">{`${x.name} · ${x.grade_level_name}${x.missing ? ` — ${x.missing}` : ''}`}</Text>
+          ))}
+        </FormSection>
+      ) : null}
     </View>
   );
 }
@@ -189,7 +246,7 @@ function Messages({ id, o }: { id: string; o: JcOverview }) {
   return (
     <View className="gap-3">
       <Note text={t('examControl.messagesHint')} />
-      <Text variant="muted" className="text-[11px]">
+      <Text variant="muted" className="text-xs">
         {o.session.settings.message_template}
       </Text>
       <Input value={note} onChangeText={setNote} placeholder={t('examControl.messageNote')} />
@@ -212,7 +269,7 @@ function Messages({ id, o }: { id: string; o: JcOverview }) {
               <Text className="text-success text-xs font-semibold">{m.phone ?? ''}</Text>
             </Pressable>
           ) : (
-            <Text variant="muted" className="text-[11px]">
+            <Text variant="muted" className="text-xs">
               {t('examControl.noPhone')}
             </Text>
           )}
@@ -239,11 +296,21 @@ function Export({ id }: { id: string }) {
   return (
     <View className="gap-3">
       <Note text={t('examControl.exportHint')} />
-      <View className="flex-row gap-2">
+      <View className="flex-row flex-wrap gap-2">
         <MiniTile label={t('examControl.export_new')} value={data.summary.new} tone="success" />
         <MiniTile label={t('examControl.export_change')} value={data.summary.change} tone={data.summary.change ? 'warning' : 'muted'} />
         <MiniTile label={t('examControl.export_same')} value={data.summary.same} />
+        <MiniTile label={t('examControl.export_from_attendance')} value={data.summary.from_attendance ?? 0} />
+        <MiniTile label={t('examControl.export_skipped')} value={data.summary.skipped ?? 0} tone={data.summary.skipped ? 'destructive' : 'muted'} />
+        <MiniTile label={t('examControl.export_no_national_id')} value={data.summary.no_national_id ?? 0} tone={data.summary.no_national_id ? 'warning' : 'muted'} />
       </View>
+      {data.skipped?.length ? (
+        <FormSection title={t('examControl.exportSkipped')}>
+          {data.skipped.map((x, i) => (
+            <Text key={i} className="text-xs">{`${x.name} · ${x.subject} — ${t(`examControl.skip_${x.reason}`)}`}</Text>
+          ))}
+        </FormSection>
+      ) : null}
       {data.committed ? (
         <Note tone="success" text={t('examControl.exportDone')} />
       ) : (
@@ -254,7 +321,10 @@ function Export({ id }: { id: string }) {
       {data.changes.length ? (
         <FormSection title={t('examControl.changesPreview')} description={t('examControl.changesPreviewHint')}>
           {data.changes.map((c, i) => (
-            <Text key={i} className={`text-xs ${c.action === 'change' ? 'text-warning' : ''}`}>{`${c.name} · ${c.subject}: ${c.before ?? '—'} → ${c.after}`}</Text>
+            <View key={i} className="gap-0.5">
+              <Text className={`text-xs ${c.action === 'change' ? 'text-warning' : ''}`}>{`${c.name} · ${c.subject}: ${c.before ?? '—'} → ${c.after}${c.from_attendance ? ` (${t('examControl.fromAttendance')})` : ''}`}</Text>
+              <Text variant="muted" className="text-2xs">{`${t('examControl.nationalId')}: ${c.national_id ?? t('examControl.noNationalId')} · ${t('examControl.exportTarget')}: ${c.target}`}</Text>
+            </View>
           ))}
         </FormSection>
       ) : null}

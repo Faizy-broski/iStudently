@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
-import { MessagingService } from '../services/messaging.service'
+import { MessagingAccessError, MessagingService } from '../services/messaging.service'
 import { getEffectiveSchoolId } from '../utils/campus-validation'
 
 const messagingService = new MessagingService()
@@ -48,6 +48,10 @@ export class MessagingController {
 
       res.json({ success: true, data: message })
     } catch (error: any) {
+      if (error instanceof MessagingAccessError) {
+        res.status(403).json({ success: false, error: error.message })
+        return
+      }
       console.error('sendMessage error:', error)
       res.status(500).json({ success: false, error: error.message || 'Failed to send message' })
     }

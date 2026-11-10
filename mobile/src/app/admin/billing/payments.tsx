@@ -4,7 +4,8 @@ import { router, Stack } from 'expo-router';
 import { FileSpreadsheet, FileText, Share2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 
 import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';

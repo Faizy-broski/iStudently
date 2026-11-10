@@ -13,8 +13,9 @@ import {
   platformApi,
   quizApi,
   studentDashboardApi,
-  type AccountGate, adminSchoolApi, campusesApi, schoolDashboardApi, twoFaApi, agreementApi, adminStudentsApi, adminAcademicsApi, adminParentsApi, adminCustomFieldsApi, adminEmployeesApi, adminFieldOrdersApi, adminSignupsApi, adminSchoolDataImportApi, exportTemplatesApi, adminParentAgreementApi, adminGroupAssignApi, adminMailApi, adminAnalyticsApi, adminDesignationsApi, adminFeesApi, adminBillingElementsApi, adminAccountingApi, adminSalaryApi, adminGradesApi, adminSchedulingApi, adminQuizApi, adminOnlineClassesApi, adminActivitiesApi, adminAttendanceApi, adminStaffAbsencesApi, adminDisciplineApi, adminEntryExitApi, adminMiqatApi, adminInspectionsApi, adminPerformanceApi, adminTimetableApi, adminPeriodsApi, adminCalendarsApi, adminGeneratorApi, adminPortalApi, adminRolloverApi, adminCalculationsApi, adminTrainingApi, adminWeatherApi, adminServicesApi, adminUserProfilesApi, adminPushApi, adminPublicPagesApi, adminHostelApi, adminLibraryApi, adminTextbooksApi, adminQirtasiApi, adminResourcesApi, adminVaultApi, adminHifziApi, quranApi, finaApi, adminSpeedReadingApi, hadithFortyApi, adminCoursesApi, adminTeacherProgramsApi, jitsiApi, adminHistoricalGradesApi, adminHumanResourcesApi, adminLetterTemplatesApi, portalApi, learningResourcesApi, teacherInspectionsApi, readingLogsApi, inspectorApi, librarianApi, jahbadhGradesApi, jahbadhControlApi } from '@studently/api-client'
+  type AccountGate, adminSchoolApi, campusesApi, schoolDashboardApi, twoFaApi, agreementApi, adminStudentsApi, adminAcademicsApi, adminParentsApi, adminCustomFieldsApi, adminEmployeesApi, adminFieldOrdersApi, adminSignupsApi, adminSchoolDataImportApi, exportTemplatesApi, adminParentAgreementApi, adminGroupAssignApi, adminMailApi, adminAnalyticsApi, adminDesignationsApi, adminFeesApi, adminBillingElementsApi, adminAccountingApi, adminSalaryApi, adminGradesApi, adminSchedulingApi, adminQuizApi, adminOnlineClassesApi, adminActivitiesApi, adminAttendanceApi, adminStaffAbsencesApi, adminDisciplineApi, adminEntryExitApi, adminMiqatApi, adminInspectionsApi, adminPerformanceApi, adminTimetableApi, adminPeriodsApi, adminCalendarsApi, adminGeneratorApi, adminPortalApi, adminRolloverApi, adminCalculationsApi, adminTrainingApi, adminWeatherApi, adminServicesApi, adminUserProfilesApi, adminPushApi, adminPublicPagesApi, adminHostelApi, adminLibraryApi, adminTextbooksApi, adminQirtasiApi, adminResourcesApi, adminVaultApi, adminHifziApi, quranApi, finaApi, adminSpeedReadingApi, hadithFortyApi, adminCoursesApi, adminTeacherProgramsApi, jitsiApi, adminHistoricalGradesApi, adminHumanResourcesApi, adminLetterTemplatesApi, portalApi, learningResourcesApi, teacherInspectionsApi, readingLogsApi, inspectorApi, librarianApi, jahbadhGradesApi, jahbadhControlApi, jahbadhOfficialApi, jahbadhAssessmentApi, idCardsApi } from '@studently/api-client'
 import Constants from 'expo-constants'
+import { Platform } from 'react-native'
 
 import i18n from '@/i18n'
 
@@ -32,8 +33,55 @@ export function onAccountGate(listener: GateListener) {
   }
 }
 
+/**
+ * On Android with the new architecture, `fetch` + FormData + file:// URIs silently fails.
+ * XMLHttpRequest uses the OkHttp layer directly and handles file URIs reliably.
+ */
+function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url
+  const body = init?.body
+
+  if (Platform.OS !== 'android' || !(body instanceof FormData)) {
+    return globalThis.fetch(input, init)
+  }
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open(init?.method ?? 'GET', url, true)
+
+    const headers = init?.headers as Record<string, string> | undefined
+    if (headers) {
+      for (const [k, v] of Object.entries(headers)) {
+        // Let XHR set Content-Type automatically for FormData (it adds the boundary)
+        if (k.toLowerCase() !== 'content-type') xhr.setRequestHeader(k, v)
+      }
+    }
+
+    xhr.onload = () => {
+      const responseHeaders = new Headers()
+      xhr.getAllResponseHeaders()
+        .trim()
+        .split(/\r?\n/)
+        .forEach((line) => {
+          const idx = line.indexOf(':')
+          if (idx > 0) responseHeaders.set(line.slice(0, idx).trim(), line.slice(idx + 1).trim())
+        })
+      resolve(new Response(xhr.responseText, { status: xhr.status, headers: responseHeaders }))
+    }
+    xhr.onerror = () => reject(new TypeError('Network request failed'))
+    xhr.ontimeout = () => reject(new TypeError('Network request timed out'))
+
+    if (init?.signal) {
+      init.signal.addEventListener('abort', () => { xhr.abort(); reject(new DOMException('Aborted', 'AbortError')) })
+    }
+
+    xhr.send(body)
+  })
+}
+
 export const api = createApiClient({
   baseUrl: env.apiUrl,
+  fetch: xhrFetch,
   async getToken() {
     const { data } = await supabase.auth.getSession()
     return data.session?.access_token ?? null
@@ -96,6 +144,8 @@ export const adminActivities = adminActivitiesApi(api)
 export const adminHistoricalGrades = adminHistoricalGradesApi(api)
 export const jahbadhGrades = jahbadhGradesApi(api)
 export const jahbadhControl = jahbadhControlApi(api)
+export const jahbadhOfficial = jahbadhOfficialApi(api)
+export const jahbadhAssessment = jahbadhAssessmentApi(api)
 export const adminHumanResources = adminHumanResourcesApi(api)
 export const adminLetterTemplates = adminLetterTemplatesApi(api)
 export const adminAttendance = adminAttendanceApi(api)
@@ -140,3 +190,4 @@ export const teacherInspections = teacherInspectionsApi(api)
 export const readingLogs = readingLogsApi(api)
 export const inspector = inspectorApi(api)
 export const librarian = librarianApi(api)
+export const idCards = idCardsApi(api)

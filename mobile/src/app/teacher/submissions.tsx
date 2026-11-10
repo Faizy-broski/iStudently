@@ -47,7 +47,7 @@ export default function TeacherSubmissions() {
   const params = useLocalSearchParams<{ assignment?: string }>();
   const [picked, setPicked] = useState<string | null>(null);
   const selected = picked ?? params.assignment ?? '';
-  const list = useApi(staffId ? ['teacher', 'homework-all', staffId] : null, ([, , s]) => homework.teacherList(s as string, { is_archived: false }));
+  const list = useApi(staffId ? ['teacher', 'homework-all', staffId] : null, ([, , s]) => homework.teacherList(s as string, { is_archived: false, limit: 500 }));
   const assignments = Array.isArray(list.data) ? list.data : (list.data?.data ?? []);
   const subs = useApi(selected ? ['teacher', 'homework-subs', selected] : null, ([, , a]) => homework.submissions(a as string));
   const [status, setStatus] = useState('all');

@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { ArrowDown, ArrowUp, RotateCcw, Save } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { useSWRConfig } from 'swr';
 
 import { FilterChips } from '@/components/app/filter-chips';

@@ -122,7 +122,7 @@ export default function CoachingScreen() {
                           {p.auto_suggested ? (
                             <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
                               <Icon as={Sparkles} className="text-brand dark:text-brand-secondary size-2.5" />
-                              <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{k('auto_suggested_badge')}</Text>
+                              <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{k('auto_suggested_badge')}</Text>
                             </View>
                           ) : null}
                           <StatusChip label={k(`prescription_status_${p.status}`)} tone={p.status === 'suggested' ? 'warning' : p.status === 'assigned' ? 'info' : p.status === 'dismissed' ? 'muted' : 'success'} />

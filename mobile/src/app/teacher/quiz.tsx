@@ -62,7 +62,7 @@ export default function TeacherQuiz() {
       assignment_id: null,
       show_correct_answers: form.answers,
       shuffle: form.shuffle,
-      created_by: staffId,
+      // created_by is set by the server from the signed-in profile.
     });
     setBusy(false);
     if (!r.success) return toast.error(r.error || t('common.error'));
@@ -171,11 +171,13 @@ function QuizRow({ quiz, expanded, onToggle, onDelete, deleting, onAdd }: { quiz
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`teacherPages.quiz.${key}`, o);
   const toast = useToast();
+  const confirm = useConfirm();
   const qs = useApi(expanded ? ['teacher', 'quiz-questions', quiz.id] : null, ([, , id]) => adminQuiz.quizQuestions(id as string));
   const questions = qs.data ?? [];
   const total = questions.reduce((s, q) => s + (q.points || 0), 0);
 
   async function removeQuestion(mapId: string) {
+    if (!(await confirm({ title: t('app.quiz_remove_question_confirm'), destructive: true, confirmLabel: t('common.delete') }))) return;
     const r = await adminQuiz.removeQuestionFromQuiz(quiz.id, mapId);
     if (!r.success) return toast.error(r.error || t('common.error'));
     toast.success(k('questionRemoved'));
@@ -192,7 +194,7 @@ function QuizRow({ quiz, expanded, onToggle, onDelete, deleting, onAdd }: { quiz
             {quiz.question_count != null ? <StatusChip label={k('questionCountBadge', { count: quiz.question_count })} tone="info" /> : null}
             {quiz.show_correct_answers ? <StatusChip label={k('answersShown')} tone="success" /> : null}
             {quiz.shuffle ? <StatusChip label={k('shuffled')} tone="warning" /> : null}
-            <Text variant="muted" className="text-[11px]">
+            <Text variant="muted" className="text-xs">
               {formatDate(quiz.created_at)}
             </Text>
           </View>
@@ -216,13 +218,13 @@ function QuizRow({ quiz, expanded, onToggle, onDelete, deleting, onAdd }: { quiz
             questions.map((m, i) => (
               <View key={m.id} className="bg-muted/40 flex-row items-start gap-3 rounded-xl p-3">
                 <View className="bg-info-soft size-7 items-center justify-center rounded-full">
-                  <Text className="text-brand dark:text-brand-secondary text-[11px] font-bold">{String(i + 1)}</Text>
+                  <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{String(i + 1)}</Text>
                 </View>
                 <View className="flex-1 gap-1">
                   <Text className="text-sm">{m.question?.title || k('unknownQuestion')}</Text>
                   <View className="flex-row flex-wrap items-center gap-1.5">
                     {m.question?.type ? <StatusChip label={t(`quiz.questionTypes.${m.question.type}`)} tone="info" /> : null}
-                    <Text variant="muted" className="text-[11px]">
+                    <Text variant="muted" className="text-xs">
                       {k('ptsAbbrev', { count: m.points })}
                     </Text>
                   </View>

@@ -38,7 +38,7 @@ export function RoomCard({ room, onJoin, onEdit, onDelete }: { room: JitsiRoom; 
           <Text className="text-sm font-semibold">{room.title || l('default_title')}</Text>
           <View className="flex-row items-center gap-1">
             <Icon as={Users} className="text-muted-foreground size-3" />
-            <Text className="text-muted-foreground text-[11px]">{audienceLabel(room, l)}</Text>
+            <Text className="text-muted-foreground text-xs">{audienceLabel(room, l)}</Text>
           </View>
         </View>
         {room.password ? (

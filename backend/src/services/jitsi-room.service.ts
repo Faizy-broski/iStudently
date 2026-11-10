@@ -440,7 +440,10 @@ export const listSchoolRooms = async (caller: CallerContext): Promise<JitsiRoom[
   if (caller.role !== 'student' && caller.role !== 'parent') return rooms
 
   const memberships = await resolveMembershipsForRole(caller.role, caller.profileId)
-  return rooms.filter((r) => !isTargeted(r) || memberships.some((m) => targetingMatches(r, m)))
+  // The room password is a join secret: students and parents get it from getRoom when they join.
+  return rooms
+    .filter((r) => !isTargeted(r) || memberships.some((m) => targetingMatches(r, m)))
+    .map((r) => ({ ...r, password: null, has_password: !!r.password }))
 }
 
 // ============================================================================

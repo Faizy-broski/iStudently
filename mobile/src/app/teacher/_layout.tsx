@@ -61,6 +61,7 @@ export default function TeacherLayout() {
             <Stack.Screen name="accounting/salaries" options={{ title: '' }} />
             <Stack.Screen name="accounting/staff-payments" options={{ title: '' }} />
             <Stack.Screen name="accounting/print-statements" options={{ title: '' }} />
+            <Stack.Screen name="accounting/payslips" options={{ title: '' }} />
             <Stack.Screen name="activities/eligibility" options={{ title: '' }} />
             <Stack.Screen name="students/print-letters" options={{ title: '' }} />
             <Stack.Screen name="students/student-labels" options={{ title: '' }} />

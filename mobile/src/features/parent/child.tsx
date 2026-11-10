@@ -74,7 +74,7 @@ export function ChildSwitcher({ className }: { className?: string }) {
         className={cn('border-info-soft dark:border-border bg-card flex-row items-center gap-3 rounded-2xl border p-3', className)}>
         {child ? <PersonAvatar url={child.profile_photo_url} name={name(child)} size={40} /> : <Icon as={User} className="text-muted-foreground size-5" />}
         <View className="flex-1">
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {k('viewing')}
           </Text>
           <Text className="font-semibold" numberOfLines={1}>

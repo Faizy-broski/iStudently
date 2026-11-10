@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusChip } from '@/components/app/status-chip';
 import { FilterChips } from '@/components/app/filter-chips';
-import { IconTile } from '@/components/app/layout';
+import { IconTile, BottomBar } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { LinkAudienceEditor, type LinkAudience } from '@/features/admin/link-audience';
 import { useCampus } from '@/features/campus/campus';
@@ -252,13 +252,13 @@ export default function EmbeddedResources() {
                 <View className="flex-row flex-wrap gap-1">
                   {r.category_id ? (
                     <View className="border-border rounded border px-1.5">
-                      <Text className="text-[11px]">{categories.find((c) => c.id === r.category_id)?.name ?? e('no_category')}</Text>
+                      <Text className="text-xs">{categories.find((c) => c.id === r.category_id)?.name ?? e('no_category')}</Text>
                     </View>
                   ) : null}
                   {r.visible_to_roles.length ? (
                     r.visible_to_roles.map((ro) => (
                       <View key={ro} className="bg-muted rounded px-1.5">
-                        <Text className="text-[11px]">{roleLabel(ro)}</Text>
+                        <Text className="text-xs">{roleLabel(ro)}</Text>
                       </View>
                     ))
                   ) : (
@@ -270,12 +270,12 @@ export default function EmbeddedResources() {
           ))
         )}
       </ScrollView>
-      <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
+      <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
         <Button onPress={saveAll} disabled={saving}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{saving ? e('saving_button') : e('save_button')}</Text>
         </Button>
-      </View>
+      </BottomBar>
 
       <Dialog open={!!current} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">

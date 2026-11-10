@@ -120,7 +120,7 @@ export default function ParentSettings() {
             <View className="bg-info-soft flex-row items-center gap-3 rounded-xl px-3 py-2.5">
               <Icon as={Clock} className="text-brand dark:text-brand-secondary size-4" />
               <View className="flex-1">
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {k('last_login')}
                 </Text>
                 <Text className="text-sm font-medium">{last.data?.last_sign_in ? formatDateTime(last.data.last_sign_in) : '—'}</Text>

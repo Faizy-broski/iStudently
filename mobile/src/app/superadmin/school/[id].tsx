@@ -5,7 +5,8 @@ import * as ScreenCapture from 'expo-screen-capture';
 import { CalendarDays, Copy, Eye, EyeOff, Globe, KeyRound, LayoutGrid, Link2, ListPlus, Mail, MapPin, Pencil, PanelLeft, Phone, ShieldCheck, ShieldOff, UserRound, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { BrandGradient } from '@/components/app/brand-gradient';
 import { useConfirm } from '@/components/app/confirm';
@@ -198,7 +199,7 @@ export default function SchoolDetail() {
                 </Text>
               </View>
               <View className="bg-overlay-light rounded-full px-2.5 py-1">
-                <Text className="text-white text-[11px] font-semibold">{suspended ? t('app.sa_status_suspended') : onTrial(school) ? t('app.sa_status_trial') : t('app.sa_status_active')}</Text>
+                <Text className="text-white text-xs font-semibold">{suspended ? t('app.sa_status_suspended') : onTrial(school) ? t('app.sa_status_trial') : t('app.sa_status_active')}</Text>
               </View>
             </View>
             <View className="flex-row justify-between">
@@ -207,7 +208,7 @@ export default function SchoolDetail() {
                   <View className="bg-overlay-light size-12 items-center justify-center rounded-2xl">
                     <Icon as={icon} strokeWidth={2.2} className="size-5 text-white" />
                   </View>
-                  <Text className="text-white text-[11px] font-medium" numberOfLines={1}>
+                  <Text className="text-white text-xs font-medium" numberOfLines={1}>
                     {label}
                   </Text>
                 </Pressable>
@@ -302,7 +303,7 @@ export default function SchoolDetail() {
                     {c.name}
                   </Text>
                   {c.city ? (
-                    <Text variant="muted" className="text-[11px]">
+                    <Text variant="muted" className="text-xs">
                       {c.city}
                     </Text>
                   ) : null}
@@ -331,7 +332,7 @@ export default function SchoolDetail() {
                     <Text className="text-sm font-semibold" numberOfLines={1}>
                       {r.invoice_number}
                     </Text>
-                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                    <Text variant="muted" className="text-xs" numberOfLines={1}>
                       {[r.subscription_plan, t('app.sa_due', { date: formatDate(r.due_date) })].filter(Boolean).join(' · ')}
                     </Text>
                   </View>

@@ -1,7 +1,8 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { GraduationCap, Mail, Phone, User } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Linking, RefreshControl, ScrollView } from 'react-native';
+import { Linking, RefreshControl } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { DetailHeader } from '@/components/app/layout';
 import { InfoRow, Panel } from '@/components/app/panel';

@@ -421,7 +421,7 @@ function ManageTemplates({
   }
 
   async function remove(tpl: MessageTemplate) {
-    if (!(await confirmDelete(tpl.title || 'Template'))) return;
+    if (!(await confirmDelete(tpl.title || t('app.msg_template')))) return;
     const r = await messaging.deleteTemplate(tpl.id);
     if (!r.success) return toast.error(r.error || w('failedToDeleteTemplate'));
     toast.success(w('templateDeleted'));

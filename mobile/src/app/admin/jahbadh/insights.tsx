@@ -28,9 +28,16 @@ import { shareApiFile } from '@/lib/share-file';
  * One route with `view=` keeps the four lists together; the menu and the class home open the right one.
  */
 export default function JahbadhInsights() {
+  const { view = 'profile' } = useLocalSearchParams<{ view?: string }>();
+  return <JahbadhInsightsView view={view as InsightsView} />;
+}
+
+export type InsightsView = 'profile' | 'warning' | 'groups' | 'analysis';
+
+/** One analytics view with a fixed `view`, for routes that mirror a single web page (teacher jahbadh-grades/*). */
+export function JahbadhInsightsView({ view }: { view: InsightsView }) {
   const { t } = useTranslation();
   const { isAdmin, campusId } = useJg();
-  const { view = 'profile' } = useLocalSearchParams<{ view?: string }>();
   const { sections, sectionId, setSection } = useJgSection(campusId);
   const title = { profile: t('grades.studentProfile'), warning: t('grades.earlyWarning'), groups: t('grades.learningGroups'), analysis: t('grades.subjectAnalysis') }[view] ?? t('grades.analytics');
   return (
@@ -116,7 +123,7 @@ function Profile({ sectionId }: { sectionId: string }) {
                 </View>
                 <ShareBar value={s.pct} />
                 <ShareBar value={s.classAvgPct} tone="warning" />
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {`${fmtMark(s.final) || '—'}/${fmtMark(s.max)} · ${pct(s.pct)}${s.estimate ? ` · ${s.estimate}` : ''} · ${t('grades.classAverage')} ${pct(s.classAvgPct)}`}
                 </Text>
               </View>
@@ -157,7 +164,7 @@ function EarlyWarning({ sectionId }: { sectionId: string }) {
               {r.risk ? <StatusChip label={`${t(`grades.risk_${r.risk.level}`)} ${r.risk.score}`} tone={LEVEL_TONE[r.risk.level]} /> : null}
             </View>
             {r.risk ? <ShareBar value={r.risk.score / 100} tone={LEVEL_TONE[r.risk.level]} /> : null}
-            <Text variant="muted" className="text-[11px]">
+            <Text variant="muted" className="text-xs">
               {`${t('grades.overallPct')} ${pct(r.pct)} · ${t('grades.strugglingSubjects')} ${r.struggling} · ${t('grades.change')} ${pts(r.change)} · ${t('grades.gapLabel')} ${pts(r.gap)}`}
             </Text>
             {r.risk ? (
@@ -292,7 +299,7 @@ function Analysis({ sectionId }: { sectionId: string }) {
               <ShareBar value={b.share} />
             </View>
           ))}
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {`${t('grades.highest')} ${m(a.highest)} · ${t('grades.lowest')} ${m(a.lowest)} · ${t('grades.median')} ${m(a.median)} · ${t('grades.stdev')} ${m(a.stdev)} · ${t('grades.boys')} ${m(a.boys)} · ${t('grades.girls')} ${m(a.girls)}`}
           </Text>
         </Panel>

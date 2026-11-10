@@ -36,7 +36,7 @@ export default function AdminFinalGrades() {
   const cpId = cp?.id ?? null;
   const mps = useApi(['admin', 'marking-periods', campusId ?? 'school'], () => adminGrades.markingPeriods(campusId));
   const [mpPick, setMpPick] = useState('');
-  const mpId = mpPick || (mps.data ?? [])[0]?.id || '';
+  const mpId = mpPick || defaultQuarter(mps.data ?? []) || '';
   const [inactive, setInactive] = useState(false);
   const scaleId = cp?.grading_scale_id ?? null;
   const scales = useApi(cpId ? ['admin', 'grading-scales', campusId ?? 'school'] : null, () => adminGrades.scales(campusId));
@@ -167,7 +167,7 @@ export default function AdminFinalGrades() {
                       <Text className="text-sm font-semibold">{r.name}</Text>
                       <View className="flex-row gap-2">
                         <View className="flex-1">
-                          <Picker value={r.letter} onChange={(v) => setLetter(r, v)} options={[{ value: 'N/A', label: 'N/A' }, ...scaleGrades.map((g) => ({ value: g.title, label: g.title }))]} />
+                          <Picker value={r.letter} onChange={(v) => setLetter(r, v)} options={[{ value: 'N/A', label: t('app.not_available_short') }, ...scaleGrades.map((g) => ({ value: g.title, label: g.title }))]} />
                         </View>
                         <Input
                           className="w-24"
@@ -187,4 +187,13 @@ export default function AdminFinalGrades() {
       </KeyboardAvoidingView>
     </View>
   );
+}
+
+/** Web default: the quarter running today, else the first quarter, else the first marking period. */
+function defaultQuarter(mps: { id: string; mp_type: string; start_date?: string | null; end_date?: string | null }[]) {
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const qtrs = mps.filter((m) => m.mp_type === 'QTR');
+  const running = qtrs.find((m) => m.start_date && m.end_date && m.start_date.slice(0, 10) <= today && today <= m.end_date.slice(0, 10));
+  return (running ?? qtrs[0] ?? mps[0])?.id;
 }

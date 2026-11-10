@@ -52,7 +52,7 @@ export function PointsBadge({ pts }: { pts: number }) {
   return (
     <View className={cn('flex-row items-center gap-1 rounded-full px-2.5 py-1', up ? 'bg-success-soft' : 'bg-destructive-soft')}>
       <Icon as={up ? TrendingUp : TrendingDown} className={cn('size-3', up ? 'text-success' : 'text-destructive')} />
-      <Text className={cn('text-[11px] font-semibold', up ? 'text-success' : 'text-destructive')}>{`${up ? '+' : ''}${pts} pts`}</Text>
+      <Text className={cn('text-xs font-semibold', up ? 'text-success' : 'text-destructive')}>{`${up ? '+' : ''}${pts} pts`}</Text>
     </View>
   );
 }
@@ -146,7 +146,7 @@ export function LibraryBadge() {
   return (
     <View className="flex-row items-center gap-1 self-start rounded-full bg-info-soft px-2.5 py-1">
       <Icon as={BookOpen} className="size-3 text-brand dark:text-brand-secondary" />
-      <Text className="text-[11px] font-semibold text-brand dark:text-brand-secondary">{t('app.dc_library_badge')}</Text>
+      <Text className="text-xs font-semibold text-brand dark:text-brand-secondary">{t('app.dc_library_badge')}</Text>
     </View>
   );
 }

@@ -25,7 +25,7 @@ export function Section({ title, action, onAction, children, className }: { titl
   return (
     <View className={cn('gap-2', className)}>
       <View className="flex-row items-center justify-between gap-2">
-        <Text className="flex-1 text-base font-semibold">{title}</Text>
+        <Text className="flex-1 text-lg font-bold">{title}</Text>
         {onAction ? (
           <Pressable onPress={onAction} hitSlop={8} accessibilityRole="link">
             <Text className="text-brand-secondary text-sm font-medium">{action ?? t('app.sad_view_all')}</Text>
@@ -93,7 +93,7 @@ export function RowItem({
             {title}
           </Text>
           {meta ? (
-            <Text variant="muted" className="text-[11px]" numberOfLines={2}>
+            <Text variant="muted" className="text-xs" numberOfLines={2}>
               {meta}
             </Text>
           ) : null}
@@ -125,15 +125,15 @@ export function StatTile({ label, value, note, chip, tone = 'brand', icon, onPre
       accessibilityRole={onPress ? 'button' : undefined}>
       <View className="flex-row items-center gap-1.5">
         {icon ? <Icon as={icon} className={cn('size-4', FG[tone])} /> : null}
-        <Text variant="muted" className="flex-1 text-[11px]" numberOfLines={1}>
+        <Text variant="muted" className="flex-1 text-xs" numberOfLines={1}>
           {label}
         </Text>
       </View>
-      <Text className={cn('text-xl font-bold', tone === 'brand' ? 'text-brand dark:text-foreground' : FG[tone])} numberOfLines={1} adjustsFontSizeToFit>
+      <Text className={cn('text-2xl font-bold', tone === 'brand' ? 'text-brand dark:text-foreground' : FG[tone])} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
       {chip ?? (note ? (
-        <Text className="text-muted-foreground text-[11px]" numberOfLines={1}>
+        <Text className="text-muted-foreground text-xs" numberOfLines={1}>
           {note}
         </Text>
       ) : null)}
@@ -162,7 +162,7 @@ export function FormSection({ title, description, icon, children, className, act
       <View className="flex-row items-center gap-2.5">
         {icon ? <IconTile icon={icon} size={32} /> : null}
         <View className="flex-1">
-          <Text className="font-semibold">{title}</Text>
+          <Text className="text-base font-semibold">{title}</Text>
           {description ? (
             <Text variant="muted" className="text-xs">
               {description}
@@ -186,13 +186,23 @@ export function StickyActions({ children }: { children: ReactNode }) {
   );
 }
 
+/** A screen's own bottom bar (absolute or last in the page): its bottom padding clears the system navigation bar. */
+export function BottomBar({ className, minPadding = 16, children }: { className?: string; minPadding?: number; children: ReactNode }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View className={className} style={{ paddingBottom: Math.max(insets.bottom, minPadding) }}>
+      {children}
+    </View>
+  );
+}
+
 /** Header of a detail screen: photo or icon, name, subtitle, chips. */
 export function DetailHeader({ name, subtitle, photo, icon, chips, actions }: { name: string; subtitle?: string | null; photo?: string | null; icon?: LucideIcon; chips?: ReactNode; actions?: ReactNode }) {
   return (
     <Panel className="flex-row items-center gap-3 p-4">
       {icon ? <IconTile icon={icon} size={56} /> : <PersonAvatar url={photo ?? null} name={name} size={56} />}
       <View className="flex-1 gap-1">
-        <Text className="text-brand dark:text-foreground text-lg font-bold" numberOfLines={2}>
+        <Text className="text-brand dark:text-foreground text-xl font-bold" numberOfLines={2}>
           {name}
         </Text>
         {subtitle ? (
@@ -215,7 +225,7 @@ export function RoundIcon({ icon, label, onPress, count }: { icon: LucideIcon; l
       <Icon as={icon} className="text-brand dark:text-brand-secondary size-5" />
       {count ? (
         <View className="bg-brand-accent absolute -end-0.5 -top-0.5 min-w-5 items-center justify-center rounded-full px-1">
-          <Text className="text-white text-[10px] font-bold">{count}</Text>
+          <Text className="text-white text-2xs font-bold">{count}</Text>
         </View>
       ) : null}
     </Pressable>
@@ -295,7 +305,7 @@ export function PersonHero({
           <View className="rounded-full border-2 border-white/40">
             <PersonAvatar url={photo ?? null} name={name} size={76} />
           </View>
-          <Text className="text-white text-center text-xl font-bold">{name}</Text>
+          <Text className="text-white text-center text-2xl font-bold">{name}</Text>
           {subtitle ? <Text className="text-white text-center text-xs opacity-80">{subtitle}</Text> : null}
           {chips ? <View className="flex-row flex-wrap items-center justify-center gap-1.5">{chips}</View> : null}
         </View>
@@ -308,7 +318,7 @@ export function PersonHero({
               <View className="size-11 items-center justify-center rounded-full bg-white/15">
                 <Icon as={a.icon} className="text-white size-5" />
               </View>
-              <Text className="text-white text-[11px] opacity-90" numberOfLines={1}>
+              <Text className="text-white text-xs opacity-90" numberOfLines={1}>
                 {a.label}
               </Text>
             </Pressable>
@@ -355,7 +365,7 @@ export function UsageBar({ used, total, label }: { used: number; total: number; 
   return (
     <View className="gap-1">
       {label ? (
-        <Text variant="muted" className="text-[11px]">
+        <Text variant="muted" className="text-xs">
           {label}
         </Text>
       ) : null}

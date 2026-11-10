@@ -96,7 +96,7 @@ export default function InspectorAssignments() {
                     </View>
                     {!i.is_active ? (
                       <Badge variant="outline">
-                        <Text className="text-[10px]">{a('inactive_badge')}</Text>
+                        <Text className="text-2xs">{a('inactive_badge')}</Text>
                       </Badge>
                     ) : null}
                   </View>

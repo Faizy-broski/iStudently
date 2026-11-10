@@ -208,7 +208,7 @@ export default function ReportCardComments() {
                 <View className="flex-1 gap-0.5">
                   <Text className="text-sm font-semibold">{x.title}</Text>
                   {x.scale_title ? (
-                    <Text variant="muted" className="text-[11px]">
+                    <Text variant="muted" className="text-xs">
                       {x.scale_title}
                     </Text>
                   ) : null}

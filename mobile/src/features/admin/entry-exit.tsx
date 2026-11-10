@@ -37,7 +37,7 @@ export function EntryStatusPill({ status }: { status: string }) {
   const [bg, fg] = STATUS_CLS[status] ?? STATUS_CLS.unauthorized;
   return (
     <View className={cn('rounded-full px-2.5 py-1', bg)}>
-      <Text className={cn('text-[11px] font-semibold', fg)}>{status}</Text>
+      <Text className={cn('text-xs font-semibold', fg)}>{status}</Text>
     </View>
   );
 }
@@ -53,7 +53,7 @@ export function RecordRow({ r, trailing }: { r: EntryExitRecord; trailing?: Reac
         <Text className="text-sm font-semibold" numberOfLines={1}>
           {r.person_name || r.person_id}
         </Text>
-        <Text className="text-muted-foreground text-[11px]" numberOfLines={1}>
+        <Text className="text-muted-foreground text-xs" numberOfLines={1}>
           {[r.person_type, r.checkpoint_name || r.checkpoint_id, r.student_number].filter(Boolean).join(' · ')}
         </Text>
         {r.description ? <Text className="text-muted-foreground text-xs" numberOfLines={2}>{r.description}</Text> : null}
@@ -62,7 +62,7 @@ export function RecordRow({ r, trailing }: { r: EntryExitRecord; trailing?: Reac
         <EntryStatusPill status={r.status} />
         <View className="flex-row items-center gap-1">
           <Icon as={Clock} className="text-muted-foreground size-3" />
-          <Text className="text-muted-foreground text-[11px]">
+          <Text className="text-muted-foreground text-xs">
             {new Intl.DateTimeFormat(i18n.language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(r.recorded_at))}
           </Text>
         </View>
@@ -100,7 +100,7 @@ export function PersonPicker({ type, value, onChange }: { type: PersonType; valu
         <Initials name={value.name} />
         <View className="flex-1">
           <Text className="text-sm font-semibold">{value.name}</Text>
-          {value.sub ? <Text className="text-muted-foreground text-[11px]">{value.sub}</Text> : null}
+          {value.sub ? <Text className="text-muted-foreground text-xs">{value.sub}</Text> : null}
         </View>
         <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('school.entry_exit.dashboard.btn_change')} className="bg-card size-8 items-center justify-center rounded-full active:opacity-70">
           <Icon as={X} className="text-muted-foreground size-4" />
@@ -126,7 +126,7 @@ export function PersonPicker({ type, value, onChange }: { type: PersonType; valu
                 <Initials name={p.name} size={32} />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold">{p.name}</Text>
-                  {p.sub ? <Text className="text-muted-foreground text-[11px]">{p.sub}</Text> : null}
+                  {p.sub ? <Text className="text-muted-foreground text-xs">{p.sub}</Text> : null}
                 </View>
               </Pressable>
             </View>
@@ -243,11 +243,11 @@ export function RosterRow({ name, sub, selected, onToggle }: { name: string; sub
     <Pressable onPress={onToggle} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', selected && 'bg-info-soft')}>
       <CheckMark on={selected} />
       <View className={cn('size-9 items-center justify-center rounded-full', selected ? 'bg-brand dark:bg-brand-secondary' : 'bg-info-soft')}>
-        <Text className={cn('text-[11px] font-bold', selected ? 'text-white' : 'text-brand dark:text-brand-secondary')}>{initials(name)}</Text>
+        <Text className={cn('text-xs font-bold', selected ? 'text-white' : 'text-brand dark:text-brand-secondary')}>{initials(name)}</Text>
       </View>
       <View className="flex-1">
         <Text className="text-sm font-semibold">{name}</Text>
-        <Text className="text-muted-foreground text-[11px]">{sub || '—'}</Text>
+        <Text className="text-muted-foreground text-xs">{sub || '—'}</Text>
       </View>
     </Pressable>
   );

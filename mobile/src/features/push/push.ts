@@ -62,12 +62,15 @@ export async function unregisterPush(): Promise<void> {
   Storage.removeItemSync(TOKEN_KEY);
 }
 
-/** Turns push on or off for this phone. */
+/** Turns push on or off for this phone. Returns false (and stays off) when it could not be turned on. */
 export async function setPushEnabled(on: boolean): Promise<boolean> {
   Storage.setItemSync(ENABLED_KEY, on ? 'on' : 'off');
   if (!on) {
     await unregisterPush();
     return true;
   }
-  return registerPush(true);
+  const ok = await registerPush(true);
+  // Permission refused or registration failed: keep the saved choice in line with what the user sees.
+  if (!ok) Storage.setItemSync(ENABLED_KEY, 'off');
+  return ok;
 }

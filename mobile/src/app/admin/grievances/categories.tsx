@@ -72,7 +72,7 @@ export default function GrievanceCategories() {
               <Text className="flex-1 text-sm">{x.name}</Text>
               {x.is_default ? (
                 <Badge variant="outline">
-                  <Text className="text-[10px]">{c('default_badge')}</Text>
+                  <Text className="text-2xs">{c('default_badge')}</Text>
                 </Badge>
               ) : (
                 <Pressable onPress={() => remove(x.id)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">

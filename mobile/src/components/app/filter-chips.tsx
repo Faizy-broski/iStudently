@@ -30,7 +30,7 @@ export function FilterChips<T extends string>({
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             className={cn('rounded-full border px-3.5 py-1.5', active ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
-            <Text className={cn('text-[13px] font-semibold', active ? 'text-white' : 'text-muted-foreground')}>{o.label}</Text>
+            <Text className={cn('text-sm font-semibold', active ? 'text-white' : 'text-muted-foreground')}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -65,7 +65,7 @@ export function MultiChips<T extends string>({
             accessibilityRole="checkbox"
             accessibilityState={{ checked: active }}
             className={cn('rounded-full border px-3.5 py-1.5', active ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
-            <Text className={cn('text-[13px] font-semibold', active ? 'text-white' : 'text-muted-foreground')}>{o.label}</Text>
+            <Text className={cn('text-sm font-semibold', active ? 'text-white' : 'text-muted-foreground')}>{o.label}</Text>
           </Pressable>
         );
       })}

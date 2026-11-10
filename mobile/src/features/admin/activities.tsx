@@ -43,7 +43,7 @@ export function EligibilityBadge({ code }: { code: EligibilityCode }) {
   const a = useAc();
   return (
     <View className={cn('rounded-full px-2.5 py-1', ELIGIBILITY_TONE[code])}>
-      <Text className={cn('text-[11px] font-semibold', ELIGIBILITY_TEXT[code])}>{a(`eligibilityCodes.${code}`)}</Text>
+      <Text className={cn('text-xs font-semibold', ELIGIBILITY_TEXT[code])}>{a(`eligibilityCodes.${code}`)}</Text>
     </View>
   );
 }

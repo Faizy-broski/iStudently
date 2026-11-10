@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { Check, GraduationCap, Sparkles } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, RowItem } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -59,7 +60,7 @@ export default function TeacherInspectionTraining() {
                     {p.auto_suggested ? (
                       <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
                         <Icon as={Sparkles} className="text-brand dark:text-brand-secondary size-3" />
-                        <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{k('auto_suggested_badge')}</Text>
+                        <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{k('auto_suggested_badge')}</Text>
                       </View>
                     ) : null}
                     {p.status === 'suggested' || p.status === 'assigned' ? (

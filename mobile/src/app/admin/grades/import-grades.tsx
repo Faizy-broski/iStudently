@@ -4,7 +4,8 @@ import { Stack } from 'expo-router';
 import { CheckCircle2, AlertCircle, Columns3, FileSpreadsheet, RotateCcw, Upload } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FormSection, IconTile, StatTile, StatTiles } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
@@ -154,7 +155,7 @@ export default function ImportGrades() {
                 <Text className="text-brand dark:text-brand-secondary text-center text-sm font-semibold" numberOfLines={1}>
                   {file?.name || g('choose_file_placeholder')}
                 </Text>
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {t('app.ig_csv_only')}
                 </Text>
               </Pressable>

@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { DollarSign, FileText, Printer } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { FormSection, StatTile, StatTiles } from '@/components/app/layout';
@@ -110,7 +111,7 @@ export function PrintStatementsView({ fees, payments, school, showFee }: { fees:
                       <Text className="text-muted-foreground text-xs">{`${x.academic_year} · ${x.due_date ? formatDate(x.due_date) : '—'}`}</Text>
                     </View>
                     <View className={cn('rounded-full px-2.5 py-1', box)}>
-                      <Text className={cn('text-[11px] font-semibold', text)}>{k(key)}</Text>
+                      <Text className={cn('text-xs font-semibold', text)}>{k(key)}</Text>
                     </View>
                   </View>
                   <Text className="text-sm">

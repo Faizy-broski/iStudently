@@ -4,7 +4,41 @@ import { authenticate } from '../middlewares/auth.middleware'
 import { requireRole, requireSuperAdmin } from '../middlewares/role.middleware'
 import type { AuthRequest } from '../middlewares/auth.middleware'
 import { getStudentRelatives } from '../services/parent.service'
-import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
+import { requireBodyRowsInSchoolFamily, requireRequestSchoolsInFamily } from '../middlewares/row-school-scope.middleware'
+import { requireOwnStudents, teacherSectionIds } from '../middlewares/own-course-period.middleware'
+
+const NO_SECTION = '00000000-0000-0000-0000-000000000000'
+
+/**
+ * Teachers see only students of sections they teach: the list query is narrowed to those sections,
+ * and list / single responses of the other routes are filtered by `section_id` (a single student
+ * outside them answers 404). Other roles pass unchanged.
+ */
+async function teacherOwnSections(req: Request, res: Response, next: () => void) {
+  const profile = (req as AuthRequest).profile
+  if (profile?.role !== 'teacher') return next()
+  try {
+    const own = new Set(profile.staff_id ? await teacherSectionIds(profile.staff_id) : [])
+    const asked = req.query.section_id ? String(req.query.section_id).split(',').map((v) => v.trim()).filter(Boolean) : null
+    const allowed = (asked ?? [...own]).filter((id) => own.has(id))
+    req.query.section_id = allowed.length ? allowed.join(',') : NO_SECTION
+    const json = res.json.bind(res)
+    res.json = (body: any) => {
+      if (body && body.success && Array.isArray(body.data)) {
+        body.data = body.data.filter((st: any) => own.has(st?.section_id))
+      } else if (body && body.success && body.data && typeof body.data === 'object' && 'section_id' in body.data && !own.has(body.data.section_id)) {
+        res.status(404)
+        return json({ success: false, error: 'Student not found' })
+      }
+      return json(body)
+    }
+    return next()
+  } catch (err) {
+    console.error('Teacher section scope failed:', err)
+    res.status(503).json({ success: false, retryable: true, error: 'Could not verify access' })
+  }
+}
+const ownStudentParam = requireOwnStudents((req) => req.params.id)
 
 const router = Router()
 const studentController = new StudentController()
@@ -20,6 +54,8 @@ const importSections = requireBodyRowsInSchoolFamily('sections', importIds('sect
 
 // All routes require authentication
 router.use(authenticate)
+// school_id / campus_id in the query or body must be the caller's school family (handlers take campus_id as given).
+router.use(requireRequestSchoolsInFamily)
 
 /**
  * GET /api/students/stats
@@ -35,7 +71,7 @@ router.get('/stats', requireRole('admin'), (req, res) =>
  * Get students report with proper joins for advanced reporting
  * Admin, teacher, and librarian can access
  */
-router.get('/report', requireRole('admin', 'teacher', 'librarian'), (req, res) =>
+router.get('/report', requireRole('admin', 'teacher', 'librarian'), teacherOwnSections, (req, res) =>
   studentController.getStudentsReport(req, res)
 )
 
@@ -44,7 +80,7 @@ router.get('/report', requireRole('admin', 'teacher', 'librarian'), (req, res) =
  * Get students by grade level
  * Admin, teacher, and counselor can access
  */
-router.get('/grade/:gradeLevel', requireRole('admin', 'teacher', 'counselor'), (req, res) =>
+router.get('/grade/:gradeLevel', requireRole('admin', 'teacher', 'counselor'), teacherOwnSections, (req, res) =>
   studentController.getStudentsByGrade(req, res)
 )
 
@@ -53,7 +89,7 @@ router.get('/grade/:gradeLevel', requireRole('admin', 'teacher', 'counselor'), (
  * Get student by student number
  * Admin, teacher, and counselor can access
  */
-router.get('/number/:studentNumber', requireRole('admin', 'teacher', 'counselor'), (req, res) =>
+router.get('/number/:studentNumber', requireRole('admin', 'teacher', 'counselor'), teacherOwnSections, (req, res) =>
   studentController.getStudentByNumber(req, res)
 )
 
@@ -62,7 +98,7 @@ router.get('/number/:studentNumber', requireRole('admin', 'teacher', 'counselor'
  * Get siblings and parents for a student (Relatives plugin)
  * Admin and teacher can access
  */
-router.get('/:id/relatives', requireRole('admin', 'teacher'), async (req: Request, res: Response) => {
+router.get('/:id/relatives', requireRole('admin', 'teacher'), ownStudentParam, async (req: Request, res: Response) => {
   try {
     const profile = (req as AuthRequest).profile
     const schoolId = profile?.school_id
@@ -79,7 +115,7 @@ router.get('/:id/relatives', requireRole('admin', 'teacher'), async (req: Reques
  * Get a single student by ID
  * Admin, teacher, counselor, student (own record only), and parent (linked child only) can access
  */
-router.get('/:id', requireRole('admin', 'teacher', 'counselor', 'student', 'parent'), (req, res) =>
+router.get('/:id', requireRole('admin', 'teacher', 'counselor', 'student', 'parent'), ownStudentParam, (req, res) =>
   studentController.getStudentById(req, res)
 )
 
@@ -88,7 +124,7 @@ router.get('/:id', requireRole('admin', 'teacher', 'counselor', 'student', 'pare
  * Get all students with pagination and search
  * Admin, teacher, librarian, and counselor can access
  */
-router.get('/', requireRole('admin', 'teacher', 'librarian', 'counselor'), (req, res) =>
+router.get('/', requireRole('admin', 'teacher', 'librarian', 'counselor'), teacherOwnSections, (req, res) =>
   studentController.getStudents(req, res)
 )
 

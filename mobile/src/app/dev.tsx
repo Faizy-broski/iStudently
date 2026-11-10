@@ -6,7 +6,8 @@ import ICU from 'i18next-icu';
 import { IntlMessageFormat } from 'intl-messageformat';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { I18nManager, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';

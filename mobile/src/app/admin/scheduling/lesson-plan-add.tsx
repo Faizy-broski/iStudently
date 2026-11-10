@@ -92,13 +92,13 @@ function LessonForm({ initial, parts: initialParts, editing, saving, onSave, onC
               <Text className="flex-1 text-sm font-semibold">{a('part_label', { num: i + 1 })}</Text>
               <Text className="text-muted-foreground text-xs">{a('time_min')}:</Text>
               <Input value={p.time} onChangeText={(v) => setPart(i, { time: v })} keyboardType="number-pad" className="h-9 w-16" />
-              <Pressable onPress={() => move(i, -1)} disabled={i === 0} hitSlop={6} className="p-1">
+              <Pressable onPress={() => move(i, -1)} disabled={i === 0} hitSlop={6} className="p-1" accessibilityRole="button" accessibilityLabel={t('app.move_up')}>
                 <Icon as={ArrowUp} className="text-muted-foreground size-4" />
               </Pressable>
-              <Pressable onPress={() => move(i, 1)} disabled={i === parts.length - 1} hitSlop={6} className="p-1">
+              <Pressable onPress={() => move(i, 1)} disabled={i === parts.length - 1} hitSlop={6} className="p-1" accessibilityRole="button" accessibilityLabel={t('app.move_down')}>
                 <Icon as={ArrowDown} className="text-muted-foreground size-4" />
               </Pressable>
-              <Pressable onPress={() => remove(i)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70">
+              <Pressable onPress={() => remove(i)} hitSlop={4} className="bg-destructive-soft size-9 items-center justify-center rounded-full active:opacity-70" accessibilityRole="button" accessibilityLabel={t('common.delete')}>
                 <Icon as={Trash2} className="text-destructive size-4" />
               </Pressable>
             </View>
@@ -302,7 +302,7 @@ export default function LessonPlanAdd() {
                           </View>
                           <View className="flex-1">
                             <Text className="text-sm font-semibold">{x.title}</Text>
-                            <Text variant="muted" className="text-[11px]">
+                            <Text variant="muted" className="text-xs">
                               {lessonDate(x.on_date, i18n.language)}
                               {x.length_minutes ? ` · ${x.length_minutes} min` : ''}
                             </Text>
@@ -322,7 +322,7 @@ export default function LessonPlanAdd() {
                                 {f.file_size ? ` (${(f.file_size / 1024).toFixed(1)} KB)` : ''}
                               </Text>
                             </Pressable>
-                            <Pressable onPress={() => removeFile(f.id)} hitSlop={6} className="p-1">
+                            <Pressable onPress={() => removeFile(f.id)} hitSlop={6} className="p-1" accessibilityRole="button" accessibilityLabel={t('common.delete')}>
                               <Icon as={X} className="text-destructive size-3.5" />
                             </Pressable>
                           </View>

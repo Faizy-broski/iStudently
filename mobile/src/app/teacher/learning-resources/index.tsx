@@ -163,11 +163,11 @@ export default function TeacherLearningResources() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center gap-1">
                     <Icon as={Eye} className="text-muted-foreground size-3" />
-                    <Text variant="muted" className="text-[11px]">
+                    <Text variant="muted" className="text-xs">
                       {k('viewsCount', { count: r.view_count })}
                     </Text>
                   </View>
-                  <Text variant="muted" className="text-[11px]">
+                  <Text variant="muted" className="text-xs">
                     {formatDate(r.created_at)}
                   </Text>
                 </View>

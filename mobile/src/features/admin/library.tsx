@@ -71,7 +71,7 @@ export function BorrowerSearch({ type, value, onChange }: { type: 'student' | 'u
         <Initials name={value.name} />
         <View className="flex-1">
           <Text className="text-sm font-semibold">{value.name}</Text>
-          {value.detail ? <Text className="text-muted-foreground text-[11px]">{value.detail}</Text> : null}
+          {value.detail ? <Text className="text-muted-foreground text-xs">{value.detail}</Text> : null}
         </View>
         <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('app.ss_change')} className="bg-card size-8 items-center justify-center rounded-full active:opacity-70">
           <Icon as={X} className="text-muted-foreground size-4" />
@@ -93,7 +93,7 @@ export function BorrowerSearch({ type, value, onChange }: { type: 'student' | 'u
                 <Initials name={b.name} size={32} />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold">{b.name}</Text>
-                  {b.detail ? <Text className="text-muted-foreground text-[11px]">{b.detail}</Text> : null}
+                  {b.detail ? <Text className="text-muted-foreground text-xs">{b.detail}</Text> : null}
                 </View>
               </Pressable>
             </View>
@@ -118,7 +118,7 @@ export function ActiveLoanSearch({ initial = '', value, onChange }: { initial?: 
         <IconTile icon={BookOpen} size={36} />
         <View className="flex-1">
           <Text className="text-sm font-semibold">{value.book_title}</Text>
-          <Text className="text-muted-foreground text-[11px]">
+          <Text className="text-muted-foreground text-xs">
             {value.student_name} · {value.accession_number}
           </Text>
         </View>
@@ -142,7 +142,7 @@ export function ActiveLoanSearch({ initial = '', value, onChange }: { initial?: 
                 <IconTile icon={BookOpen} size={32} />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold">{l.book_title}</Text>
-                  <Text className="text-muted-foreground text-[11px]">
+                  <Text className="text-muted-foreground text-xs">
                     {l.student_name} | {l.accession_number} | {t('app.lb_due')}: {date(l.due_date)}
                   </Text>
                 </View>

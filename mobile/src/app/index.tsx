@@ -1,4 +1,5 @@
 import { Redirect } from 'expo-router';
+import { ShieldAlert, WifiOff } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { hasSeenOnboarding } from '@/features/onboarding/seen';
@@ -18,6 +19,8 @@ export default function Index() {
   if (me.status === 'blocked') {
     return (
       <StatusScreen
+        icon={ShieldAlert}
+        tone="destructive"
         title={t('app.gate_title')}
         body={t(`app.blocked_${me.gate}`, { defaultValue: me.message })}
         actions={[{ label: t('app.sign_out'), onPress: signOut, primary: true }]}
@@ -28,6 +31,8 @@ export default function Index() {
   if (me.status === 'error') {
     return (
       <StatusScreen
+        icon={WifiOff}
+        tone="warning"
         title={t('app.load_failed')}
         body={__DEV__ ? me.message : undefined}
         actions={[

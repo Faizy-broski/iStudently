@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Building2, ExternalLink, Globe, Hash, Mail, MapPin, Phone, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { SchoolLogo } from '@/components/app/school-logo';
 import { EmptyState, LoadingList } from '@/components/app/states';

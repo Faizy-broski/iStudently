@@ -87,6 +87,12 @@ export default function StudentLayout() {
             <Stack.Screen name="grievances/index" options={{ title: '' }} />
             <Stack.Screen name="grievances/[id]" options={{ title: '' }} />
             <Stack.Screen name="grievances/submit" options={{ title: '', presentation: 'modal' }} />
+            <Stack.Screen name="id-card" options={{ title: '' }} />
+            <Stack.Screen name="class-diary" options={{ title: '' }} />
+            <Stack.Screen name="exams" options={{ title: '' }} />
+            <Stack.Screen name="grades/student-assignments" options={{ title: '' }} />
+            <Stack.Screen name="reading" options={{ title: '' }} />
+            <Stack.Screen name="school-pages" options={{ title: '' }} />
           </Stack>
           <TourAssistant onOpen={(href, title) => openPortalPage('student', { href, title })} />
         </View>

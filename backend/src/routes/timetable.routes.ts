@@ -6,7 +6,7 @@ import * as generationController from '../controllers/timetable-generation.contr
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
-import { requireOwnClass, timetableEntryOfAttendance } from '../middlewares/own-course-period.middleware'
+import { requireOwnClass, requireOwnStudents, requireSelfTeacherId, timetableEntryOfAttendance } from '../middlewares/own-course-period.middleware'
 
 const router = Router()
 
@@ -20,6 +20,7 @@ const jobRow = requireRowInSchoolFamily('timetable_generation_jobs', 'jobId')
 const teacherRow = requireRowInSchoolFamily('staff', 'teacherId')
 const yearInQuery = requireRowInSchoolFamily('academic_years', 'academic_year_id', 'school_id', 'query')
 const yearInBody = requireRowInSchoolFamily('academic_years', 'academic_year_id', 'school_id', 'body')
+const teacherInQuery = requireRowInSchoolFamily('staff', 'teacher_id', 'school_id', 'query')
 
 // ============================================================================
 // TIMETABLE GENERATOR — GENERATION JOBS (Phase 2)
@@ -72,9 +73,9 @@ router.post('/bulk-import', requireAdmin, timetableController.bulkImportTimetabl
 // STEP 2: TIMETABLE CONSTRUCTION ROUTES
 // ============================================================================
 
-router.get('/section', requireTeacher, timetableController.getTimetableBySection)
-router.get('/grade', requireTeacher, timetableController.getTimetableByGrade)
-router.get('/teacher', requireTeacher, timetableController.getTimetableByTeacher)
+router.get('/section', requireTeacher, requireRowInSchoolFamily('sections', 'section_id', 'school_id', 'query'), yearInQuery, timetableController.getTimetableBySection)
+router.get('/grade', requireTeacher, requireRowInSchoolFamily('grade_levels', 'grade_level_id', 'school_id', 'query'), yearInQuery, timetableController.getTimetableByGrade)
+router.get('/teacher', requireTeacher, teacherInQuery, yearInQuery, timetableController.getTimetableByTeacher)
 router.get('/available-subjects', requireAdmin, timetableController.getAvailableSubjectsForSection)
 router.get('/check-conflict', requireAdmin, timetableController.checkTeacherConflict)
 router.post('/validate-change', requireAdmin, timetableController.validateScheduleChange)
@@ -87,10 +88,10 @@ router.delete('/:id', requireAdmin, entryRow, timetableController.deleteTimetabl
 // STEP 4: TEACHER'S SCHEDULE VIEW ROUTES
 // ============================================================================
 
-router.get('/teacher-schedule', requireTeacher, timetableController.getTeacherSchedule)
-router.get('/teacher-timetable', requireTeacher, timetableController.getTeacherTimetable)
-router.get('/current-class', requireTeacher, timetableController.getCurrentClass)
-router.get('/next-class', requireTeacher, timetableController.getNextClass)
+router.get('/teacher-schedule', requireTeacher, teacherInQuery, timetableController.getTeacherSchedule)
+router.get('/teacher-timetable', requireTeacher, teacherInQuery, yearInQuery, timetableController.getTeacherTimetable)
+router.get('/current-class', requireTeacher, teacherInQuery, timetableController.getCurrentClass)
+router.get('/next-class', requireTeacher, teacherInQuery, timetableController.getNextClass)
 
 // ============================================================================
 // STEP 3 & 4: ATTENDANCE ROUTES
@@ -104,8 +105,8 @@ router.get('/attendance/section-date', requireTeacher, requireRowInSchoolFamily(
 router.put('/attendance/:id', requireTeacher, requireRowInSchoolFamily('attendance_records'), requireOwnClass('entry', (req) => timetableEntryOfAttendance(req.params.id)), timetableController.updateAttendanceRecord)
 router.post('/attendance/bulk-update', requireTeacher, requireRowInSchoolFamily('timetable_entries', 'timetable_entry_id', 'school_id', 'body'), requireOwnClass('entry', (req) => req.body?.timetable_entry_id), timetableController.bulkUpdateAttendance)
 router.get('/attendance/stats', requireTeacher, ...queryEntry, timetableController.getAttendanceStats)
-router.get('/attendance/student-history', requireTeacher, timetableController.getStudentAttendanceHistory)
-router.get('/attendance/class-summary', requireTeacher, timetableController.getClassAttendanceSummary)
-router.get('/attendance/teacher-overview', requireTeacher, timetableController.getTeacherAttendanceOverview)
+router.get('/attendance/student-history', requireTeacher, requireRowInSchoolFamily('students', 'student_id', 'school_id', 'query'), requireOwnStudents((req) => req.query.student_id), timetableController.getStudentAttendanceHistory)
+router.get('/attendance/class-summary', requireTeacher, requireRowInSchoolFamily('sections', 'section_id', 'school_id', 'query'), requireOwnClass('section', (req) => req.query.section_id), timetableController.getClassAttendanceSummary)
+router.get('/attendance/teacher-overview', requireTeacher, teacherInQuery, requireSelfTeacherId('query'), timetableController.getTeacherAttendanceOverview)
 
 export default router

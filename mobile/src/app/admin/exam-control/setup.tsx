@@ -98,6 +98,7 @@ export default function ExamControlSetup() {
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
         {r.manage ? <Details id={id} o={o} refresh={refresh} /> : null}
         {r.manage ? <Grades id={id} o={o} refresh={refresh} /> : null}
+        {r.manage && o.grades.length ? <ExamParts id={id} o={o} refresh={refresh} /> : null}
         {r.manage ? <Settings id={id} o={o} refresh={refresh} /> : null}
         {(r.secret || r.chief) && o.session.settings.secret_mode === 'encrypted' ? <KeyForm id={id} o={o} refresh={refresh} /> : null}
         {r.chief ? <Members id={id} /> : null}
@@ -137,7 +138,7 @@ function Details({ id, o, refresh }: P) {
           <Button variant="outline" onPress={regenerate} disabled={regen.running}>
             <Text>{t('examControl.regenerateCode')}</Text>
           </Button>
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {t('examControl.regenerateCodeHint')}
           </Text>
         </View>
@@ -175,7 +176,7 @@ function Grades({ id, o, refresh }: P) {
             />
             <View className="flex-1">
               <Text className="text-sm">{g.name}</Text>
-              {!mapped ? <Text className="text-warning text-[11px]">{t('examControl.gradeNotMapped')}</Text> : null}
+              {!mapped ? <Text className="text-warning text-xs">{t('examControl.gradeNotMapped')}</Text> : null}
             </View>
             {on ? (
               <Input
@@ -197,6 +198,87 @@ function Grades({ id, o, refresh }: P) {
           <Text>{t('examControl.saveGrades')}</Text>
         </Button>
       )}
+    </FormSection>
+  );
+}
+
+type PartDraft = { name: string; max: string; subitem_id: string | null };
+
+/** Exam parts (C6.7): split a subject's exam into parts entered separately; parts must add up to the subject max. */
+function ExamParts({ id, o, refresh }: P) {
+  const { t } = useTranslation();
+  const confirm = useConfirm();
+  const [gradePick, setGrade] = useState<string | null>(null);
+  const g = o.grades.find((x) => x.grade_level_id === gradePick) ?? o.grades[0];
+  const [subjectPick, setSubject] = useState<string | null>(null);
+  const subj = g?.subjects.find((x) => x.key === subjectPick) ?? g?.subjects[0];
+  const [draft, setDraft] = useState<PartDraft[] | null>(null);
+  const save = useAction(jahbadhControl.setParts, { success: t('examControl.saved'), onSuccess: () => { setDraft(null); refresh(); } });
+  if (!g || !subj) return null;
+  const parts: PartDraft[] = draft ?? (subj.parts ?? []).map((p) => ({ name: p.name, max: String(p.max), subitem_id: p.subitem_id }));
+  const sum = parts.reduce((a, p) => a + (Number(p.max.replace(',', '.')) || 0), 0);
+  const ok = !parts.length || (parts.length >= 2 && Math.abs(sum - subj.max) < 1e-9 && parts.every((p) => p.name.trim() && Number(p.max.replace(',', '.')) > 0));
+  const edit = (i: number, patch: Partial<PartDraft>) => setDraft(parts.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  const gradeId = g.grade_level_id;
+  const subjectKey = subj.key;
+  const submit = (list: PartDraft[]) =>
+    save.run(id, { grade_level_id: gradeId, subject_key: subjectKey, parts: list.map((p) => ({ name: p.name.trim(), max: Number(p.max.replace(',', '.')), subitem_id: p.subitem_id })) });
+  return (
+    <FormSection title={t('examControl.examParts')} description={t('examControl.examPartsHint')}>
+      <Picker
+        value={gradeId}
+        onChange={(v) => {
+          setGrade(v);
+          setSubject(null);
+          setDraft(null);
+        }}
+        options={o.grades.map((x) => ({ value: x.grade_level_id, label: x.grade_level_name }))}
+      />
+      <Picker
+        value={subjectKey}
+        onChange={(v) => {
+          setSubject(v);
+          setDraft(null);
+        }}
+        options={g.subjects.map((x) => ({ value: x.key, label: `${x.name} (/${x.max})${x.parts?.length ? ` · ${t('examControl.partsN', { n: x.parts.length })}` : ''}` }))}
+      />
+      {!parts.length ? <Note text={t('examControl.noParts')} /> : null}
+      {parts.map((p, i) => (
+        <View key={i} className="flex-row items-center gap-2">
+          <Text variant="muted" className="w-5 text-center text-sm">
+            {String(i + 1)}
+          </Text>
+          <Input className="flex-1" value={p.name} placeholder={t('examControl.partName')} onChangeText={(v) => edit(i, { name: v })} />
+          <Input className="w-20 text-center" value={p.max} placeholder={t('examControl.max')} keyboardType="decimal-pad" onChangeText={(v) => edit(i, { max: v })} />
+          <Pressable onPress={() => setDraft(parts.filter((_, j) => j !== i))} accessibilityRole="button" accessibilityLabel={t('examControl.remove')} hitSlop={8} className="p-1">
+            <Icon as={Trash2} className="text-destructive size-4" />
+          </Pressable>
+        </View>
+      ))}
+      {parts.some((p) => p.subitem_id) ? <Text variant="muted" className="text-xs">{t('examControl.partLinkedHint')}</Text> : null}
+      {parts.length ? <Text className={`text-sm ${ok ? 'text-success' : 'text-destructive'}`}>{t('examControl.partsSum', { sum, max: subj.max })}</Text> : null}
+      <View className="flex-row flex-wrap gap-2">
+        <Button variant="outline" onPress={() => setDraft([...parts, { name: t('examControl.partN', { n: parts.length + 1 }), max: '', subitem_id: null }])}>
+          <Icon as={Plus} className="size-4" />
+          <Text>{t('examControl.addPart')}</Text>
+        </Button>
+        <Button onPress={() => submit(parts)} disabled={!draft || !ok || save.running}>
+          <Text>{t('examControl.save')}</Text>
+        </Button>
+        {subj.parts?.length ? (
+          <Button
+            variant="ghost"
+            disabled={save.running}
+            onPress={async () => {
+              if (await confirm({ title: t('examControl.removeParts'), body: t('examControl.confirmRemoveParts') })) submit([]);
+            }}>
+            <Text>{t('examControl.removeParts')}</Text>
+          </Button>
+        ) : null}
+      </View>
+      <Text variant="muted" className="text-xs">
+        {t('examControl.partsLockedHint')}
+      </Text>
     </FormSection>
   );
 }
@@ -234,7 +316,7 @@ function Settings({ id, o, refresh }: P) {
         <View key={f.key} className="gap-1.5">
           <Label>{label}</Label>
           <Textarea value={String(v ?? '')} onChangeText={(x) => set(f.key, x)} />
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {t('examControl.templateHint')}
           </Text>
         </View>
@@ -343,7 +425,7 @@ function Members({ id }: { id: string }) {
       <Button onPress={submit} disabled={!rows || save.running}>
         <Text>{t('examControl.save')}</Text>
       </Button>
-      <Text variant="muted" className="text-[11px]">
+      <Text variant="muted" className="text-xs">
         {t('examControl.rolesHelp')}
       </Text>
     </FormSection>

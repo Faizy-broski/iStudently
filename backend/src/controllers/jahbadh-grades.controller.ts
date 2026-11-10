@@ -3,8 +3,18 @@ import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { schoolRootId } from '../utils/campus-validation'
 import * as jg from '../services/jahbadh/grades.service'
-import { printHeader, renderReportCardPdf, renderReportCardsPdf, renderResultsPdf, renderSecondRoundPdf } from '../services/jahbadh/print.service'
+import {
+  printHeader,
+  renderMonthlyLogPdf,
+  renderReportCardPdf,
+  renderReportCardsPdf,
+  renderResultsPdf,
+  renderSecondRoundPdf,
+  renderSubjectGridPdf,
+} from '../services/jahbadh/print.service'
+import * as monthly from '../services/jahbadh/monthly.service'
 import * as rc from '../services/jahbadh/report-cards.service'
+import * as insight from '../services/jahbadh/insight/insight.service'
 import * as an from '../services/jahbadh/analytics.service'
 import { renderAnalysisCardPdf, renderItemAnalysisPdf, renderStudentProfilePdf } from '../services/jahbadh/print.service'
 import { JG_ITEM_VERDICTS_AR, JG_RELIABILITY_AR, JG_RESULT_LABELS } from '../lib/jahbadh'
@@ -22,9 +32,9 @@ const handle = (fn: Handler) => async (req: AuthRequest, res: Response) => {
       return res.status(err.status).json({ success: false, error: err.message, code: err.code, details: err.details })
     }
     // A Jahbadh table that does not exist yet: a migration has not been run on this database.
-    const missing = err?.code === 'PGRST205' || err?.code === '42P01' ? String(err?.message ?? '').match(/(jg|jc)_[a-z0-9_]+/)?.[0] : null
+    const missing = jg.isNotMigrated(err) ? String(err?.message ?? '').match(/(jg|jc)_[a-z0-9_]+/)?.[0] ?? 'jahbadh' : null
     if (missing) {
-      return res.status(503).json({ success: false, error: `Database update missing: table ${missing} does not exist. Run the Jahbadh migrations (backend/migrations/jahbadh_*.sql).`, code: 'not_migrated' })
+      return res.status(503).json({ success: false, error: `Database update missing (${missing}). Run the Jahbadh migrations (backend/migrations/jahbadh_*.sql, see jahbadh_wave1_2026_2027.sql for the order).`, code: 'not_migrated' })
     }
     console.error('[jahbadh-grades]', err)
     return res.status(500).json({ success: false, error: err?.message || 'Unexpected error' })
@@ -50,6 +60,9 @@ async function rootOf(req: AuthRequest): Promise<string> {
 async function versionOf(req: AuthRequest, root: string) {
   return (req.query.version as string) || (await jg.getSettings(root, campusOf(req))).version_label
 }
+
+/** ?stage=1..3 | all; undefined when absent (the school's default stage applies). */
+const stageQ = (req: AuthRequest) => (req.query.stage === undefined ? undefined : String(req.query.stage))
 
 const ctxOf = (req: AuthRequest) =>
   jg.sectionContext(req.params.sectionId, req.profile?.school_id, actorOf(req), (req.query.academic_year_id as string) || null)
@@ -96,6 +109,12 @@ export const jahbadhGradesController = {
     const root = await rootOf(req)
     return jg.setupSchool(root, await versionOf(req, root), actorOf(req))
   }),
+  upgradePreview: handle(async (req) =>
+    jg.upgradePreview(await rootOf(req), String(req.query.target || jg.JG_CURRENT_MEMO), (req.query.academic_year_id as string) || null),
+  ),
+  upgradeApply: handle(async (req) =>
+    jg.upgradeApply(await rootOf(req), String(req.body?.target || jg.JG_CURRENT_MEMO), actorOf(req), (req.body?.academic_year_id as string) || null),
+  ),
 
   // settings and links
   getSettings: handle(async (req) => jg.getSettings(await rootOf(req), campusOf(req))),
@@ -127,9 +146,33 @@ export const jahbadhGradesController = {
       subjects: jg.sectionSubjects(ctx),
     }
   }),
-  grid: handle(async (req) => jg.getGrid(await ctxOf(req), req.params.subjectId)),
-  saveMarks: handle(async (req) => jg.saveMarks(await ctxOf(req), req.params.subjectId, req.body?.cells ?? [], actorOf(req))),
-  saveRound2: handle(async (req) => jg.saveRound2(await ctxOf(req), req.params.subjectId, req.body?.entries ?? [], actorOf(req))),
+  grid: handle(async (req) => jg.getGrid(await ctxOf(req), req.params.subjectId, stageQ(req))),
+  gridPdf: handle(async (req, res) => {
+    const ctx = await ctxOf(req)
+    const [grid, header] = await Promise.all([jg.getGrid(ctx, req.params.subjectId, stageQ(req)), printHeader(ctx.section.school_id, ctx.settings)])
+    sendPdf(res, await renderSubjectGridPdf(grid, header), `${grid.subject.name} - ${grid.section.name}.pdf`)
+  }),
+  saveMarks: handle(async (req) => jg.saveMarks(await ctxOf(req), req.params.subjectId, req.body?.cells ?? [], actorOf(req), stageQ(req))),
+  saveSubItemMarks: handle(async (req) => jg.saveSubItemMarks(await ctxOf(req), req.params.subjectId, req.body?.cells ?? [], actorOf(req), stageQ(req))),
+  saveRound2: handle(async (req) => jg.saveRound2(await ctxOf(req), req.params.subjectId, req.body?.entries ?? [], actorOf(req), stageQ(req))),
+
+  // monthly activities log («سجل الأنشطة الشهري»)
+  monthly: handle(async (req) => {
+    const ctx = await ctxOf(req)
+    return monthly.getMonthlyLog(ctx, req.params.subjectId, monthly.monthlyQuery(ctx, req.params.subjectId, req.query))
+  }),
+  saveMonthly: handle(async (req) => {
+    const ctx = await ctxOf(req)
+    const q = monthly.monthlyQuery(ctx, req.params.subjectId, { stage: req.body?.stage, month: req.body?.month_idx, kind: req.body?.kind })
+    return monthly.saveMonthly(ctx, req.params.subjectId, q, req.body?.cells ?? [], actorOf(req))
+  }),
+  monthlyPdf: handle(async (req, res) => {
+    const ctx = await ctxOf(req)
+    const q = monthly.monthlyQuery(ctx, req.params.subjectId, req.query)
+    const [log, header] = await Promise.all([monthly.getMonthlyLog(ctx, req.params.subjectId, q), printHeader(ctx.section.school_id, ctx.settings)])
+    const blank = req.query.blank === '1' || req.query.blank === 'true'
+    sendPdf(res, await renderMonthlyLogPdf(log, header, blank), `${log.subject.name} - ${log.month_name} - ${log.section.name}.pdf`)
+  }),
   listLocks: handle(async (req) => jg.loadLocks(await ctxOf(req))),
   addLock: handle(async (req) =>
     jg.addLock(await ctxOf(req), Number(req.body?.stage), (req.body?.subject_id as string) || null, actorOf(req)),
@@ -141,12 +184,12 @@ export const jahbadhGradesController = {
 
   resultsPdf: handle(async (req, res) => {
     const ctx = await ctxOf(req)
-    const [results, header] = await Promise.all([jg.getResults(ctx), printHeader(ctx.section.school_id, ctx.settings)])
+    const [results, header] = await Promise.all([jg.getResults(ctx), printHeader(ctx.section.school_id, ctx.settings, { sectionId: ctx.section.id, yearId: ctx.yearId })])
     sendPdf(res, await renderResultsPdf(results, header), `results-${ctx.gradeLevelName}-${ctx.section.name}.pdf`)
   }),
   secondRoundPdf: handle(async (req, res) => {
     const ctx = await ctxOf(req)
-    const [data, header] = await Promise.all([jg.getSecondRound(ctx), printHeader(ctx.section.school_id, ctx.settings)])
+    const [data, header] = await Promise.all([jg.getSecondRound(ctx), printHeader(ctx.section.school_id, ctx.settings, { sectionId: ctx.section.id, yearId: ctx.yearId })])
     sendPdf(res, await renderSecondRoundPdf(data, header), `second-round-${ctx.gradeLevelName}-${ctx.section.name}.pdf`)
   }),
   // activities, absence, notes, school days (B6-9)
@@ -171,7 +214,10 @@ export const jahbadhGradesController = {
   publications: handle(async (req) => rc.listPublications(await ctxOf(req))),
   publish: handle(async (req) => {
     const ctx = await ctxOf(req)
-    return rc.publish(ctx, rc.parseScope(ctx, req.body?.scope), actorOf(req))
+    const scope = rc.parseScope(ctx, req.body?.scope)
+    // Brief B6-37: report cards are not published while the entry auditor finds errors (409 audit_errors).
+    await insight.assertPublishable(ctx)
+    return rc.publish(ctx, scope, actorOf(req))
   }),
   unpublish: handle(async (req) => rc.unpublish(await ctxOf(req), req.params.publicationId, actorOf(req))),
 

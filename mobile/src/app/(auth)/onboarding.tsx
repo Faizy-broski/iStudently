@@ -88,7 +88,7 @@ export default function Onboarding() {
             </Svg>
             <View className="flex-1 justify-end px-6" style={{ paddingBottom: insets.bottom + 150 }}>
               <View className="border-white/30 bg-white/15 mb-3 self-start rounded-full border px-3 py-1">
-                <Text className="text-white text-[10px] font-semibold uppercase tracking-widest">{k(`${item.key}_label`)}</Text>
+                <Text className="text-white text-2xs font-semibold uppercase">{k(`${item.key}_label`)}</Text>
               </View>
               <Text className="text-white text-[32px] font-bold leading-10">{k(`${item.key}_title`)}</Text>
               <Text className="text-white/80 mt-3 text-sm leading-5">{k(`${item.key}_body`)}</Text>

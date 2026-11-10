@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { Clock, Download, Mail, Phone, Share2, ShieldCheck, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Share, View } from 'react-native';
+import { Share, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import QRCode from 'react-qr-code';
 
 import { colors } from '@/lib/colors';

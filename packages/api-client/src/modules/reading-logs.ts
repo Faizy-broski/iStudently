@@ -31,8 +31,22 @@ export interface SchoolPage {
   order: number
 }
 
+export interface CreateReadingLogInput {
+  book_title: string
+  book_author?: string | null
+  session_date?: string | null
+  pages_read?: number | null
+  notes?: string | null
+}
+
 export function readingLogsApi(api: ApiClient) {
   return {
+    /** Student: their own reading sessions, newest first. */
+    my: () => api.get<ReadingLog[]>('/reading-logs/my'),
+    /** Student: log a reading session (audio is attached afterwards). */
+    create: (input: CreateReadingLogInput) => api.post<ReadingLog>('/reading-logs', input),
+    /** Student: attach an uploaded recording (`path` from media.uploadRecording) to their log. */
+    attachAudio: (id: string, audioFilePath: string) => api.patch<void>(`/reading-logs/${encodeURIComponent(id)}/audio`, { audio_file_path: audioFilePath }),
     /** Teacher / admin / librarian: every log in their school, optionally one student's. */
     school: (studentId?: string) => api.get<ReadingLog[]>(`/reading-logs${qs({ student_id: studentId })}`),
     /** Custom pages targeted at the signed-in user's role. */

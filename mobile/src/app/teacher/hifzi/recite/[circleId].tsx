@@ -67,7 +67,7 @@ function Timer({ startedAt }: { startedAt: number }) {
  * (web: /teacher/hifzi/recite/[circleId]).
  */
 export default function TeacherRecite() {
-  const { h, a, isAr } = useHz();
+  const { h, a, t, isAr } = useHz();
   const toast = useToast();
   const { circleId } = useLocalSearchParams<{ circleId: string }>();
   const roster = useApi(circleId ? ['teacher', 'hifzi-enrollments', circleId] : null, ([, , c]) => adminHifzi.enrollments(c as string));
@@ -168,7 +168,7 @@ export default function TeacherRecite() {
         override_reason: override ? reason.trim() : null,
         client_uuid: uuid,
       });
-      if (!r.success) return toast.error(r.error || 'Failed to save');
+      if (!r.success) return toast.error(r.error || t('common.error'));
       toast.success(h('recitation.saved'));
       next();
     } finally {

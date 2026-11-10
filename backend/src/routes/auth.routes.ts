@@ -1,6 +1,7 @@
 import express from 'express'
 import * as authController from '../controllers/auth.controller'
-import { authenticate } from '../middlewares/auth.middleware'
+import type { NextFunction, Response } from 'express'
+import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
 import { requireAdmin } from '../middlewares/role.middleware'
 import { createProfileRateLimit } from '../middlewares/rate-limit.middleware'
 
@@ -42,7 +43,9 @@ router.post('/force-password-change', requireAdmin, authController.forcePassword
 // POST /auth/force-password-change/reset    — clear flag for all users in school/campus
 router.post('/force-password-change/reset', requireAdmin, authController.resetForcePasswordChange)
 
-// GET /auth/last-login/:profileId  — admin: fetch last_sign_in_at for any user
-router.get('/last-login/:profileId', requireAdmin, authController.getLastLogin)
+// GET /auth/last-login/:profileId  — admin: any user of the school family; everyone: themselves
+const selfOrAdmin = (req: AuthRequest, res: Response, next: NextFunction) =>
+  req.params.profileId && req.params.profileId === req.profile?.id ? next() : requireAdmin(req, res, next)
+router.get('/last-login/:profileId', selfOrAdmin, authController.getLastLogin)
 
 export default router

@@ -107,7 +107,7 @@ export default function TeacherEligibility() {
                     accessibilityRole="button"
                     className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < classes.length - 1 && 'border-info-soft dark:border-border border-b', live && 'bg-success-soft')}>
                     <View className={cn('size-12 items-center justify-center rounded-xl', live ? 'bg-success' : 'bg-brand dark:bg-brand-secondary')}>
-                      <Text className="text-[10px] text-white/85">{k('period')}</Text>
+                      <Text className="text-2xs text-white/85">{k('period')}</Text>
                       <Text className="text-base font-bold text-white">{String(c.period_number)}</Text>
                     </View>
                     <View className="flex-1 gap-0.5">
@@ -116,7 +116,7 @@ export default function TeacherEligibility() {
                     </View>
                     <View className="items-end gap-0.5">
                       <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{`${c.start_time?.slice(0, 5)} - ${c.end_time?.slice(0, 5)}`}</Text>
-                      {c.room_number ? <Text className="text-muted-foreground text-[11px]">{k('room', { room: c.room_number })}</Text> : null}
+                      {c.room_number ? <Text className="text-muted-foreground text-xs">{k('room', { room: c.room_number })}</Text> : null}
                     </View>
                   </Pressable>
                 );

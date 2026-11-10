@@ -1,7 +1,8 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, LayoutDashboard, Settings } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { PublicWebView, WebSessionView } from '@/components/app/web-session-view';

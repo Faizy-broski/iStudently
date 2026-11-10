@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import useSWR from "swr"
-import { ArrowRight, EyeOff, Printer, Send } from "lucide-react"
+import { AlertTriangle, ArrowRight, EyeOff, FileArchive, Printer, Send } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,9 @@ import {
   jgApi, openMyReportCard, openReportCardsPdf,
   type JgReportCardOptions, type JgReportCardSettings, type JgScope,
 } from "@/lib/api/jahbadh-grades"
-import { decisionTone, fmtMark, fmtPct } from "@/lib/jahbadh"
+import { downloadReportCardsZip } from "@/lib/api/jahbadh-official"
+import { jgInsightApi } from "@/lib/api/jahbadh-insight"
+import { decisionTone, fmtMark, fmtPct, type JgAuditIssue } from "@/lib/jahbadh"
 import { JgBlocked, ResultChip, SectionPicker, useJgContext, useJgSection, SectionsBlocked, sectionsReady, type JgBase } from "./shared"
 
 // The web imports only types from packages/ at runtime, so the option order is listed here.
@@ -27,6 +29,8 @@ const OPTION_KEYS: (keyof JgReportCardOptions)[] = [
   "rank", "minPass", "subjectEstimate", "classAverage", "performanceBar", "trend",
   "badges", "insight", "activities", "attendance", "guardianTips", "quote",
 ]
+// Off by default: black-and-white print, early prediction (stage scope), automatic notes.
+const EXTRA_KEYS: (keyof JgReportCardOptions)[] = ["bw", "prediction", "autoNotes"]
 
 /** Report cards (brief B7): scope, the 12 options, tips and quotes, print range, publishing. */
 export function ReportCards({ base }: { base: JgBase }) {
@@ -47,6 +51,9 @@ export function ReportCards({ base }: { base: JgBase }) {
   })
   const settings = useSWR(sectionId ? ["jg-rc-settings", sectionId, campusId] : null, async () => (await jgApi.reportCardSettings(sectionId!, campusId)).data)
   const pubs = useSWR(sectionId ? ["jg-pubs", sectionId, campusId] : null, async () => (await jgApi.publications(sectionId!, campusId)).data ?? [])
+  // Entry errors (brief B6-37) block publishing: shown as a banner, and as a list when the server refuses (409 audit_errors).
+  const audit = useSWR(sectionId ? ["jg-rc-audit", sectionId, campusId] : null, async () => (await jgInsightApi.entryAudit(sectionId!, campusId)).data ?? null)
+  const [blocked, setBlocked] = useState<JgAuditIssue[] | null>(null)
 
   const [form, setForm] = useState<{ options: JgReportCardOptions; tips: string; quotes: string } | null>(null)
   const [seen, setSeen] = useState<JgReportCardSettings | null>(null)
@@ -82,10 +89,20 @@ export function ReportCards({ base }: { base: JgBase }) {
   }
   const print = () =>
     openReportCardsPdf(sectionId!, scope, { from: from ? fromN : undefined, to: to ? toN : undefined }, campusId).catch((e) => toast.error(e.message))
+  const zip = () =>
+    downloadReportCardsZip(sectionId!, scope, { from: from ? fromN : undefined, to: to ? toN : undefined }, campusId).catch((e) => toast.error(e.message))
   const published = pubs.data?.find((p) => p.scope === scope)
   const togglePublish = async () => {
     const res = published ? await jgApi.unpublish(sectionId!, published.id, campusId) : await jgApi.publish(sectionId!, scope, campusId)
-    if (!res.success) return toast.error(res.error)
+    if (!res.success) {
+      if (res.code === "audit_errors") {
+        setBlocked(((res.details as { issues?: JgAuditIssue[] } | undefined)?.issues) ?? [])
+        audit.mutate()
+        return toast.error(t("insPublishBlocked"))
+      }
+      return toast.error(res.error)
+    }
+    setBlocked(null)
     toast.success(published ? t("unpublished") : t("published"))
     pubs.mutate(res.data, false)
   }
@@ -114,6 +131,17 @@ export function ReportCards({ base }: { base: JgBase }) {
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-1">
+            {(audit.data?.errors ?? 0) > 0 || blocked ? (
+              <div className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                <p className="flex items-start gap-2 font-semibold"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />{t("insAuditBlocked", { n: audit.data?.errors ?? blocked?.length ?? 0 })}</p>
+                {blocked?.length ? (
+                  <ul className="max-h-48 list-disc space-y-1 overflow-y-auto ps-6">
+                    {blocked.slice(0, 20).map((i, k) => <li key={k} dir="auto">{`${i.name} — ${i.label}${i.subject ? ` (${i.subject})` : ""}`}</li>)}
+                  </ul>
+                ) : null}
+                <Button asChild size="sm" variant="outline"><Link href={`${base}/entry-audit?section=${sectionId}`}>{t("insOpenAudit")}</Link></Button>
+              </div>
+            ) : null}
             <Card>
               <CardHeader><CardTitle className="text-base">{t("printCards")}</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -136,6 +164,7 @@ export function ReportCards({ base }: { base: JgBase }) {
                 </div>
                 <p className="text-sm text-muted-foreground">{t("cardsToPrint", { count })}</p>
                 <Button className="w-full" onClick={print} disabled={!count}><Printer className="size-4" />{t("printPdf")}</Button>
+                <Button className="w-full" variant="outline" onClick={zip} disabled={!count}><FileArchive className="size-4" />{t("downloadZip")}</Button>
               </CardContent>
             </Card>
 
@@ -167,10 +196,10 @@ export function ReportCards({ base }: { base: JgBase }) {
               <Card>
                 <CardHeader><CardTitle className="text-base">{t("cardOptions")}</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  {OPTION_KEYS.map((k) => (
+                  {[...OPTION_KEYS, ...EXTRA_KEYS].map((k) => (
                     <div key={k} className="flex items-center justify-between gap-2">
                       <Label htmlFor={`opt-${k}`} className="font-normal">{t(`opt_${k}`)}</Label>
-                      <Switch id={`opt-${k}`} checked={form.options[k]} onCheckedChange={(v) => setForm({ ...form, options: { ...form.options, [k]: v } })} />
+                      <Switch id={`opt-${k}`} checked={!!form.options[k]} onCheckedChange={(v) => setForm({ ...form, options: { ...form.options, [k]: v } })} />
                     </div>
                   ))}
                   <div className="space-y-1">

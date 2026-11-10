@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { BottomBar } from '@/components/app/layout';
 import { DataList } from '@/components/app/data-list';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -157,11 +158,11 @@ export default function AddExceptions() {
           renderItem={(r) => <RosterRow name={r.name} sub={r.sub} selected={selected.has(r.id)} onToggle={() => toggle(r.id)} />}
           contentContainerClassName="flex-grow pb-24"
         />
-        <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
+        <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
           <Button onPress={submit} disabled={submitting || !selected.size}>
             <Text>{x('btn_add_bulk', { type: tabLabel, count: selected.size })}</Text>
           </Button>
-        </View>
+        </BottomBar>
       </View>
     </>
   );

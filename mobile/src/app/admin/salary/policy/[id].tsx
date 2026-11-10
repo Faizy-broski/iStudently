@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { BottomBar } from '@/components/app/layout';
 import { ScrollView } from '@/components/app/keyboard';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { SearchBar } from '@/components/app/search-bar';
@@ -123,11 +124,11 @@ export default function PolicyMembers() {
         ) : null}
       </ScrollView>
       {picked.size ? (
-        <View className="bg-background border-border absolute inset-x-0 bottom-0 border-t p-4 pb-8">
+        <BottomBar className="bg-background border-border absolute inset-x-0 bottom-0 border-t p-4 pb-8">
           <Button disabled={assign.running} onPress={() => assign.run([...picked])}>
             <Text>{assign.running ? s('assigning') : s('addSelected', { count: picked.size })}</Text>
           </Button>
-        </View>
+        </BottomBar>
       ) : null}
     </>
   );

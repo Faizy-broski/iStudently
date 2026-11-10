@@ -37,7 +37,11 @@ export function usePortalAcademic() {
   return v;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Local calendar day (toISOString is UTC and can be a day off around midnight).
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 /**
  * The web sidebar's academic year + quarter pickers for students and teachers (AppSidebar):

@@ -3,27 +3,30 @@ import { pushNotificationsService } from '../push-notifications.service'
 import {
   competitionRanks,
   computeSubject,
-  decisionFor,
+  decisionWithDetail,
   estimateFor,
+  genderForm,
   JG_ACTIVITY_SUBJECTS,
+  learnerWord,
   stats,
-  studentOverall,
+  subjectCountWord,
   type JgCell,
+  type JgStudentResult,
+  type JgSubjectResult,
 } from '../../lib/jahbadh'
 import { logJgAudit } from './audit.service'
 import {
-  cellsFor,
+  computeSection,
   engineComponents,
   JgError,
-  loadMarks,
-  loadRound2,
   ruleInput,
   sectionStudents,
   type JgActor,
   type JgLoadedSubject,
   type JgSectionContext,
 } from './grades.service'
-import { JG_REPORT_CARD_ALL_ON, printHeader, type JgReportCardData, type JgReportCardOptions } from './print.service'
+import { JG_REPORT_CARD_DEFAULTS, printHeader, type JgReportCardData, type JgReportCardOptions, type JgStageMode } from './print.service'
+import { cardReference, fmtPct2, qrSvgOf, schoolExtras, signCode, yearLine } from './print-layout'
 
 /** Activity levels allowed for art / music / PE (brief B6-9). */
 export const JG_ACTIVITY_LEVELS = ['ممتاز', 'جيد جداً', 'جيد', 'مقبول'] as const
@@ -48,7 +51,7 @@ export const JG_DEFAULT_QUOTES = [
 export type JgScope = 'stage1' | 'stage2' | 'stage3' | 'final'
 export const JG_SCOPES: JgScope[] = ['stage1', 'stage2', 'stage3', 'final']
 
-const gradeStages = (ctx: JgSectionContext) =>
+export const gradeStages = (ctx: JgSectionContext) =>
   [...new Set(ctx.grade.subjects.flatMap((s) => s.meta.stages))].sort((a, b) => a - b)
 
 /** Validates a scope against the grade (stage3 only where the grade has one). */
@@ -71,7 +74,7 @@ export interface JgActivityRow {
   teacher_note: string | null
 }
 
-async function loadActivities(ctx: JgSectionContext): Promise<(JgActivityRow & { stage: number })[]> {
+export async function loadActivities(ctx: JgSectionContext): Promise<(JgActivityRow & { stage: number })[]> {
   const { data, error } = await supabase
     .from('jg_activity_records')
     .select('student_id, stage, art, music, pe, excused_days, unexcused_days, teacher_note')
@@ -81,7 +84,7 @@ async function loadActivities(ctx: JgSectionContext): Promise<(JgActivityRow & {
   return data ?? []
 }
 
-async function loadSchoolDays(ctx: JgSectionContext): Promise<Record<number, number>> {
+export async function loadSchoolDays(ctx: JgSectionContext): Promise<Record<number, number>> {
   const { data, error } = await supabase
     .from('jg_school_days')
     .select('stage, days')
@@ -199,8 +202,9 @@ export async function getReportCardSettings(ctx: JgSectionContext): Promise<JgRe
     .maybeSingle()
   if (error) throw error
   const saved = (data?.options ?? {}) as Partial<JgReportCardOptions>
+  // The 12 B7 elements default on; the Wave 2 toggles (bw, prediction, autoNotes) default off.
   const options = Object.fromEntries(
-    Object.keys(JG_REPORT_CARD_ALL_ON).map((k) => [k, saved[k as keyof JgReportCardOptions] !== false]),
+    (Object.keys(JG_REPORT_CARD_DEFAULTS) as (keyof JgReportCardOptions)[]).map((k) => [k, typeof saved[k] === 'boolean' ? saved[k] : JG_REPORT_CARD_DEFAULTS[k]]),
   ) as unknown as JgReportCardOptions
   const tips = Array.isArray(data?.guardian_tips) && data.guardian_tips.length ? data.guardian_tips : JG_DEFAULT_GUARDIAN_TIPS
   const quotes = Array.isArray(data?.quotes) && data.quotes.length ? data.quotes : JG_DEFAULT_QUOTES
@@ -210,7 +214,7 @@ export async function getReportCardSettings(ctx: JgSectionContext): Promise<JgRe
 export async function saveReportCardSettings(ctx: JgSectionContext, body: Partial<JgReportCardSettings>, actor: JgActor) {
   const current = await getReportCardSettings(ctx)
   const options = { ...current.options }
-  for (const k of Object.keys(JG_REPORT_CARD_ALL_ON) as (keyof JgReportCardOptions)[]) {
+  for (const k of Object.keys(JG_REPORT_CARD_DEFAULTS) as (keyof JgReportCardOptions)[]) {
     if (body.options && typeof body.options[k] === 'boolean') options[k] = body.options[k]
   }
   const list = (v: unknown, fallback: string[]) =>
@@ -236,7 +240,7 @@ export async function saveReportCardSettings(ctx: JgSectionContext, body: Partia
 
 // ---- building report cards -----------------------------------------------------------------------
 
-interface ReportStudent {
+export interface ReportStudent {
   id: string
   name: string
   gender: string | null
@@ -245,15 +249,27 @@ interface ReportStudent {
   place_of_birth: string | null
   registration_number: string | null
   date_of_birth: string | null
+  /** «الرقم الوطني» (profiles.national_id). */
+  national_id: string | null
+  /** «مستجد» / «معيد» (Wave 2 column; null before the migration). */
+  enrollment_status: string | null
+  /** «صفة القيد»: «نظامي» / «منازل». */
+  registration_type: string | null
+  guardian_phone: string | null
 }
 
-async function reportStudents(sectionId: string): Promise<ReportStudent[]> {
+const STUDENT_EXTRA = 'id, nationality, mother_name, place_of_birth, registration_number, custom_fields, enrollment_status, registration_type, profile:profiles(date_of_birth, national_id)'
+const STUDENT_EXTRA_V1 = 'id, nationality, mother_name, place_of_birth, registration_number, custom_fields, profile:profiles(date_of_birth, national_id)'
+
+/** Card fields of a section's students, in list order (before jahbadh_wave2.sql the new columns read as null). */
+export async function reportStudents(sectionId: string): Promise<ReportStudent[]> {
   const ordered = await sectionStudents(sectionId)
   if (!ordered.length) return []
-  const { data, error } = await supabase
-    .from('students')
-    .select('id, nationality, mother_name, place_of_birth, registration_number, profile:profiles(date_of_birth)')
-    .in('id', ordered.map((s) => s.id))
+  const ids = ordered.map((s) => s.id)
+  let res: { data: any[] | null; error: any } = await supabase.from('students').select(STUDENT_EXTRA).in('id', ids)
+  // 42703 = undefined column: the Wave 2 migration has not been run yet.
+  if (res.error?.code === '42703') res = await supabase.from('students').select(STUDENT_EXTRA_V1).in('id', ids)
+  const { data, error } = res
   if (error) throw error
   const extra = new Map((data ?? []).map((r: any) => [r.id, r]))
   return ordered.map((s) => {
@@ -263,13 +279,17 @@ async function reportStudents(sectionId: string): Promise<ReportStudent[]> {
       id: s.id, name: s.name, gender: s.gender,
       nationality: r.nationality ?? null, mother_name: r.mother_name ?? null, place_of_birth: r.place_of_birth ?? null,
       registration_number: r.registration_number ?? null, date_of_birth: p?.date_of_birth ?? null,
+      national_id: p?.national_id ?? null,
+      enrollment_status: r.enrollment_status ?? null,
+      registration_type: r.registration_type ?? null,
+      guardian_phone: (r.custom_fields && typeof r.custom_fields === 'object' ? r.custom_fields.guardian_phone : null) ?? null,
     }
   })
 }
 
-const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10).replace(/-/g, '/') : '')
+export const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10).replace(/-/g, '/') : '')
 
-function stageSplit(subject: JgLoadedSubject, cells: Record<string, JgCell>, stage: number) {
+export function stageSplit(subject: JgLoadedSubject, cells: Record<string, JgCell>, stage: number) {
   const comps = subject.components.filter((c) => c.stage === stage)
   const max = comps.reduce((a, c) => a + c.max_score, 0)
   let works: number | null = null
@@ -300,23 +320,30 @@ export async function buildReportCards(
   const allStages = gradeStages(ctx)
   const scopeStages = scope === 'final' ? allStages : [Number(scope.slice(5))]
   const stageNames = scopeStages.map((s) => ctx.grade.rule.stage_names[s - 1] ?? String(s))
-  const [students, marks, r2, activities, schoolDays, settings, header] = await Promise.all([
+  const [students, activities, schoolDays, settings, header] = await Promise.all([
     reportStudents(ctx.section.id),
-    loadMarks(ctx, subjects.flatMap((s) => s.components.map((c) => c.id))),
-    loadRound2(ctx, subjects.map((s) => s.id)),
     loadActivities(ctx),
     loadSchoolDays(ctx),
     getReportCardSettings(ctx),
-    printHeader(ctx.section.school_id, ctx.settings),
+    printHeader(ctx.section.school_id, ctx.settings, { sectionId: ctx.section.id, yearId: ctx.yearId }),
   ])
+  // Same computation as the results sheet: months, sub-items, Article 122 / 51, completeness.
+  const computed = await computeSection(ctx, students.map((s) => ({ id: s.id, name: s.name, gender: s.gender, student_number: null })))
+  // Brief B6-39: a verification code per printed card (unchanged cards keep theirs); the QR opens the
+  // public verification page. Before jahbadh_wave5.sql runs no code is issued and the QR keeps the reference.
+  const verifyMod = await import('./insight/insight.service')
+  const verifyCodes: Record<string, string> = await verifyMod.issueCodes(ctx, scope, null, opts.studentIds).catch(() => ({}))
 
   // Per student × subject figures for this scope.
-  const per = students.map((st) => {
-    const cells = cellsFor(marks, st.id)
-    const subjectsOut = subjects.map((s) => {
+  const per = students.map((st, i) => {
+    const sec = computed.students[i]
+    const cells = sec.marks.cells as Record<string, JgCell>
+    const subjectsOut = subjects.map((s, j) => {
       const comps = engineComponents(s)
-      const round2 = r2.find((x) => x.student_id === st.id && x.jg_subject_id === s.id)?.value ?? null
-      const res = computeSubject(comps, cells, round2, rule, ctx.settings.grading_scale)
+      const round2 = sec.round2[s.id] ?? null
+      const res = scope === 'final'
+        ? sec.resolved.subjects[j].result
+        : computeSubject(comps, cells, round2, rule, ctx.settings.grading_scale, { jabrKasur: ctx.settings.jabr_kasur })
       const split = Object.fromEntries(allStages.map((n) => [n, stageSplit(s, cells, n)]))
       const pctOf = (n: number) => (split[n]?.max && split[n].total !== null ? split[n].total! / split[n].max : null)
       let final: number | null
@@ -357,27 +384,52 @@ export async function buildReportCards(
     }
     return { total, pct: total === null || !recorded ? null : total / recorded }
   })
-  const ranks = competitionRanks(overall.map((o) => o.pct))
+  // Final year: ranks among complete students only (brief F1-6); a stage: by that stage's share.
+  const ranks = scope === 'final' ? computed.students.map((x) => x.rank) : competitionRanks(overall.map((o) => o.pct))
   const maxAll = subjects.reduce((a, s) => a + (scope === 'final' ? s.meta.subjectMax : s.meta.stageMax[scopeStages[0]] ?? 0), 0)
 
   const title = scope === 'final' ? 'صحيفة النتيجة النهائية للعام الدراسي' : `صحيفة نتائج ${stageNames[0]}`
   const cards: JgReportCardData[] = []
-  per.forEach(({ st, subjectsOut }, i) => {
+  const extras = schoolExtras(ctx.settings)
+  const modes = stageModesOf(ctx, scopeStages)
+  const printedOn = new Date()
+  for (const [i, { st, subjectsOut }] of per.entries()) {
     const listNumber = i + 1
-    if (opts.from && listNumber < opts.from) return
-    if (opts.to && listNumber > opts.to) return
-    if (opts.studentIds && !opts.studentIds.includes(st.id)) return
+    if (opts.from && listNumber < opts.from) continue
+    if (opts.to && listNumber > opts.to) continue
+    if (opts.studentIds && !opts.studentIds.includes(st.id)) continue
     const ov = overall[i]
     const est = estimateFor(ov.pct, ctx.settings.grading_scale)
     const decision =
       scope === 'final'
-        ? decisionFor(
-            { noFail: ctx.grade.rule.no_fail, certificateName: ctx.grade.rule.certificate_name, nextGradeName: ctx.grade.rule.next_grade_name },
-            studentOverall(subjectsOut.map((x) => ({ name: x.subject.short_name, result: x.res })), rule),
-            subjects.length,
-          )
+        ? decisionWithDetail(computed.students[i].resolved) ?? '—'
         : `نتيجة ${stageNames[0]}: ${est ?? '—'}`
     const rec = (n: number) => activities.find((a) => a.student_id === st.id && a.stage === n)
+    const resolved = computed.students[i].resolved
+    // Stage estimate (start of each stage note) and the stage share used by the auto note / projection.
+    const stageShare = scopeStages.map((n) => {
+      let tot = 0, mx = 0
+      for (const x of subjectsOut) if (x.split[n]?.max && x.split[n].total !== null) { tot += x.split[n].total!; mx += x.split[n].max }
+      return mx ? tot / mx : null
+    })
+    const allShare = allStages.map((n) => {
+      let tot = 0, mx = 0
+      for (const x of subjectsOut) if (x.split[n]?.max && x.split[n].total !== null) { tot += x.split[n].total!; mx += x.split[n].max }
+      return mx ? tot / mx : null
+    })
+    const notes = scopeStages.map((n, k) => {
+      const manual = rec(n)?.teacher_note ?? null
+      if (manual || !settings.options.autoNotes) return manual
+      const prevIdx = allStages.indexOf(n) - 1
+      return autoNote(st.gender, subjectsOut.map((x) => ({ name: x.subject.short_name || x.subject.name, pct: x.split[n]?.max && x.split[n].total !== null ? x.split[n].total! / x.split[n].max : null })), stageShare[k], prevIdx >= 0 ? allShare[prevIdx] : null, ctx)
+    })
+    const reference = cardReference(extras.schoolNumber, st.registration_number ?? '', printedOn)
+    const code = signCode(`${reference}|${ov.total ?? ''}|${resolved.decision ?? ''}`)
+    const recorded = allShare.filter((x): x is number => x !== null)
+    const current = resolved.overall.pct
+    const projection = scope !== 'final' && settings.options.prediction && current !== null
+      ? (() => { const pct = recorded.length >= 2 ? 0.5 * current + 0.5 * recorded[recorded.length - 1] : current; return { pct, estimate: estimateFor(pct, ctx.settings.grading_scale) } })()
+      : null
     cards.push({
       header,
       title,
@@ -396,6 +448,9 @@ export async function buildReportCards(
         motherName: st.mother_name ?? '',
         birth: [st.place_of_birth, fmtDate(st.date_of_birth)].filter(Boolean).join(' — '),
         listNumber,
+        nationalId: st.national_id ?? '',
+        enrollmentStatus: st.enrollment_status ?? '',
+        registrationType: st.registration_type ?? '',
       },
       subjects: subjectsOut.map((x, j) => ({
         name: x.subject.name,
@@ -409,6 +464,9 @@ export async function buildReportCards(
         estimate: x.estimate,
         classAverage: averages[j] === null ? null : Math.round(averages[j]! * 10) / 10,
         trend: x.trend,
+        firstRound: scope === 'final' ? resolved.subjects[j].result.total : null,
+        jabr: scope === 'final' ? resolved.subjects[j].jabr : false,
+        need: scope !== 'final' && settings.options.prediction ? needToPass(resolved.subjects[j].result, x.subject, ctx) : undefined,
       })),
       total: ov.total,
       max: maxAll,
@@ -430,14 +488,94 @@ export async function buildReportCards(
         unexcused: scopeStages.map((n) => rec(n)?.unexcused_days ?? null),
         schoolDays: scopeStages.map((n) => schoolDays[n] ?? null),
       },
-      notes: scopeStages.map((n) => rec(n)?.teacher_note ?? null),
+      notes,
       guardianTips: settings.guardian_tips,
       quote: settings.quotes[(listNumber - 1) % settings.quotes.length],
       excelRate: ctx.settings.excel_rate,
       followRate: ctx.settings.follow_rate,
+      cardName: `بطاقة تقدير درجات — مرحلة التعليم ${ctx.grade.rule.level === 'secondary' ? 'الثانوي' : 'الأساسي'}`,
+      yearLine: yearLine(ctx.settings, ctx.yearName),
+      school: { number: extras.schoolNumber, locatedAt: extras.locatedAt, coordinator: extras.examsCoordinator, subOffice: extras.subOffice },
+      stageModes: modes,
+      stageEstimates: stageShare.map((p) => estimateFor(p, ctx.settings.grading_scale)),
+      rounds: scope === 'final' ? roundSentences(ctx, st, resolved) : null,
+      signatureRoles: ctx.grade.rule.grade_code <= 5 ? ['منسق الامتحانات', 'مدير المدرسة', 'ولي الأمر'] : ['رائد الفصل', 'مدير المدرسة', 'ولي الأمر'],
+      activityPeriods: ctx.grade.rule.grade_code >= 6 && ctx.grade.rule.grade_code <= 8 ? [2, 1, 2] : null,
+      projection,
+      reference,
+      verifyCode: verifyCodes[st.id] ?? null,
+      qrSvg: await qrSvgOf(verifyCodes[st.id] ? verifyMod.verifyUrl(verifyCodes[st.id]) : `JGRC|${reference}|${code}`, 15),
     })
-  })
+  }
   return { cards, options: settings.options }
+}
+
+// ---- Wave 2 card helpers (brief B7, B6-30, B6-33) -----------------------------------------------------
+
+/** How each stage prints: works/exam/total when it has both, else max/score (periods) or the exam alone. */
+function stageModesOf(ctx: JgSectionContext, stages: number[]): JgStageMode[] {
+  return stages.map((n) => {
+    const comps = ctx.grade.subjects.flatMap((s) => s.components.filter((c) => c.stage === n))
+    const exam = comps.some((c) => c.is_exam)
+    const works = comps.some((c) => !c.is_exam)
+    return exam && works ? 'semester' : exam ? 'exam' : 'period'
+  })
+}
+
+const FIRST_ROUND_FAIL = ['round2', 'pass_round2', 'fail']
+
+/** The official first / second round sentences, gender-aware (brief B7). */
+function roundSentences(ctx: JgSectionContext, st: ReportStudent, res: JgStudentResult): { first: string | null; second: string | null; single: boolean } {
+  const g = st.gender ?? undefined
+  const word = learnerWord(ctx.grade.rule.grade_code, g)
+  const who = `${genderForm(g, 'يعتبر', 'تعتبر')} ${word} (${st.name})`
+  const pct = res.overall.pct === null ? '' : ` (${fmtPct2(res.overall.pct)})`
+  const est = res.overall.estimate ? ` بتقدير عام ${res.overall.estimate}` : ''
+  const next = ctx.grade.rule.next_grade_name
+  const passText = ctx.grade.rule.certificate_name
+    ? `${who} ${genderForm(g, 'ناجحاً وحاصلاً', 'ناجحة وحاصلة')} على ${ctx.grade.rule.certificate_name}${est}${pct}`
+    : `${who} ${genderForm(g, 'ناجحاً ومنقولاً', 'ناجحة ومنقولة')} للصف ${next ?? ''}${est}${pct}`
+  const failText = `${who} ${genderForm(g, 'راسباً', 'راسبة')}`
+  if (!res.decision) return { first: null, second: null, single: ctx.grade.rule.no_fail }
+  if (res.incomplete) return { first: decisionWithDetail(res), second: null, single: ctx.grade.rule.no_fail }
+  if (ctx.grade.rule.no_fail) return { first: `${genderForm(g, 'ينقل', 'تنقل')} ${word} (${st.name}) إلى الصف ${next ?? ''}${est}${pct}`, second: null, single: true }
+  if (res.overRound2Limit) return { first: failText, second: null, single: false }
+  const referred = res.subjects.filter((x) => x.result.result && FIRST_ROUND_FAIL.includes(x.result.result))
+  if (!referred.length) return { first: passText, second: null, single: false }
+  const first = `${who} ${genderForm(g, 'مؤجلاً', 'مؤجلة')} للدور الثاني في ${subjectCountWord(referred.length)}: ${referred.map((x) => x.name).join('، ')}`
+  const pending = referred.some((x) => x.result.result === 'round2')
+  const second = pending ? 'بانتظار رصد درجات الدور الثاني' : res.subjects.some((x) => x.result.result === 'fail') ? failText : passText
+  return { first, second, single: false }
+}
+
+/** Marks still needed to pass from the remaining capacity: 'ok' secured, 'impossible' out of reach (brief B6-30). */
+function needToPass(res: JgSubjectResult, subject: JgLoadedSubject, ctx: JgSectionContext): number | 'ok' | 'impossible' | null {
+  if (ctx.grade.rule.no_fail) return null
+  const max = subject.meta.subjectMax
+  const minPass = Number(ctx.grade.rule.total_min) * max
+  const have = res.total ?? 0
+  const remaining = max - res.recordedMax
+  const need = Math.round((minPass - have) * 100) / 100
+  if (need <= 0) return 'ok'
+  return need > remaining + 1e-9 ? 'impossible' : need
+}
+
+/** Short generated note when the teacher left it empty (phrase bank, gender-aware; brief B6-33). */
+function autoNote(gender: string | null, subjects: { name: string; pct: number | null }[], share: number | null, prev: number | null, ctx: JgSectionContext): string | null {
+  if (share === null) return null
+  const g = gender ?? undefined
+  const band = estimateFor(share, ctx.settings.grading_scale)
+  const ranked = subjects.filter((x) => x.pct !== null).sort((a, b) => b.pct! - a.pct!)
+  const parts = [`${genderForm(g, 'مستواه', 'مستواها')} العام ${band ?? ''}`.trim()]
+  if (ranked[0] && ranked[0].pct! >= ctx.settings.excel_rate) parts.push(`${genderForm(g, 'يتميز', 'تتميز')} في ${ranked[0].name}`)
+  const weak = ranked[ranked.length - 1]
+  if (weak && weak.pct! < ctx.settings.follow_rate) parts.push(`${genderForm(g, 'يحتاج', 'تحتاج')} إلى تعزيز في ${weak.name}`)
+  if (prev !== null) {
+    const d = (share - prev) * 100
+    if (d >= 5) parts.push(`${genderForm(g, 'تحسّن أداؤه', 'تحسّن أداؤها')} عن المرحلة السابقة`)
+    else if (d <= -5) parts.push(`${genderForm(g, 'تراجع أداؤه', 'تراجع أداؤها')} عن المرحلة السابقة`)
+  }
+  return parts.join('، ') + '.'
 }
 
 // ---- publishing ------------------------------------------------------------------------------------
@@ -453,7 +591,7 @@ export async function listPublications(ctx: JgSectionContext) {
 }
 
 /** Profiles of the section's students and their linked parents (for the release notification). */
-async function audienceProfiles(sectionId: string): Promise<string[]> {
+export async function audienceProfiles(sectionId: string): Promise<string[]> {
   const { data: students } = await supabase.from('students').select('id, profile_id').eq('section_id', sectionId)
   const ids = (students ?? []).map((s: any) => s.id)
   const profiles = new Set((students ?? []).map((s: any) => s.profile_id).filter(Boolean))

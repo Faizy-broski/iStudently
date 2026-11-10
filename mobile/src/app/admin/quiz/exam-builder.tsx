@@ -152,7 +152,7 @@ function QuestionEditor({ q, index, onChange, onRemove }: { q: ExamItem; index: 
             {options.map((o, i) => (
               <View key={i} className="flex-row items-center gap-2">
                 <Pressable onPress={() => toggleCorrect(o)} hitSlop={6} className={cn('size-5 items-center justify-center border', q.type === 'multiple' ? 'rounded' : 'rounded-full', isCorrect(o) ? 'border-success bg-success' : 'border-border')}>
-                  {isCorrect(o) ? <Text className="text-[10px] text-white">✓</Text> : null}
+                  {isCorrect(o) ? <Text className="text-2xs text-white">✓</Text> : null}
                 </Pressable>
                 <Input className="flex-1" value={o} onChangeText={(v) => onChange({ ...q, answer_options: options.map((x2, j) => (j === i ? v : x2)) })} />
                 {options.length > 2 ? (
@@ -397,14 +397,14 @@ export default function ExamBuilder() {
                       </Text>
                       <View className="flex-row flex-wrap gap-1">
                         <Badge variant="secondary">
-                          <Text className="text-[10px]">{x(`type_${b.type}`)}</Text>
+                          <Text className="text-2xs">{x(`type_${b.type}`)}</Text>
                         </Badge>
                         {b.difficulty_level ? (
                           <Badge variant="outline">
-                            <Text className="text-[10px]">{x(`diff_${b.difficulty_level}`)}</Text>
+                            <Text className="text-2xs">{x(`diff_${b.difficulty_level}`)}</Text>
                           </Badge>
                         ) : null}
-                        <Text className="text-muted-foreground text-[10px]">[{b.allocated_marks || 10} pts]</Text>
+                        <Text className="text-muted-foreground text-2xs">[{b.allocated_marks || 10} pts]</Text>
                       </View>
                     </View>
                     <Button size="sm" variant="outline" onPress={() => addFromBank(b)}>

@@ -18,7 +18,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FilterChips } from '@/components/app/filter-chips';
-import { IconTile } from '@/components/app/layout';
+import { IconTile, BottomBar } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { LinkAudienceEditor } from '@/features/admin/link-audience';
 import { useCampus } from '@/features/campus/campus';
@@ -181,38 +181,38 @@ export default function ResourceLinks() {
                 <View className="flex-row flex-wrap gap-1">
                   {r.category_id ? (
                     <View className="border-border rounded border px-1.5">
-                      <Text className="text-[11px]">{categories.find((c) => c.id === r.category_id)?.name ?? l('no_category')}</Text>
+                      <Text className="text-xs">{categories.find((c) => c.id === r.category_id)?.name ?? l('no_category')}</Text>
                     </View>
                   ) : null}
                   {r.visible_to.length ? (
                     r.visible_to.map((ro) => (
                       <View key={ro} className={cn('rounded px-1.5', ROLE_TONE[ro] ?? 'bg-muted')}>
-                        <Text className="text-[11px]">{roleLabel(ro)}</Text>
+                        <Text className="text-xs">{roleLabel(ro)}</Text>
                       </View>
                     ))
                   ) : (
-                    <Text className="text-muted-foreground text-[11px]">{l('no_one')}</Text>
+                    <Text className="text-muted-foreground text-xs">{l('no_one')}</Text>
                   )}
                   {r.visible_to_student_ids.length ? (
-                    <Text className="text-[11px] text-warning">· {r.visible_to_student_ids.length} {l('tab_students')}</Text>
+                    <Text className="text-xs text-warning">· {r.visible_to_student_ids.length} {l('tab_students')}</Text>
                   ) : r.visible_to_section_ids.length ? (
-                    <Text className="text-[11px] text-success">· {r.visible_to_section_ids.length} §</Text>
+                    <Text className="text-xs text-success">· {r.visible_to_section_ids.length} §</Text>
                   ) : r.visible_to_grade_ids.length ? (
-                    <Text className="text-[11px] text-brand dark:text-brand-secondary">· {t('app.rl_grades', { count: r.visible_to_grade_ids.length })}</Text>
+                    <Text className="text-xs text-brand dark:text-brand-secondary">· {t('app.rl_grades', { count: r.visible_to_grade_ids.length })}</Text>
                   ) : null}
-                  {r.visible_to_teacher_ids.length ? <Text className="text-[11px] text-warning">· 👤 {r.visible_to_teacher_ids.length}</Text> : null}
+                  {r.visible_to_teacher_ids.length ? <Text className="text-xs text-warning">· 👤 {r.visible_to_teacher_ids.length}</Text> : null}
                 </View>
               </CardContent>
             </Card>
           ))
         )}
       </ScrollView>
-      <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
+      <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
         <Button onPress={save} disabled={saving}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{saving ? l('saving_button') : l('save_button')}</Text>
         </Button>
-      </View>
+      </BottomBar>
 
       <Dialog open={!!current} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-h-[90%] w-[94vw] max-w-md">

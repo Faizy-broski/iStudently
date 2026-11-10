@@ -12,6 +12,7 @@ import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { Round2OfficialPanel } from '@/features/jahbadh/official';
 import { chipTone, JgBlocked, needText, useJg, SectionHeader, useJgSection } from '@/features/jahbadh/shared';
 import { jahbadhGrades } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -65,7 +66,7 @@ export default function JahbadhSecondRound() {
             .map((p, i, list) => (
               <View key={p.subject_id} className={i < list.length - 1 ? 'border-info-soft dark:border-border border-b px-4 py-3' : 'px-4 py-3'}>
                 <Text className="text-sm font-semibold">{subjects.find((s) => s.id === p.subject_id)?.short_name}</Text>
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {`${t('grades.referred')}: ${p.referred} · ${t('grades.awaiting')}: ${p.awaiting} · ${t('grades.passedAfter')}: ${p.passed_after} · ${t('grades.failed')}: ${p.failed}`}
                 </Text>
               </View>
@@ -74,6 +75,7 @@ export default function JahbadhSecondRound() {
         <Text variant="muted" className="text-xs">
           {t('grades.needLegend')}
         </Text>
+        {sectionId ? <Round2OfficialPanel sectionId={sectionId} campusId={campusId} /> : null}
       </View>
     )
   ) : undefined;

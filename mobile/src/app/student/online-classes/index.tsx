@@ -2,7 +2,8 @@ import { router, Stack } from 'expo-router';
 import { CalendarClock, ListChecks, Video } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { ActionRow, Panel } from '@/components/app/panel';
 import { IconTile } from '@/components/app/layout';

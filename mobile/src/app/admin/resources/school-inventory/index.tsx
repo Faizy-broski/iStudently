@@ -18,7 +18,7 @@ import { Text } from '@/components/ui/text';
 import { useCampus } from '@/features/campus/campus';
 import { adminResources } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { IconTile } from '@/components/app/layout';
+import { IconTile, BottomBar } from '@/components/app/layout';
 
 const INVENTORY_TYPES: InventoryCategoryType[] = ['CATEGORY', 'STATUS', 'LOCATION', 'PERSON'];
 type Editable = { id?: string; title: string; color?: string };
@@ -127,12 +127,12 @@ export default function SchoolInventory() {
           })
         )}
       </ScrollView>
-      <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
+      <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
         <Button onPress={save} disabled={saving}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{saving ? v('saving_button') : v('save_button')}</Text>
         </Button>
-      </View>
+      </BottomBar>
     </View>
   );
 }

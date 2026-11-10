@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { CheckCircle2, DollarSign, Receipt, ReceiptText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HeroCard, IconTile, Section, StatTile, StatTiles } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -125,7 +126,7 @@ export default function StudentFees() {
 function Amount({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <View>
-      <Text className="text-muted-foreground text-[11px]">{label}</Text>
+      <Text className="text-muted-foreground text-xs">{label}</Text>
       <Text className={cn('text-sm font-medium', tone)}>{value}</Text>
     </View>
   );

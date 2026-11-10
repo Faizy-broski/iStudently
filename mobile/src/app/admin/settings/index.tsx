@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { Bell, Calendar, CreditCard, DollarSign, Save, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { useSWRConfig } from 'swr';
 
 import { Picker } from '@/components/app/picker';

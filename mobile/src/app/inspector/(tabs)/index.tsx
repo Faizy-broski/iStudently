@@ -2,7 +2,8 @@ import { router, type Href } from 'expo-router';
 import { AlertTriangle, Bell, Building2, ChevronRight, ClipboardCheck, Eye, FilePenLine, FileText, LogIn, Plus, Search, UsersRound, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthBackground } from '@/components/app/auth-background';
@@ -60,12 +61,12 @@ function StatTile({ label, value, note, onPress }: { label: string; value: strin
   const c = useColors();
   return (
     <Pressable onPress={onPress} disabled={!onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 gap-1 rounded-2xl border p-3 active:opacity-80" accessibilityRole={onPress ? 'button' : undefined}>
-      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+      <Text variant="muted" className="text-xs" numberOfLines={1}>
         {label}
       </Text>
       <Text className="text-brand dark:text-foreground text-xl font-bold">{value}</Text>
       {note ? (
-        <Text className="text-muted-foreground text-[11px]" numberOfLines={1}>
+        <Text className="text-muted-foreground text-xs" numberOfLines={1}>
           {note}
         </Text>
       ) : null}
@@ -78,7 +79,7 @@ function QuickAction({ icon, label, onPress }: { icon: LucideIcon; label: string
   return (
     <Pressable onPress={onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 items-center gap-2 rounded-2xl border px-1 py-3 active:opacity-80" accessibilityRole="button">
       <Icon as={icon} strokeWidth={2.3} className="text-brand dark:text-brand-secondary size-5" />
-      <Text className="text-brand dark:text-brand-secondary text-center text-[11px] font-semibold" numberOfLines={2}>
+      <Text className="text-brand dark:text-brand-secondary text-center text-xs font-semibold" numberOfLines={2}>
         {label}
       </Text>
     </Pressable>
@@ -175,7 +176,7 @@ export default function InspectorDashboard() {
                       <View className="bg-overlay-light h-1.5 overflow-hidden rounded-full">
                         <View className="bg-white h-full rounded-full" style={{ width: `${teachers.length ? (done / teachers.length) * 100 : 0}%` }} />
                       </View>
-                      <Text className="text-white text-[11px] opacity-80">{teachers.length ? k('obs_progress', { done, total: teachers.length }) : k('no_teachers')}</Text>
+                      <Text className="text-white text-xs opacity-80">{teachers.length ? k('obs_progress', { done, total: teachers.length }) : k('no_teachers')}</Text>
                     </View>
                     {focus.status === 'in_progress' ? (
                       <Pressable onPress={() => observe(focus.id)} className="overflow-hidden rounded-full" accessibilityRole="button">
@@ -228,14 +229,14 @@ export default function InspectorDashboard() {
                       onPress={() => openVisit(x.id)}
                       className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < schedule.length - 1 && 'border-info-soft dark:border-border border-b')}>
                       <View className="bg-info-soft w-12 items-center rounded-xl py-1.5">
-                        <Text className="text-brand dark:text-brand-secondary text-[10px] font-semibold">{date.toLocaleDateString(loc(), { weekday: 'short' })}</Text>
+                        <Text className="text-brand dark:text-brand-secondary text-2xs font-semibold">{date.toLocaleDateString(loc(), { weekday: 'short' })}</Text>
                         <Text className="text-brand dark:text-foreground text-base font-bold">{date.getDate()}</Text>
                       </View>
                       <View className="flex-1">
                         <Text className="text-sm font-semibold" numberOfLines={1}>
                           {x.school?.name || x.school_id}
                         </Text>
-                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        <Text variant="muted" className="text-xs" numberOfLines={1}>
                           {[typeLabel(x.visit_type), timeRange(x.scheduled_start_time, x.scheduled_end_time), v(`status_${x.status}`)].filter(Boolean).join(' · ')}
                         </Text>
                       </View>
@@ -263,14 +264,14 @@ export default function InspectorDashboard() {
                     onPress={() => (focus.status === 'in_progress' ? observe(focus.id, x.teacher_profile_id) : openVisit(focus.id))}
                     className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < awaiting.length - 1 && 'border-info-soft dark:border-border border-b')}>
                     <View className="bg-info-soft size-9 items-center justify-center rounded-full">
-                      <Text className="text-brand dark:text-brand-secondary text-[11px] font-bold">{initials(x.teacher?.first_name, x.teacher?.last_name)}</Text>
+                      <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{initials(x.teacher?.first_name, x.teacher?.last_name)}</Text>
                     </View>
                     <View className="flex-1">
                       <Text className="text-sm font-semibold" numberOfLines={1}>
                         {x.teacher ? `${x.teacher.first_name} ${x.teacher.last_name}` : x.teacher_profile_id}
                       </Text>
                       {x.subject?.name ? (
-                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        <Text variant="muted" className="text-xs" numberOfLines={1}>
                           {x.subject.name}
                         </Text>
                       ) : null}
@@ -329,7 +330,7 @@ export default function InspectorDashboard() {
                       <Text className="text-sm font-semibold" numberOfLines={1}>
                         {[r.school?.name, r.teacher ? `${r.teacher.first_name} ${r.teacher.last_name}` : null].filter(Boolean).join(' · ')}
                       </Text>
-                      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      <Text variant="muted" className="text-xs" numberOfLines={1}>
                         {`${k('awaiting_signatures')} · ${formatDate(r.generated_at ?? r.created_at)}`}
                       </Text>
                     </View>

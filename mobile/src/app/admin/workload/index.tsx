@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, SectionList, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { SectionList } from '@/components/app/lists';
 
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';

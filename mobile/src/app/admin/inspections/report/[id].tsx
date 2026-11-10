@@ -154,7 +154,7 @@ export default function InspectionReportSign() {
                   {sig ? (
                     <>
                       <Text className="text-sm">{sig.typed_full_name}</Text>
-                      <Text className="text-muted-foreground text-[11px]">{new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(sig.attested_at))}</Text>
+                      <Text className="text-muted-foreground text-xs">{new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(sig.attested_at))}</Text>
                     </>
                   ) : (
                     <Text className="text-muted-foreground text-sm">{r('pending_signature')}</Text>

@@ -17,7 +17,8 @@ import {
   type JcOrder,
   type JcSecretMode,
 } from '../../../lib/jahbadh'
-import { getGrade, getSettings, JgError } from '../grades.service'
+import { getGrade, getSettings, isNotMigrated, JgError } from '../grades.service'
+import { jcPartsAddUp } from '../../../lib/jahbadh'
 
 // ---- settings (C8) ---------------------------------------------------------------------------------
 
@@ -357,6 +358,16 @@ export interface JcSubject {
   max: number
   /** Grade-sheet component the score exports to (one exam paper), when there is exactly one. */
   component_id: string | null
+  /** Exam parts (jc_exam_parts): scores are entered per part and summed into the subject. */
+  parts?: JcPart[]
+}
+
+export interface JcPart {
+  index: number
+  name: string
+  max: number
+  /** Grade-sheet sub-item (jg_subitems) the part exports to; null = summed into the component. */
+  subitem_id: string | null
 }
 
 export interface JcGradeRow {
@@ -379,23 +390,49 @@ async function defaultSubjects(rootId: string, version: string, gradeCode: numbe
   for (const s of grade.subjects) {
     const meta = subjectMeta(s.components.map((c) => ({ id: c.id, stage: c.stage, max: c.max_score, isExam: c.is_exam })), { noFail: grade.rule.no_fail })
     const exams = s.components.filter((c) => c.stage === stage && c.is_exam)
-    if (exams.length === 1) out.push({ key: s.key, name: s.short_name, max: exams[0].max_score, component_id: exams[0].id })
-    else if (exams.length > 1) exams.forEach((c, i) => out.push({ key: `${s.key}#${i + 1}`, name: `${s.short_name} — ${c.name}`, max: c.max_score, component_id: c.id }))
+    // An exam component split into sub-items (Appendix B, divisor 1) gives the subject's default exam parts.
+    const partsOf = (c: (typeof exams)[number]): JcPart[] | undefined => {
+      const items = c.subitems ?? []
+      if (items.length < 2 || Number(c.divisor ?? 1) !== 1 || !jcPartsAddUp(items.map((x) => ({ max: x.max_score })), c.max_score)) return undefined
+      return items.map((x, i) => ({ index: i + 1, name: x.name, max: Number(x.max_score), subitem_id: x.id }))
+    }
+    if (exams.length === 1) out.push({ key: s.key, name: s.short_name, max: exams[0].max_score, component_id: exams[0].id, parts: partsOf(exams[0]) })
+    else if (exams.length > 1) exams.forEach((c, i) => out.push({ key: `${s.key}#${i + 1}`, name: `${s.short_name} — ${c.name}`, max: c.max_score, component_id: c.id, parts: partsOf(c) }))
     else if (grade.rule.no_fail && meta.stageMax[stage]) out.push({ key: s.key, name: s.short_name, max: meta.stageMax[stage], component_id: null })
   }
   return out
 }
 
+/** Exam parts of the session per grade and subject; empty before jahbadh_wave3_control.sql. */
+export async function loadParts(sessionId: string): Promise<Map<string, JcPart[]>> {
+  const { data, error } = await supabase.from('jc_exam_parts').select('grade_level_id, subject_key, part_index, name, max_score, subitem_id').eq('session_id', sessionId)
+  if (isNotMigrated(error)) return new Map()
+  if (error) throw error
+  const out = new Map<string, JcPart[]>()
+  for (const r of data ?? []) {
+    const k = `${r.grade_level_id}|${r.subject_key}`
+    const list = out.get(k) ?? []
+    list.push({ index: Number(r.part_index), name: r.name, max: Number(r.max_score), subitem_id: r.subitem_id ?? null })
+    out.set(k, list)
+  }
+  for (const list of out.values()) list.sort((a, b) => a.index - b.index)
+  return out
+}
+
 export async function getGrades(ctx: JcContext): Promise<JcGradeRow[]> {
-  const { data, error } = await supabase
-    .from('jc_session_grades')
-    .select('grade_level_id, grade_code, number_code, subjects, grade_level:grade_levels(name, order_index)')
-    .eq('session_id', ctx.session.id)
+  const [{ data, error }, parts] = await Promise.all([
+    supabase.from('jc_session_grades').select('grade_level_id, grade_code, number_code, subjects, grade_level:grade_levels(name, order_index)').eq('session_id', ctx.session.id),
+    loadParts(ctx.session.id),
+  ])
   if (error) throw error
   return (data ?? [])
     .map((g: any) => {
       const gl = Array.isArray(g.grade_level) ? g.grade_level[0] : g.grade_level
-      return { grade_level_id: g.grade_level_id, grade_level_name: gl?.name ?? '', grade_code: g.grade_code, number_code: g.number_code, subjects: g.subjects ?? [], order: Number(gl?.order_index ?? 0) }
+      const subjects = ((g.subjects ?? []) as JcSubject[]).map(({ parts: _p, ...sub }) => {
+        const list = parts.get(`${g.grade_level_id}|${sub.key}`)
+        return list?.length ? { ...sub, parts: list } : sub
+      })
+      return { grade_level_id: g.grade_level_id, grade_level_name: gl?.name ?? '', grade_code: g.grade_code, number_code: g.number_code, subjects, order: Number(gl?.order_index ?? 0) }
     })
     .sort((a, b) => a.order - b.order)
     .map(({ order: _o, ...g }) => g)
@@ -411,13 +448,17 @@ export async function setGrades(ctx: JcContext, gradeLevelIds: string[], overrid
   const settings = await getSettings(ctx.rootId, ctx.session.campus_id)
   const current = await getGrades(ctx)
   const rows = []
+  const newParts: { grade_level_id: string; subject: JcSubject }[] = []
   for (const id of gradeLevelIds) {
     const code = codeOf.get(id)!
     const o = overrides.find((x) => x.grade_level_id === id)
     const existing = current.find((g) => g.grade_level_id === id)
+    const fresh = !o?.subjects && !existing?.subjects
     const subjects = o?.subjects ?? existing?.subjects ?? (await defaultSubjects(ctx.rootId, settings.version_label, code, ctx.session.stage))
     for (const s of subjects) if (!(Number(s.max) > 0) || !s.key) throw new JgError(400, 'Each subject needs a key and a max score above 0')
-    rows.push({ session_id: ctx.session.id, grade_level_id: id, grade_code: code, number_code: Number(o?.number_code ?? existing?.number_code ?? code), subjects })
+    if (fresh) for (const s of subjects) if (s.parts?.length) newParts.push({ grade_level_id: id, subject: s })
+    // Parts live in jc_exam_parts, not in the subjects JSON.
+    rows.push({ session_id: ctx.session.id, grade_level_id: id, grade_code: code, number_code: Number(o?.number_code ?? existing?.number_code ?? code), subjects: subjects.map(({ parts: _p, ...x }) => x) })
   }
   const codes = rows.map((r) => r.number_code)
   if (new Set(codes).size !== codes.length) throw new JgError(400, 'Each grade needs its own numbering code')
@@ -427,7 +468,44 @@ export async function setGrades(ctx: JcContext, gradeLevelIds: string[], overrid
     const { error } = await supabase.from('jc_session_grades').upsert(rows, { onConflict: 'session_id,grade_level_id' })
     if (error) throw error
   }
+  for (const x of newParts) await writeParts(ctx, x.grade_level_id, x.subject.key, x.subject.parts!)
   await logJc(ctx, 'grades.set', 'jc_session_grades', null, current, rows)
+  return getGrades(ctx)
+}
+
+async function writeParts(ctx: JcContext, gradeLevelId: string, subjectKey: string, parts: JcPart[]) {
+  const del = await supabase.from('jc_exam_parts').delete().eq('session_id', ctx.session.id).eq('grade_level_id', gradeLevelId).eq('subject_key', subjectKey)
+  if (isNotMigrated(del.error)) throw new JgError(503, 'Run jahbadh_wave3_control.sql first (exam parts)', 'not_migrated')
+  if (del.error) throw del.error
+  if (!parts.length) return
+  const { error } = await supabase.from('jc_exam_parts').insert(
+    parts.map((p, i) => ({
+      session_id: ctx.session.id, grade_level_id: gradeLevelId, subject_key: subjectKey, part_index: i + 1,
+      name: String(p.name ?? '').trim().slice(0, 80) || `الجزء ${i + 1}`, max_score: Number(p.max), subitem_id: p.subitem_id ?? null,
+    })),
+  )
+  if (error) throw error
+}
+
+/**
+ * Sets a subject's exam parts (C6.7). Parts must add up to the subject's maximum (C11-10); refused once a
+ * score of that subject was entered, because entry cells change from the subject to its parts.
+ */
+export async function setParts(ctx: JcContext, gradeLevelId: string, subjectKey: string, parts: { name: string; max: number; subitem_id?: string | null }[]) {
+  need(ctx.can.manage)
+  const grade = (await getGrades(ctx)).find((g) => g.grade_level_id === gradeLevelId)
+  const sub = grade?.subjects.find((x) => x.key === subjectKey)
+  if (!grade || !sub) throw new JgError(404, 'This subject is not in the session')
+  const clean = (parts ?? []).map((p, i) => ({ index: i + 1, name: String(p.name ?? '').trim(), max: Number(p.max), subitem_id: p.subitem_id ?? null }))
+  if (clean.length === 1) throw new JgError(400, 'A subject needs at least two parts, or none')
+  if (clean.some((p) => !(p.max > 0))) throw new JgError(400, 'Each part needs a max score above 0', 'invalid_part')
+  if (clean.length && !jcPartsAddUp(clean, sub.max)) throw new JgError(400, `The parts must add up to ${sub.max}`, 'parts_sum', { max: sub.max, sum: clean.reduce((a, p) => a + p.max, 0) })
+  const { data: scored } = await supabase.from('jc_scores').select('subject_key').eq('session_id', ctx.session.id)
+  if ((scored ?? []).some((r: any) => r.subject_key === subjectKey || String(r.subject_key).startsWith(`${subjectKey}~`))) {
+    throw new JgError(409, 'Scores were already entered for this subject; parts can no longer change', 'has_scores')
+  }
+  await writeParts(ctx, gradeLevelId, subjectKey, clean)
+  await logJc(ctx, 'parts.set', 'jc_exam_parts', `${gradeLevelId}|${subjectKey}`, sub.parts ?? [], clean)
   return getGrades(ctx)
 }
 
@@ -455,6 +533,12 @@ export interface JcStudentRow {
   committee_id: string | null
   seat_index: number | null
   paper_model: 'A' | 'B' | null
+  /** Platform student's national ID (profiles.national_id) and مستجد / معيد (students.enrollment_status). */
+  national_id: string | null
+  enrollment_status: string | null
+  photo_url: string | null
+  /** Second-round sessions: memo subject keys the student sits (null = every subject). */
+  round2_subjects: string[] | null
 }
 
 const fullName = (p: any) => [p?.first_name, p?.father_name, p?.grandfather_name, p?.last_name].filter(Boolean).join(' ')
@@ -463,12 +547,16 @@ export async function loadStudents(ctx: JcContext): Promise<JcStudentRow[]> {
   const grades = await getGrades(ctx)
   const gradeBy = new Map(grades.map((g) => [g.grade_level_id, g]))
   const out: any[] = []
+  // students.enrollment_status comes with jahbadh_wave2.sql; before it, the legacy select is used.
+  const FULL = '*, student:students(student_number, enrollment_status, profile:profiles(first_name, father_name, grandfather_name, last_name, gender, national_id, profile_photo_url)), section:sections(name)'
+  const LEGACY = '*, student:students(student_number, profile:profiles(first_name, father_name, grandfather_name, last_name, gender, national_id, profile_photo_url)), section:sections(name)'
+  let select = FULL
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase
-      .from('jc_students')
-      .select('*, student:students(student_number, profile:profiles(first_name, father_name, grandfather_name, last_name, gender)), section:sections(name)')
-      .eq('session_id', ctx.session.id)
-      .range(from, from + 999)
+    let { data, error } = await supabase.from('jc_students').select(select).eq('session_id', ctx.session.id).range(from, from + 999)
+    if (isNotMigrated(error) && select === FULL) {
+      select = LEGACY
+      ;({ data, error } = await supabase.from('jc_students').select(select).eq('session_id', ctx.session.id).range(from, from + 999))
+    }
     if (error) throw error
     out.push(...(data ?? []))
     if (!data || data.length < 1000) break
@@ -485,6 +573,10 @@ export async function loadStudents(ctx: JcContext): Promise<JcStudentRow[]> {
         section_id: r.section_id, section_name: sec?.name ?? null, status: r.status, special_case: r.special_case, special_note: r.special_note,
         extra_minutes: r.extra_minutes, rank_in_grade: r.rank_in_grade, seat_number: r.seat_number, global_order: r.global_order,
         committee_id: r.committee_id, seat_index: r.seat_index, paper_model: r.paper_model,
+        national_id: p?.national_id ? String(p.national_id).trim() || null : null,
+        enrollment_status: st?.enrollment_status ?? null,
+        photo_url: p?.profile_photo_url ?? null,
+        round2_subjects: Array.isArray(r.round2_subjects) && r.round2_subjects.length ? r.round2_subjects : null,
       }
     })
     .sort((a, b) => a.number_code - b.number_code || (a.rank_in_grade ?? 1e9) - (b.rank_in_grade ?? 1e9) || a.name.localeCompare(b.name, 'ar'))

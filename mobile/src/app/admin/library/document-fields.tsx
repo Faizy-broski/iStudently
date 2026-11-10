@@ -192,7 +192,7 @@ export default function LibraryDocumentFields() {
                         </View>
                         <View className="flex-1">
                           <Text className="text-sm font-medium">{d(`field_types.${ft.value}.label`)}</Text>
-                          <Text className="text-muted-foreground text-[11px]" numberOfLines={2}>
+                          <Text className="text-muted-foreground text-xs" numberOfLines={2}>
                             {d(`field_types.${ft.value}.description`)}
                           </Text>
                         </View>

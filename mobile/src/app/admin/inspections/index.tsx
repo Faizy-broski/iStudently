@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { CalendarCheck, ClipboardCheck, MessageSquareWarning, TrendingUp } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { BarChart } from '@/components/app/charts';

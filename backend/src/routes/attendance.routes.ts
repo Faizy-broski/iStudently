@@ -2,6 +2,7 @@ import { Router } from 'express'
 import * as attendanceController from '../controllers/attendance.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
+import { requireRequestSchoolsInFamily } from '../middlewares/row-school-scope.middleware'
 import { teachesSection } from '../utils/student-access'
 import type { AuthRequest } from '../middlewares/auth.middleware'
 import type { NextFunction, Request, Response } from 'express'
@@ -125,7 +126,7 @@ router.post('/utilities/duplicates/delete', requireAdmin, attendanceController.d
 // Teachers mark attendance as completed for a period
 // ============================================================================
 
-router.post('/completed', requireTeacher, attendanceController.markAttendanceCompleted)
+router.post('/completed', requireTeacher, requireRequestSchoolsInFamily, attendanceController.markAttendanceCompleted)
 
 // ============================================================================
 // ZERO-TRUST ROLE ENDPOINTS (Teacher / Student / Parent)

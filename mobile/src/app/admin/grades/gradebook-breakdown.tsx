@@ -2,7 +2,8 @@ import { coursePeriodTeacherName, type GradebookBreakdownEntry } from '@studentl
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { BarChart, PieChart } from '@/components/app/charts';
 import { FilterChips } from '@/components/app/filter-chips';

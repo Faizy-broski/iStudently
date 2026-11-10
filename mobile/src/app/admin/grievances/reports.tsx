@@ -103,7 +103,7 @@ export default function GrievanceReports() {
                 <View className="flex-row flex-wrap gap-2">
                   {kpis.map(([label, value]) => (
                     <View key={String(label)} className="border-info-soft dark:border-border bg-card rounded-xl border p-3" style={{ width: '31%' }}>
-                      <Text className="text-muted-foreground text-[11px]">{label}</Text>
+                      <Text className="text-muted-foreground text-xs">{label}</Text>
                       <Text className="text-lg font-bold">{value}</Text>
                     </View>
                   ))}

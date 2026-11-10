@@ -3,7 +3,8 @@ import { router } from 'expo-router';
 import { Building2, CalendarPlus, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FilterChips } from '@/components/app/filter-chips';
 import { IconTile, RowItem } from '@/components/app/layout';

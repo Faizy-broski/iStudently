@@ -22,6 +22,7 @@ router.use(authenticate)
 
 router.get('/unread-count', (req, res) => grievanceController.getUnreadCount(req, res))
 router.get('/categories', (req, res) => grievanceController.getCategories(req, res))
+router.get('/teachers', (req, res) => grievanceController.searchTeachers(req, res))
 router.post('/categories', requireAdmin, (req, res) => grievanceController.createCategory(req, res))
 router.put('/categories/:id', requireAdmin, (req, res) => grievanceController.updateCategory(req, res))
 router.delete('/categories/:id', requireAdmin, (req, res) => grievanceController.deleteCategory(req, res))

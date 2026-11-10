@@ -55,7 +55,7 @@ function InvoiceCard({ r }: { r: BillingRecord }) {
         <Text className="text-sm font-semibold" numberOfLines={1}>
           {name}
         </Text>
-        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+        <Text variant="muted" className="text-xs" numberOfLines={1}>
           {`${r.invoice_number} · ${t('app.sa_due', { date: formatDate(r.due_date) })}`}
         </Text>
       </View>
@@ -76,7 +76,7 @@ function PlanCard({ p }: { p: BillingPlan }) {
         <Text className="text-sm font-semibold" numberOfLines={1}>
           {p.name}
         </Text>
-        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+        <Text variant="muted" className="text-xs" numberOfLines={1}>
           {[t('app.bl_plan_prices', { q: p.quarterly_price, y: p.yearly_price }), p.max_students ? t('app.bl_max_students', { count: p.max_students }) : null].filter(Boolean).join(' · ')}
         </Text>
       </View>
@@ -205,7 +205,7 @@ function Summary() {
     <View className="flex-row gap-2.5">
       {items.map(([label, value]) => (
         <View key={label} className="border-info-soft dark:border-border bg-card flex-1 gap-0.5 rounded-2xl border px-3 py-2.5">
-          <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+          <Text variant="muted" className="text-xs" numberOfLines={1}>
             {label}
           </Text>
           <Text className="text-sm font-bold" numberOfLines={1}>

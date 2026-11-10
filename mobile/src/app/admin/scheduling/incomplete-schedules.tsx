@@ -99,7 +99,7 @@ export default function IncompleteSchedules() {
                       <Initials name={r.name} size={36} tone="warning" />
                       <View className="flex-1">
                         <Text className="text-sm font-semibold">{r.name}</Text>
-                        <Text variant="muted" className="text-[11px]">
+                        <Text variant="muted" className="text-xs">
                           {r.number} · {r.grade}
                         </Text>
                       </View>
@@ -108,7 +108,7 @@ export default function IncompleteSchedules() {
                       {periods.map((p) => (
                         <View key={p.id} className={cn('flex-row items-center gap-0.5 rounded-full px-2 py-0.5', r.has[p.id] ? 'bg-success-soft' : 'bg-destructive-soft')}>
                           <Icon as={r.has[p.id] ? Check : X} className={cn('size-3', r.has[p.id] ? 'text-success' : 'text-destructive')} />
-                          <Text className="text-[11px]">{label(p)}</Text>
+                          <Text className="text-xs">{label(p)}</Text>
                         </View>
                       ))}
                     </View>

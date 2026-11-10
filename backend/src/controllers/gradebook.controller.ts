@@ -504,6 +504,17 @@ export const setBatchConfig = async (req: Request, res: Response) => {
   }
 }
 
+/** Gradebook settings a teacher may override for their own class (web: teacher grades configuration). */
+const TEACHER_CONFIG_KEYS = new Set([
+  'assignment_sorting',
+  'weight_assignment_types',
+  'weight_assignments',
+  'default_assigned_date',
+  'default_due_date',
+  'anomalous_max',
+  'latency',
+])
+
 // Teacher-scoped: can only set config for CPs they own
 export const setConfigAsTeacher = async (req: Request, res: Response) => {
   try {
@@ -514,6 +525,11 @@ export const setConfigAsTeacher = async (req: Request, res: Response) => {
 
     const { course_period_id, key, value } = req.body
     if (!key || value === undefined) return res.status(400).json({ success: false, error: 'key and value are required' })
+    // Teachers set per-class overrides only: never the school-wide row, and only the per-class keys.
+    if (profile?.role === 'teacher') {
+      if (!course_period_id) return res.status(400).json({ success: false, error: 'course_period_id is required' })
+      if (!TEACHER_CONFIG_KEYS.has(key)) return res.status(403).json({ success: false, error: 'This setting can only be changed by an admin' })
+    }
 
     // Enforce CP ownership
     if (course_period_id) {

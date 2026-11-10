@@ -905,6 +905,16 @@
           "plugin": "jahbadh_grades"
         },
         {
+          "title": "jahbadh_monthly_log",
+          "href": "/teacher/jahbadh-grades/monthly",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_quiz_grading",
+          "href": "/teacher/jahbadh-grades/quiz-grading",
+          "plugin": "jahbadh_grades"
+        },
+        {
           "title": "jahbadh_report_cards",
           "href": "/teacher/jahbadh-grades/report-cards",
           "plugin": "jahbadh_grades"
@@ -912,6 +922,51 @@
         {
           "title": "jahbadh_activities",
           "href": "/teacher/jahbadh-grades/activities",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_official",
+          "href": "/teacher/jahbadh-grades/official",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_monthly_cards",
+          "href": "/teacher/jahbadh-grades/monthly-cards",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_marking_sheets",
+          "href": "/teacher/jahbadh-grades/marking-sheets",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_infographics",
+          "href": "/teacher/jahbadh-grades/infographics",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_daily_attendance",
+          "href": "/teacher/jahbadh-grades/daily-attendance",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_insight_hub",
+          "href": "/teacher/jahbadh-grades/insight",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_workflow",
+          "href": "/teacher/jahbadh-grades/workflow",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_entry_progress",
+          "href": "/teacher/jahbadh-grades/entry-progress",
+          "plugin": "jahbadh_grades"
+        },
+        {
+          "title": "jahbadh_entry_audit",
+          "href": "/teacher/jahbadh-grades/entry-audit",
           "plugin": "jahbadh_grades"
         },
         {

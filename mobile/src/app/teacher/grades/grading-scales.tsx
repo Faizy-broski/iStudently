@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { ChevronDown, ChevronRight, Scale } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, Section } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -71,9 +72,9 @@ function ScaleRow({ id, title, isDefault, open, onToggle }: { id: string; title:
           ) : (
             <>
               <View className="border-info-soft dark:border-border flex-row border-b pb-1.5">
-                <Text className="text-muted-foreground flex-1 text-[11px] font-semibold">{k('letter')}</Text>
-                <Text className="text-muted-foreground w-16 text-end text-[11px] font-semibold">{k('minPercent')}</Text>
-                <Text className="text-muted-foreground w-14 text-end text-[11px] font-semibold">{k('gpa')}</Text>
+                <Text className="text-muted-foreground flex-1 text-xs font-semibold">{k('letter')}</Text>
+                <Text className="text-muted-foreground w-16 text-end text-xs font-semibold">{k('minPercent')}</Text>
+                <Text className="text-muted-foreground w-14 text-end text-xs font-semibold">{k('gpa')}</Text>
               </View>
               {rows.map((g, i) => (
                 <View key={g.id} className={cn('flex-row items-center py-2', i < rows.length - 1 && 'border-info-soft dark:border-border border-b')}>

@@ -86,7 +86,7 @@ function Credentials({ result, password, onAnother }: { result: OnboardSchoolRes
           <View key={label} className={i < rows.length - 1 ? 'border-info-soft dark:border-border flex-row items-center gap-3 border-b px-4 py-3' : 'flex-row items-center gap-3 px-4 py-3'}>
             <IconTile icon={i === 0 ? UserRound : KeyRound} size={36} />
             <View className="flex-1 gap-0.5">
-              <Text className="text-muted-foreground text-[11px]">{label}</Text>
+              <Text className="text-muted-foreground text-xs">{label}</Text>
               <Text selectable className="text-sm font-semibold">
                 {value}
               </Text>

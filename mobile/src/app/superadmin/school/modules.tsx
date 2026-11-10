@@ -2,7 +2,8 @@ import { ALL_MODULE_HREFS, MODULE_CATALOG, type ModuleCatalogItem } from '@stude
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, SectionList, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { SectionList } from '@/components/app/lists';
 
 import { CheckMark, RowPill, StickyActions } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

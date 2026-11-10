@@ -117,7 +117,10 @@ export default function Settings() {
               checked={push}
               onCheckedChange={async (on) => {
                 setPush(on);
-                if (!(await setPushEnabled(on)) && on) toast.error(t('app.set_push_denied'));
+                if (!(await setPushEnabled(on)) && on) {
+                  setPush(false);
+                  toast.error(t('app.set_push_denied'));
+                }
               }}
               accessibilityLabel={t('app.set_push')}
             />

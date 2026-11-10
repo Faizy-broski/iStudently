@@ -388,7 +388,7 @@ function RequirementCard({
               {req.subject_name || req.subject_id}
             </Text>
             {req.subject_code ? (
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {req.subject_code}
               </Text>
             ) : null}

@@ -73,6 +73,53 @@
     --print-border: #E5E7EB;
     --print-surface: #F9FAFB;
 
+    /* Jahbadh infographic pages (paper: the same in dark mode, saved as images). The offline tool's palette. */
+    --inf-ink: #0C285C;
+    --inf-ink-2: #2A3D66;
+    --inf-slate: #5A6B8C;
+    --inf-mute: #8A97B1;
+    --inf-hair: #DFE5EF;
+    --inf-hair-soft: #EEF2F8;
+    --inf-mist: #F4F7FC;
+    --inf-gold: #F4B41A;
+    --inf-gold-d: #B7830A;
+    --inf-gold-l: #FFF5D9;
+    --inf-gold-line: #F1D58A;
+    --inf-gold-text: #7A5600;
+    --inf-ink-soft-text: #C9D6EE;
+    --inf-stable: #AFBACB;
+    --inf-silver: #C9D3E5;
+    --inf-bronze: #E8C7A0;
+    --inf-red: #E5484D;
+    --inf-red-text: #B42318;
+    --inf-red-bg: #FFF7F7;
+    --inf-red-line: #F5C6C7;
+    --inf-green: #2E9E53;
+    --inf-green-bg: #F5FBF6;
+    --inf-green-line: #BFE3CA;
+    --inf-green-text: #1E7B34;
+    --inf-green-soft: #E0F2E6;
+    --inf-blue: #2F6FDB;
+    --inf-teal: #1F9E94;
+    --inf-orange: #F08A24;
+    --inf-l0: #E5484D;
+    --inf-l1: #F08A24;
+    --inf-l2: #2F6FDB;
+    --inf-l3: #1F9E94;
+    --inf-l4: #2E9E53;
+    --inf-l0l: #FDE6E6;
+    --inf-l1l: #FDEEDD;
+    --inf-l2l: #E3ECFB;
+    --inf-l3l: #DDF2F0;
+    --inf-l4l: #E0F2E6;
+    --inf-gold-box: #FFF8E4;
+    --inf-silver-box: #F4F6FA;
+    --inf-bronze-box: #FBF2EA;
+    --inf-green-box: #F2FAF4;
+    --inf-red-box: #FFF5F5;
+    --inf-medal-2: #AEB9CC;
+    --inf-medal-3: #D9A26B;
+
     /* Web sidebar colour presets (values saved to the school's sidebar config; same in dark mode) */
     --sidebar-preset-default-blue: #022172;
     --sidebar-preset-deep-navy: #0f172a;

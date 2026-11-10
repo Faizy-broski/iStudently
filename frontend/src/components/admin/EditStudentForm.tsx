@@ -68,6 +68,8 @@ interface FormData {
   motherName: string;
   placeOfBirth: string;
   registrationNumber: string;
+  enrollmentStatus: string;
+  registrationType: string;
   address: string;
   studentPhoto: string;
   confidentialFamilyStatus: ConfidentialFamilyStatus;
@@ -243,6 +245,8 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
     motherName: student.mother_name || '',
     placeOfBirth: student.place_of_birth || '',
     registrationNumber: student.registration_number || '',
+    enrollmentStatus: student.enrollment_status || '',
+    registrationType: student.registration_type || '',
     address: student.custom_fields?.personal?.address || '',
 studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo || '',
     confidentialFamilyStatus: (student.confidential_family_status as ConfidentialFamilyStatus) || 'NONE',
@@ -343,6 +347,8 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
         mother_name: formData.motherName,
         place_of_birth: formData.placeOfBirth,
         registration_number: formData.registrationNumber,
+        enrollment_status: formData.enrollmentStatus,
+        registration_type: formData.registrationType,
         ...(canWriteConfidentialFamilyStatus(user?.role) ? {
           confidential_family_status: formData.confidentialFamilyStatus,
         } : {}),
@@ -557,6 +563,26 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                     onChange={(e) => handleInputChange('registrationNumber', e.target.value)}
                     placeholder={tFields("registration_number")}
                   />
+                </div>
+                <div>
+                  <Label>{tFields("enrollment_status")}</Label>
+                  <Select value={formData.enrollmentStatus || undefined} onValueChange={(v) => handleInputChange('enrollmentStatus', v)}>
+                    <SelectTrigger><SelectValue placeholder={tFields("enrollment_status")} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="مستجد">مستجد</SelectItem>
+                      <SelectItem value="معيد">معيد</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>{tFields("registration_type")}</Label>
+                  <Select value={formData.registrationType || undefined} onValueChange={(v) => handleInputChange('registrationType', v)}>
+                    <SelectTrigger><SelectValue placeholder={tFields("registration_type")} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="نظامي">نظامي</SelectItem>
+                      <SelectItem value="منازل">منازل</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="email">{tFields("email")} {isEmailRequired && <span className="text-red-500">*</span>}</Label>

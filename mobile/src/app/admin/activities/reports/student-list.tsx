@@ -1,7 +1,8 @@
 import { overallEligibility, type StudentListReportRow } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Picker } from '@/components/app/picker';
 import { EmptyState, LoadingList } from '@/components/app/states';

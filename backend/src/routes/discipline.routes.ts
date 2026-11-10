@@ -2,7 +2,12 @@ import { Router } from 'express';
 import * as disciplineController from '../controllers/discipline.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireAdmin, requireRole, requireTeacher } from '../middlewares/role.middleware';
-import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware';
+import { requireBodyRowsInSchoolFamily, requireRequestSchoolsInFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware';
+
+// school_id / campus_id given in the query or body, and the students named, must be in the caller's school family.
+const schools = requireRequestSchoolsInFamily;
+const bodyStudents = [requireBodyRowsInSchoolFamily('students', 'student_id'), requireBodyRowsInSchoolFamily('students', 'student_ids')];
+const bodyStaff = [requireBodyRowsInSchoolFamily('staff', 'staff_id'), requireBodyRowsInSchoolFamily('staff', 'staff_ids')];
 
 const router = Router();
 
@@ -23,7 +28,7 @@ const staffOrLibrarian = requireRole('super_admin', 'admin', 'teacher', 'librari
  * GET /api/discipline/fields
  * Query: school_id, include_inactive?
  */
-router.get('/discipline/fields', authenticate, staffOrLibrarian, disciplineController.getFields);
+router.get('/discipline/fields', authenticate, staffOrLibrarian, schools, disciplineController.getFields);
 
 /**
  * POST /api/discipline/fields
@@ -51,7 +56,7 @@ router.delete('/discipline/fields/:id', authenticate, requireAdmin, fieldRow, di
  * GET /api/discipline/referrals
  * Query: school_id, campus_id?, student_id?, start_date?, end_date?, academic_year_id?, page?, limit?
  */
-router.get('/discipline/referrals', authenticate, staffOrLibrarian, disciplineController.getReferrals);
+router.get('/discipline/referrals', authenticate, staffOrLibrarian, schools, disciplineController.getReferrals);
 
 /**
  * GET /api/discipline/referrals/:id
@@ -63,7 +68,7 @@ router.get('/discipline/referrals/:id', authenticate, staffOrLibrarian, referral
  * POST /api/discipline/referrals
  * Create a new referral
  */
-router.post('/discipline/referrals', authenticate, staffOrLibrarian, disciplineController.createReferral);
+router.post('/discipline/referrals', authenticate, staffOrLibrarian, schools, ...bodyStudents, ...bodyStaff, disciplineController.createReferral);
 
 /**
  * PATCH /api/discipline/referrals/:id
@@ -86,7 +91,7 @@ router.delete('/discipline/referrals/:id', authenticate, requireAdmin, referralR
  * GET /api/discipline/score/:studentId
  * Query: school_id, campus_id?, academic_year_id?
  */
-router.get('/discipline/score/:studentId', authenticate, requireTeacher, disciplineController.getStudentScore);
+router.get('/discipline/score/:studentId', authenticate, requireTeacher, requireRowInSchoolFamily('students', 'studentId'), schools, disciplineController.getStudentScore);
 
 // ============================================================================
 // STRICT ROLE-BASED ENDPOINTS (Zero-Trust)
@@ -100,7 +105,7 @@ router.get('/discipline/score/:studentId', authenticate, requireTeacher, discipl
 router.get('/discipline/staff/referrals', authenticate, requireRole('teacher', 'admin', 'super_admin'), disciplineController.getStaffReferrals);
 
 // POST /api/discipline/staff/referrals - Create referral as a teacher (forces reporter_id = staff_id)
-router.post('/discipline/staff/referrals', authenticate, requireRole('teacher', 'admin', 'super_admin'), disciplineController.createStaffReferral);
+router.post('/discipline/staff/referrals', authenticate, requireRole('teacher', 'admin', 'super_admin'), schools, ...bodyStudents, disciplineController.createStaffReferral);
 
 /**
  * STUDENT SCOPE

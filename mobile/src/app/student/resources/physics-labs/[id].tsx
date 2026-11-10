@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { KeyboardAvoidingView } from '@/components/app/keyboard';
-import { HeaderButton } from '@/components/app/layout';
+import { HeaderButton, BottomBar } from '@/components/app/layout';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { PublicWebView } from '@/components/app/web-session-view';
@@ -50,7 +50,7 @@ export default function StudentPhysicsLab() {
     setBusy(true);
     const r = await portal.submitPhysicsFindings({ lab_id: labId, findings_text: findings.trim(), time_spent_s: spent });
     setBusy(false);
-    if (!r.success) return toast.error(r.error || k('submit'));
+    if (!r.success) return toast.error(r.error || t('common.error'));
     toast.success(k('submitted'));
     setDone(true);
   }
@@ -67,7 +67,7 @@ export default function StudentPhysicsLab() {
       <View className="border-info-soft dark:border-border flex-row items-center justify-end border-b px-4 py-2">
         <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
           <Icon as={Clock} className="text-brand dark:text-brand-secondary size-3.5" />
-          <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{fmt(done ? spent : spent)}</Text>
+          <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{fmt(done ? spent : spent)}</Text>
         </View>
       </View>
       {lab.custom_note ? (
@@ -79,7 +79,7 @@ export default function StudentPhysicsLab() {
         </View>
       ) : null}
       <View className="flex-1">{sim?.url ? <PublicWebView url={sim.url} /> : null}</View>
-      <View className="border-info-soft dark:border-border bg-card gap-2 rounded-t-3xl border-t px-4 py-3">
+      <BottomBar className="border-info-soft dark:border-border bg-card gap-2 rounded-t-3xl border-t px-4 py-3">
         {done ? (
           <View className="bg-success-soft flex-row items-center justify-center gap-2 rounded-2xl py-2.5">
             <Icon as={CheckCircle2} className="text-success size-4" />
@@ -98,7 +98,7 @@ export default function StudentPhysicsLab() {
             </View>
           </>
         )}
-      </View>
+      </BottomBar>
     </KeyboardAvoidingView>
   );
 }

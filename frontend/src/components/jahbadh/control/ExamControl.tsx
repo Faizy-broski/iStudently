@@ -22,6 +22,7 @@ import { EntryTab, QualityTab } from "./Grading"
 import { OverviewTab } from "./Overview"
 import { CommitteesTab, PlanningTab, SetupTab, StudentsTab } from "./Prepare"
 import { ResultsTab } from "./Results"
+import { AssessmentTab } from "./Assessment"
 import { EmptyCard, JC_STATUSES, StatusChip, jcRun, jcTabs, useJc, type JcBase, type TabKey, type TabProps } from "./shared"
 
 /** Exam control («كنترول جهبذ»): the session list, or one session's workspace (?session=…&tab=…). */
@@ -208,6 +209,7 @@ function Workspace({ base, sessionId }: { base: JcBase; sessionId: string }) {
         {tab === "entry" ? <TabsContent value="entry"><EntryTab {...props} /></TabsContent> : null}
         {tab === "quality" ? <TabsContent value="quality"><QualityTab {...props} /></TabsContent> : null}
         {tab === "results" ? <TabsContent value="results"><ResultsTab {...props} /></TabsContent> : null}
+        {tab === "assessment" ? <TabsContent value="assessment"><AssessmentTab {...props} /></TabsContent> : null}
         {tab === "audit" ? <TabsContent value="audit"><AuditTab {...props} /></TabsContent> : null}
       </Tabs>
     </div>

@@ -91,7 +91,7 @@ export function SectionPicker({ sections, value, onChange }: { sections: JgSecti
 export function JgBlocked({ error, code: codeProp, message, isAdmin }: { error?: ApiError | null; code?: string; message?: string; isAdmin: boolean }) {
   const { t } = useTranslation();
   const code = codeProp ?? error?.code;
-  const key = code === 'not_setup' || code === 'not_seeded' ? 'notSetup' : code === 'not_mapped' ? 'notMapped' : null;
+  const key = code === 'not_setup' || code === 'not_seeded' ? 'notSetup' : code === 'not_mapped' ? 'notMapped' : code === 'not_migrated' ? 'notMigrated' : null;
   if (code === 'no_sections') {
     return (
       <View className="py-6">
@@ -105,8 +105,8 @@ export function JgBlocked({ error, code: codeProp, message, isAdmin }: { error?:
         icon={AlertTriangle}
         title={key ? t(`grades.${key}Title`) : t('grades.loadError')}
         body={key ? t(`grades.${key}Body`) : (message ?? error?.message)}
-        actionLabel={isAdmin && key ? t('grades.goToSetup') : undefined}
-        onAction={isAdmin && key ? () => router.push('/admin/jahbadh/setup') : undefined}
+        actionLabel={isAdmin && key && key !== 'notMigrated' ? t('grades.goToSetup') : undefined}
+        onAction={isAdmin && key && key !== 'notMigrated' ? () => router.push('/admin/jahbadh/setup') : undefined}
       />
     </View>
   );

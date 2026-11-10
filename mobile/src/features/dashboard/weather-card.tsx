@@ -11,7 +11,7 @@ import { Text } from '@/components/ui/text';
 
 /** Web WeatherWidget: live alert, current conditions, next days. */
 export function WeatherCard({ data, loading, failed }: { data?: WeatherWidgetData; loading: boolean; failed: boolean }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <Panel className="gap-3 p-4">
         {data?.activeAlert ? (
@@ -41,18 +41,18 @@ export function WeatherCard({ data, loading, failed }: { data?: WeatherWidgetDat
             <View className="flex-row gap-2">
               <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
                 <Icon as={Droplets} className="text-brand dark:text-brand-secondary size-3" />
-                <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{`${data.weather.current.humidity}%`}</Text>
+                <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{`${data.weather.current.humidity}%`}</Text>
               </View>
               <View className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
                 <Icon as={Wind} className="text-brand dark:text-brand-secondary size-3" />
-                <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{`${Math.round(data.weather.current.wind_kph)} km/h`}</Text>
+                <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{`${Math.round(data.weather.current.wind_kph)} km/h`}</Text>
               </View>
             </View>
             {data.weather.forecastDays.length ? (
               <View className="flex-row gap-2">
                 {data.weather.forecastDays.map((d) => (
                   <View key={d.date} className="bg-muted/60 flex-1 items-center gap-0.5 rounded-xl py-2">
-                    <Text className="text-muted-foreground text-[10px]">{new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' })}</Text>
+                    <Text className="text-muted-foreground text-2xs">{new Date(`${d.date.slice(0, 10)}T00:00:00`).toLocaleDateString(i18n.language === 'ar' ? 'ar' : 'en', { weekday: 'short' })}</Text>
                     <Text className="text-xs font-semibold">{`${Math.round(d.day.maxtemp_c)}°/${Math.round(d.day.mintemp_c)}°`}</Text>
                   </View>
                 ))}

@@ -3,6 +3,8 @@ import { LessonPlansController } from '../controllers/lesson-plans.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
 import { requireBodyRowsInSchoolFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
+import { coursePeriodOf, requireOwnCoursePeriods, requireSelfTeacherId } from '../middlewares/own-course-period.middleware'
+import { supabase } from '../config/supabase'
 
 const router = Router()
 const controller = new LessonPlansController()
@@ -16,6 +18,13 @@ const lessonRow = requireRowInSchoolFamily('lesson_plan_lessons')
 const fileRow = requireRowInSchoolFamily('lesson_plan_files', 'fileId', 'lesson:lesson_plan_lessons(school_id)')
 const bodyRefs = [requireBodyRowsInSchoolFamily('course_periods', 'course_period_id'), requireBodyRowsInSchoolFamily('staff', 'teacher_id')]
 const queryCp = requireRowInSchoolFamily('course_periods', 'course_period_id', 'school_id', 'query')
+// Teachers write lessons only for their own classes, as themselves.
+const ownBody = [requireSelfTeacherId('body'), requireOwnCoursePeriods((req) => req.body?.course_period_id)]
+const ownLesson = requireOwnCoursePeriods((req) => coursePeriodOf('lesson_plan_lessons', req.params.id))
+const ownLessonOfFile = requireOwnCoursePeriods(async (req) => {
+  const { data } = await supabase.from('lesson_plan_files').select('lesson_id').eq('id', req.params.fileId).maybeSingle()
+  return coursePeriodOf('lesson_plan_lessons', (data as { lesson_id?: string } | null)?.lesson_id)
+})
 
 /**
  * GET /api/lesson-plans/summary
@@ -48,7 +57,7 @@ router.get('/:id', lessonRow, (req, res) =>
  * Create a new lesson plan
  * Only admin and teacher can create
  */
-router.post('/', requireRole('admin', 'teacher'), ...bodyRefs, (req, res) =>
+router.post('/', requireRole('admin', 'teacher'), ...bodyRefs, ...ownBody, (req, res) =>
   controller.createLesson(req, res)
 )
 
@@ -57,7 +66,7 @@ router.post('/', requireRole('admin', 'teacher'), ...bodyRefs, (req, res) =>
  * Update a lesson plan
  * Only admin and teacher can update
  */
-router.put('/:id', requireRole('admin', 'teacher'), lessonRow, ...bodyRefs, (req, res) =>
+router.put('/:id', requireRole('admin', 'teacher'), lessonRow, ownLesson, ...bodyRefs, ...ownBody, (req, res) =>
   controller.updateLesson(req, res)
 )
 
@@ -66,7 +75,7 @@ router.put('/:id', requireRole('admin', 'teacher'), lessonRow, ...bodyRefs, (req
  * Delete a lesson plan
  * Only admin and teacher can delete
  */
-router.delete('/:id', requireRole('admin', 'teacher'), lessonRow, (req, res) =>
+router.delete('/:id', requireRole('admin', 'teacher'), lessonRow, ownLesson, (req, res) =>
   controller.deleteLesson(req, res)
 )
 
@@ -75,7 +84,7 @@ router.delete('/:id', requireRole('admin', 'teacher'), lessonRow, (req, res) =>
  * Replace all items for a lesson
  * Only admin and teacher can modify items
  */
-router.put('/:id/items', requireRole('admin', 'teacher'), lessonRow, (req, res) =>
+router.put('/:id/items', requireRole('admin', 'teacher'), lessonRow, ownLesson, (req, res) =>
   controller.replaceItems(req, res)
 )
 
@@ -84,7 +93,7 @@ router.put('/:id/items', requireRole('admin', 'teacher'), lessonRow, (req, res) 
  * Add a file attachment to a lesson
  * Only admin and teacher can add files
  */
-router.post('/:id/files', requireRole('admin', 'teacher'), lessonRow, (req, res) =>
+router.post('/:id/files', requireRole('admin', 'teacher'), lessonRow, ownLesson, (req, res) =>
   controller.addFile(req, res)
 )
 
@@ -93,7 +102,7 @@ router.post('/:id/files', requireRole('admin', 'teacher'), lessonRow, (req, res)
  * Remove a file attachment
  * Only admin and teacher can remove files
  */
-router.delete('/files/:fileId', requireRole('admin', 'teacher'), fileRow, (req, res) =>
+router.delete('/files/:fileId', requireRole('admin', 'teacher'), fileRow, ownLessonOfFile, (req, res) =>
   controller.removeFile(req, res)
 )
 

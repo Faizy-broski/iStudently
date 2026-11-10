@@ -66,6 +66,25 @@ export interface JcSubject {
   name: string
   max: number
   component_id: string | null
+  /** Exam parts: scores are entered per part (cell key `<key>~<index>`) and summed into the subject. */
+  parts?: JcPart[]
+}
+
+export interface JcPart {
+  index: number
+  name: string
+  max: number
+  /** Grade-sheet sub-item the part exports to; null = summed into the component. */
+  subitem_id: string | null
+}
+
+/** One entry column of the blind grid: a subject or one of its parts. */
+export interface JcColumn {
+  key: string
+  subject_key: string
+  part: number | null
+  name: string
+  max: number
 }
 
 export interface JcGrade {
@@ -106,6 +125,11 @@ export interface JcStudent {
   committee_id: string | null
   seat_index: number | null
   paper_model: 'A' | 'B' | null
+  national_id: string | null
+  enrollment_status: string | null
+  photo_url: string | null
+  /** Second-round sessions: memo subject keys the student sits (null = all). */
+  round2_subjects: string[] | null
 }
 
 export interface JcCommittee {
@@ -214,6 +238,8 @@ export interface JcViolation {
 
 export interface JcEntryGrid {
   grade: { grade_level_id: string; name: string; subjects: JcSubject[] }
+  /** Columns in order (subjects with parts expand to «المادة — الجزء»); rows only have the cells the student sits. */
+  columns: JcColumn[]
   entry: 1 | 2
   unmasked: boolean
   rows: {
@@ -221,7 +247,7 @@ export interface JcEntryGrid {
     committee: string | null
     name?: string
     seat_number?: number | null
-    cells: Record<string, { score: number | null; absent: boolean; entered: boolean; mismatch: boolean; single: boolean }>
+    cells: Record<string, { score: number | null; absent: boolean; entered: boolean; mismatch: boolean; single: boolean; exam_day_absent: boolean }>
   }[]
 }
 
@@ -254,27 +280,92 @@ export interface JcQuality {
     tiles: { students: number; completion: number | null; average: number | null; top: number; support: number; errors: number }
     subjects: {
       key: string; name: string; max: number; teachers: string[]; entered: number; missing: number; mean: number | null; meanPct: number | null
+      parts: { index: number; name: string; max: number; entered: number; mean: number | null; meanPct: number | null }[]
       bands: Record<string, number>; passRate: number | null; excellenceRate: number | null; weakRate: number | null; verdict: string | null
       clustering: { threshold: number; atThreshold: number; justBelow: number; flagged: boolean }
     }[]
     top: { label: string; pct: number | null }[]
     support: { label: string; pct: number | null }[]
   }[]
+  /** School-wide table: one row per grade and the total. */
+  school: { rows: JcQualitySchoolRow[]; total: JcQualitySchoolRow }
   bias: { subjectKey: string; graderId: string; grader: string; committees: string[]; students: number; deviation: number; verdict: 'strict' | 'lenient' | 'normal' }[]
   teacher_performance: { staff_id: string; name: string; students: number; meanPct: number | null }[]
 }
 
+export interface JcQualitySchoolRow {
+  name: string
+  students: number
+  subjects: number
+  completion: number | null
+  average: number | null
+  pass_rate: number | null
+  top: number
+  support: number
+}
+
 export interface JcResults {
   grades: { grade_level_id: string; name: string; subjects: JcSubject[] }[]
-  students: { id: string; student_id: string; name: string; seat_number: number | null; grade_level_id: string; grade_level_name: string; scores: Record<string, { score: number | null; absent: boolean } | null>; pct: number | null }[]
+  students: {
+    id: string; student_id: string; name: string; seat_number: number | null; grade_level_id: string; grade_level_name: string
+    national_id: string | null; enrollment_status: string | null
+    scores: Record<string, { score: number | null; absent: boolean } | null>; pct: number | null
+    /** Every subject has an official score; incomplete students are not on the honor board. */
+    complete: boolean
+  }[]
   honor_board: { id: string; place: number; pct: number | null; name: string; grade_level_name: string }[]
+  /** Provisional (exam scores only); the official list is `secondRoundList`. */
   second_round_candidates: { id: string; name: string; subjects: string[] }[]
+}
+
+export interface JcHonorBoard {
+  unmasked: boolean
+  /** name is «يظهر الاسم بعد فك السرية» before unmasking. */
+  rows: { place: number; pct: number | null; grade_level_name: string; name: string }[]
+}
+
+export interface JcRound2List {
+  /** grades = the grades module's decision (Art. 122 / 51 applied); provisional = exam scores only. */
+  source: 'grades' | 'provisional'
+  note: string
+  students: {
+    id: string; student_id: string; name: string; seat_number: number | null; grade_level_id: string; grade_level_name: string; section_name: string | null
+    subject_keys: string[]; subjects: string[]; decision: string; round2_seat: number | null
+  }[]
+  excluded_over_limit: { id: string; name: string; grade_level_name: string; failed: number }[]
+  incomplete: { id: string; name: string; grade_level_name: string; missing: string | null }[]
+}
+
+export interface JcComparison {
+  current: { id: string; name: string; academic_year_id?: string }
+  previous: { id: string; name: string; academic_year_id: string } | null
+  school: { current: JcQualitySchoolRow; previous: JcQualitySchoolRow; delta: { average: number | null; pass_rate: number | null } } | null
+  grades: {
+    grade_level_id: string
+    name: string
+    current: { average: number | null; pass_rate: number | null; completion: number | null; students: number }
+    previous: { average: number | null; pass_rate: number | null; completion: number | null; students: number } | null
+    delta: { average: number | null; pass_rate: number | null } | null
+    subjects: {
+      key: string; name: string
+      current: { mean_pct: number | null; pass_rate: number | null }
+      previous: { mean_pct: number | null; pass_rate: number | null } | null
+      delta: { mean_pct: number | null; pass_rate: number | null } | null
+    }[]
+  }[]
+}
+
+export interface JcInvigilationLoads {
+  rows: { staff_id: string; name: string; available: boolean; duties: number; reserves: number; total: number }[]
+  /** Fairness display (C9): highest and lowest load and the gap. */
+  spread: { max: number; min: number; gap: number }
 }
 
 export interface JcExport {
   committed: boolean
-  summary: { new: number; change: number; same: number }
-  changes: { student: string; name: string; subject: string; target: string; before: string | null; after: string; action: 'new' | 'change' | 'same' }[]
+  summary: { new: number; change: number; same: number; from_attendance: number; skipped: number; no_national_id: number }
+  changes: { student: string; name: string; national_id: string | null; subject: string; target: string; before: string | null; after: string; action: 'new' | 'change' | 'same'; from_attendance?: boolean }[]
+  skipped: { student: string; name: string; subject: string; reason: 'no_section' | 'parts_partly_linked' }[]
 }
 
 export interface JcEnvelopeCheck {
@@ -310,12 +401,13 @@ export const JC_DOCS = [
   'general_list', 'secret_lists', 'committee_mirror', 'envelope_mirror', 'delivery_sheet', 'student_cards', 'booklet_covers',
   'seating_map', 'timetable', 'invigilation', 'attendance_sheet', 'minutes_open', 'minutes_absence', 'minutes_seal', 'minutes_incident',
   'results', 'honor_board', 'certificates',
+  'violations_log', 'quality_report', 'second_round_list', 'comparison',
 ] as const
 export type JcDoc = (typeof JC_DOCS)[number]
 
 /** Path of a printable document (authenticated download). */
-export const jcPrintPath = (sessionId: string, doc: JcDoc, opts: { committeeId?: string | null; dayId?: string | null } = {}) =>
-  `/jahbadh-control/sessions/${encodeURIComponent(sessionId)}/print/${doc}${qs({ committee_id: opts.committeeId ?? undefined, day_id: opts.dayId ?? undefined })}`
+export const jcPrintPath = (sessionId: string, doc: JcDoc, opts: { committeeId?: string | null; dayId?: string | null; withSessionId?: string | null } = {}) =>
+  `/jahbadh-control/sessions/${encodeURIComponent(sessionId)}/print/${doc}${qs({ committee_id: opts.committeeId ?? undefined, day_id: opts.dayId ?? undefined, with_session_id: opts.withSessionId ?? undefined })}`
 
 export function jahbadhControlApi(api: ApiClient) {
   const id = (v: string) => encodeURIComponent(v)
@@ -352,7 +444,7 @@ export function jahbadhControlApi(api: ApiClient) {
     staff: (sessionId: string) => api.get<{ id: string; profile_id: string; name: string; role: string }[]>(`${s(sessionId)}/staff`),
     invigilation: (sessionId: string) => api.get<JcDuty[]>(`${s(sessionId)}/invigilation`),
     generateInvigilation: (sessionId: string) =>
-      api.post<{ duties: JcDuty[]; short_days: { dayId: string; needed: number; eligible: number }[]; loads: Record<string, { duties: number; reserves: number }> }>(`${s(sessionId)}/invigilation/generate`, {}),
+      api.post<{ duties: JcDuty[]; short_days: { dayId: string; needed: number; eligible: number }[]; loads: Record<string, { duties: number; reserves: number }>; spread: { max: number; min: number; gap: number } }>(`${s(sessionId)}/invigilation/generate`, {}),
     setDuty: (sessionId: string, body: { exam_day_id: string; committee_id: string | null; slot: number; is_reserve?: boolean; staff_id: string | null }) =>
       api.put<JcDuty[]>(`${s(sessionId)}/invigilation/duty`, body),
     dayDashboard: (sessionId: string, dayId: string) => api.get<JcDayDashboard>(`${s(sessionId)}/examday/${id(dayId)}/dashboard`),
@@ -379,13 +471,19 @@ export function jahbadhControlApi(api: ApiClient) {
     revokeUnmask: (sessionId: string) => api.post<JcGate>(`${s(sessionId)}/unmask/revoke`, {}),
     appeals: (sessionId: string) => api.get<JcAppeal[]>(`${s(sessionId)}/appeals`),
     addAppeal: (sessionId: string, body: { secret: number; subject_key: string; after: number; reason: string }) => api.post<JcAppeal[]>(`${s(sessionId)}/appeals`, body),
-    auditSample: (sessionId: string) => api.get<{ secret: number | null; reviewed: boolean; notes: string | null }[]>(`${s(sessionId)}/audit-sample`),
+    auditSample: (sessionId: string) => api.get<{ secret: number | null; reviewed: boolean; error_found?: boolean; notes: string | null }[]>(`${s(sessionId)}/audit-sample`),
     drawAuditSample: (sessionId: string) => api.post<{ secret: number | null; reviewed: boolean; notes: string | null }[]>(`${s(sessionId)}/audit-sample/draw`, {}),
-    reviewAuditSample: (sessionId: string, body: { secret: number; reviewed: boolean; notes?: string }) => api.put<unknown>(`${s(sessionId)}/audit-sample`, body),
+    reviewAuditSample: (sessionId: string, body: { secret: number; reviewed: boolean; error_found?: boolean; notes?: string }) => api.put<unknown>(`${s(sessionId)}/audit-sample`, body),
     graders: (sessionId: string) => api.get<{ subject_key: string; committee_id: string; staff_id: string }[]>(`${s(sessionId)}/graders`),
     saveGraders: (sessionId: string, graders: { subject_key: string; committee_id: string; staff_id: string | null }[]) => api.put<unknown>(`${s(sessionId)}/graders`, { graders }),
     quality: (sessionId: string, gradeLevelId?: string | null) => api.get<JcQuality>(`${s(sessionId)}/quality${qs({ grade_level_id: gradeLevelId ?? undefined })}`),
     results: (sessionId: string) => api.get<JcResults>(`${s(sessionId)}/results`),
+    honorBoard: (sessionId: string) => api.get<JcHonorBoard>(`${s(sessionId)}/honor-board`),
+    secondRoundList: (sessionId: string) => api.get<JcRound2List>(`${s(sessionId)}/second-round/list`),
+    comparison: (sessionId: string, withSessionId?: string | null) => api.get<JcComparison>(`${s(sessionId)}/comparison${qs({ with_session_id: withSessionId ?? undefined })}`),
+    setParts: (sessionId: string, body: { grade_level_id: string; subject_key: string; parts: { name: string; max: number; subitem_id?: string | null }[] }) =>
+      api.put<JcGrade[]>(`${s(sessionId)}/exam-parts`, body),
+    invigilationLoads: (sessionId: string) => api.get<JcInvigilationLoads>(`${s(sessionId)}/invigilation/loads`),
     createSecondRound: (sessionId: string) => api.post<{ session_id: string; students: number }>(`${s(sessionId)}/second-round`, {}),
     messages: (sessionId: string, note?: string) => api.get<{ id: string; name: string; phone: string | null; text: string; whatsapp: string | null }[]>(`${s(sessionId)}/messages${qs({ note })}`),
     sendMessages: (sessionId: string, note?: string) => api.post<unknown>(`${s(sessionId)}/messages/send`, { note }),
@@ -417,7 +515,8 @@ export function jcAreas(o: JcOverview): JcArea[] {
   if (r.examday) out.push('examday')
   if (r.entry) out.push('entry')
   if (r.manage || r.entry) out.push('quality')
-  if ((r.manage || r.entry) && r.unmasked) out.push('results')
+  // Managers see the honour board (names hidden) before unmasking; entry members only after.
+  if (r.manage || (r.entry && r.unmasked)) out.push('results')
   if (r.chief) out.push('audit')
   return out
 }

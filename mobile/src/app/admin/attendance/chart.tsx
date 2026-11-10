@@ -111,7 +111,7 @@ export default function AttendanceChart() {
 
   const metric = (label: string, value: number) => (
     <View className="w-1/4 py-1">
-      <Text className="text-muted-foreground text-[10px]">{label}</Text>
+      <Text className="text-muted-foreground text-2xs">{label}</Text>
       <Text className="text-sm font-semibold">{value}</Text>
     </View>
   );
@@ -222,7 +222,7 @@ export default function AttendanceChart() {
                         {metric(a('ada_th_excusedAbsence'), bd['Excused Absence'] ?? bd['Excused'] ?? 0)}
                         {extraCols.map((k) => (
                           <View key={k} className="w-1/4 py-1">
-                            <Text className="text-muted-foreground text-[10px]">{k}</Text>
+                            <Text className="text-muted-foreground text-2xs">{k}</Text>
                             <Text className="text-sm font-semibold">{bd[k] ?? 0}</Text>
                           </View>
                         ))}

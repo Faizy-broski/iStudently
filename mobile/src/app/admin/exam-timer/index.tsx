@@ -8,7 +8,8 @@ import { router, Stack } from 'expo-router';
 import { DoorOpen, Lock, LockOpen, Megaphone, Minus, Pause, Play, Plus, RotateCcw, Settings2, Square, Users, Volume2 } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import Svg, { Circle } from 'react-native-svg';
 
 import { useConfirm } from '@/components/app/confirm';

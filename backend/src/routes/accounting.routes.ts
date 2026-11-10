@@ -84,6 +84,7 @@ router.delete('/payee-payments/:paymentId', requireAdmin, (req, res) => accounti
 router.get('/staff/salaries', requireStaff, (req, res) => accountingController.getTeacherOwnSalaries(req, res))
 router.get('/staff/payments', requireStaff, (req, res) => accountingController.getTeacherOwnPayments(req, res))
 router.get('/staff/payslip', requireStaff, (req, res) => accountingController.getTeacherOwnPayslip(req, res))
+router.get('/staff/salary-records', requireStaff, (req, res) => accountingController.getTeacherOwnSalaryRecords(req, res))
 router.post('/staff/advances', requireStaff, (req, res) => accountingController.requestMyAdvance(req, res))
 router.get('/staff/hours', requireStaff, (req, res) => accountingController.getTeacherOwnHours(req, res))
 

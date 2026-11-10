@@ -1,7 +1,8 @@
 import { router, type Href } from 'expo-router';
 import { Bell, Calendar, ChevronRight, ClipboardList, CreditCard, FileText, GraduationCap, Megaphone, MessageSquare, Receipt, Search, User, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthBackground } from '@/components/app/auth-background';
@@ -70,13 +71,13 @@ function StatTile({ label, value, note, chip, onPress }: { label: string; value:
   const c = useColors();
   return (
     <Pressable onPress={onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 gap-1 rounded-2xl border p-3 active:opacity-80" accessibilityRole="button">
-      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+      <Text variant="muted" className="text-xs" numberOfLines={1}>
         {label}
       </Text>
       <Text className="text-brand dark:text-foreground text-xl font-bold" numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
-      {chip ? <StatusChip label={chip} tone="success" className="self-start px-2 py-0.5" /> : note ? <Text className="text-muted-foreground text-[11px]" numberOfLines={1}>{note}</Text> : null}
+      {chip ? <StatusChip label={chip} tone="success" className="self-start px-2 py-0.5" /> : note ? <Text className="text-muted-foreground text-xs" numberOfLines={1}>{note}</Text> : null}
     </Pressable>
   );
 }
@@ -86,7 +87,7 @@ function QuickAction({ icon, label, onPress }: { icon: LucideIcon; label: string
   return (
     <Pressable onPress={onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 items-center gap-2 rounded-2xl border px-1 py-3 active:opacity-80" accessibilityRole="button">
       <Icon as={icon} strokeWidth={2.3} className="text-brand dark:text-brand-secondary size-5" />
-      <Text className="text-brand dark:text-brand-secondary text-center text-[11px] font-semibold" numberOfLines={2}>
+      <Text className="text-brand dark:text-brand-secondary text-center text-xs font-semibold" numberOfLines={2}>
         {label}
       </Text>
     </Pressable>
@@ -216,7 +217,7 @@ export default function ParentDashboard() {
                       <Icon as={Receipt} className={cn('size-5', overdue ? 'text-destructive' : 'text-warning')} />
                     </View>
                     <View className="flex-1">
-                      <Text className={cn('text-[11px] font-medium', overdue ? 'text-destructive' : 'text-warning')} numberOfLines={1}>
+                      <Text className={cn('text-xs font-medium', overdue ? 'text-destructive' : 'text-warning')} numberOfLines={1}>
                         {overdue ? k('overdue_amount', { amount: money(fs?.overdue_amount ?? 0) }) : fs?.next_due_date ? k('next_due', { date: formatDate(fs.next_due_date) }) : k('total_due')}
                       </Text>
                       <Text className="text-xl font-bold" numberOfLines={1} adjustsFontSizeToFit>
@@ -240,7 +241,7 @@ export default function ParentDashboard() {
                       <View className="bg-success h-full rounded-full" style={{ width: `${paidPct}%` }} />
                     </View>
                     {fs?.unpaid_invoices ? (
-                      <Text variant="muted" className="text-[11px]">
+                      <Text variant="muted" className="text-xs">
                         {k('unpaid_n', { count: fs.unpaid_invoices })}
                       </Text>
                     ) : null}
@@ -260,7 +261,7 @@ export default function ParentDashboard() {
                             <View className={cn('size-9 items-center justify-center rounded-full', tone.box)}>
                               <Text className={cn('text-xs font-bold', tone.text)}>{k(`att_${tone.key}`)}</Text>
                             </View>
-                            <Text variant="muted" className="text-[11px]">
+                            <Text variant="muted" className="text-xs">
                               {weekdayLetter(r.date)}
                             </Text>
                           </View>
@@ -295,13 +296,13 @@ export default function ParentDashboard() {
                           <Text className="text-sm font-semibold" numberOfLines={1}>
                             {r.subject}
                           </Text>
-                          <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                          <Text variant="muted" className="text-xs" numberOfLines={1}>
                             {[r.exam_name || r.exam_type, r.date ? formatDate(r.date) : null].filter(Boolean).join(' · ')}
                           </Text>
                         </View>
                         <View className="items-end">
                           <Text className="text-sm font-bold">{r.grade}</Text>
-                          <Text variant="muted" className="text-[11px]">{`${Math.round(r.percentage)}%`}</Text>
+                          <Text variant="muted" className="text-xs">{`${Math.round(r.percentage)}%`}</Text>
                         </View>
                       </View>
                     ))}
@@ -325,7 +326,7 @@ export default function ParentDashboard() {
                             <Text className="text-sm font-semibold" numberOfLines={1}>
                               {e.exam_name}
                             </Text>
-                            <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                            <Text variant="muted" className="text-xs" numberOfLines={1}>
                               {[shortDay(e.date), e.subject, e.time].filter(Boolean).join(' · ')}
                             </Text>
                           </View>
@@ -353,7 +354,7 @@ export default function ParentDashboard() {
                           <Text className="text-sm font-semibold" numberOfLines={1}>
                             {n.title}
                           </Text>
-                          <Text variant="muted" className="text-[11px]">
+                          <Text variant="muted" className="text-xs">
                             {formatRelative(n.created_at)}
                           </Text>
                         </View>

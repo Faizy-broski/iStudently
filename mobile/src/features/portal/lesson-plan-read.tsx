@@ -4,7 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { BookOpen, Calendar, ChevronDown, ChevronRight, Clock, FileText } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FilterChips } from '@/components/app/filter-chips';
 import { Panel } from '@/components/app/panel';

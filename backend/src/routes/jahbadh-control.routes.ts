@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import { jahbadhControlController as c } from '../controllers/jahbadh-control.controller'
+import { jahbadhAssessmentController as qa } from '../controllers/jahbadh-assessment.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireJahbadhControlEnabled } from '../middlewares/jahbadh-grades-enabled.middleware'
 import { requireRole } from '../middlewares/role.middleware'
@@ -27,6 +28,7 @@ router.put('/sessions/:sessionId/members', c.setMembers)
 router.get('/sessions/:sessionId/grade-choices', c.gradeChoices)
 router.get('/sessions/:sessionId/grades', c.grades)
 router.put('/sessions/:sessionId/grades', c.setGrades)
+router.put('/sessions/:sessionId/exam-parts', c.setParts)
 router.get('/sessions/:sessionId/students', c.students)
 router.post('/sessions/:sessionId/students/pull', c.pullStudents)
 router.put('/sessions/:sessionId/students', c.updateStudents)
@@ -44,6 +46,7 @@ router.get('/sessions/:sessionId/invigilators', c.invigilators)
 router.put('/sessions/:sessionId/invigilators', c.saveInvigilators)
 router.get('/sessions/:sessionId/staff', c.staff)
 router.get('/sessions/:sessionId/invigilation', c.invigilation)
+router.get('/sessions/:sessionId/invigilation/loads', c.invigilationLoads)
 router.post('/sessions/:sessionId/invigilation/generate', c.generateInvigilation)
 router.put('/sessions/:sessionId/invigilation/duty', c.setDuty)
 router.get('/sessions/:sessionId/print/:doc', c.print)
@@ -72,6 +75,9 @@ router.get('/sessions/:sessionId/graders', c.graders)
 router.put('/sessions/:sessionId/graders', c.saveGraders)
 router.get('/sessions/:sessionId/quality', c.quality)
 router.get('/sessions/:sessionId/results', c.results)
+router.get('/sessions/:sessionId/honor-board', c.honorBoard)
+router.get('/sessions/:sessionId/second-round/list', c.secondRoundList)
+router.get('/sessions/:sessionId/comparison', c.comparison)
 router.post('/sessions/:sessionId/second-round', c.secondRound)
 router.get('/sessions/:sessionId/messages', c.messages)
 router.post('/sessions/:sessionId/messages/send', c.sendMessages)
@@ -84,5 +90,27 @@ router.get('/sessions/:sessionId/timer-feed', c.timerFeed)
 router.get('/sessions/:sessionId/examday/:dayId/timer-minutes', c.timerMinutes)
 router.post('/sessions/:sessionId/examday/:dayId/timer-minutes', c.saveTimerMinutes)
 router.get('/sessions/:sessionId/audit', c.auditLog)
+
+// Assessment tools (Wave 6, brief #53–60): answer keys, auto-grading, analysis, similarity, objectives,
+// fairness, archive, error slips and bubble sheets. Masking and roles are checked in the service.
+router.get('/sessions/:sessionId/answer-keys', qa.listKeys)
+router.post('/sessions/:sessionId/answer-keys', qa.saveKey)
+router.get('/sessions/:sessionId/answer-keys/:keyId', qa.getKey)
+router.delete('/sessions/:sessionId/answer-keys/:keyId', qa.deleteKey)
+router.get('/sessions/:sessionId/answer-keys/:keyId/sheets', qa.sheets)
+router.put('/sessions/:sessionId/answer-keys/:keyId/sheets', qa.saveSheets)
+router.get('/sessions/:sessionId/answer-keys/:keyId/transfer', qa.transferPreview)
+router.post('/sessions/:sessionId/answer-keys/:keyId/transfer', qa.transfer)
+router.get('/sessions/:sessionId/answer-keys/:keyId/analysis', qa.analysis)
+router.get('/sessions/:sessionId/answer-keys/:keyId/similarity', qa.similarity)
+router.get('/sessions/:sessionId/answer-keys/:keyId/mastery', qa.mastery)
+router.get('/sessions/:sessionId/answer-keys/:keyId/error-slips.pdf', qa.errorSlips)
+router.get('/sessions/:sessionId/answer-keys/:keyId/bubble-sheets.pdf', qa.bubbleSheets)
+router.post('/sessions/:sessionId/answer-keys/:keyId/archive', qa.archiveKey)
+router.get('/sessions/:sessionId/fairness', qa.fairness)
+router.get('/sessions/:sessionId/test-archive', qa.listArchive)
+router.get('/sessions/:sessionId/test-archive/:archiveId', qa.getArchive)
+router.post('/sessions/:sessionId/test-archive/:archiveId/recall', qa.recallArchive)
+router.delete('/sessions/:sessionId/test-archive/:archiveId', qa.deleteArchive)
 
 export default router

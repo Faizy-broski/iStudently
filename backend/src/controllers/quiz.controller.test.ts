@@ -2,6 +2,9 @@ jest.mock('../services/quiz.service', () => ({
   submitQuiz: jest.fn(async () => [{ id: 'a1' }]),
   getStudentQuizSubmission: jest.fn(async () => ({ maps: [], answerMap: {} })),
   hasSubmittedQuiz: jest.fn(async () => false),
+  getQuiz: jest.fn(async () => ({ id: 'q1', start_time: null, lockout_minutes: null })),
+  studentMayTakeQuiz: jest.fn(async () => true),
+  getQuizAccessState: jest.requireActual('../services/quiz.service').getQuizAccessState,
 }))
 jest.mock('../services/chapters.service', () => ({}))
 jest.mock('../services/ai-question.service', () => ({}))
@@ -51,6 +54,22 @@ describe('POST /quiz/:quizId/submit', () => {
     const res = mockRes()
     await submitQuiz({ profile: student, params: { quizId: 'q1' }, body: { answers } } as any, res)
     expect(res.status).toHaveBeenCalledWith(409)
+    expect(svc.submitQuiz).not.toHaveBeenCalled()
+  })
+
+  it('rejects a quiz the student is not assigned to', async () => {
+    ;(svc.studentMayTakeQuiz as jest.Mock).mockResolvedValueOnce(false)
+    const res = mockRes()
+    await submitQuiz({ profile: student, params: { quizId: 'q1' }, body: { answers } } as any, res)
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(svc.submitQuiz).not.toHaveBeenCalled()
+  })
+
+  it('rejects a quiz that has not opened yet (423)', async () => {
+    ;(svc.getQuiz as jest.Mock).mockResolvedValueOnce({ id: 'q1', start_time: new Date(Date.now() + 3600e3).toISOString(), lockout_minutes: null })
+    const res = mockRes()
+    await submitQuiz({ profile: student, params: { quizId: 'q1' }, body: { answers } } as any, res)
+    expect(res.status).toHaveBeenCalledWith(423)
     expect(svc.submitQuiz).not.toHaveBeenCalled()
   })
 

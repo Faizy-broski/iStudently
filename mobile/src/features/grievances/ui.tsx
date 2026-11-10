@@ -40,7 +40,7 @@ export const isOverdue = (g: Pick<Grievance, 'due_date' | 'status'>) => !!g.due_
 function Pill({ cls, label }: { cls: [string, string]; label: string }) {
   return (
     <View className={cn('rounded-full px-2.5 py-1', cls[0])}>
-      <Text className={cn('text-[11px] font-semibold', cls[1])}>{label}</Text>
+      <Text className={cn('text-xs font-semibold', cls[1])}>{label}</Text>
     </View>
   );
 }
@@ -58,7 +58,7 @@ export function PriorityPill({ priority }: { priority: GrievancePriority }) {
 export function OutlinePill({ label }: { label: string }) {
   return (
     <View className="bg-muted rounded-full px-2.5 py-1">
-      <Text className="text-muted-foreground text-[11px] font-semibold">{label}</Text>
+      <Text className="text-muted-foreground text-xs font-semibold">{label}</Text>
     </View>
   );
 }
@@ -68,7 +68,7 @@ export function OverduePill() {
   return (
     <View className="bg-destructive-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
       <Icon as={AlertTriangle} className="text-destructive size-3" />
-      <Text className="text-destructive text-[11px] font-semibold">{t('grievances.list.overdue')}</Text>
+      <Text className="text-destructive text-xs font-semibold">{t('grievances.list.overdue')}</Text>
     </View>
   );
 }

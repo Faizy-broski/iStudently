@@ -58,8 +58,10 @@ afterAll(() => {
 beforeEach(() => {
   for (const k of Object.keys(rows)) delete rows[k]
   Object.assign(rows, {
-    stuA: { school_id: 'c1', profile_id: 'pA' },
-    stuB: { school_id: 's1', profile_id: 'pB' },
+    stuA: { school_id: 'c1', profile_id: 'pA', section_id: 'secA' },
+    stuB: { school_id: 's1', profile_id: 'pB', section_id: 'secB' },
+    // The teacher's timetable (this mock keys rows by the last id filtered on: teacher_id t1).
+    t1: { school_id: 's1', section_id: 'secA' },
     stuX: { school_id: 's9', profile_id: 'pX' },
     a1: { school_id: 's1', course_period_id: 'cp1' }, aOther: { school_id: 's1', course_period_id: 'cpOther' },
     aX: { school_id: 's9' },
@@ -76,6 +78,8 @@ describe('gradebook routes', () => {
   it("limits one student's grades to staff of the family, the student and linked parents", async () => {
     expect((await call('GET', '/grades/student/stuX', undefined, 'teacher')).status).toBe(404)
     expect((await call('GET', '/grades/student/stuA', undefined, 'teacher')).status).toBe(200)
+    // A teacher sees only students of sections they teach.
+    expect((await call('GET', '/grades/student/stuB', undefined, 'teacher')).status).toBe(404)
     expect((await call('GET', '/grades/summary/student/stuA', undefined, 'student', { 'x-test-id': 'pA', 'x-test-student': 'stuA' })).status).toBe(200)
     expect((await call('GET', '/grades/summary/student/stuB', undefined, 'student', { 'x-test-id': 'pA', 'x-test-student': 'stuA' })).status).toBe(404)
     expect((await call('GET', '/average/stuB', undefined, 'parent', { 'x-test-id': 'parentWithoutLink' })).status).toBe(404)

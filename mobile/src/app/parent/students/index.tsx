@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { Calendar, Clock, Droplets, GraduationCap, Hash, Info, Mail, MapPin, Phone, School, User, Users, type LucideIcon } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, PersonHero, RowItem, Section } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -28,7 +29,7 @@ function Row({ label, value, icon, tone, onPress, last }: { label: string; value
         <Icon as={icon ?? Info} className={cn('size-4', tone === 'destructive' ? 'text-destructive' : 'text-brand dark:text-brand-secondary')} />
       </View>
       <View className="flex-1">
-        <Text variant="muted" className="text-[11px]">
+        <Text variant="muted" className="text-xs">
           {label}
         </Text>
         <Text className={onPress ? 'text-sm font-medium text-brand dark:text-brand-secondary' : 'text-sm font-medium'} selectable={!onPress}>
@@ -148,7 +149,7 @@ function Chip({ icon, label }: { icon: LucideIcon; label: string }) {
   return (
     <View className="flex-row items-center gap-1 rounded-full bg-white/15 px-2.5 py-1">
       <Icon as={icon} className="size-3 text-white" />
-      <Text className="text-[11px] font-semibold text-white">{label}</Text>
+      <Text className="text-xs font-semibold text-white">{label}</Text>
     </View>
   );
 }

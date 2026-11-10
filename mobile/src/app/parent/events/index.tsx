@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { CalendarGrid, gridMonthRange } from '@/components/app/calendar-grid';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -108,7 +109,7 @@ export default function ParentEvents() {
               </View>
               <View className="flex-1">
                 <Text className="text-brand dark:text-foreground text-lg font-bold">{counts.data?.[c] ?? 0}</Text>
-                <Text className="text-muted-foreground text-[10px]" numberOfLines={1}>
+                <Text className="text-muted-foreground text-2xs" numberOfLines={1}>
                   {e(`categories.${c}`)}
                 </Text>
               </View>

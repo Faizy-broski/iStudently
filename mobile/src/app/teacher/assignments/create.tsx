@@ -2,6 +2,7 @@ import { router, Stack } from 'expo-router';
 import { Calendar, ClipboardList, Paperclip } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSWRConfig } from 'swr';
 import { View } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
@@ -30,6 +31,9 @@ import type { PickedDocument } from '@/lib/upload';
 export default function TeacherCreateHomework() {
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`teacherPages.assignments.${key}`, o);
+  const { mutate: mutateCache } = useSWRConfig();
+  // Lists keyed ['teacher', 'homework…', …] (assignments list, dashboard, submissions picker).
+  const refreshHomeworkLists = () => mutateCache((key) => Array.isArray(key) && key[0] === 'teacher' && String(key[1]).startsWith('homework'));
   const toast = useToast();
   const { me } = useSession();
   const profile = me.status === 'ready' ? me.me.profile : null;
@@ -47,7 +51,7 @@ export default function TeacherCreateHomework() {
   const subjectsFor = [...new Map(list.filter((a) => a.section_id === f.section).map((a) => [a.subject_id, a.subject?.name ?? k('unknown')])).entries()];
 
   async function create() {
-    if (!profile?.staff_id || !profile.school_id) return;
+    if (!profile?.staff_id || !profile.school_id) return toast.error(t('teacherPages.dashboard.notAuthorizedDesc'));
     if (!f.section || !f.subject || !f.title.trim() || !f.due) return toast.error(k('fillRequiredFields'));
     if (!academic.year) return toast.error(k('noAcademicYear'));
     setBusy(true);
@@ -81,6 +85,7 @@ export default function TeacherCreateHomework() {
       });
       if (!r.success) return toast.error(r.error || k('createAssignmentFailed'));
       toast.success(k('assignmentCreated'));
+      void refreshHomeworkLists();
       router.back();
     } finally {
       setBusy(false);

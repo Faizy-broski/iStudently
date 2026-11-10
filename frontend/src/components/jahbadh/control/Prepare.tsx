@@ -91,6 +91,7 @@ export function SetupTab({ sessionId, overview: o, refresh }: TabProps) {
     <div className="space-y-4">
       {r.manage ? <DetailsCard sessionId={sessionId} overview={o} refresh={refresh} /> : null}
       {r.manage ? <GradesCard sessionId={sessionId} overview={o} refresh={refresh} /> : null}
+      {r.manage && o.grades.length ? <ExamPartsCard sessionId={sessionId} overview={o} refresh={refresh} /> : null}
       {r.manage ? <SettingsCard sessionId={sessionId} overview={o} refresh={refresh} /> : null}
       {(r.secret || r.chief) && o.session.settings.secret_mode === "encrypted" ? <KeyCard sessionId={sessionId} overview={o} refresh={refresh} /> : null}
       {r.chief ? <MembersCard sessionId={sessionId} overview={o} refresh={refresh} /> : null}
@@ -190,6 +191,69 @@ function GradesCard({ sessionId, overview: o, refresh }: TabProps) {
           </div>
         )}
         {locked ? <Note tone="warning">{t("lockedNote")}</Note> : <Button onClick={save} disabled={!picked.size}><Save className="size-4" />{t("saveGrades")}</Button>}
+      </CardContent>
+    </Card>
+  )
+}
+
+/** Exam parts (C6.7): split a subject's exam into parts entered separately; parts must add up to the subject max. */
+function ExamPartsCard({ sessionId, overview: o, refresh }: TabProps) {
+  const t = useTranslations("examControl")
+  const [grade, setGrade] = useState(o.grades[0]?.grade_level_id ?? "")
+  const g = o.grades.find((x) => x.grade_level_id === grade) ?? o.grades[0]
+  const [subject, setSubject] = useState<string>(g?.subjects[0]?.key ?? "")
+  const subj = g?.subjects.find((x) => x.key === subject) ?? g?.subjects[0]
+  const [draft, setDraft] = useState<{ name: string; max: string; subitem_id: string | null }[] | null>(null)
+  const parts = draft ?? (subj?.parts ?? []).map((p) => ({ name: p.name, max: String(p.max), subitem_id: p.subitem_id }))
+  const sum = parts.reduce((a, p) => a + (Number(p.max) || 0), 0)
+  const ok = !parts.length || (parts.length >= 2 && Math.abs(sum - (subj?.max ?? 0)) < 1e-9 && parts.every((p) => p.name.trim() && Number(p.max) > 0))
+  const edit = (i: number, patch: Partial<{ name: string; max: string }>) => setDraft(parts.map((p, j) => (j === i ? { ...p, ...patch } : p)))
+  const save = async (list = parts) => {
+    if (!g || !subj) return
+    const res = await jcRun(
+      jcApi.setParts(sessionId, { grade_level_id: g.grade_level_id, subject_key: subj.key, parts: list.map((p) => ({ name: p.name.trim(), max: Number(p.max), subitem_id: p.subitem_id })) }),
+      t("saved"),
+    )
+    if (res) { setDraft(null); refresh() }
+  }
+  if (!g || !subj) return null
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{t("examParts")}</CardTitle>
+        <CardDescription>{t("examPartsHint")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <Select value={g.grade_level_id} onValueChange={(v) => { setGrade(v); setSubject(o.grades.find((x) => x.grade_level_id === v)?.subjects[0]?.key ?? ""); setDraft(null) }}>
+            <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+            <SelectContent>{o.grades.map((x) => <SelectItem key={x.grade_level_id} value={x.grade_level_id}>{x.grade_level_name}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={subj.key} onValueChange={(v) => { setSubject(v); setDraft(null) }}>
+            <SelectTrigger className="w-60"><SelectValue /></SelectTrigger>
+            <SelectContent>{g.subjects.map((x) => <SelectItem key={x.key} value={x.key}>{x.name} (/{x.max}){x.parts?.length ? ` · ${t("partsN", { n: x.parts.length })}` : ""}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        {!parts.length ? <Note>{t("noParts")}</Note> : (
+          <div className="space-y-2">
+            {parts.map((p, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="w-6 text-center text-sm tabular-nums text-muted-foreground">{i + 1}</span>
+                <Input className="h-8 flex-1" value={p.name} placeholder={t("partName")} onChange={(e) => edit(i, { name: e.target.value })} />
+                <Input className="h-8 w-24" dir="ltr" inputMode="decimal" value={p.max} placeholder={t("max")} onChange={(e) => edit(i, { max: e.target.value })} />
+                {p.subitem_id ? <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground" title={t("partLinkedHint")}>{t("partLinked")}</span> : null}
+                <Button variant="ghost" size="icon" aria-label={t("remove")} onClick={() => setDraft(parts.filter((_, j) => j !== i))}><Trash2 className="size-4" /></Button>
+              </div>
+            ))}
+            <p className={cn("text-sm", ok ? "text-success" : "text-destructive")}>{t("partsSum", { sum, max: subj.max })}</p>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setDraft([...parts, { name: t("partN", { n: parts.length + 1 }), max: "", subitem_id: null }])}><Plus className="size-4" />{t("addPart")}</Button>
+          <Button size="sm" disabled={!draft || !ok} onClick={() => save()}><Save className="size-4" />{t("save")}</Button>
+          {subj.parts?.length ? <Button variant="ghost" size="sm" onClick={() => window.confirm(t("confirmRemoveParts")) && save([])}>{t("removeParts")}</Button> : null}
+        </div>
+        <p className="text-xs text-muted-foreground">{t("partsLockedHint")}</p>
       </CardContent>
     </Card>
   )
@@ -429,6 +493,8 @@ export function StudentsTab({ sessionId, overview: o, refresh }: TabProps) {
                   <TableRow>
                     <TableHead>{t("seatNumber")}</TableHead>
                     <TableHead>{t("studentName")}</TableHead>
+                    <TableHead>{t("nationalId")}</TableHead>
+                    <TableHead>{t("enrollmentStatus")}</TableHead>
                     <TableHead>{t("grade")}</TableHead>
                     <TableHead>{t("section")}</TableHead>
                     <TableHead>{t("committee")}</TableHead>
@@ -442,6 +508,8 @@ export function StudentsTab({ sessionId, overview: o, refresh }: TabProps) {
                     <TableRow key={s.id} className={cn(s.status !== "participating" && "opacity-60")}>
                       <TableCell dir="ltr" className="text-start tabular-nums">{s.seat_number ?? "—"}</TableCell>
                       <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell dir="ltr" className={cn("text-start text-xs tabular-nums", !s.national_id && "text-warning")}>{s.national_id ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{s.enrollment_status ?? "—"}</TableCell>
                       <TableCell>{s.grade_level_name}</TableCell>
                       <TableCell>{s.section_name ?? "—"}</TableCell>
                       <TableCell>{s.committee_id ? `${s.seat_index ?? ""}${s.paper_model ? ` · ${s.paper_model}` : ""}` : "—"}</TableCell>
@@ -836,6 +904,7 @@ function DutiesCard({ sessionId, overview: o }: Omit<TabProps, "refresh">) {
   const invs = useJc(["jc-invigilators", sessionId], () => jcApi.invigilators(sessionId))
   const [short, setShort] = useState<{ dayId: string; needed: number; eligible: number }[]>([])
   const [loads, setLoads] = useState<Record<string, { duties: number; reserves: number }> | null>(null)
+  const spread = useJc(["jc-inv-loads", sessionId], () => jcApi.invigilationLoads(sessionId))
   const slots = o.session.settings.obs_per_committee
   const reserves = o.session.settings.reserve_per_day
   const nameOf = (id: string) => invs.data?.find((x) => x.staff_id === id)?.name ?? "?"
@@ -846,11 +915,12 @@ function DutiesCard({ sessionId, overview: o }: Omit<TabProps, "refresh">) {
       duties.mutate(res.duties, false)
       setShort(res.short_days)
       setLoads(res.loads)
+      spread.mutate()
     }
   }
   const set = async (dayId: string, committeeId: string | null, slot: number, isReserve: boolean, staffId: string | null) => {
     const res = await jcRun(jcApi.setDuty(sessionId, { exam_day_id: dayId, committee_id: committeeId, slot, is_reserve: isReserve, staff_id: staffId }))
-    if (res) duties.mutate(res, false)
+    if (res) { duties.mutate(res, false); spread.mutate() }
   }
   const cell = (dayId: string, committeeId: string | null, slot: number, isReserve: boolean) => {
     const d = duties.data?.find((x) => x.exam_day_id === dayId && x.committee_id === committeeId && x.slot === slot && x.is_reserve === isReserve)
@@ -924,6 +994,12 @@ function DutiesCard({ sessionId, overview: o }: Omit<TabProps, "refresh">) {
             ))}
           </div>
         ) : null}
+        {spread.data && spread.data.rows.length ? (
+          <p className={cn("text-sm", spread.data.spread.gap > 1 ? "text-warning" : "text-success")}>
+            {t("loadSpread", { max: spread.data.spread.max, min: spread.data.spread.min, gap: spread.data.spread.gap })}
+          </p>
+        ) : null}
+        <p className="text-xs text-muted-foreground">{t("dayCommitteesNote")}</p>
         {loads ? <p className="text-xs text-muted-foreground">{t("fairnessNote")}</p> : null}
       </CardContent>
     </Card>

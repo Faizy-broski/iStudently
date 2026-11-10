@@ -2,7 +2,8 @@ import type { FinaReport } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { Download, FileText } from 'lucide-react-native';
 import { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';

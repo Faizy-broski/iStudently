@@ -13,6 +13,7 @@ import { jgApi, openJgPdf, type JgResults, type JgSecondRound } from "@/lib/api/
 import { decisionTone, fmtMark, fmtPct, learnerWord, type JgRound2Need } from "@/lib/jahbadh"
 import { cn } from "@/lib/utils"
 import { JgBlocked, ResultChip, SectionPicker, toneClass, useJgContext, useJgSection, useJgSections, useSectionParam, SectionsBlocked, sectionsReady, type JgBase } from "./shared"
+import { Round2Official } from "./Official"
 
 function useSectionData<T>(kind: "results" | "second-round", campusId: string | null, sectionId: string | null) {
   return useSWR(sectionId ? [`jg-${kind}`, sectionId, campusId] : null, async () => {
@@ -98,16 +99,26 @@ export function ResultsSheet({ base }: { base: JgBase }) {
                     <td className="border p-1 text-center tabular-nums">{i + 1}</td>
                     <td className="border p-1 whitespace-nowrap" dir="rtl">{st.student.name}</td>
                     {r.subjects.map((s) => {
-                      const res = st.subjects[s.id].result
+                      const sub = st.subjects[s.id]
+                      const res = sub.result
                       const flag = res.result === "round2" ? toneClass("warning") : res.result === "fail" ? toneClass("destructive") : ""
-                      return <td key={s.id} className={cn("border p-1 text-center tabular-nums", flag)}>{fmtMark(res.final)}</td>
+                      return (
+                        <td key={s.id} className={cn("border p-1 text-center tabular-nums", flag)} title={sub.jabr ? t("jabrPlusOneMark") : undefined}>
+                          {fmtMark(res.final)}
+                          {sub.jabr ? <sup className="ms-0.5 font-semibold text-success">+1</sup> : null}
+                        </td>
+                      )
                     })}
                     <td className="border p-1 text-center font-bold tabular-nums">{fmtMark(st.total)}</td>
                     <td className="border p-1 text-center tabular-nums">{fmtPct(st.pct, 1)}</td>
                     <td className="border p-1 text-center" dir="rtl">{st.estimate ?? ""}</td>
-                    <td className="border p-1 text-center tabular-nums">{st.rank ?? ""}</td>
+                    <td className="border p-1 text-center tabular-nums" title={st.incomplete ? t("unrankedHint") : undefined}>{st.rank ?? (st.incomplete ? "—" : "")}</td>
                     <td className="border p-1 text-xs" dir="rtl">{st.support_subjects.join("، ")}</td>
-                    <td className="border p-1 text-center"><ResultChip label={st.decision} tone={decisionTone(st.decision)} /></td>
+                    <td className="border p-1 text-center">
+                      <ResultChip label={st.decision} tone={decisionTone(st.decision)} />
+                      {st.missing_text ? <p className="mt-0.5 text-xs text-muted-foreground" dir="rtl">{st.missing_text}</p> : null}
+                      {st.over_round2_limit ? <p className="mt-0.5 text-xs text-destructive" dir="rtl">{t("overRound2Limit")}</p> : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -219,6 +230,7 @@ export function SecondRound({ base }: { base: JgBase }) {
             </table>
           </div>
           <p className="text-xs text-muted-foreground">{t("needLegend")}</p>
+          <Round2Official sectionId={sectionId} campusId={campusId} />
         </>
       )}
     </div>

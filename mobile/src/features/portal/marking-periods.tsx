@@ -2,7 +2,8 @@ import type { GroupedMarkingPeriods, MarkingPeriod, MarkingPeriodType } from '@s
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Panel } from '@/components/app/panel';
 import { LoadingList } from '@/components/app/states';
@@ -77,7 +78,7 @@ export function MarkingPeriodsView({ campusId, campusName, selectCurrentQuarter 
               {isCurrent(selected) ? (
                 <View className="bg-success-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
                   <View className="bg-success size-1.5 rounded-full" />
-                  <Text className="text-success text-[11px] font-semibold">{s('current')}</Text>
+                  <Text className="text-success text-xs font-semibold">{s('current')}</Text>
                 </View>
               ) : null}
               {selected.does_grades ? <Pill box="bg-info-soft" text="text-brand dark:text-brand-secondary" label={s('graded')} /> : null}
@@ -121,10 +122,10 @@ export function MarkingPeriodsView({ campusId, campusName, selectCurrentQuarter 
                         </Text>
                         <View className="flex-row items-center gap-1">
                           {isCurrent(mp) ? <View className="size-2 rounded-full bg-success" accessibilityLabel={m('active_tooltip')} /> : null}
-                          {mp.does_grades ? <Text className="text-[10px] font-medium text-brand dark:text-brand-secondary">G</Text> : null}
+                          {mp.does_grades ? <Text className="text-2xs font-medium text-brand dark:text-brand-secondary">G</Text> : null}
                         </View>
                       </View>
-                      {mp.start_date || mp.end_date ? <Text className="text-muted-foreground mt-0.5 text-[10px]">{`${fmt(mp.start_date)} – ${fmt(mp.end_date)}`}</Text> : null}
+                      {mp.start_date || mp.end_date ? <Text className="text-muted-foreground mt-0.5 text-2xs">{`${fmt(mp.start_date)} – ${fmt(mp.end_date)}`}</Text> : null}
                     </Pressable>
                   );
                 })
@@ -153,7 +154,7 @@ export function MarkingPeriodsView({ campusId, campusName, selectCurrentQuarter 
 function Pill({ label, box, text }: { label: string; box: string; text: string }) {
   return (
     <View className={cn('rounded-full px-2.5 py-1', box)}>
-      <Text className={cn('text-[11px] font-semibold', text)}>{label}</Text>
+      <Text className={cn('text-xs font-semibold', text)}>{label}</Text>
     </View>
   );
 }

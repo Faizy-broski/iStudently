@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { DoorOpen, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View, Pressable } from 'react-native';
+import { RefreshControl, View, Pressable } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { EmptyState, LoadingList } from '@/components/app/states';

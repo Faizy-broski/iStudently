@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Pressable } from 'react-native';
 
+import { BottomBar } from '@/components/app/layout';
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { CheckRow } from '@/features/admin/attendance';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -218,12 +219,12 @@ export default function HostelFields() {
           </Button>
         ) : null}
       </ScrollView>
-      <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
+      <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
         <Button onPress={save} disabled={saving}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{saving ? f('btn_saving') : f('btn_save')}</Text>
         </Button>
-      </View>
+      </BottomBar>
     </KeyboardAvoidingView>
   );
 }

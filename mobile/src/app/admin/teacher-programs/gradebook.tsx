@@ -6,7 +6,7 @@ import { View } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Picker } from '@/components/app/picker';
 import { useToast } from '@/components/app/toast';
 import { Badge } from '@/components/ui/badge';
@@ -108,6 +108,8 @@ export default function AdminGradebook() {
             <EmptyState icon={BookOpen} title={g('selectPrompt')} />
           ) : matrix.isLoading ? (
             <LoadingList rows={5} />
+          ) : matrix.error && !m ? (
+            <ErrorState message={matrix.error.message} onRetry={() => matrix.mutate()} />
           ) : !m || !m.students.length ? (
             <EmptyState title={g('noStudents')} />
           ) : (

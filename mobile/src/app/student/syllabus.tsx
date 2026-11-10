@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { AlignLeft, BookOpen, ExternalLink, FileText, Link2, Video } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -67,7 +68,7 @@ export default function StudentSyllabus() {
                           {r.description}
                         </Text>
                       ) : null}
-                      <Text className="text-muted-foreground text-[11px]">{formatDate(r.created_at)}</Text>
+                      <Text className="text-muted-foreground text-xs">{formatDate(r.created_at)}</Text>
                     </View>
                     {url ? (
                       <Pressable

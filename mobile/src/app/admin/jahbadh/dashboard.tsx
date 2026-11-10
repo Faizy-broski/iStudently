@@ -63,7 +63,7 @@ export default function JahbadhDashboard() {
                       <Text className="text-sm font-bold">{pct(s.meanPct)}</Text>
                     </View>
                     <ShareBar value={s.meanPct} />
-                    <Text variant="muted" className="text-[11px] leading-4">
+                    <Text variant="muted" className="text-xs leading-4">
                       {[
                         `${t('grades.recorded')} ${s.recorded}`,
                         `${t('grades.mean')} ${s.mean === null ? '—' : fmtMark(Math.round(s.mean * 10) / 10)}/${fmtMark(s.max)}`,

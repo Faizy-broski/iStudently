@@ -2,7 +2,8 @@ import type { TodayClass } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { AlertCircle, FileText, Printer } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { HeaderButton, Section } from '@/components/app/layout';
@@ -84,7 +85,7 @@ export default function StudentPrintSchedules() {
                   <View key={e.id} className={cn('flex-row items-center gap-3 px-4 py-3', i < list.length - 1 && 'border-info-soft dark:border-border border-b')}>
                     <View className="bg-info-soft min-w-[64px] items-center rounded-xl px-2 py-1.5">
                       <Text className="text-brand dark:text-brand-secondary text-xs font-bold">{hm(e.start_time)}</Text>
-                      <Text className="text-muted-foreground text-[10px]">{hm(e.end_time)}</Text>
+                      <Text className="text-muted-foreground text-2xs">{hm(e.end_time)}</Text>
                     </View>
                     <View className="flex-1 gap-0.5">
                       <Text className="text-sm font-semibold">{e.subject?.name || '—'}</Text>

@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { CreditCard, Download, Printer, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { Image } from 'expo-image';
 import QRCode from 'react-qr-code';
 

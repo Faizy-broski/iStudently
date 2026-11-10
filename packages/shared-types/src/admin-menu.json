@@ -826,12 +826,72 @@
         "href": "/admin/jahbadh-grades"
       },
       {
+        "title": "jahbadh_monthly_log",
+        "href": "/admin/jahbadh-grades/monthly"
+      },
+      {
+        "title": "jahbadh_quiz_grading",
+        "href": "/admin/jahbadh-grades/quiz-grading"
+      },
+      {
         "title": "jahbadh_report_cards",
         "href": "/admin/jahbadh-grades/report-cards"
       },
       {
         "title": "jahbadh_activities",
         "href": "/admin/jahbadh-grades/activities"
+      },
+      {
+        "title": "jahbadh_official",
+        "href": "/admin/jahbadh-grades/official"
+      },
+      {
+        "title": "jahbadh_monthly_cards",
+        "href": "/admin/jahbadh-grades/monthly-cards"
+      },
+      {
+        "title": "jahbadh_marking_sheets",
+        "href": "/admin/jahbadh-grades/marking-sheets"
+      },
+      {
+        "title": "jahbadh_infographics",
+        "href": "/admin/jahbadh-grades/infographics"
+      },
+      {
+        "title": "jahbadh_daily_attendance",
+        "href": "/admin/jahbadh-grades/daily-attendance"
+      },
+      {
+        "title": "jahbadh_import_names",
+        "href": "/admin/jahbadh-grades/import"
+      },
+      {
+        "title": "jahbadh_rollover",
+        "href": "/admin/jahbadh-grades/rollover"
+      },
+      {
+        "title": "jahbadh_insight_hub",
+        "href": "/admin/jahbadh-grades/insight"
+      },
+      {
+        "title": "jahbadh_workflow",
+        "href": "/admin/jahbadh-grades/workflow"
+      },
+      {
+        "title": "jahbadh_entry_progress",
+        "href": "/admin/jahbadh-grades/entry-progress"
+      },
+      {
+        "title": "jahbadh_entry_audit",
+        "href": "/admin/jahbadh-grades/entry-audit"
+      },
+      {
+        "title": "jahbadh_principal_dashboard",
+        "href": "/admin/jahbadh-grades/principal-dashboard"
+      },
+      {
+        "title": "jahbadh_insight_settings",
+        "href": "/admin/jahbadh-grades/insight-settings"
       },
       {
         "title": "jahbadh_analytics",

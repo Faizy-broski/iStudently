@@ -45,6 +45,49 @@ const answerRow = async (req: AuthRequest, res: Response, next: NextFunction) =>
   }
 }
 
+/**
+ * Teachers may only change, grade or close quizzes that are theirs: created by them, or attached to
+ * a course period they teach (primary or secondary). Admins pass. Missing rows are left to the handler.
+ */
+export async function teacherOwnsQuiz(req: AuthRequest, quizId: string | null | undefined): Promise<boolean> {
+  if (!quizId) return true
+  const { data, error } = await supabase.from('quizzes').select('created_by, course_period:course_periods(teacher_id, secondary_teacher_id)').eq('id', quizId).maybeSingle()
+  if (error) throw error
+  if (!data) return true
+  const q = data as any
+  if (q.created_by && q.created_by === req.profile?.id) return true
+  const cp = Array.isArray(q.course_period) ? q.course_period[0] : q.course_period
+  const staffId = req.profile?.staff_id
+  return !!staffId && !!cp && (cp.teacher_id === staffId || cp.secondary_teacher_id === staffId)
+}
+const ownQuiz = (pick: (req: AuthRequest) => Promise<string | null | undefined> | string | null | undefined) =>
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (req.profile?.role !== 'teacher') return next()
+    try {
+      if (await teacherOwnsQuiz(req, await pick(req))) return next()
+      return res.status(403).json({ data: null, error: 'You can only manage your own quizzes' })
+    } catch (e) {
+      next(e)
+    }
+  }
+const ownQuizById = ownQuiz((req) => req.params.id)
+/** `:mapId` must be a question row of `:quizId` (the ownership check above is on the quiz). */
+const mapOfQuiz = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { data } = await supabase.from('quiz_question_map').select('quiz_id').eq('id', req.params.mapId).maybeSingle()
+    if (data && (data as { quiz_id: string }).quiz_id !== req.params.quizId) return res.status(404).json({ data: null, error: 'Not found' })
+    next()
+  } catch (e) {
+    next(e)
+  }
+}
+const ownQuizParam = ownQuiz((req) => req.params.quizId)
+const ownQuizOfAnswer = ownQuiz(async (req) => {
+  const { data } = await supabase.from('quiz_answers').select('map:quiz_question_map(quiz_id)').eq('id', req.params.answerId).maybeSingle()
+  const map = (data as any)?.map
+  return (Array.isArray(map) ? map[0] : map)?.quiz_id ?? null
+})
+
 // File upload config (memory storage — same pattern as media-upload.routes.ts)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -100,23 +143,23 @@ router.put('/config', requireAdmin, ctrl.upsertQuizConfig)
 router.get('/', requireTeacher, ctrl.getQuizzes)
 router.get('/:id', requireTeacher, quizRow, ctrl.getQuiz)
 router.post('/', requireTeacher, ...bodyRefs, ctrl.createQuiz)
-router.put('/:id', requireTeacher, quizRow, ...bodyRefs, ctrl.updateQuiz)
-router.delete('/:id', requireTeacher, quizRow, ctrl.deleteQuiz)
-router.post('/:id/copy', requireTeacher, quizRow, bodyCopyTarget, ctrl.copyQuiz)                         // Premium
+router.put('/:id', requireTeacher, quizRow, ownQuizById, ...bodyRefs, ctrl.updateQuiz)
+router.delete('/:id', requireTeacher, quizRow, ownQuizById, ctrl.deleteQuiz)
+router.post('/:id/copy', requireTeacher, quizRow, ownQuizById, bodyCopyTarget, ctrl.copyQuiz)                         // Premium
 
 // Quiz Questions (map)
 router.get('/:quizId/questions', requireTeacher, quizParam, ctrl.getQuizQuestions)
-router.post('/:quizId/questions', requireTeacher, quizParam, bodyQuestion, ctrl.addQuestionToQuiz)
-router.put('/:quizId/questions/:mapId', requireTeacher, quizParam, mapRow, ctrl.updateQuizQuestion)
-router.delete('/:quizId/questions/:mapId', requireTeacher, quizParam, mapRow, ctrl.removeQuestionFromQuiz)
+router.post('/:quizId/questions', requireTeacher, quizParam, ownQuizParam, bodyQuestion, ctrl.addQuestionToQuiz)
+router.put('/:quizId/questions/:mapId', requireTeacher, quizParam, ownQuizParam, mapRow, mapOfQuiz, ctrl.updateQuizQuestion)
+router.delete('/:quizId/questions/:mapId', requireTeacher, quizParam, ownQuizParam, mapRow, mapOfQuiz, ctrl.removeQuestionFromQuiz)
 
 // Student submission — any authenticated user can submit or view their own
 router.get('/:quizId/submissions/:studentId', quizParam, ctrl.getStudentSubmission)
 router.post('/:quizId/submit', quizParam, ctrl.submitQuiz)
-router.put('/answers/:answerId/grade', requireTeacher, answerRow, ctrl.gradeAnswer)
+router.put('/answers/:answerId/grade', requireTeacher, answerRow, ownQuizOfAnswer, ctrl.gradeAnswer)
 
 // Teacher/admin: close a quiz and mark roster no-shows absent (0)
-router.post('/:quizId/close', requireTeacher, quizParam, ctrl.closeQuizAndSyncAbsentees)
+router.post('/:quizId/close', requireTeacher, quizParam, ownQuizParam, ctrl.closeQuizAndSyncAbsentees)
 
 // Answer Breakdown (Premium)
 router.get('/:quizId/answer-breakdown', requireTeacher, quizParam, ctrl.getAnswerBreakdown)

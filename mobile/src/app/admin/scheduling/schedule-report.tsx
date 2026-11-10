@@ -81,7 +81,7 @@ export default function ScheduleReport() {
     <View className="flex-row gap-2 pb-1">
       <Text className="text-muted-foreground flex-1 text-xs">{cols[0]}</Text>
       {cols.slice(1).map((c) => (
-        <Text key={c} className="text-muted-foreground w-11 text-center text-[11px]">
+        <Text key={c} className="text-muted-foreground w-11 text-center text-xs">
           {c}
         </Text>
       ))}

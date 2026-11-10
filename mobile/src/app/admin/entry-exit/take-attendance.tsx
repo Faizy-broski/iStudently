@@ -13,7 +13,7 @@ import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
-import { Initials } from '@/components/app/layout';
+import { Initials, BottomBar } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
 import { useAcademicYears } from '@/features/admin/grades';
 import { useAttendanceScope } from '@/features/admin/attendance';
@@ -211,8 +211,8 @@ export default function EntryExitTakeAttendance() {
                     <Text className="text-muted-foreground text-xs">{[r.student_number || '—', course?.gradeName || '—'].join(' · ')}</Text>
                   </View>
                   <View className="items-end">
-                    <Text className="text-muted-foreground text-[10px]">{`${a('table_col_evening_leave')}: `}<Text className="text-xs font-medium text-chart-6">{el ? (el.authorized_return_time?.slice(0, 5) ?? a('label_yes')) : '—'}</Text></Text>
-                    <Text className="text-muted-foreground text-[10px]">{`${a('table_col_time')}: `}<Text className="text-xs font-medium">{rec ? time(rec.recorded_at) : '—'}</Text></Text>
+                    <Text className="text-muted-foreground text-2xs">{`${a('table_col_evening_leave')}: `}<Text className="text-xs font-medium text-chart-6">{el ? (el.authorized_return_time?.slice(0, 5) ?? a('label_yes')) : '—'}</Text></Text>
+                    <Text className="text-muted-foreground text-2xs">{`${a('table_col_time')}: `}<Text className="text-xs font-medium">{rec ? time(rec.recorded_at) : '—'}</Text></Text>
                   </View>
                 </View>
                 <View className="flex-row gap-2">
@@ -239,12 +239,12 @@ export default function EntryExitTakeAttendance() {
           }}
           contentContainerClassName="flex-grow pb-24"
         />
-        <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
+        <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
           <Button onPress={save} disabled={saving || !activeEntryId || !rows.length}>
             <Icon as={Save} className="text-primary-foreground size-4" />
             <Text>{a('btn_save')}</Text>
           </Button>
-        </View>
+        </BottomBar>
       </View>
     </>
   );

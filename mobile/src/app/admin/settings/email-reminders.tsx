@@ -19,7 +19,7 @@ import { CheckRow } from '@/features/admin/attendance';
 import { useSession } from '@/features/auth/session';
 import { adminSchool } from '@/lib/api';
 import { useApi } from '@/lib/data';
-import { IconTile } from '@/components/app/layout';
+import { IconTile, BottomBar } from '@/components/app/layout';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -164,12 +164,12 @@ export default function EmailRemindersSettings() {
           </CardContent>
         </Card>
       </ScrollView>
-      <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
+      <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
         <Button onPress={save} disabled={saving}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{saving ? e('btn_saving') : e('btn_save')}</Text>
         </Button>
-      </View>
+      </BottomBar>
     </View>
   );
 }

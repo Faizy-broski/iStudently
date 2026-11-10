@@ -2,7 +2,9 @@ import type { StudentForAssign } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { BottomBar } from '@/components/app/layout';
+import { FlatList } from '@/components/app/lists';
 import { useSWRConfig } from 'swr';
 
 import { DateField } from '@/components/app/date-field';
@@ -168,11 +170,11 @@ export default function MassAssign() {
             </Pressable>
           )}
         />
-        <View className="border-border border-t p-4">
+        <BottomBar className="border-border border-t p-4">
           <Button onPress={assign} disabled={busy || selected.size === 0}>
             <Text>{m('assign_button')}</Text>
           </Button>
-        </View>
+        </BottomBar>
       </View>
     </>
   );

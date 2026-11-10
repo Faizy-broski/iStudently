@@ -139,7 +139,7 @@ export default function AppealThread() {
                   {c.is_internal_note ? (
                     <Badge variant="outline">
                       <Icon as={Lock} className="text-foreground size-2.5" />
-                      <Text className="text-[10px]">{p('internal_note_badge')}</Text>
+                      <Text className="text-2xs">{p('internal_note_badge')}</Text>
                     </Badge>
                   ) : null}
                   <Text className="text-muted-foreground text-xs">{when(c.created_at)}</Text>

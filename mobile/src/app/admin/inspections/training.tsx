@@ -73,11 +73,11 @@ export default function TrainingPrescriptions() {
                   {x.auto_suggested ? (
                     <Badge variant="outline">
                       <Icon as={Sparkles} className="text-foreground size-2.5" />
-                      <Text className="text-[10px]">{p('auto_suggested_badge')}</Text>
+                      <Text className="text-2xs">{p('auto_suggested_badge')}</Text>
                     </Badge>
                   ) : null}
                   <Badge variant="secondary">
-                    <Text className="text-[10px]">{p(`status_${x.status}`)}</Text>
+                    <Text className="text-2xs">{p(`status_${x.status}`)}</Text>
                   </Badge>
                 </View>
                 {x.reason ? <Text className="text-sm">{x.reason}</Text> : null}

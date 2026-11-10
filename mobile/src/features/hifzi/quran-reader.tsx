@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Picker } from '@/components/app/picker';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
@@ -95,7 +96,7 @@ export function QuranReader() {
                   </Text>
                   {ayahs.length ? (
                     <Text className="text-muted-foreground border-border border-t pt-3 text-center text-xs" onPress={() => openBrowserAsync('https://tanzil.net')}>
-                      Quran text: <Text className="text-muted-foreground text-xs underline">Tanzil Project</Text> (CC BY 3.0)
+                      {isAr ? 'نص القرآن: ' : 'Quran text: '}<Text className="text-muted-foreground text-xs underline">Tanzil Project</Text> (CC BY 3.0)
                     </Text>
                   ) : null}
                 </CardContent>

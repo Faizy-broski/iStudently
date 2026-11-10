@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { AlertCircle, CheckCircle2, ChevronRight, Clock, HelpCircle, ListTodo, XCircle } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, Section, StatTile, StatTiles } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -29,7 +30,7 @@ function Pill({ label, box, text, icon }: { label: string; box: string; text: st
   return (
     <View className={cn('flex-row items-center gap-1 rounded-full px-2.5 py-1', box)}>
       {icon ? <Icon as={icon} className={cn('size-3', text)} /> : null}
-      <Text className={cn('text-[11px] font-semibold', text)}>{label}</Text>
+      <Text className={cn('text-xs font-semibold', text)}>{label}</Text>
     </View>
   );
 }

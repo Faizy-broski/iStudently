@@ -18,7 +18,7 @@ export default function TeacherTabs() {
     <Tabs tabBar={(props) => <PillTabBar {...props} />} screenOptions={{ headerShown: true, headerTitleAlign: 'left' }}>
       <Tabs.Screen name="index" options={{ headerShown: false, title: t('app.ad_tab_dashboard'), tabBarIcon: tabIcon(LayoutDashboard) }} />
       <Tabs.Screen name="classes" options={{ title: t('app.te_tab_classes'), tabBarIcon: tabIcon(BookOpen) }} />
-      <Tabs.Screen name="students" options={{ title: t('app.te_tab_students'), tabBarIcon: tabIcon(Users) }} />
+      <Tabs.Screen name="people" options={{ title: t('app.te_tab_students'), tabBarIcon: tabIcon(Users) }} />
       <Tabs.Screen name="more" options={{ headerShown: false, title: t('app.ad_tab_more'), tabBarIcon: tabIcon(Menu) }} />
     </Tabs>
   );

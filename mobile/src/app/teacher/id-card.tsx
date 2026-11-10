@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { Printer } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import QRCode from 'react-qr-code';
 
 import { colors } from '@/lib/colors';
@@ -49,7 +50,7 @@ export default function TeacherIdCard() {
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
         <Text className="text-muted-foreground text-sm">{k('pageSubtitle')}</Text>
         <HeroCard className="gap-4">
-          <Text className="text-xs font-semibold tracking-widest text-white/80 uppercase">{k('staffIdentityCard')}</Text>
+          <Text className="text-xs font-semibold text-white/80 uppercase">{k('staffIdentityCard')}</Text>
           <View className="flex-row items-center gap-4">
             <View className="size-16 items-center justify-center rounded-full border-2 border-white/40 bg-white/15">
               <Text className="text-2xl font-bold text-white">{initials}</Text>

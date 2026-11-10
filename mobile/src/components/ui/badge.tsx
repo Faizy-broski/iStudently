@@ -35,7 +35,7 @@ const badgeVariants = cva(
   }
 );
 
-const badgeTextVariants = cva('text-[11px] font-semibold', {
+const badgeTextVariants = cva('text-xs font-semibold', {
   variants: {
     variant: {
       default: 'text-brand dark:text-brand-secondary',

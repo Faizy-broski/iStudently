@@ -9,9 +9,9 @@ const me = (role: string, gates: Partial<Me['gates']> = {}): Me =>
     gates: { force_password_change: false, two_fa: { state: 'ok' }, agreement: null, ...gates },
   }) as unknown as Me
 
-describe('resolveDestination (release build: super admin only)', () => {
+describe('resolveDestination (release build: staged roles)', () => {
   it('sends unreleased roles to "Coming soon" before any sign-in step', () => {
-    expect(resolveDestination(me('teacher', { force_password_change: true }))).toEqual({ kind: 'coming_soon' })
+    expect(resolveDestination(me('librarian', { force_password_change: true }))).toEqual({ kind: 'coming_soon' })
     expect(resolveDestination(me('parent'))).toEqual({ kind: 'coming_soon' })
   })
   it('enforces sign-in steps in the web order for released roles', () => {

@@ -4,7 +4,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp, FileSpreadsheet, FileText, Share2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, FlatList, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 import QRCode from 'react-qr-code';
 
 import { colors } from '@/lib/colors';

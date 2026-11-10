@@ -18,7 +18,7 @@ export function StatusChip({ label, tone, className }: { label: string; tone: Ch
   const [bg, fg] = TONES[tone];
   return (
     <View className={cn('rounded-full px-2.5 py-1', bg, className)}>
-      <Text className={cn('text-[11px] font-semibold', fg)}>{label}</Text>
+      <Text className={cn('text-xs font-semibold', fg)}>{label}</Text>
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { CircleDot, Trash2, Upload, Video, Image as ImageIcon } from 'lucide-react-native';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { LoadingList, EmptyState } from '@/components/app/states';

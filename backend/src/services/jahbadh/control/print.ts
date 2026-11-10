@@ -6,7 +6,9 @@ import { bandHtml, footHtml, page, printHeader, type JgPrintHeader } from '../pr
 import { listCommittees, loadSecrets, loadStudents, logJc, need, type JcCommittee, type JcContext, type JcStudentRow } from './core'
 import { listDays, listInvigilation, listInvigilators, type JcDay } from './planning'
 import { buildQrPayload, qrSvg } from './qr'
-import { results } from './scores'
+import { comparison } from './comparison'
+import { secondRoundList } from './round2'
+import { honorBoardView, quality, results } from './scores'
 
 /**
  * Printable documents of exam control (brief C6.5): A4 RTL, school header, Jahbadh footer. Committee
@@ -17,12 +19,13 @@ export const JC_DOCS = [
   'general_list', 'secret_lists', 'committee_mirror', 'envelope_mirror', 'delivery_sheet', 'student_cards', 'booklet_covers',
   'seating_map', 'timetable', 'invigilation', 'attendance_sheet', 'minutes_open', 'minutes_absence', 'minutes_seal', 'minutes_incident',
   'results', 'honor_board', 'certificates',
+  'violations_log', 'quality_report', 'second_round_list', 'comparison',
 ] as const
 export type JcDoc = (typeof JC_DOCS)[number]
 
 const CONFIDENTIAL: JcDoc[] = ['general_list', 'secret_lists', 'booklet_covers']
 const NEEDS_DAY: JcDoc[] = ['attendance_sheet', 'minutes_open', 'minutes_absence', 'minutes_seal', 'minutes_incident']
-const LANDSCAPE: JcDoc[] = ['general_list', 'timetable', 'invigilation', 'results']
+const LANDSCAPE: JcDoc[] = ['general_list', 'timetable', 'invigilation', 'results', 'quality_report', 'comparison']
 
 const breakAfter = (i: number, n: number) => (i < n - 1 ? 'break-after:page;page-break-after:always;' : '')
 const table = (head: string[], rows: (string | number | null)[][], widths?: string[]) =>
@@ -80,7 +83,7 @@ async function invigilatorNames(ctx: JcContext) {
   return new Map(invs.map((x) => [x.staff_id, x.name]))
 }
 
-export async function renderDoc(ctx: JcContext, doc: JcDoc, opts: { committee_id?: string | null; day_id?: string | null }): Promise<{ pdf: Buffer; name: string }> {
+export async function renderDoc(ctx: JcContext, doc: JcDoc, opts: { committee_id?: string | null; day_id?: string | null; with_session_id?: string | null }): Promise<{ pdf: Buffer; name: string }> {
   if (!JC_DOCS.includes(doc)) throw new JgError(400, 'Unknown document')
   if (CONFIDENTIAL.includes(doc)) need(ctx.can.secret, 'This document contains secret numbers (control chief only)')
   else need(ctx.can.manage || ctx.can.examday)
@@ -111,19 +114,32 @@ export async function renderDoc(ctx: JcContext, doc: JcDoc, opts: { committee_id
       return `${title(`${heading} — ${c.name}${c.room_label ? ` — ${c.room_label}` : ''}`, sessionLine(d))}${table(head, rows, ['7%', '53%', '20%', '20%'])}${extra}`
     })
   } else if (doc === 'student_cards') {
+    // Workbook «بطاقات الطلبة»: 8 cards per A4 (2 × 4) with photo, seat number, committee and paper model.
     const list = d.students.filter((x) => x.committee_id && (!cid || x.committee_id === cid)).sort((a, b) => (a.seat_number ?? 0) - (b.seat_number ?? 0))
+    if (!list.length) throw new JgError(404, 'No students')
+    const modelAr = (m: string | null) => (m === 'A' ? 'نموذج (أ)' : m === 'B' ? 'نموذج (ب)' : '')
     const cards = await Promise.all(
       list.map(async (x) => {
         const c = d.committees.find((k) => k.id === x.committee_id)
         const qr = s.qr_enabled && s.qr_on_cards ? await qrSvg(buildQrPayload('card', ctx.session.session_code, { seat: x.seat_number ?? 0 })) : ''
-        return `<div style="border:1.5px solid var(--jg-navy);border-radius:6px;padding:6px;display:flex;gap:6px;align-items:center;height:62mm;break-inside:avoid">
-          <div style="flex:1"><div style="font-weight:800;color:var(--jg-navy);font-size:11px">${esc(d.header.schoolName)}</div><div class="muted" style="font-size:8px">${esc(ctx.session.name)}</div>
-          <div style="font-weight:800;font-size:12px;margin-top:4px">${esc(x.name)}</div><div>${esc(x.grade_level_name)}</div><div>${esc(c?.name ?? '')}${c?.room_label ? ` — ${esc(c.room_label)}` : ''}</div>
-          <div style="font-size:20px;font-weight:900;color:var(--jg-royal)" class="num">${x.seat_number}</div>${x.special_case ? `<div class="chip t-warning">${esc(JC_SPECIAL_CASES_AR[x.special_case as keyof typeof JC_SPECIAL_CASES_AR] ?? '')}</div>` : ''}</div>
-          ${qr ? `<div style="width:${Math.round(Math.max(15, s.qr_size_mm - 5) * 1.3)}mm">${qr}</div>` : ''}</div>`
+        const photo = x.photo_url
+          ? `<img src="${esc(x.photo_url)}" style="width:20mm;height:25mm;object-fit:cover;border:1px solid var(--jg-line);border-radius:3px">`
+          : `<div style="width:20mm;height:25mm;border:1px dashed var(--jg-muted);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:7px" class="muted">صورة</div>`
+        return `<div style="border:1.5px solid var(--jg-navy);border-radius:6px;padding:4px 6px;display:flex;gap:5px;align-items:center;height:60mm;box-sizing:border-box;overflow:hidden">
+          ${photo}
+          <div style="flex:1;min-width:0"><div style="font-weight:800;color:var(--jg-navy);font-size:10px">${esc(d.header.schoolName)}</div><div class="muted" style="font-size:7.5px">${esc(ctx.session.name)}</div>
+          <div style="font-weight:800;font-size:11px;margin-top:3px">${esc(x.name)}</div><div style="font-size:9px">${esc(x.grade_level_name)}</div><div style="font-size:9px">${esc(c?.name ?? '')}${c?.room_label ? ` — ${esc(c.room_label)}` : ''}</div>
+          <div style="font-size:19px;font-weight:900;color:var(--jg-royal)" class="num">${x.seat_number}</div>
+          ${s.paper_models && x.paper_model ? `<div class="chip" style="font-size:8px">${modelAr(x.paper_model)}</div>` : ''}
+          ${x.special_case ? `<div class="chip t-warning" style="font-size:8px">${esc(JC_SPECIAL_CASES_AR[x.special_case as keyof typeof JC_SPECIAL_CASES_AR] ?? '')}</div>` : ''}</div>
+          ${qr ? `<div style="width:${Math.round(Math.max(15, s.qr_size_mm - 6) * 1.2)}mm">${qr}</div>` : ''}</div>`
       }),
     )
-    body = `${bandHtml(d.header, 'كنترول جهبذ')}${title('بطاقات الطلبة', sessionLine(d))}<div style="display:grid;grid-template-columns:1fr 1fr;gap:5mm">${cards.join('')}</div>${footHtml()}`
+    const pages: string[][] = []
+    for (let i = 0; i < cards.length; i += 8) pages.push(cards.slice(i, i + 8))
+    body = pages
+      .map((p, i) => `<section style="${breakAfter(i, pages.length)}">${bandHtml(d.header, 'كنترول جهبذ')}<div style="display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:60mm;gap:3mm">${p.join('')}</div>${footHtml(`بطاقات الطلبة — ${i + 1}/${pages.length}`)}</section>`)
+      .join('')
   } else if (doc === 'booklet_covers') {
     const list = d.students.filter((x) => x.committee_id && (!cid || x.committee_id === cid)).sort((a, b) => (a.global_order ?? 0) - (b.global_order ?? 0))
     if (!list.length) throw new JgError(404, 'No students')
@@ -145,7 +161,8 @@ export async function renderDoc(ctx: JcContext, doc: JcDoc, opts: { committee_id
               <div style="text-align:center"><div class="muted">الرقم السري</div><div class="num" style="font-size:34px;font-weight:900;letter-spacing:3px">${secret}</div></div>
             </div>
             <table><tr>${q}<th>المجموع</th></tr><tr>${Array.from({ length: s.q_count + 1 }, () => '<td style="height:12mm"></td>').join('')}</tr></table>
-            <div class="sign"><div>اسم المصحح: ........................</div><div>التوقيع: ..................</div></div>
+            <table style="margin-top:3mm"><tr><td class="start" style="height:9mm">المجموع كتابةً: ................................................................</td></tr></table>
+            <div class="sign"><div>اسم المصحح: ........................<br><span class="muted">التوقيع: ..................</span></div><div>اسم المراجع: ........................<br><span class="muted">التوقيع: ..................</span></div></div>
           </div>
           <div style="margin:8mm 0 4mm;border-top:2px dashed var(--jg-muted);position:relative"><span style="position:absolute;top:-9px;inset-inline-start:0;background:#fff;padding:0 4px">✂</span></div>
           <div style="border:1.5px solid var(--jg-royal);border-radius:8px;padding:8px;display:flex;align-items:center;gap:8mm">
@@ -211,7 +228,62 @@ export async function renderDoc(ctx: JcContext, doc: JcDoc, opts: { committee_id
       const heading = { minutes_open: 'محضر فتح مظروف الأسئلة', minutes_absence: 'محضر غياب الطلبة', minutes_seal: 'محضر غلق مغلف الإجابة وتسليمه', minutes_incident: 'محضر واقعة / مخالفة' }[doc as 'minutes_open']
       return `${title(heading, sessionLine(d))}${info}${text}${signLine(['الملاحظ الأول', 'الملاحظ الثاني', s.chief_name ? `رئيس الكنترول: ${s.chief_name}` : 'رئيس الكنترول'])}`
     })
-  } else if (doc === 'results' || doc === 'honor_board' || doc === 'certificates') {
+  } else if (doc === 'honor_board') {
+    // Available before unmasking: names show «يظهر الاسم بعد فك السرية» until then (C6.5 #12).
+    const hb = await honorBoardView(ctx)
+    const medal = (p: number) => (p === 1 ? '🥇 الأول' : p === 2 ? '🥈 الثاني' : p === 3 ? '🥉 الثالث' : `${p}`)
+    body = `${bandHtml(d.header, 'كنترول جهبذ')}${title('لوحة الشرف', sessionLine(d))}${table(['الصف', 'المركز', 'الاسم', 'النسبة'], hb.rows.map((b) => [b.grade_level_name, medal(b.place), b.name, b.pct === null ? '' : `${Math.round(b.pct * 1000) / 10}%`]), ['22%', '18%', '40%', '20%'])}${footHtml()}`
+  } else if (doc === 'violations_log') {
+    // Workbook «سجل المخالفات»: summary by committee and by type, then every violation.
+    const { data: vio } = await supabase.from('jc_violations').select('*').eq('session_id', ctx.session.id).order('recorded_at')
+    const all = (vio ?? []).filter((v: any) => !opts.day_id || v.exam_day_id === opts.day_id)
+    const stOf = new Map(d.students.map((x) => [x.id, x]))
+    const byCommittee = d.committees.map((c) => [c.name, all.filter((v: any) => stOf.get(v.session_student_id)?.committee_id === c.id).length] as const).filter(([, n]) => n)
+    const types = [...new Set(all.map((v: any) => String(v.type)))]
+    const rows = all.map((v: any, k: number) => {
+      const x = stOf.get(v.session_student_id)
+      const dayRow = d.days.find((y) => y.id === v.exam_day_id)
+      return [k + 1, x?.name ?? '', x?.seat_number ?? '', d.committees.find((c) => c.id === x?.committee_id)?.name ?? '', dayRow ? `${dayRow.exam_date} ${dayRow.subject_name}` : '', v.type, v.action_taken ?? '']
+    })
+    body = `${bandHtml(d.header, 'كنترول جهبذ')}${title('سجل المخالفات', sessionLine(d))}
+      <div style="display:flex;gap:6mm"><div style="flex:1">${table(['اللجنة', 'عدد المخالفات'], byCommittee.map(([n, c]) => [n, c]), ['70%', '30%'])}</div>
+      <div style="flex:1">${table(['نوع المخالفة', 'العدد'], types.map((t) => [t, all.filter((v: any) => v.type === t).length]), ['70%', '30%'])}</div></div>
+      <div style="margin-top:4mm">${table(['م', 'الاسم', 'رقم الجلوس', 'اللجنة', 'اليوم والمادة', 'المخالفة', 'الإجراء'], rows, ['5%', '27%', '11%', '11%', '18%', '14%', '14%'])}</div>
+      <p>المجموع: ${all.length}</p>${signLine([s.chief_name ? `رئيس الكنترول: ${s.chief_name}` : 'رئيس الكنترول'])}${footHtml()}`
+  } else if (doc === 'quality_report') {
+    const q = await quality(ctx)
+    const pct = (v: number | null) => (v === null ? '' : `${Math.round(v * 1000) / 10}%`)
+    const schoolTable = table(['الصف', 'الطلبة', 'المواد', 'اكتمال الرصد', 'المتوسط', 'نسبة النجاح', 'المتفوقون', 'يحتاجون دعماً'],
+      [...q.school.rows, q.school.total].map((r) => [r.name, r.students, r.subjects, pct(r.completion), pct(r.average), pct(r.pass_rate), r.top, r.support]))
+    const gradeTables = q.grades.map((g) => `<div style="margin-top:4mm;break-inside:avoid"><div style="font-weight:800;color:var(--jg-navy)">${esc(g.name)}</div>${table(
+      ['المادة', 'العظمى', 'المرصود', 'المتوسط', 'نسبة النجاح', 'ممتاز', 'ضعيف', 'الحكم'],
+      g.subjects.map((x) => [x.name, x.max, x.entered, x.meanPct === null ? '' : pct(x.meanPct), pct(x.passRate), pct(x.excellenceRate), pct(x.weakRate), x.verdict ?? '']),
+    )}</div>`).join('')
+    const bias = q.bias.filter((b) => b.verdict !== 'normal')
+    body = `${bandHtml(d.header, 'كنترول جهبذ')}${title('تقرير الجودة', sessionLine(d))}${schoolTable}${gradeTables}
+      ${bias.length ? `<div style="margin-top:4mm;break-inside:avoid"><div style="font-weight:800">مؤشرات تحيّز التصحيح (للمراجعة لا للتصحيح التلقائي)</div>${table(['المصحح', 'المادة', 'الطلبة', 'الانحراف', 'الحكم'], bias.map((b) => [b.grader, b.subjectKey, b.students, `${b.deviation}%`, b.verdict === 'strict' ? 'متشدد' : 'متساهل']))}</div>` : ''}
+      ${signLine([s.chief_name ? `رئيس الكنترول: ${s.chief_name}` : 'رئيس الكنترول', `مدير/ة المدرسة${d.header.principal ? `: ${d.header.principal}` : ''}`])}${footHtml()}`
+  } else if (doc === 'second_round_list') {
+    const r2 = await secondRoundList(ctx)
+    const rows = r2.students.map((x, k) => [k + 1, x.name, x.grade_level_name, x.seat_number, x.round2_seat ?? '', x.subjects.join('، '), x.subjects.length])
+    const counts = [...new Set(r2.students.flatMap((x) => x.subjects))].map((sub) => [sub, r2.students.filter((x) => x.subjects.includes(sub)).length])
+    body = `${bandHtml(d.header, 'كنترول جهبذ')}${title(`قائمة الدور الثاني${r2.source === 'provisional' ? ' — مبدئية' : ''}`, sessionLine(d))}
+      <div class="lines" style="margin:2mm 0;${r2.source === 'provisional' ? 'color:var(--jg-red);font-weight:700' : ''}">${esc(r2.note)}</div>
+      ${table(['م', 'الاسم', 'الصف', 'رقم الجلوس', 'رقم جلوس الدور الثاني', 'المواد', 'عددها'], rows, ['5%', '30%', '13%', '11%', '13%', '20%', '8%'])}
+      <div style="display:flex;gap:6mm;margin-top:4mm"><div style="flex:1">${table(['المادة', 'عدد الطلبة'], counts, ['70%', '30%'])}</div>
+      <div style="flex:1">${r2.excluded_over_limit.length ? table(['راسب لتجاوز حد المادة 51', 'عدد المواد'], r2.excluded_over_limit.map((x) => [x.name, x.failed]), ['70%', '30%']) : ''}</div></div>
+      ${signLine([s.chief_name ? `رئيس الكنترول: ${s.chief_name}` : 'رئيس الكنترول', `مدير/ة المدرسة${d.header.principal ? `: ${d.header.principal}` : ''}`])}${footHtml()}`
+  } else if (doc === 'comparison') {
+    const cmp = await comparison(ctx, opts.with_session_id ?? null)
+    if (!cmp.previous) throw new JgError(404, 'No earlier session to compare with')
+    const pct = (v: number | null | undefined) => (v === null || v === undefined ? '' : `${Math.round(v * 1000) / 10}%`)
+    const sign = (v: number | null | undefined) => (v === null || v === undefined ? '' : `${v > 0 ? '▲ +' : v < 0 ? '▼ ' : '● '}${Math.round(v * 1000) / 10}`)
+    const gradesTable = table(['الصف', `المتوسط — ${cmp.current.name}`, `المتوسط — ${cmp.previous.name}`, 'الفرق', 'نسبة النجاح الآن', 'نسبة النجاح سابقاً', 'الفرق'],
+      cmp.grades.map((g) => [g.name, pct(g.current.average), pct(g.previous?.average), sign(g.delta?.average), pct(g.current.pass_rate), pct(g.previous?.pass_rate), sign(g.delta?.pass_rate)]))
+    const perSubject = cmp.grades.map((g) => `<div style="margin-top:3mm;break-inside:avoid"><div style="font-weight:800">${esc(g.name)}</div>${table(['المادة', 'المتوسط الآن', 'سابقاً', 'الفرق', 'النجاح الآن', 'سابقاً', 'الفرق'],
+      g.subjects.map((x) => [x.name, pct(x.current.mean_pct), pct(x.previous?.mean_pct), sign(x.delta?.mean_pct), pct(x.current.pass_rate), pct(x.previous?.pass_rate), sign(x.delta?.pass_rate)]))}</div>`).join('')
+    body = `${bandHtml(d.header, 'كنترول جهبذ')}${title('المقارنة مع دورة سابقة', `${cmp.current.name} ↔ ${cmp.previous.name}`)}${gradesTable}${perSubject}${footHtml()}`
+  } else if (doc === 'results' || doc === 'certificates') {
     const r = await results(ctx)
     if (doc === 'results') {
       body = r.grades.map((g, i) => {
@@ -222,9 +294,6 @@ export async function renderDoc(ctx: JcContext, doc: JcDoc, opts: { committee_id
         }), x.pct === null ? '' : `${Math.round(x.pct * 1000) / 10}%`])
         return `<section style="${breakAfter(i, r.grades.length)}">${bandHtml(d.header, 'كنترول جهبذ')}${title(`نتائج الامتحان — ${g.name}`, sessionLine(d))}${table(['رقم الجلوس', 'الاسم', ...g.subjects.map((sub) => `${sub.name} (${sub.max})`), 'النسبة'], rows)}${signLine(['رئيس الكنترول', 'مدير/ة المدرسة'])}${footHtml()}</section>`
       }).join('')
-    } else if (doc === 'honor_board') {
-      const medal = (p: number) => (p === 1 ? '🥇 الأول' : p === 2 ? '🥈 الثاني' : p === 3 ? '🥉 الثالث' : `${p}`)
-      body = `${bandHtml(d.header, 'كنترول جهبذ')}${title('لوحة الشرف', sessionLine(d))}${table(['الصف', 'المركز', 'الاسم', 'النسبة'], r.honor_board.map((b) => [b.grade_level_name, medal(b.place), b.name, b.pct === null ? '' : `${Math.round(b.pct * 1000) / 10}%`]), ['22%', '18%', '40%', '20%'])}${footHtml()}`
     } else {
       if (!r.honor_board.length) throw new JgError(404, 'No results yet')
       body = r.honor_board.map((b, i) => `<section style="${breakAfter(i, r.honor_board.length)}">${bandHtml(d.header, 'كنترول جهبذ')}

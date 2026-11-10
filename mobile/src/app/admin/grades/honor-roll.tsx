@@ -4,7 +4,8 @@ import { Stack } from 'expo-router';
 import { FileDown, ImagePlus, Medal, Plus, Printer, Trophy, X } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -300,7 +301,7 @@ export default function HonorRoll() {
                     <Initials name={name} size={32} tone={x.honor_level === 'high_honor' ? 'warning' : 'brand'} />
                     <View className="flex-1">
                       <Text className="text-sm font-medium">{name}</Text>
-                      <Text variant="muted" className="text-[11px]">
+                      <Text variant="muted" className="text-xs">
                         {[x.grade_level, x.section, levelLabel(x.honor_level)].filter(Boolean).join(' · ')}
                       </Text>
                     </View>

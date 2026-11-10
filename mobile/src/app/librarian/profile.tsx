@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { Briefcase, Building, Calendar, Clock, Hash, Mail, Phone } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import QRCode from 'react-qr-code';
 
 import { colors } from '@/lib/colors';
@@ -43,7 +44,7 @@ export default function LibrarianProfile() {
           photo={profile.profile_photo_url}
           chips={
             <View className="rounded-full bg-white/15 px-2.5 py-1">
-              <Text className="text-[11px] font-semibold text-white">{role}</Text>
+              <Text className="text-xs font-semibold text-white">{role}</Text>
             </View>
           }
         />

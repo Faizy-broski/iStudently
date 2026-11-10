@@ -2,9 +2,6 @@ import { supabase } from '../../config/supabase'
 import {
   analyzeMeasure,
   analyzeTest,
-  competitionRanks,
-  computeSubject,
-  decisionFor,
   decisionTone,
 
   groupOf,
@@ -15,21 +12,17 @@ import {
   riskOf,
   rubricMark,
   stats,
-  studentOverall,
   type JgBloomLevel,
   type JgCell,
   type JgQuestion,
   type JgRubricCriterion,
+  type JgStudentResult,
   type JgSubjectResult,
 } from '../../lib/jahbadh'
 import { logJgAudit } from './audit.service'
 import {
-  cellsFor,
-  engineComponents,
+  computeSection,
   JgError,
-  loadMarks,
-  loadRound2,
-  ruleInput,
   saveMarks,
   sectionStudents,
   type JgActor,
@@ -62,24 +55,23 @@ interface SubjectRow {
 interface StudentRow {
   student: JgStudent
   subjects: SubjectRow[]
+  /** School rules applied (Art. 122 / 51, completeness): decision and rank come from here. */
+  resolved: JgStudentResult
+  rank: number | null
 }
 
 /** Every student × subject of a section with results and per-stage works/exam splits (entered components only). */
 async function sectionData(ctx: JgSectionContext): Promise<StudentRow[]> {
   const subjects = ctx.grade.subjects
-  const [students, marks, r2] = await Promise.all([
-    sectionStudents(ctx.section.id),
-    loadMarks(ctx, subjects.flatMap((s) => s.components.map((c) => c.id))),
-    loadRound2(ctx, subjects.map((s) => s.id)),
-  ])
-  const rule = ruleInput(ctx.grade.rule)
-  return students.map((student) => {
-    const cells = cellsFor(marks, student.id)
+  const computed = await computeSection(ctx)
+  return computed.students.map(({ student, marks, resolved, rank }) => {
+    const cells = marks.cells as Record<string, JgCell>
     return {
       student,
-      subjects: subjects.map((s) => {
-        const round2 = r2.find((x) => x.student_id === student.id && x.jg_subject_id === s.id)?.value ?? null
-        const res = computeSubject(engineComponents(s), cells, round2, rule, ctx.settings.grading_scale)
+      resolved,
+      rank,
+      subjects: subjects.map((s, j) => {
+        const res = resolved.subjects[j].result
         const stages: Record<number, Split> = {}
         for (const n of s.meta.stages) {
           const sp: Split = { total: null, max: s.meta.stageMax[n], works: 0, worksMax: 0, exam: 0, examMax: 0 }
@@ -106,18 +98,8 @@ async function sectionData(ctx: JgSectionContext): Promise<StudentRow[]> {
 
 const gradeStages = (ctx: JgSectionContext) => [...new Set(ctx.grade.subjects.flatMap((s) => s.meta.stages))].sort((a, b) => a - b)
 
-function overallOf(ctx: JgSectionContext, row: StudentRow) {
-  const rule = ruleInput(ctx.grade.rule)
-  const ov = studentOverall(row.subjects.map((x) => ({ name: x.subject.short_name, result: x.res })), rule, {
-    followRate: ctx.settings.follow_rate,
-    scale: ctx.settings.grading_scale,
-  })
-  const decision = decisionFor(
-    { noFail: ctx.grade.rule.no_fail, certificateName: ctx.grade.rule.certificate_name, nextGradeName: ctx.grade.rule.next_grade_name },
-    ov,
-    row.subjects.length,
-  )
-  return { ...ov, decision }
+function overallOf(_ctx: JgSectionContext, row: StudentRow) {
+  return { ...row.resolved.overall, decision: row.resolved.decision ?? '' }
 }
 
 /** Overall share of one stage across subjects (Σ totals / Σ max of subjects with data in that stage). */
@@ -223,7 +205,7 @@ export async function studentProfile(ctx: JgSectionContext, studentId: string) {
   const row = rows[idx]
   const stages = gradeStages(ctx)
   const overall = rows.map((r) => overallOf(ctx, r))
-  const ranks = competitionRanks(overall.map((o) => o.pct))
+  const ranks = rows.map((r) => r.rank)
   const subjects = row.subjects.map((x, j) => {
     const classPcts = rows.map((r) => r.subjects[j].res.finalPct).filter((p): p is number => p !== null)
     const sp = (n: number) => (x.stages[n] && x.stages[n].total !== null && x.stages[n].max ? x.stages[n].total! / x.stages[n].max : null)

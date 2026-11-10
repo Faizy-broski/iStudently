@@ -72,13 +72,13 @@ export function EmptyCard({ text }: { text: string }) {
   )
 }
 
-export function DocButton({ sessionId, doc, committeeId, dayId, label, variant = "outline" }: { sessionId: string; doc: JcDoc; committeeId?: string | null; dayId?: string | null; label?: string; variant?: "outline" | "default" | "ghost" }) {
+export function DocButton({ sessionId, doc, committeeId, dayId, withSessionId, label, variant = "outline" }: { sessionId: string; doc: JcDoc; committeeId?: string | null; dayId?: string | null; withSessionId?: string | null; label?: string; variant?: "outline" | "default" | "ghost" }) {
   const t = useTranslations("examControl")
   return (
     <Button
       variant={variant}
       size="sm"
-      onClick={() => openJcDoc(sessionId, doc, { committeeId, dayId }).catch((e: Error) => toast.error(e.message))}
+      onClick={() => openJcDoc(sessionId, doc, { committeeId, dayId, withSessionId }).catch((e: Error) => toast.error(e.message))}
     >
       <Printer className="size-4" />
       {label ?? t(`doc_${doc}`)}
@@ -93,7 +93,7 @@ export interface TabProps {
   refresh: () => void
 }
 
-export type TabKey = "overview" | "setup" | "students" | "committees" | "planning" | "alerts" | "prints" | "examday" | "entry" | "quality" | "results" | "audit"
+export type TabKey = "overview" | "setup" | "students" | "committees" | "planning" | "alerts" | "prints" | "examday" | "entry" | "quality" | "results" | "assessment" | "audit"
 
 /** Tabs a member may open, from the rights the server computed for this session. */
 export function jcTabs(o: JcOverview): TabKey[] {
@@ -105,7 +105,29 @@ export function jcTabs(o: JcOverview): TabKey[] {
   if (r.examday) tabs.push("examday")
   if (r.entry) tabs.push("entry")
   if (r.manage || r.entry) tabs.push("quality")
-  if ((r.manage || r.entry) && r.unmasked) tabs.push("results")
+  // Managers see the honor board (names hidden) before unmasking; scores need unmasking.
+  if (((r.manage || r.entry) && r.unmasked) || r.manage) tabs.push("results")
+  if (r.manage || r.entry) tabs.push("assessment")
   if (r.chief) tabs.push("audit")
   return tabs
+}
+
+/** Display name of an entry column key: a subject (`math`) or one exam part (`math~2` → «الرياضيات — الجزء»). */
+export function jcColumnName(grades: JcOverview["grades"], key: string) {
+  const [subjectKey, part] = key.split("~")
+  const subject = grades.flatMap((g) => g.subjects).find((s) => s.key === subjectKey)
+  if (!subject) return key
+  if (!part) return subject.name
+  const p = subject.parts?.find((x) => x.index === Number(part))
+  return `${subject.name} — ${p?.name ?? part}`
+}
+
+/** Entry columns of the session's subjects, parts expanded (for appeal and audit pickers). */
+export function jcColumns(grades: JcOverview["grades"]) {
+  const seen = new Map<string, { key: string; name: string; max: number }>()
+  for (const s of grades.flatMap((g) => g.subjects)) {
+    if (s.parts?.length) for (const p of s.parts) seen.set(`${s.key}~${p.index}`, { key: `${s.key}~${p.index}`, name: `${s.name} — ${p.name}`, max: p.max })
+    else seen.set(s.key, { key: s.key, name: s.name, max: s.max })
+  }
+  return [...seen.values()]
 }

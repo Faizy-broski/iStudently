@@ -1,5 +1,9 @@
 import { supabase } from '../config/supabase'
+import { campusIdsAllowed } from '../utils/campus-validation'
 import { substituteMessageTokens, resolveRecipientSubstitutionData } from './message-substitution.service'
+
+/** A send the caller is not allowed to make (answered with 403). */
+export class MessagingAccessError extends Error {}
 
 export interface MessageAttachmentInput {
   url: string
@@ -68,8 +72,29 @@ export class MessagingService {
       }
     }
 
+    // Students may only message people of their own school family.
+    if (senderRole === 'student') {
+      const ids = [...new Set(recipientProfileIds.filter((id) => id !== senderProfileId))]
+      if (ids.length) {
+        const { data: rows, error } = await supabase.from('profiles').select('id, school_id').in('id', ids)
+        if (error) throw new Error(`Failed to check recipients: ${error.message}`)
+        const schools = [...new Set((rows ?? []).map((r: any) => r.school_id).filter(Boolean))] as string[]
+        if ((rows ?? []).length !== ids.length || (rows ?? []).some((r: any) => !r.school_id) || !(await campusIdsAllowed(schoolId, schools))) {
+          throw new MessagingAccessError('You can only message people of your school.')
+        }
+      }
+    }
+
     let threadId: string | undefined
     if (replyToMessageId) {
+      // A reply joins a thread only when the sender is part of the message being replied to.
+      const { data: own } = await supabase
+        .from('message_recipients')
+        .select('id')
+        .eq('message_id', replyToMessageId)
+        .eq('recipient_profile_id', senderProfileId)
+        .limit(1)
+      if (!own?.length) throw new MessagingAccessError('You can only reply to your own conversations.')
       const { data: parent } = await supabase
         .from('messages')
         .select('thread_id')

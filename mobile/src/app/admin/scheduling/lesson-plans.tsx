@@ -58,10 +58,10 @@ export default function LessonPlans() {
               <Text className="text-sm font-semibold" numberOfLines={2}>
                 {lessonCpLabel(x.course_period, '—')}
               </Text>
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {lessonTeacherName(x.course_period)}
               </Text>
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {l('th_last_entry')}: {x.last_date ? new Date(`${x.last_date}T00:00:00`).toLocaleDateString(locale) : '—'}
               </Text>
             </View>

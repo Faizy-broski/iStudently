@@ -84,13 +84,13 @@ export default function ClassRanks() {
               <Text className="text-sm font-semibold" numberOfLines={1}>
                 {r.student_name}
               </Text>
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {r.grade_level || '—'}
               </Text>
             </View>
             <View className="items-end gap-1">
               <StatusChip label={`${s('th_weighted_gpa')} ${r.weighted_gpa.toFixed(2)}`} tone="info" className="px-2 py-0.5" />
-              <Text variant="muted" className="text-[10px]">{`${s('th_unweighted_gpa')} ${r.unweighted_gpa.toFixed(2)}`}</Text>
+              <Text variant="muted" className="text-2xs">{`${s('th_unweighted_gpa')} ${r.unweighted_gpa.toFixed(2)}`}</Text>
             </View>
           </View>
         )}

@@ -50,7 +50,7 @@ export default function TeacherForumThread() {
             <Text className="text-lg font-bold text-white">{th.title}</Text>
             {th.subject ? (
               <View className="self-start rounded-full bg-white/15 px-2.5 py-1">
-                <Text className="text-[11px] font-semibold text-white">{th.subject.name}</Text>
+                <Text className="text-xs font-semibold text-white">{th.subject.name}</Text>
               </View>
             ) : null}
           </HeroCard>
@@ -65,7 +65,7 @@ export default function TeacherForumThread() {
                       <Text className="text-sm font-semibold">{author}</Text>
                       {p.author?.role === 'inspector' ? <StatusChip label={k('inspector_badge')} tone="warning" /> : null}
                     </View>
-                    <Text variant="muted" className="text-[11px]">
+                    <Text variant="muted" className="text-xs">
                       {formatDateTime(p.created_at)}
                     </Text>
                   </View>

@@ -4,7 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { BookOpen, CalendarDays, Check, Clock, FileText, Image as ImageIcon, Tag, Upload, UserRound, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HtmlEditorField } from '@/components/app/html-editor-field';
 import { InfoRow, Panel } from '@/components/app/panel';
@@ -38,6 +39,8 @@ export default function StudentAssignmentDetail() {
   const [text, setText] = useState<string | null>(null);
   const [files, setFiles] = useState<PickedDocument[]>([]);
   const [busy, setBusy] = useState(false);
+  // Earlier submission files the student removed before resubmitting.
+  const [dropped, setDropped] = useState<string[]>([]);
   // How many of the picked files are uploaded (rows show a spinner, then a check).
   const [uploaded, setUploaded] = useState(0);
   const c = useColors();
@@ -51,6 +54,7 @@ export default function StudentAssignmentDetail() {
   const submitted = !!sub;
   const message = text ?? sub?.submission_text ?? '';
   const assignmentId = a.id;
+  const kept = (sub?.attachments ?? []).filter((att) => !dropped.includes(att.url));
 
   async function choose() {
     const picked = await pickDocuments({ multiple: true });
@@ -65,6 +69,7 @@ export default function StudentAssignmentDetail() {
   }
 
   async function submit() {
+    if (!htmlToText(message).trim() && !files.length && !kept.length) return toast.error(k('empty'));
     setBusy(true);
     setUploaded(0);
     try {
@@ -81,7 +86,7 @@ export default function StudentAssignmentDetail() {
           setUploaded((n) => n + 1);
         }
       }
-      const r = await student.submitAssignment({ assignment_id: assignmentId, submission_text: message, attachments });
+      const r = await student.submitAssignment({ assignment_id: assignmentId, submission_text: message, attachments, existing_attachments: kept });
       if (!r.success) return toast.error(r.error || k('failed'));
       toast.success(k('success'));
       q.mutate();
@@ -108,7 +113,7 @@ export default function StudentAssignmentDetail() {
           <View className="flex-row flex-wrap items-center gap-2">
             <View className="bg-warning-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
               <Icon as={Clock} className="text-warning size-3" />
-              <Text className="text-warning text-[11px] font-semibold">{k('due', { date: longDate(a.due_date) })}</Text>
+              <Text className="text-warning text-xs font-semibold">{k('due', { date: longDate(a.due_date) })}</Text>
             </View>
             <StatusChip label={k('pts', { count: a.max_score })} tone="info" />
             {status}
@@ -157,7 +162,7 @@ export default function StudentAssignmentDetail() {
               </Text>
             </Pressable>
 
-            {files.length || (submitted && sub?.attachments?.length) ? (
+            {files.length || kept.length ? (
               <Panel>
                 {files.map((f, i) => {
                   const done = i < uploaded;
@@ -172,7 +177,7 @@ export default function StudentAssignmentDetail() {
                           {f.name}
                         </Text>
                         {f.size ? (
-                          <Text variant="muted" className="text-[11px]">
+                          <Text variant="muted" className="text-xs">
                             {fileSize(f.size)}
                           </Text>
                         ) : null}
@@ -189,18 +194,23 @@ export default function StudentAssignmentDetail() {
                     </View>
                   );
                 })}
-                {submitted && sub?.attachments?.length ? (
+                {kept.length ? (
                   <View className="gap-2 px-4 py-3">
                     <Text variant="muted" className="text-xs">
                       {k('previous')}
                     </Text>
-                    {sub.attachments.map((att, i) => (
-                      <Pressable key={`${att.url}:${i}`} onPress={() => WebBrowser.openBrowserAsync(att.url)} className="flex-row items-center gap-2" accessibilityRole="link">
-                        <Icon as={FileText} className="text-brand-secondary size-3.5" />
-                        <Text className="text-brand-secondary text-xs" numberOfLines={1}>
-                          {att.name}
-                        </Text>
-                      </Pressable>
+                    {kept.map((att, i) => (
+                      <View key={`${att.url}:${i}`} className="flex-row items-center gap-2">
+                        <Pressable onPress={() => WebBrowser.openBrowserAsync(att.url)} className="flex-1 flex-row items-center gap-2" accessibilityRole="link">
+                          <Icon as={FileText} className="text-brand-secondary size-3.5" />
+                          <Text className="text-brand-secondary flex-1 text-xs" numberOfLines={1}>
+                            {att.name}
+                          </Text>
+                        </Pressable>
+                        <Pressable onPress={() => setDropped((x) => [...x, att.url])} disabled={busy} hitSlop={8} accessibilityRole="button" accessibilityLabel={k('remove', { name: att.name })}>
+                          <Icon as={X} className="text-muted-foreground size-3.5" />
+                        </Pressable>
+                      </View>
                     ))}
                   </View>
                 ) : null}

@@ -371,13 +371,13 @@ export default function StudentLedgerScreen() {
           </View>
           <View className="flex-row gap-2">
             <View className="flex-1 items-center rounded-2xl bg-white/10 p-2.5">
-              <Text className="text-white text-[11px] opacity-80">{p('totalFees')}</Text>
+              <Text className="text-white text-xs opacity-80">{p('totalFees')}</Text>
               <Text className="text-white text-sm font-bold" numberOfLines={1} adjustsFontSizeToFit>
                 {money(data.summary.totalFees)}
               </Text>
             </View>
             <View className="flex-1 items-center rounded-2xl bg-white/10 p-2.5">
-              <Text className="text-white text-[11px] opacity-80">{p('lessTotalPayments')}</Text>
+              <Text className="text-white text-xs opacity-80">{p('lessTotalPayments')}</Text>
               <Text className="text-white text-sm font-bold" numberOfLines={1} adjustsFontSizeToFit>
                 {money(data.summary.totalPayments)}
               </Text>

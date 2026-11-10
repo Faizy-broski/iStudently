@@ -1,7 +1,8 @@
 import { Building2, Check, ChevronDown, MapPin } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { raised } from '@/components/app/tile-grid';
 import { BottomSheet } from '@/components/app/bottom-sheet';

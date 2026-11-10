@@ -1,7 +1,9 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { GrievanceService, GrievanceProfile } from '../services/grievance.service'
+import { supabase } from '../config/supabase'
 import { getEffectiveSchoolId } from '../utils/campus-validation'
+import { getAllCampusIds, getEffectiveSchoolId as schoolRoot } from '../utils/school-helpers'
 
 const grievanceService = new GrievanceService()
 
@@ -326,6 +328,45 @@ export class GrievanceController {
       res.json({ success: true, data: report })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message || 'Failed to generate report' })
+    }
+  }
+
+  /**
+   * GET /api/grievances/teachers?search=&campus_id=
+   * Teachers a grievance can be about: id and name only, from the caller's school family.
+   * Open to every role (students and parents cannot use the staff directory).
+   */
+  async searchTeachers(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) {
+        res.status(403).json({ success: false, error: 'No school associated with your account' })
+        return
+      }
+      const term = String(req.query.search ?? '').replace(/[^\p{L}\p{N} '-]/gu, '').trim()
+      if (term.length < 2) {
+        res.json({ success: true, data: [] })
+        return
+      }
+      const family = await getAllCampusIds(await schoolRoot(schoolId))
+      const campusId = typeof req.query.campus_id === 'string' ? req.query.campus_id : ''
+      const schools = campusId && family.includes(campusId) ? [campusId] : family
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .eq('role', 'teacher')
+        .eq('is_active', true)
+        .in('school_id', schools)
+        .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+        .order('first_name')
+        .limit(10)
+      if (error) throw error
+      res.json({
+        success: true,
+        data: (data ?? []).map((p: any) => ({ profile_id: p.id, first_name: p.first_name, last_name: p.last_name, name: [p.first_name, p.last_name].filter(Boolean).join(' ') })),
+      })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to search teachers' })
     }
   }
 

@@ -43,7 +43,7 @@ export function CategoryBadge({ category }: { category: EventCategory }) {
   return (
     <View className="flex-row items-center gap-1 self-start rounded-full px-2.5 py-1" style={{ backgroundColor: `${color}22` }}>
       <Icon as={CATEGORY_ICONS[category]} size={12} color={color} />
-      <Text className="text-[11px] font-semibold" style={{ color }}>
+      <Text className="text-xs font-semibold" style={{ color }}>
         {t(`school.events.categories.${category}`)}
       </Text>
     </View>
@@ -65,7 +65,7 @@ export function EventLine({ event, locale }: { event: SchoolEvent; locale: strin
             {event.description}
           </Text>
         ) : null}
-        <Text className="text-muted-foreground mt-1 text-[11px]">
+        <Text className="text-muted-foreground mt-1 text-xs">
           {event.is_all_day ? t('app.ev_all_day') : new Date(event.start_at).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })}
         </Text>
       </View>

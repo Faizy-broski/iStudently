@@ -111,7 +111,7 @@ function Schedule({ id, o }: { id: string; o: JcOverview }) {
         <Pressable key={d.id} onPress={() => setEditing({ index: i, day: d })} accessibilityRole="button" className="border-border flex-row items-center gap-2 border-b pb-2">
           <View className="flex-1">
             <Text className="text-sm font-medium">{`${d.exam_date} — ${d.subject_name}`}</Text>
-            <Text variant="muted" className="text-[11px]">
+            <Text variant="muted" className="text-xs">
               {[d.start_time && d.end_time ? `${d.start_time.slice(0, 5)} – ${d.end_time.slice(0, 5)}` : null, o.grades.filter((g) => d.grade_codes.includes(g.grade_code)).map((g) => g.grade_level_name).join('، ')].filter(Boolean).join(' · ')}
             </Text>
           </View>
@@ -213,7 +213,7 @@ function Invigilators({ id, o }: { id: string; o: JcOverview }) {
         <Pressable key={x.staff_id} onPress={() => setEditing(i)} accessibilityRole="button" className="border-border flex-row items-center gap-2 border-b pb-2">
           <View className="flex-1">
             <Text className={`text-sm font-medium ${x.available === false ? 'opacity-50' : ''}`}>{x.name}</Text>
-            <Text variant="muted" className="text-[11px]">
+            <Text variant="muted" className="text-xs">
               {[specs.find((s) => s.value === x.specialization)?.label, (x.unavailable_days ?? []).length ? `${t('examControl.unavailableDays')}: ${(x.unavailable_days ?? []).length}` : null].filter(Boolean).join(' · ') || '—'}
             </Text>
           </View>
@@ -266,6 +266,7 @@ function Rota({ id, o }: { id: string; o: JcOverview }) {
   const [short, setShort] = useState<{ dayId: string; needed: number; eligible: number }[]>([]);
   const generate = useAction(jahbadhControl.generateInvigilation, { success: t('examControl.generated') });
   const setDuty = useAction(jahbadhControl.setDuty);
+  const spread = useApi(['jc', 'inv-loads', id] as const, ([, , s]) => jahbadhControl.invigilationLoads(s));
   const slots = o.session.settings.obs_per_committee;
   const reserves = o.session.settings.reserve_per_day;
   const used = (committees.data ?? []).filter((c) => c.count > 0);
@@ -277,11 +278,15 @@ function Rota({ id, o }: { id: string; o: JcOverview }) {
     if (res.ok && res.data) {
       duties.mutate(res.data.duties, { revalidate: false });
       setShort(res.data.short_days);
+      spread.mutate();
     }
   };
   const change = async (dayId: string, committeeId: string | null, slot: number, isReserve: boolean, staffId: string) => {
     const res = await setDuty.run(id, { exam_day_id: dayId, committee_id: committeeId, slot, is_reserve: isReserve, staff_id: staffId === NONE ? null : staffId });
-    if (res.ok) duties.mutate(res.data, { revalidate: false });
+    if (res.ok) {
+      duties.mutate(res.data, { revalidate: false });
+      spread.mutate();
+    }
   };
   const valueOf = (dayId: string, committeeId: string | null, slot: number, isReserve: boolean) =>
     duties.data?.find((x) => x.exam_day_id === dayId && x.committee_id === committeeId && x.slot === slot && x.is_reserve === isReserve)?.staff_id ?? NONE;
@@ -327,6 +332,13 @@ function Rota({ id, o }: { id: string; o: JcOverview }) {
           ) : null}
         </FormSection>
       ))}
+      {spread.data && spread.data.rows.length ? (
+        <Note
+          tone={spread.data.spread.gap > 1 ? 'warning' : 'success'}
+          text={t('examControl.loadSpread', { max: spread.data.spread.max, min: spread.data.spread.min, gap: spread.data.spread.gap })}
+        />
+      ) : null}
+      <Note text={t('examControl.dayCommitteesNote')} />
       {loads.length ? (
         <FormSection title={t('examControl.fairnessNote')}>
           {loads.map(([sid, l]) => (

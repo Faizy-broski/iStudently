@@ -7,6 +7,7 @@ import { assignmentsApi } from './modules/assignments'
 import { examsApi } from './modules/exams'
 import { teacherInspectionsApi } from './modules/teacher-inspections'
 import { readingLogsApi } from './modules/reading-logs'
+import { idCardsApi } from './modules/id-cards'
 import { inspectorApi } from './modules/inspector'
 import { librarianApi } from './modules/librarian'
 import { learningResourcesApi } from './modules/learning-resources'
@@ -43,7 +44,11 @@ import { adminOnlineClassesApi } from './modules/admin/online-classes'
 import { adminActivitiesApi } from './modules/admin/activities'
 import { adminHistoricalGradesApi } from './modules/admin/historical-grades'
 import { jahbadhGradesApi } from './modules/jahbadh-grades'
+import { jahbadhDataApi } from './modules/jahbadh-data'
 import { jahbadhControlApi } from './modules/jahbadh-control'
+import { jahbadhOfficialApi } from './modules/jahbadh-official'
+import { jahbadhAssessmentApi } from './modules/jahbadh-assessment'
+import { jahbadhInsightApi } from './modules/jahbadh-insight'
 import { adminHumanResourcesApi } from './modules/admin/human-resources'
 import { adminLetterTemplatesApi } from './modules/admin/letter-templates'
 import { adminAttendanceApi } from './modules/admin/attendance'
@@ -198,6 +203,7 @@ const ROUTERS: Record<string, string> = {
   'history-marking-periods': 'history-marking-periods.routes.ts',
   'historical-grades': 'historical-grades.routes.ts',
   'jahbadh-grades': 'jahbadh-grades.routes.ts',
+  'jahbadh-verify': 'jahbadh-verify.routes.ts',
   'jahbadh-control': 'jahbadh-control.routes.ts',
   'graduation-paths': 'graduation-paths.routes.ts',
   gradebook: 'gradebook.routes.ts',
@@ -230,6 +236,7 @@ const ROUTERS: Record<string, string> = {
   'inspection-forum': 'inspection-forum.routes.ts',
   'inspector-broadcasts': 'inspector-broadcast.routes.ts',
   'reading-logs': 'reading-logs.routes.ts',
+  'id-card-templates': 'id-card-template.routes.ts',
   'inspector-teachers': 'inspector-teacher-profile.routes.ts',
   'inspection-coaching': 'inspection-coaching.routes.ts',
   'inspection-media': 'inspection-media.routes.ts',
@@ -247,6 +254,7 @@ const MODULES: Record<string, (api: ReturnType<typeof createApiClient>) => Recor
   exams: examsApi as any,
   teacherInspections: teacherInspectionsApi as any,
   readingLogs: readingLogsApi as any,
+  idCards: idCardsApi as any,
   inspector: inspectorApi as any,
   librarian: librarianApi as any,
   learningResources: learningResourcesApi as any,
@@ -275,7 +283,11 @@ const MODULES: Record<string, (api: ReturnType<typeof createApiClient>) => Recor
   activities: adminActivitiesApi as any,
   historicalGrades: adminHistoricalGradesApi as any,
   jahbadhGrades: jahbadhGradesApi as any,
+  jahbadhData: jahbadhDataApi as any,
   jahbadhControl: jahbadhControlApi as any,
+  jahbadhOfficial: jahbadhOfficialApi as any,
+  jahbadhAssessment: jahbadhAssessmentApi as any,
+  jahbadhInsight: jahbadhInsightApi as any,
   humanResources: adminHumanResourcesApi as any,
   letterTemplates: adminLetterTemplatesApi as any,
   discipline: adminDisciplineApi as any,

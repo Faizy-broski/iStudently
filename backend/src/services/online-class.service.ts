@@ -53,12 +53,12 @@ async function assertOwnsCoursePeriod(courseperiodId: string, teacherProfileId: 
 
   const { data: cp, error: cpError } = await supabase
     .from('course_periods')
-    .select('id, teacher_id')
+    .select('id, teacher_id, secondary_teacher_id')
     .eq('id', courseperiodId)
     .maybeSingle()
 
   if (cpError || !cp) throw new Error('Course period not found')
-  if (cp.teacher_id !== staffRow.id) throw new Error('This course period does not belong to you')
+  if (cp.teacher_id !== staffRow.id && cp.secondary_teacher_id !== staffRow.id) throw new Error('This course period does not belong to you')
 }
 
 /**

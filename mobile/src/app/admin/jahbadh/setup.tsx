@@ -1,7 +1,7 @@
-import type { JgGradeMapEntry, JgSettings, JgSubjectLinks } from '@studently/api-client';
-import { JG_DISTRIBUTION } from '@studently/shared-utils';
+import type { JgGradeMapEntry, JgSettings, JgSubjectLinks, JgUpgradePreview } from '@studently/api-client';
+import { JG_ACT_MODE_LABELS, JG_DEFAULT_MONTH_NAMES, JG_DISTRIBUTION, JG_NO_MONTH, type JgActMode } from '@studently/shared-utils';
 import { Stack } from 'expo-router';
-import { CheckCircle2, Plus, Sparkles, Trash2 } from 'lucide-react-native';
+import { ArrowUpCircle, CheckCircle2, Plus, Sparkles, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -9,11 +9,14 @@ import { Pressable, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { FormSection } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
+import { useConfirm } from '@/components/app/confirm';
+import { FilterChips } from '@/components/app/filter-chips';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Text } from '@/components/ui/text';
 import { useJg } from '@/features/jahbadh/shared';
@@ -64,6 +67,8 @@ export default function JahbadhSetup() {
             </Button>
           )}
         </FormSection>
+
+        {ready ? <MemoUpgrade onDone={() => rules.mutate()} /> : null}
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
           <TabsList>
@@ -167,7 +172,7 @@ function SubjectLinks({ campusId, ready }: { campusId: string | null; ready: boo
   );
 }
 
-const HEADER_FIELDS = ['school_name', 'education_office', 'municipality', 'principal', 'homeroom_teacher', 'logo_url'] as const;
+const HEADER_FIELDS = ['school_name', 'education_office', 'sub_office', 'municipality', 'located_at', 'school_number', 'principal', 'homeroom_teacher', 'exams_coordinator', 'hijri_year', 'logo_url'] as const;
 
 function SettingsForm({ campusId }: { campusId: string | null }) {
   const { t } = useTranslation();
@@ -177,7 +182,7 @@ function SettingsForm({ campusId }: { campusId: string | null }) {
   const [seen, setSeen] = useState<unknown>(null);
   if (settings.data && settings.data !== seen) {
     setSeen(settings.data);
-    setForm(JSON.parse(JSON.stringify(settings.data)) as JgSettings);
+    setForm(withRuleDefaults(JSON.parse(JSON.stringify(settings.data)) as JgSettings));
   }
   if (!form) return <Skeleton className="h-64 rounded-2xl" />;
 
@@ -222,6 +227,7 @@ function SettingsForm({ campusId }: { campusId: string | null }) {
           <Text>{t('grades.addStep')}</Text>
         </Button>
       </FormSection>
+      <RuleSettings form={form} setForm={setForm} />
       <FormSection title={t('grades.reports')}>
         {HEADER_FIELDS.map((f) => (
           <View key={f} className="gap-1">
@@ -234,5 +240,151 @@ function SettingsForm({ campusId }: { campusId: string | null }) {
         <Text>{t('grades.save')}</Text>
       </Button>
     </View>
+  );
+}
+
+/** Settings saved before the 2026-27 keys existed get the workbook defaults. */
+function withRuleDefaults(s: JgSettings): JgSettings {
+  return {
+    ...s,
+    jabr_kasur: s.jabr_kasur ?? true,
+    jabr_plus_one: s.jabr_plus_one ?? true,
+    act_mode: s.act_mode ?? 'average',
+    month_names: s.month_names?.length === 3 ? s.month_names : JG_DEFAULT_MONTH_NAMES.map((m) => [...m]),
+    default_stage: s.default_stage ?? null,
+  };
+}
+
+/** Art. 122 options, «حساب الأنشطة الشهرية», month names (4 per stage, «—» hides) and the grid's default stage. */
+function RuleSettings({ form, setForm }: { form: JgSettings; setForm: (f: JgSettings) => void }) {
+  const { t } = useTranslation();
+  const setMonth = (stage: number, i: number, value: string) =>
+    setForm({ ...form, month_names: form.month_names.map((row, s) => (s === stage ? row.map((m, j) => (j === i ? value : m)) : row)) });
+  return (
+    <>
+      <FormSection title={t('grades.rulesTitle')}>
+        {(['jabr_kasur', 'jabr_plus_one'] as const).map((k) => (
+          <View key={k} className="flex-row items-center justify-between gap-3">
+            <Text className="flex-1 text-sm">{t(k === 'jabr_kasur' ? 'grades.jabrKasur' : 'grades.jabrPlusOne')}</Text>
+            <Switch checked={form[k]} onCheckedChange={(v) => setForm({ ...form, [k]: v })} accessibilityLabel={t(k === 'jabr_kasur' ? 'grades.jabrKasur' : 'grades.jabrPlusOne')} />
+          </View>
+        ))}
+        <View className="gap-1">
+          <Text variant="muted" className="text-xs">{t('grades.actMode')}</Text>
+          <Picker
+            value={form.act_mode}
+            onChange={(v) => setForm({ ...form, act_mode: v as JgActMode })}
+            options={(Object.keys(JG_ACT_MODE_LABELS) as JgActMode[]).map((m) => ({ value: m, label: JG_ACT_MODE_LABELS[m] }))}
+          />
+        </View>
+        <View className="gap-1">
+          <Text variant="muted" className="text-xs">{t('grades.defaultStage')}</Text>
+          <FilterChips
+            value={form.default_stage ? String(form.default_stage) : 'all'}
+            onChange={(v) => setForm({ ...form, default_stage: v === 'all' ? null : Number(v) })}
+            options={[{ value: 'all', label: t('grades.allStages') }, ...[1, 2, 3].map((n) => ({ value: String(n), label: t('grades.stageN', { n }) }))]}
+          />
+        </View>
+      </FormSection>
+      <FormSection title={t('grades.monthNames')} description={t('grades.monthNamesHint')}>
+        {form.month_names.map((row, stage) => (
+          <View key={stage} className="gap-1.5">
+            <Text variant="muted" className="text-xs">{t('grades.stageN', { n: stage + 1 })}</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {row.map((m, i) => (
+                <Input
+                  key={i}
+                  className="min-w-[45%] flex-1"
+                  accessibilityLabel={`${t('grades.stageN', { n: stage + 1 })} — ${i + 1}`}
+                  value={m === JG_NO_MONTH ? '' : m}
+                  placeholder={JG_NO_MONTH}
+                  onChangeText={(v) => setMonth(stage, i, v.trim() === '' ? JG_NO_MONTH : v)}
+                />
+              ))}
+            </View>
+          </View>
+        ))}
+      </FormSection>
+    </>
+  );
+}
+
+const UPGRADE_TARGET = '2026-2027';
+
+/** Moves the current academic year to the 2026-2027 memo: preview the differences, then apply. */
+function MemoUpgrade({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [preview, setPreview] = useState<JgUpgradePreview | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const explain = (code?: string, error?: string) =>
+    code === 'same_version'
+      ? t('grades.upgradeSame', { version: UPGRADE_TARGET })
+      : code === 'not_seeded'
+        ? t('grades.upgradeNotSeeded')
+        : code === 'not_migrated'
+          ? t('grades.notMigratedBody')
+          : (error ?? t('app.error_title'));
+
+  const load = async () => {
+    setBusy(true);
+    setMessage(null);
+    const res = await jahbadhGrades.upgradePreview(UPGRADE_TARGET);
+    setBusy(false);
+    if (!res.success || !res.data) return setMessage(explain(res.code, res.error));
+    setPreview(res.data);
+  };
+  const apply = async () => {
+    const p = preview;
+    if (!p) return;
+    if (!(await confirm({ title: t('grades.upgradeApply'), body: t('grades.upgradeConfirm', { from: p.from, to: p.to }), confirmLabel: t('grades.upgradeApply') }))) return;
+    setBusy(true);
+    const res = await jahbadhGrades.upgrade(UPGRADE_TARGET, p.academic_year.id);
+    setBusy(false);
+    if (!res.success || !res.data) return toast.error(explain(res.code, res.error));
+    toast.success(t('grades.upgradeDone', { moved: res.data.marks_moved, unmapped: res.data.marks_unmapped }));
+    setPreview(null);
+    setMessage(t('grades.upgradeSame', { version: res.data.to }));
+    onDone();
+  };
+
+  return (
+    <FormSection title={t('grades.upgradeTitle')} description={t('grades.upgradeBody')}>
+      {message ? <Text variant="muted" className="text-sm">{message}</Text> : null}
+      {!preview ? (
+        <Button variant="outline" onPress={load} disabled={busy}>
+          <Icon as={ArrowUpCircle} className="text-foreground size-4" />
+          <Text>{t('grades.upgradePreview')}</Text>
+        </Button>
+      ) : (
+        <>
+          <Text className="text-sm">{t('grades.upgradeYear', { year: preview.academic_year.name ?? '', from: preview.from, to: preview.to })}</Text>
+          {preview.grades.map((g) => (
+            <View key={g.grade_code} className="border-info-soft dark:border-border gap-1 border-b pb-2">
+              <Text className="text-sm font-semibold">{g.name}</Text>
+              <Text variant="muted" className="text-xs">
+                {`${t('grades.totalBefore')}: ${g.total_before ?? '—'} · ${t('grades.totalAfter')}: ${g.total_after} · ${t('grades.componentsChanged')}: ${g.components_changed.length}`}
+              </Text>
+              {g.subjects_added.length ? <Text className="text-success text-xs">{`${t('grades.subjectsAdded')}: ${g.subjects_added.join('، ')}`}</Text> : null}
+              {g.subjects_removed.length ? <Text className="text-destructive text-xs">{`${t('grades.subjectsRemoved')}: ${g.subjects_removed.join('، ')}`}</Text> : null}
+              <Text className={g.marks_unmapped ? 'text-destructive text-xs font-semibold' : 'text-muted-foreground text-xs'}>
+                {`${t('grades.marksMoved')}: ${g.marks} · ${t('grades.marksUnmapped')}: ${g.marks_unmapped}`}
+              </Text>
+            </View>
+          ))}
+          <Text variant="muted" className="text-xs">{t('grades.upgradeHint')}</Text>
+          <Button onPress={apply} disabled={busy}>
+            <Icon as={ArrowUpCircle} className="text-primary-foreground size-4" />
+            <Text>{t('grades.upgradeApply')}</Text>
+          </Button>
+          <Button variant="outline" onPress={() => setPreview(null)} disabled={busy}>
+            <Text>{t('grades.cancel')}</Text>
+          </Button>
+        </>
+      )}
+    </FormSection>
   );
 }

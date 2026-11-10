@@ -26,7 +26,8 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -58,9 +59,11 @@ import { cn } from '@/lib/utils';
 import i18n from '@/i18n';
 
 const loc = () => (i18n.language === 'ar' ? 'ar' : 'en');
-const monthYear = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString(loc(), { month: 'short', year: 'numeric' }) : '');
-const monthDay = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString(loc(), { month: 'short', day: 'numeric' }) : '');
-const weekdayDay = (iso: string) => new Date(iso).toLocaleDateString(loc(), { weekday: 'short', day: 'numeric', month: 'short' });
+// Date-only strings ('YYYY-MM-DD') parse as UTC; read them as local days so the weekday is right.
+const localDate = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(`${iso}T00:00:00`) : new Date(iso));
+const monthYear = (iso?: string | null) => (iso ? localDate(iso).toLocaleDateString(loc(), { month: 'short', year: 'numeric' }) : '');
+const monthDay = (iso?: string | null) => (iso ? localDate(iso).toLocaleDateString(loc(), { month: 'short', day: 'numeric' }) : '');
+const weekdayDay = (iso: string) => localDate(iso).toLocaleDateString(loc(), { weekday: 'short', day: 'numeric', month: 'short' });
 const go = (href: string) => router.push(href as Href);
 const open = (href: string, title: string) => openPortalPage('student', { href, title });
 
@@ -121,7 +124,7 @@ function QuickAction({ icon, label, onPress }: { icon: LucideIcon; label: string
   return (
     <Pressable onPress={onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 items-center gap-2 rounded-2xl border py-3 active:opacity-80" accessibilityRole="button">
       <Icon as={icon} strokeWidth={2.3} className="text-brand dark:text-brand-secondary size-5" />
-      <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold" numberOfLines={1}>
+      <Text className="text-brand dark:text-brand-secondary text-xs font-semibold" numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -213,7 +216,7 @@ export default function StudentDashboard() {
               <PersonAvatar url={profile?.profile_photo_url || s?.profile_photo_url} name={fullName} size={44} />
             </Pressable>
             <View className="flex-1">
-              <Text className="text-brand dark:text-foreground text-lg font-bold" numberOfLines={1}>
+              <Text className="text-brand dark:text-foreground text-xl font-bold" numberOfLines={1}>
                 {greeting}
               </Text>
               {classLine ? (
@@ -237,7 +240,7 @@ export default function StudentDashboard() {
           ) : null}
 
           {/* Term hero */}
-          <Pressable onPress={() => go('/student/grades')} accessibilityRole="button">
+          <Pressable onPress={() => go('/student/grades/student-grades')} accessibilityRole="button">
             <BrandGradient variant="primary" angle={150} style={{ borderRadius: 24 }}>
               <View className="gap-4 p-5">
                 <View className="flex-row items-center gap-4">
@@ -279,23 +282,23 @@ export default function StudentDashboard() {
                   const st = timeStatus(c.start_time);
                   const current = st.status === 'current';
                   const past = st.status === 'past';
-                  const label = current ? k('now') : past ? k('done') : i === nextIdx ? k('next') : st.status === 'upcoming' ? d('status.in_min', { min: st.min }) : d(`status.${st.key}`);
+                  const label = st.status === 'unknown' ? '—' : current ? k('now') : past ? k('done') : i === nextIdx ? k('next') : st.status === 'upcoming' ? d('status.in_min', { min: st.min }) : d(`status.${st.key}`);
                   const tone: ChipTone = current ? 'warning' : past ? 'muted' : 'info';
                   return (
                     <View key={c.id} className={cn('flex-row items-center gap-3 px-4 py-3', current && 'bg-info-soft/60', i < timetable.length - 1 && 'border-info-soft dark:border-border border-b')}>
                       <View className="w-12">
-                        <Text className="text-sm font-bold">{c.start_time.slice(0, 5)}</Text>
-                        <Text variant="muted" className="text-[11px]">
-                          {c.end_time.slice(0, 5)}
+                        <Text className="text-sm font-bold">{c.start_time?.slice(0, 5) ?? '—'}</Text>
+                        <Text variant="muted" className="text-xs">
+                          {c.end_time?.slice(0, 5) ?? ''}
                         </Text>
                       </View>
                       <View className={cn('h-9 w-1 rounded-full', current ? 'bg-brand-accent' : past ? 'bg-muted' : 'bg-brand')} />
                       <View className="flex-1">
                         <Text className={cn('text-sm font-semibold', past && 'text-muted-foreground')} numberOfLines={1}>
-                          {c.subject.name}
+                          {c.subject?.name ?? '—'}
                         </Text>
-                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
-                          {[`${c.teacher.profile.first_name} ${c.teacher.profile.last_name}`.trim(), c.room_number ? d('schedule.room', { number: c.room_number }) : null].filter(Boolean).join(' · ')}
+                        <Text variant="muted" className="text-xs" numberOfLines={1}>
+                          {[c.teacher?.profile ? `${c.teacher.profile.first_name ?? ''} ${c.teacher.profile.last_name ?? ''}`.trim() : null, c.room_number ? d('schedule.room', { number: c.room_number }) : null].filter(Boolean).join(' · ')}
                         </Text>
                       </View>
                       <StatusChip label={label} tone={tone} className="px-2 py-0.5" />
@@ -336,10 +339,10 @@ export default function StudentDashboard() {
                         <Text className="text-sm font-semibold" numberOfLines={1}>
                           {a.title}
                         </Text>
-                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        <Text variant="muted" className="text-xs" numberOfLines={1}>
                           {[a.subject.name, formatDateTime(a.due_date), t('app.st_pts', { count: a.max_score })].join(' · ')}
                         </Text>
-                        <Text className={cn('text-[11px] font-semibold', a.submission ? 'text-success' : 'text-warning')}>{a.submission ? d('assignments.submitted') : d('assignments.pending')}</Text>
+                        <Text className={cn('text-xs font-semibold', a.submission ? 'text-success' : 'text-warning')}>{a.submission ? d('assignments.submitted') : d('assignments.pending')}</Text>
                       </View>
                       <StatusChip label={label} tone={tone} className="px-2 py-0.5" />
                     </Pressable>
@@ -367,7 +370,7 @@ export default function StudentDashboard() {
                     <Text className="text-sm font-semibold" numberOfLines={1}>
                       {e.title || e.subject?.name}
                     </Text>
-                    <Text variant="muted" className="text-[11px]" numberOfLines={2}>
+                    <Text variant="muted" className="text-xs" numberOfLines={2}>
                       {[e.subject?.name, e.start_time ? `${e.start_time.slice(0, 5)}${e.end_time ? `–${e.end_time.slice(0, 5)}` : ''}` : null, e.room_number ? d('schedule.room', { number: e.room_number }) : null, e.total_marks ? t('app.st_pts', { count: e.total_marks }) : null]
                         .filter(Boolean)
                         .join(' · ')}
@@ -396,7 +399,7 @@ export default function StudentDashboard() {
                           {c.title}
                         </Text>
                         {c.scheduled_days ? (
-                          <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                          <Text variant="muted" className="text-xs" numberOfLines={1}>
                             {`${c.scheduled_days} ${c.session_start_time || ''}${c.session_end_time ? `–${c.session_end_time}` : ''}`}
                           </Text>
                         ) : null}
@@ -431,7 +434,7 @@ export default function StudentDashboard() {
                       <Text className="text-sm font-semibold" numberOfLines={1}>
                         {n.title}
                       </Text>
-                      <Text variant="muted" className="text-[11px]">
+                      <Text variant="muted" className="text-xs">
                         {formatRelative(n.created_at)}
                       </Text>
                     </View>
@@ -462,7 +465,7 @@ export default function StudentDashboard() {
                   <Icon as={CheckCircle2} className="text-success size-4" />
                 </View>
                 <View className="flex-1">
-                  <Text variant="muted" className="text-[11px]">
+                  <Text variant="muted" className="text-xs">
                     {d('academic.grading_status')}
                   </Text>
                   <Text className="text-sm font-medium">{d('academic.grade_posting')}</Text>
@@ -488,8 +491,8 @@ export default function StudentDashboard() {
               </View>
               <InfoRow icon={MapPin} label={d('campus.address')} value={campus?.address || s?.school_address || d('campus.not_provided')} />
               <InfoRow icon={Phone} label={d('campus.contact')} value={campus?.phone || s?.school_phone || d('campus.not_provided')} />
-              <InfoRow icon={Mail} label={d('campus.email')} value={campus?.contact_email || 'contact@istudents.ly'} />
-              <InfoRow icon={UserRound} label={d('campus.principal')} value={campus?.principal_name || 'N/A'} last />
+              <InfoRow icon={Mail} label={d('campus.email')} value={campus?.contact_email || d('campus.not_provided')} />
+              <InfoRow icon={UserRound} label={d('campus.principal')} value={campus?.principal_name || d('campus.not_provided')} last />
             </Panel>
           </Section>
 
@@ -497,7 +500,7 @@ export default function StudentDashboard() {
 
           {weatherOn ? <WeatherCard data={weather.data} loading={weather.isLoading} failed={!!weather.error} /> : null}
 
-          <Text variant="muted" className="text-center text-[11px]">
+          <Text variant="muted" className="text-center text-xs">
             {`${new Date().toLocaleDateString(loc(), { weekday: 'long' })}, ${formatDate(new Date().toISOString())}`}
           </Text>
         </ScrollView>
@@ -510,13 +513,14 @@ function HeroStat({ value, label, accent }: { value: number; label: string; acce
   return (
     <View className="flex-1 items-center">
       <Text className={cn('text-xl font-bold', accent ? 'text-brand-accent' : 'text-white')}>{value}</Text>
-      <Text className="text-white text-[11px] opacity-80">{label}</Text>
+      <Text className="text-white text-xs opacity-80">{label}</Text>
     </View>
   );
 }
 
 /** Web getTimeStatus: past (>30 min ago), in progress, starting soon (≤15 min) or "in N min". */
-function timeStatus(start: string) {
+function timeStatus(start?: string | null) {
+  if (!start) return { status: 'unknown', key: 'in_min', min: 0 } as const;
   const [h, m] = start.split(':');
   const at = new Date();
   at.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
@@ -562,7 +566,7 @@ function PerformanceMeter({ metrics, loading }: { metrics?: PerformanceMetrics; 
               <View key={x.key} className="flex-1 gap-1">
                 <View className="flex-row items-center gap-1">
                   <Icon as={x.icon} className="text-muted-foreground size-3" />
-                  <Text variant="muted" className="flex-1 text-[10px]" numberOfLines={1}>
+                  <Text variant="muted" className="flex-1 text-2xs" numberOfLines={1}>
                     {p(x.key)}
                   </Text>
                 </View>
@@ -570,7 +574,7 @@ function PerformanceMeter({ metrics, loading }: { metrics?: PerformanceMetrics; 
                 <View className="bg-info-soft h-1.5 overflow-hidden rounded-full">
                   <View className={cn('h-full', b.bar)} style={{ width: `${Math.min(100, x.v)}%` }} />
                 </View>
-                <Text className={cn('text-[10px] font-semibold', b.text)} numberOfLines={1}>
+                <Text className={cn('text-2xs font-semibold', b.text)} numberOfLines={1}>
                   {p(b.key)}
                 </Text>
               </View>

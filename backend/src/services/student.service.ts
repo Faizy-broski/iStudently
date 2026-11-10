@@ -64,7 +64,12 @@ export async function getSiblingCountMap(schoolId: string): Promise<Map<string, 
   return result
 }
 
-const REPORT_CARD_FIELDS = ['nationality', 'mother_name', 'place_of_birth', 'registration_number'] as const
+const REPORT_CARD_FIELDS = ['nationality', 'mother_name', 'place_of_birth', 'registration_number', 'enrollment_status', 'registration_type'] as const
+// Columns from migrations/jahbadh_wave2.sql, limited to the values its CHECK constraints allow.
+const REPORT_CARD_ENUMS: Partial<Record<(typeof REPORT_CARD_FIELDS)[number], readonly string[]>> = {
+  enrollment_status: ['مستجد', 'معيد'],
+  registration_type: ['نظامي', 'منازل'],
+}
 
 /**
  * Report-card fields (Jahbadh grades). Only keys the caller sent are written, so saving a student
@@ -76,7 +81,9 @@ function reportCardFields(data: Partial<Record<(typeof REPORT_CARD_FIELDS)[numbe
   for (const k of REPORT_CARD_FIELDS) {
     const v = data[k]
     if (v === undefined) continue
-    const trimmed = typeof v === 'string' ? v.trim() : null
+    let trimmed = typeof v === 'string' ? v.trim() : null
+    const allowed = REPORT_CARD_ENUMS[k]
+    if (trimmed && allowed && !allowed.includes(trimmed)) trimmed = null
     if (trimmed || update) out[k] = trimmed || null
   }
   return out
