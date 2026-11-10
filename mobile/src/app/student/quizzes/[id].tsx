@@ -10,6 +10,7 @@ import { Picker } from '@/components/app/picker';
 import { CheckMark, FormSection, StickyActions } from '@/components/app/layout';
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
+import { useConfirm } from '@/components/app/confirm';
 import { useToast } from '@/components/app/toast';
 import { Panel } from '@/components/app/panel';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,7 @@ export default function StudentQuizTaker() {
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`app.st_qz_${key}`, o);
   const toast = useToast();
+  const confirm = useConfirm();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { me } = useSession();
   const studentId = me.status === 'ready' ? (me.me.profile.student_id ?? '') : '';
@@ -113,6 +115,13 @@ export default function StudentQuizTaker() {
 
   async function submit() {
     if (!maps) return;
+    const unanswered = maps.filter((m) => !String(get(m.id) ?? '').trim()).length;
+    const ok = await confirm({
+      title: t('app.qz_submit_confirm'),
+      body: unanswered ? t('app.qz_unanswered', { count: unanswered }) : undefined,
+      confirmLabel: t('app.qz_submit_confirm_btn'),
+    });
+    if (!ok) return;
     setSubmitting(true);
     const r = await quizApi.submit(
       quizId,

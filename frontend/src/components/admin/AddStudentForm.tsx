@@ -86,6 +86,8 @@ const STANDARD_FIELDS = [
   { id: 'motherName', label: 'mother_name', type: 'text', category: 'personal', sort_order: 13, required: false, width: 'half' },
   { id: 'placeOfBirth', label: 'place_of_birth', type: 'text', category: 'personal', sort_order: 14, required: false, width: 'half' },
   { id: 'registrationNumber', label: 'registration_number', type: 'text', category: 'personal', sort_order: 15, required: false, width: 'half' },
+  { id: 'enrollmentStatus', label: 'enrollment_status', type: 'select', category: 'personal', sort_order: 15.1, required: false, width: 'half', options: ['مستجد', 'معيد'] },
+  { id: 'registrationType', label: 'registration_type', type: 'select', category: 'personal', sort_order: 15.2, required: false, width: 'half', options: ['نظامي', 'منازل'] },
 
   // ACADEMIC INFORMATION (Category: academic)
   { id: 'grade_level_id', label: 'grade_level', type: 'grade_select', category: 'academic', sort_order: 1, required: true, width: 'half' },
@@ -473,6 +475,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     motherName: "",
     placeOfBirth: "",
     registrationNumber: "",
+    enrollmentStatus: "",
+    registrationType: "",
     studentPhoto: "",
     address: "",
     email: "",
@@ -684,6 +688,8 @@ customFields.forEach((field) => {
         mother_name: formData.motherName || undefined,
         place_of_birth: formData.placeOfBirth || undefined,
         registration_number: formData.registrationNumber || undefined,
+        enrollment_status: formData.enrollmentStatus || undefined,
+        registration_type: formData.registrationType || undefined,
         medical_info: medicalInfo,
         custom_fields: {
           ...customFieldsData,

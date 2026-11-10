@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { KeyRound, RefreshCw, ShieldAlert, ShieldCheck, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { useToast } from '@/components/app/toast';

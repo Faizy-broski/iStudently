@@ -2,7 +2,8 @@ import type { AppealStatus } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { MessageSquareWarning } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, RowItem } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

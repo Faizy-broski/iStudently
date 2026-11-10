@@ -192,7 +192,7 @@ export function TourAssistant({ onOpen }: { onOpen: (href: string, title: string
           <Icon as={ICONS[st.icon] ?? Sparkles} className="size-4 text-white" />
         </View>
         <View className="flex-1">
-          <Text className="text-[10px] font-semibold text-brand-accent">
+          <Text className="text-2xs font-semibold text-brand-accent">
             {k(`cat_${slug(st.category)}`, { defaultValue: st.category })}
           </Text>
           <Text className="text-sm font-bold text-white">

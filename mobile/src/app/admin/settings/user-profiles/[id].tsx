@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { useSWRConfig } from 'swr';
 
+import { BottomBar } from '@/components/app/layout';
 import { ScrollView } from '@/components/app/keyboard';
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';
@@ -137,7 +138,7 @@ export default function UserProfilePermissions() {
             <View pointerEvents={changingBase ? 'none' : 'auto'} className={changingBase ? 'opacity-50' : ''}>
               <Picker value={panelRole} onChange={changeBase} options={PROFILE_ROLE_TYPES.map((r) => ({ value: r, label: t(`app.up_role_${r}`) }))} />
             </View>
-            <Text className="text-muted-foreground text-[11px]">{t('app.up_modules_available', { count: moduleCount })}</Text>
+            <Text className="text-muted-foreground text-xs">{t('app.up_modules_available', { count: moduleCount })}</Text>
             <SearchBar value={search} onChangeText={setSearch} placeholder={t('app.up_search_modules')} />
             <View className="flex-row gap-2">
               <Button size="sm" variant="outline" className="flex-1" onPress={() => setAllShown(true)}>
@@ -174,11 +175,11 @@ export default function UserProfilePermissions() {
                     <Text className="text-muted-foreground flex-1 text-sm font-semibold">{label(g.title)}</Text>
                     <View className="w-16 items-center gap-0.5">
                       <Checkbox checked={all('can_use')} onCheckedChange={(v) => setMany(hrefs, 'can_use', v)} />
-                      <Text className="text-muted-foreground text-[10px]">{p('check_all')}</Text>
+                      <Text className="text-muted-foreground text-2xs">{p('check_all')}</Text>
                     </View>
                     <View className="w-16 items-center gap-0.5">
                       <Checkbox checked={all('can_edit')} onCheckedChange={(v) => setMany(hrefs, 'can_edit', v)} />
-                      <Text className="text-muted-foreground text-[10px]">{p('check_all')}</Text>
+                      <Text className="text-muted-foreground text-2xs">{p('check_all')}</Text>
                     </View>
                   </View>
                   {g.items.map((item) => {
@@ -209,12 +210,12 @@ export default function UserProfilePermissions() {
           </View>
         ) : null}
       </ScrollView>
-      <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
+      <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
         <Button onPress={save} disabled={saving || perms.isLoading}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{saving ? p('saving') : p('save_permissions')}</Text>
         </Button>
-      </View>
+      </BottomBar>
     </View>
   );
 }

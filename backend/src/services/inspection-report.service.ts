@@ -155,6 +155,7 @@ export async function listReportsForInspector(inspectorProfileId: string) {
 export async function assertCanUploadReportPdf(caller: CallerContext, reportId: string): Promise<InspectionReport> {
   const report = await getReportOrThrow(reportId)
   await assertCanViewReport(report, caller)
+  if (caller.role === 'teacher') throw new Error('Access denied: teachers cannot replace the report PDF')
   return report
 }
 
@@ -173,6 +174,13 @@ export interface UploadPdfDTO {
 export async function recordReportPdf(caller: CallerContext, reportId: string, dto: UploadPdfDTO): Promise<InspectionReport> {
   const report = await getReportOrThrow(reportId)
   await assertCanViewReport(report, caller)
+  // The inspected teacher signs the report but never replaces its PDF (that could swap in a forged one).
+  if (caller.role === 'teacher') throw new Error('Access denied: teachers cannot replace the report PDF')
+  // Only a file in this report's own storage folder (as uploadReportPdf writes it).
+  const prefix = `${report.school_id}/reports/${reportId}/`
+  if (typeof dto.file_url !== 'string' || !dto.file_url.startsWith(prefix) || dto.file_url.includes('..') || !dto.file_url.endsWith('.pdf')) {
+    throw new Error('Access denied: invalid report PDF path')
+  }
   const previousFileUrl = report.pdf_file_url
 
   const { data, error } = await supabase
@@ -188,7 +196,7 @@ export async function recordReportPdf(caller: CallerContext, reportId: string, d
   // pointer above; clean up the now-unreferenced previous file rather than
   // leaving it orphaned in storage. Best-effort — a failure here shouldn't
   // fail the request, the new PDF is already recorded either way.
-  if (previousFileUrl && previousFileUrl !== dto.file_url) {
+  if (previousFileUrl && previousFileUrl !== dto.file_url && previousFileUrl.startsWith(prefix)) {
     supabase.storage.from('inspection-media').remove([previousFileUrl])
       .catch((err) => console.error('Failed to clean up previous report PDF:', err))
   }
@@ -199,6 +207,10 @@ export async function getReportPdfSignedUrl(caller: CallerContext, reportId: str
   const report = await getReportOrThrow(reportId)
   await assertCanViewReport(report, caller)
   if (!report.pdf_file_url) throw new Error('No PDF has been generated for this report yet')
+  // Sign only this report's own file (older rows could point anywhere in the bucket).
+  if (!report.pdf_file_url.startsWith(`${report.school_id}/reports/${reportId}/`) || report.pdf_file_url.includes('..')) {
+    throw new Error('No PDF has been generated for this report yet')
+  }
 
   const { data, error } = await supabase.storage.from('inspection-media').createSignedUrl(report.pdf_file_url, 300)
   if (error || !data) throw new Error(error?.message || 'Failed to create signed URL')

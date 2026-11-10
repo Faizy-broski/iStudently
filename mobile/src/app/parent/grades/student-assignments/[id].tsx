@@ -3,7 +3,8 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Check, ClipboardList, FileText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { DetailHeader, Section } from '@/components/app/layout';
 import { ActionRow, Panel } from '@/components/app/panel';

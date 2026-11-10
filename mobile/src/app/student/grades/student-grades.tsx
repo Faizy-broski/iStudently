@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { AlertTriangle, Award, BookOpen, TrendingUp } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HeroCard, IconTile, Section, StatTile, StatTiles } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

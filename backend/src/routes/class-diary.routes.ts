@@ -3,7 +3,7 @@ import { ClassDiaryController } from '../controllers/class-diary.controller'
 import { NextFunction, Response } from 'express'
 import { supabase } from '../config/supabase'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
-import { requireOwnRow, requireSelfTeacherId } from '../middlewares/own-course-period.middleware'
+import { requireOwnClass, requireOwnRow, requireSelfTeacherId } from '../middlewares/own-course-period.middleware'
 import { requireRole } from '../middlewares/role.middleware'
 import { requireBodyRowsInSchoolFamily, requireRequestSchoolsInFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 import { campusIdsAllowed } from '../utils/campus-validation'
@@ -21,6 +21,25 @@ const entryRow = requireRowInSchoolFamily('class_diary_entries')
 const ownEntry = requireOwnRow('class_diary_entries')
 const fileRow = requireRowInSchoolFamily('class_diary_files', 'fileId', 'class_diary_entries!inner(school_id)')
 const ownFile = requireOwnRow('class_diary_files', 'fileId', 'params', 'class_diary_entries!inner(teacher_id)')
+
+/** Students read only their own section's diary: the section filter is forced to it. */
+async function studentOwnSection(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.profile?.role !== 'student') return next()
+  try {
+    const { data } = await supabase.from('students').select('section_id').eq('id', req.profile.student_id ?? '').maybeSingle()
+    if (!data?.section_id) return res.status(403).json({ success: false, error: 'No student profile found' })
+    if (req.params.id) {
+      const { data: entry } = await supabase.from('class_diary_entries').select('section_id').eq('id', req.params.id).maybeSingle()
+      if (entry?.section_id !== data.section_id) return res.status(404).json({ success: false, error: 'Not found' })
+    } else {
+      req.query.section_id = data.section_id
+    }
+    return next()
+  } catch (err) {
+    console.error('Diary section check failed:', err)
+    return res.status(503).json({ success: false, retryable: true, error: 'Could not verify access' })
+  }
+}
 
 /** A comment may be deleted by its author, an admin of the school family, or the entry's teacher. */
 async function canDeleteComment(req: AuthRequest, res: Response, next: NextFunction) {
@@ -49,7 +68,7 @@ async function canDeleteComment(req: AuthRequest, res: Response, next: NextFunct
  * Get diary entries in read view (by date + optional filters)
  * All authenticated users can access
  */
-router.get('/read', (req, res) =>
+router.get('/read', studentOwnSection, (req, res) =>
   diaryController.getDiaryReadView(req, res)
 )
 
@@ -58,7 +77,7 @@ router.get('/read', (req, res) =>
  * Get all diary entries with optional filters
  * All authenticated users can access
  */
-router.get('/', (req, res) =>
+router.get('/', studentOwnSection, (req, res) =>
   diaryController.getDiaryEntries(req, res)
 )
 
@@ -66,7 +85,7 @@ router.get('/', (req, res) =>
  * GET /api/class-diary/:id
  * Get a single diary entry by ID
  */
-router.get('/:id', entryRow, (req, res) =>
+router.get('/:id', entryRow, studentOwnSection, (req, res) =>
   diaryController.getDiaryEntryById(req, res)
 )
 
@@ -75,7 +94,7 @@ router.get('/:id', entryRow, (req, res) =>
  * Create a new diary entry
  * Only admin and teacher can create
  */
-router.post('/', requireRole('admin', 'teacher'), requireBodyRowsInSchoolFamily('staff', 'teacher_id'), requireSelfTeacherId('body'), requireBodyRowsInSchoolFamily('sections', 'section_id'), (req, res) =>
+router.post('/', requireRole('admin', 'teacher'), requireBodyRowsInSchoolFamily('staff', 'teacher_id'), requireSelfTeacherId('body'), requireBodyRowsInSchoolFamily('sections', 'section_id'), requireOwnClass('section', (req) => req.body?.section_id), (req, res) =>
   diaryController.createDiaryEntry(req, res)
 )
 
@@ -84,7 +103,7 @@ router.post('/', requireRole('admin', 'teacher'), requireBodyRowsInSchoolFamily(
  * Update a diary entry
  * Only admin and teacher can update
  */
-router.put('/:id', requireRole('admin', 'teacher'), entryRow, ownEntry, (req, res) =>
+router.put('/:id', requireRole('admin', 'teacher'), entryRow, ownEntry, requireBodyRowsInSchoolFamily('sections', 'section_id'), requireOwnClass('section', (req) => req.body?.section_id), (req, res) =>
   diaryController.updateDiaryEntry(req, res)
 )
 

@@ -1,6 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { Users } from 'lucide-react-native';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, RowItem } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

@@ -96,7 +96,7 @@ export function SectionPicker({ sections, value, onChange }: { sections: JgSecti
 /** Explains why the module can't open yet (not set up / grade not mapped / plugin off) with a way forward. */
 export function JgBlocked({ code, message, isAdmin }: { code?: string; message?: string; isAdmin: boolean }) {
   const t = useTranslations("grades")
-  const key = code === "not_setup" || code === "not_seeded" ? "notSetup" : code === "not_mapped" ? "notMapped" : null
+  const key = code === "not_setup" || code === "not_seeded" ? "notSetup" : code === "not_mapped" ? "notMapped" : code === "not_migrated" ? "notMigrated" : null
   if (code === "no_sections") {
     return (
       <Card>
@@ -114,7 +114,7 @@ export function JgBlocked({ code, message, isAdmin }: { code?: string; message?:
         <AlertTriangle className="size-8 text-warning" />
         <p className="font-semibold">{key ? t(`${key}Title`) : t("loadError")}</p>
         <p className="max-w-lg text-sm text-muted-foreground">{key ? t(`${key}Body`) : message}</p>
-        {isAdmin && key ? (
+        {isAdmin && key && key !== "notMigrated" ? (
           <Button asChild>
             <Link href="/admin/jahbadh-grades/setup">
               <Settings2 className="size-4" />

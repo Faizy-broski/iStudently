@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { ChevronLeft, ChevronRight, Info, Pencil, RefreshCw } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 
 import { Picker } from '@/components/app/picker';
 import { SearchBar } from '@/components/app/search-bar';

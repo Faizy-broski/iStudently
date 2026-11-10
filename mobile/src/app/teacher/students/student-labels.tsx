@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { FileDown, Printer, Tag, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { FilterChips } from '@/components/app/filter-chips';

@@ -112,7 +112,7 @@ export default function Sections() {
                   <Text className="text-sm font-semibold" numberOfLines={1}>
                     {x.name}
                   </Text>
-                  <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                  <Text variant="muted" className="text-xs" numberOfLines={1}>
                     {x.grade_name ?? ''}
                   </Text>
                 </View>
@@ -120,7 +120,7 @@ export default function Sections() {
               </View>
               <UsageBar used={x.current_strength ?? 0} total={x.capacity ?? 0} />
               <View className="flex-row items-center justify-between gap-2">
-                <Text className={cn('text-[11px] font-medium', color(x))}>
+                <Text className={cn('text-xs font-medium', color(x))}>
                   {`${s('strength')} ${x.current_strength ?? 0}/${x.capacity ?? '—'} · ${s('available')} ${s('seats', { count: x.available_seats ?? 0 })}`}
                 </Text>
                 <RowActions

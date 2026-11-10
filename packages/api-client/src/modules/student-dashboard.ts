@@ -1,6 +1,7 @@
 // Ported from frontend/src/lib/api/student-dashboard.ts (types copied verbatim).
 // Identity comes from the token: no student_id parameters (backend routes are zero-trust).
 import type { ApiClient } from '../client'
+import type { ClassDiaryEntry } from './parent-dashboard'
 import { qs } from '../query'
 
 export interface TodayClass {
@@ -377,6 +378,8 @@ export interface SubmitAssignmentDTO {
   assignment_id: string
   submission_text?: string
   attachments?: { url: string; name: string; uploaded_at: string }[]
+  /** Files from the earlier submission to keep on a resubmit (the server replaces the list otherwise). */
+  existing_attachments?: { url: string; name: string; uploaded_at?: string }[]
 }
 
 export interface StudentReferral {
@@ -441,7 +444,7 @@ export function studentDashboardApi(api: ApiClient) {
     getUpcomingExams: () => api.get<UpcomingExam[]>(`${base}/exams/upcoming`),
     getDigitalIdCard: () => api.get<DigitalIdCard>(`${base}/profile/id-card`),
     getStudentGrades: () => api.get<StudentGradeGroup[]>(`${base}/grades`),
-    getStudentClassDiary: () => api.get<unknown[]>(`${base}/class-diary`),
+    getStudentClassDiary: () => api.get<ClassDiaryEntry[]>(`${base}/class-diary`),
     getStudentDiscipline: () => api.get<StudentReferral[]>(`${base}/discipline`),
     getStudentActivities: () => api.get<StudentActivityEnrollment[]>(`${base}/activities`),
     /** Current hostel room assignment, or null. */

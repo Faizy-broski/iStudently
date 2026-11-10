@@ -63,7 +63,8 @@ export default function ExamControlEntry() {
 function Grid({ id, data, readOnly, camera, onSaved }: { id: string; data: JcEntryGrid; readOnly: boolean; camera: boolean; onSaved: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
-  const subjects = data.grade.subjects;
+  // Entry columns: a subject, or one column per exam part («المادة — الجزء», key `subject~n`).
+  const subjects = data.columns?.length ? data.columns : data.grade.subjects;
   const [subject, setSubject] = useState(subjects[0]?.key ?? '');
   const sub = subjects.find((s) => s.key === subject) ?? subjects[0];
   const max = sub?.max ?? 0;
@@ -116,8 +117,10 @@ function Grid({ id, data, readOnly, camera, onSaved }: { id: string; data: JcEnt
     return focusSecret(res.data.secret);
   };
 
-  const rows = data.rows.filter((r) => !filter || String(r.secret) === filter);
-  const counts = data.rows.reduce(
+  // Second-round students sit only their referred subjects: rows without this column are left out.
+  const sitting = data.rows.filter((r) => !sub || r.cells[sub.key]);
+  const rows = sitting.filter((r) => !filter || String(r.secret) === filter);
+  const counts = sitting.reduce(
     (a, r) => {
       const c = sub ? r.cells[sub.key] : undefined;
       return { entered: a.entered + (c?.entered ? 1 : 0), mismatch: a.mismatch + (c?.mismatch ? 1 : 0), single: a.single + (c?.single ? 1 : 0) };
@@ -138,16 +141,16 @@ function Grid({ id, data, readOnly, camera, onSaved }: { id: string; data: JcEnt
           <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{t('examControl.showAll')}</Text>
         </Pressable>
       ) : null}
-      <Text variant="muted" className="text-[11px]">
+      <Text variant="muted" className="text-xs">
         {[
-          t('examControl.entryCounts', { entered: counts.entered, total: data.rows.length }),
+          t('examControl.entryCounts', { entered: counts.entered, total: sitting.length }),
           counts.mismatch ? t('examControl.mismatchCount', { n: counts.mismatch }) : null,
           counts.single ? t('examControl.singleCount', { n: counts.single }) : null,
         ]
           .filter(Boolean)
           .join(' · ')}
       </Text>
-      <Text variant="muted" className="text-[11px]">
+      <Text variant="muted" className="text-xs">
         {t('examControl.entryKeysHint')}
       </Text>
       {!readOnly ? (
@@ -164,11 +167,11 @@ function Grid({ id, data, readOnly, camera, onSaved }: { id: string; data: JcEnt
           <View key={r.secret} className="border-border flex-row items-center gap-3 border-b pb-2">
             <View className="flex-1 gap-0.5">
               <Text className="font-mono text-sm font-semibold">{String(r.secret)}</Text>
-              <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+              <Text variant="muted" className="text-xs" numberOfLines={1}>
                 {[r.name, r.seat_number ? String(r.seat_number) : null, r.committee].filter(Boolean).join(' · ') || '—'}
               </Text>
             </View>
-            {c?.mismatch ? <StatusChip label={t('examControl.mismatchCell')} tone="destructive" /> : c?.single ? <StatusChip label={t('examControl.singleCell')} tone="warning" /> : null}
+            {c?.mismatch ? <StatusChip label={t('examControl.mismatchCell')} tone="destructive" /> : c?.single ? <StatusChip label={t('examControl.singleCell')} tone="warning" /> : !c?.entered && c?.exam_day_absent ? <StatusChip label={t('examControl.examDayAbsentHint')} tone="warning" /> : null}
             {!readOnly ? (
               <Pressable
                 onPress={() => setEdits((x) => ({ ...x, [key]: (edits[key] ?? cellText(c)) === 'غ' ? '' : 'غ' }))}

@@ -10,6 +10,17 @@ const err = (res: Response, e: unknown, status = 500) =>
   res.status(status).json({ data: null, error: (e as Error).message || 'Server error' })
 
 /** Update bodies never move a row to another school or rewrite its identity. */
+/**
+ * `created_by` filter (a profile id). `mine=1`, or the caller's own staff id (what the web and app
+ * send), means the caller's profile.
+ */
+function creatorFilter(req: AuthRequest): string | null {
+  const raw = ((req.query.created_by as string) || '').trim()
+  if (req.query.mine === '1' || req.query.mine === 'true') return req.profile?.id ?? null
+  if (raw && raw === req.profile?.staff_id) return req.profile?.id ?? null
+  return raw || null
+}
+
 const PROTECTED = ['id', 'school_id', 'campus_id', 'created_by', 'created_at', 'quiz_id', 'question_id']
 const updatable = (body: Record<string, unknown> = {}) => Object.fromEntries(Object.entries(body).filter(([k]) => !PROTECTED.includes(k))) as any
 
@@ -58,7 +69,7 @@ export const getQuestions = async (req: AuthRequest, res: Response) => {
     const school_id = ((req.query.school_id as string) || req.profile?.school_id || '').trim()
     const campus_id = ((req.query.campus_id as string) || '').trim() || null
     const category_id = ((req.query.category_id as string) || '').trim() || null
-    const created_by = ((req.query.created_by as string) || '').trim() || null
+    const created_by = creatorFilter(req)
     const grade_level_id = ((req.query.grade_level_id as string) || '').trim() || null
     const subject_id = ((req.query.subject_id as string) || '').trim() || null
     const chapter_id = ((req.query.chapter_id as string) || '').trim() || null
@@ -86,6 +97,7 @@ export const getQuestion = async (req: Request, res: Response) => {
 
 export const createQuestion = async (req: AuthRequest, res: Response) => {
   try {
+    req.body.created_by = req.profile?.id ?? null
     if (!req.body.school_id && req.profile?.school_id) req.body.school_id = req.profile.school_id
     if (req.body.campus_id === '') req.body.campus_id = null
     if (req.body.category_id === '') req.body.category_id = null
@@ -117,7 +129,7 @@ export const getQuizzes = async (req: AuthRequest, res: Response) => {
     const campus_id = ((req.query.campus_id as string) || '').trim() || null
     const course_period_id = ((req.query.course_period_id as string) || '').trim() || null
     const academic_year_id = ((req.query.academic_year_id as string) || '').trim() || null
-    const created_by = ((req.query.created_by as string) || '').trim() || null
+    const created_by = creatorFilter(req)
     const search = ((req.query.search as string) || '').trim() || undefined
 
     console.log('[QUIZ_DEBUG] getQuizzes query params:', {
@@ -153,7 +165,8 @@ export const getQuiz = async (req: Request, res: Response) => {
 export const createQuiz = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.body.school_id && req.profile?.school_id) req.body.school_id = req.profile.school_id
-    if (!req.body.created_by && req.profile?.id) req.body.created_by = req.profile.id
+    // created_by references profiles: always the signed-in user (clients used to send their staff id).
+    req.body.created_by = req.profile?.id ?? null
     if (req.body.campus_id === '') req.body.campus_id = null
     if (req.body.assignment_id === '') req.body.assignment_id = null
     if (req.body.course_period_id === '') req.body.course_period_id = null
@@ -243,8 +256,8 @@ export const getStudentQuizForm = async (req: Request, res: Response) => {
     const quizId = req.params.quizId
     const quiz = await svc.getQuiz(quizId)
 
-    // Targeting: if the quiz is assigned to specific students, others can't enter.
-    if (quiz.assigned_student_ids && quiz.assigned_student_ids.length > 0 && !quiz.assigned_student_ids.includes(studentId)) {
+    // Targeting: only the student's own section, or the students the quiz is assigned to.
+    if (!(await svc.studentMayTakeQuiz(quiz, studentId))) {
       return err(res, { message: 'You are not assigned to this quiz.' }, 403)
     }
 
@@ -303,6 +316,11 @@ export const submitQuiz = async (req: Request, res: Response) => {
     if (!ownStudentId) return err(res, { message: 'Only students can submit a quiz' }, 403)
     if (student_id && student_id !== ownStudentId) return err(res, { message: 'You can only submit your own quiz' }, 403)
     if (!Array.isArray(answers)) return err(res, { message: 'answers required' }, 400)
+    // Same gates as opening the quiz form. Lockout only bars starting late, so a student who opened
+    // the form in time may still submit after it.
+    const quiz = await svc.getQuiz(req.params.quizId)
+    if (!(await svc.studentMayTakeQuiz(quiz, ownStudentId))) return err(res, { message: 'You are not assigned to this quiz.' }, 403)
+    if (!svc.getQuizAccessState(quiz, new Date()).unlocked) return res.status(423).json({ data: null, error: 'not_unlocked', unlocked: false })
     // One submission per student: resubmitting after seeing revealed answers would be cheating.
     if (await svc.hasSubmittedQuiz(req.params.quizId, ownStudentId)) {
       return err(res, { message: 'You have already submitted this quiz' }, 409)

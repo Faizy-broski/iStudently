@@ -1303,6 +1303,18 @@
         ]
       },
       {
+        "title": "jahbadh_monthly_log",
+        "hrefs": [
+          "/teacher/jahbadh-grades/monthly"
+        ]
+      },
+      {
+        "title": "jahbadh_quiz_grading",
+        "hrefs": [
+          "/teacher/jahbadh-grades/quiz-grading"
+        ]
+      },
+      {
         "title": "jahbadh_report_cards",
         "hrefs": [
           "/teacher/jahbadh-grades/report-cards",
@@ -1314,6 +1326,60 @@
         "title": "jahbadh_activities",
         "hrefs": [
           "/teacher/jahbadh-grades/activities"
+        ]
+      },
+      {
+        "title": "jahbadh_official",
+        "hrefs": [
+          "/teacher/jahbadh-grades/official"
+        ]
+      },
+      {
+        "title": "jahbadh_monthly_cards",
+        "hrefs": [
+          "/teacher/jahbadh-grades/monthly-cards"
+        ]
+      },
+      {
+        "title": "jahbadh_marking_sheets",
+        "hrefs": [
+          "/teacher/jahbadh-grades/marking-sheets"
+        ]
+      },
+      {
+        "title": "jahbadh_infographics",
+        "hrefs": [
+          "/teacher/jahbadh-grades/infographics"
+        ]
+      },
+      {
+        "title": "jahbadh_daily_attendance",
+        "hrefs": [
+          "/teacher/jahbadh-grades/daily-attendance"
+        ]
+      },
+      {
+        "title": "jahbadh_insight_hub",
+        "hrefs": [
+          "/teacher/jahbadh-grades/insight"
+        ]
+      },
+      {
+        "title": "jahbadh_workflow",
+        "hrefs": [
+          "/teacher/jahbadh-grades/workflow"
+        ]
+      },
+      {
+        "title": "jahbadh_entry_progress",
+        "hrefs": [
+          "/teacher/jahbadh-grades/entry-progress"
+        ]
+      },
+      {
+        "title": "jahbadh_entry_audit",
+        "hrefs": [
+          "/teacher/jahbadh-grades/entry-audit"
         ]
       },
       {
@@ -1423,6 +1489,18 @@
         ]
       },
       {
+        "title": "jahbadh_monthly_log",
+        "hrefs": [
+          "/admin/jahbadh-grades/monthly"
+        ]
+      },
+      {
+        "title": "jahbadh_quiz_grading",
+        "hrefs": [
+          "/admin/jahbadh-grades/quiz-grading"
+        ]
+      },
+      {
         "title": "jahbadh_report_cards",
         "hrefs": [
           "/admin/jahbadh-grades/report-cards"
@@ -1432,6 +1510,84 @@
         "title": "jahbadh_activities",
         "hrefs": [
           "/admin/jahbadh-grades/activities"
+        ]
+      },
+      {
+        "title": "jahbadh_official",
+        "hrefs": [
+          "/admin/jahbadh-grades/official"
+        ]
+      },
+      {
+        "title": "jahbadh_monthly_cards",
+        "hrefs": [
+          "/admin/jahbadh-grades/monthly-cards"
+        ]
+      },
+      {
+        "title": "jahbadh_marking_sheets",
+        "hrefs": [
+          "/admin/jahbadh-grades/marking-sheets"
+        ]
+      },
+      {
+        "title": "jahbadh_infographics",
+        "hrefs": [
+          "/admin/jahbadh-grades/infographics"
+        ]
+      },
+      {
+        "title": "jahbadh_daily_attendance",
+        "hrefs": [
+          "/admin/jahbadh-grades/daily-attendance"
+        ]
+      },
+      {
+        "title": "jahbadh_import_names",
+        "hrefs": [
+          "/admin/jahbadh-grades/import"
+        ]
+      },
+      {
+        "title": "jahbadh_rollover",
+        "hrefs": [
+          "/admin/jahbadh-grades/rollover"
+        ]
+      },
+      {
+        "title": "jahbadh_insight_hub",
+        "hrefs": [
+          "/admin/jahbadh-grades/insight"
+        ]
+      },
+      {
+        "title": "jahbadh_workflow",
+        "hrefs": [
+          "/admin/jahbadh-grades/workflow"
+        ]
+      },
+      {
+        "title": "jahbadh_entry_progress",
+        "hrefs": [
+          "/admin/jahbadh-grades/entry-progress"
+        ]
+      },
+      {
+        "title": "jahbadh_entry_audit",
+        "hrefs": [
+          "/admin/jahbadh-grades/entry-audit"
+        ]
+      },
+      {
+        "title": "jahbadh_principal_dashboard",
+        "hrefs": [
+          "/admin/jahbadh-grades/principal-dashboard"
+        ]
+      },
+      {
+        "title": "jahbadh_insight_settings",
+        "hrefs": [
+          "/admin/jahbadh-grades/insight-settings"
         ]
       },
       {

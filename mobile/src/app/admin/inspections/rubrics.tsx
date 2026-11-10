@@ -117,7 +117,7 @@ export default function InspectionRubrics() {
               <Icon as={Layers} className="size-4 text-brand dark:text-brand-secondary" />
               <CardTitle className="flex-1">{c.name}</CardTitle>
               <Badge variant="outline">
-                <Text className="text-[10px]">{`${c.weight}%`}</Text>
+                <Text className="text-2xs">{`${c.weight}%`}</Text>
               </Badge>
               <Pressable onPress={() => setCat({ editing: c, name: c.name, weight: String(c.weight) })} hitSlop={4} className="bg-info-soft size-9 items-center justify-center rounded-full active:opacity-70">
                 <Icon as={Pencil} className="text-brand dark:text-brand-secondary size-4" />

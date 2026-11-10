@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useToast } from '@/components/app/toast';
 import { Panel } from '@/components/app/panel';

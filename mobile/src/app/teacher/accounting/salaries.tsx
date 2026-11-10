@@ -24,7 +24,8 @@ import { usePortalCurrency } from '@/features/portal/currency';
 import { OwnTotals, useOwnAccounting } from '@/features/teacher/accounting';
 import { teacher } from '@/lib/api';
 import { formatDate } from '@/lib/format';
-import { buildPrintHtml, printHtml } from '@/lib/print';
+import { colors } from '@/lib/colors';
+import { buildPrintHtml, escapeHtml, printHtml } from '@/lib/print';
 import { cn } from '@/lib/utils';
 
 /** Assigned salaries with totals, a pay stub per salary, and a salary advance request (web: /teacher/accounting/salaries). */
@@ -37,6 +38,7 @@ export default function TeacherSalaries() {
   const acc = useOwnAccounting();
   const [q, setQ] = useState('');
   const [printing, setPrinting] = useState<string | null>(null);
+  const [printingList, setPrintingList] = useState(false);
   const [advance, setAdvance] = useState<{ amount: string; reason: string } | null>(null);
   const [sending, setSending] = useState(false);
   const term = q.trim().toLowerCase();
@@ -56,6 +58,29 @@ export default function TeacherSalaries() {
     }
   }
 
+  // Web: the page's "Print / export" (window.print) — totals and the whole salaries table.
+  async function printList() {
+    const tt = (key: string) => escapeHtml(t(`teacherPortal.accounting.totals.${key}`));
+    const cell = `border:1px solid ${colors.printBorder};padding:6px 8px;text-align:start;vertical-align:top`;
+    const head = ['col_salary', 'col_amount', 'col_assigned', 'col_due', 'col_comment', 'col_file_attached'].map((c) => `<th style="${cell};background:${colors.printSurface}">${escapeHtml(k(c))}</th>`).join('');
+    const rows = list
+      .map(
+        (s) =>
+          `<tr><td style="${cell}">${escapeHtml(s.title || k('col_salary'))}</td><td style="${cell}">${escapeHtml(money(Number(s.amount)))}</td><td style="${cell}">${escapeHtml(formatDate(s.assigned_date))}</td><td style="${cell}">${escapeHtml(s.due_date ? formatDate(s.due_date) : '-')}</td><td style="${cell}">${escapeHtml(s.comments || '')}</td><td style="${cell}">${escapeHtml(s.file_attached ? t('common.yes') : t('common.no'))}</td></tr>`
+      )
+      .join('');
+    const totals = `<p>${tt('total_salaries')} <b>${escapeHtml(money(acc.totalSalaries))}</b><br/>${tt('less_total_payments')} <b>${escapeHtml(money(acc.totalPayments))}</b><br/>${tt('balance')} <b>${escapeHtml(money(acc.balance))}</b></p>`;
+    const page = `<h2>${escapeHtml(k('title'))}</h2>${totals}<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+    setPrintingList(true);
+    try {
+      await printHtml(buildPrintHtml({ title: k('title'), pages: [page], school: ctx.school, layout: ctx.layout, withHeader: ctx.withHeader }));
+    } catch (e) {
+      toast.error(e instanceof Error && e.message === 'print-unavailable' ? t('app.pr_rebuild') : t('common.error'));
+    } finally {
+      setPrintingList(false);
+    }
+  }
+
   async function requestAdvance() {
     const amount = parseFloat(advance?.amount ?? '');
     if (!amount || amount <= 0) return toast.error(k('advance_amount_required'));
@@ -71,10 +96,16 @@ export default function TeacherSalaries() {
     <>
       <Stack.Screen options={{ title: k('title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-3 p-4 pb-10" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={() => Promise.all([acc.salaries.mutate(), acc.payments.mutate()])} />}>
-        <Button className="self-start" onPress={() => setAdvance({ amount: '', reason: '' })}>
-          <Icon as={HandCoins} className="text-primary-foreground size-4" />
-          <Text>{k('request_advance')}</Text>
-        </Button>
+        <View className="flex-row flex-wrap gap-2">
+          <Button onPress={() => setAdvance({ amount: '', reason: '' })}>
+            <Icon as={HandCoins} className="text-primary-foreground size-4" />
+            <Text>{k('request_advance')}</Text>
+          </Button>
+          <Button variant="outline" onPress={printList} disabled={printingList || acc.salaries.isLoading}>
+            <Icon as={Printer} className="size-4" />
+            <Text>{k('print_export')}</Text>
+          </Button>
+        </View>
         <OwnTotals totalSalaries={acc.totalSalaries} totalPayments={acc.totalPayments} balance={acc.balance} />
         <SearchBar value={q} onChangeText={setQ} placeholder={t('common.search')} />
         <Text className="text-muted-foreground text-sm">{k('found_count', { count: list.length })}</Text>

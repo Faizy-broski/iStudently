@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { ChevronLeft, ChevronRight, FileText, Filter, Pencil, RefreshCw, Settings, SlidersHorizontal } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { MultiSelect } from '@/components/app/multi-select';
 import { Picker } from '@/components/app/picker';
@@ -89,7 +90,7 @@ export default function StudentFees() {
             <Text className="text-sm font-semibold" numberOfLines={1}>
               {name}
             </Text>
-            <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+            <Text variant="muted" className="text-xs" numberOfLines={1}>
               {[fee.students?.student_number, fee.fee_structures?.fee_categories?.name, fee.due_date ? `${f('table.due_date')}: ${formatDate(fee.due_date)}` : null].filter(Boolean).join(' · ')}
             </Text>
           </View>
@@ -99,8 +100,8 @@ export default function StudentFees() {
           </View>
         </Pressable>
         <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
-          <Text className="text-success text-[11px] font-semibold">{`${c('paid')}: ${money(fee.amount_paid)}`}</Text>
-          <Text className={cn('text-[11px] font-semibold', balance > 0 ? 'text-destructive' : balance < 0 ? 'text-success' : 'text-muted-foreground')}>{`${c('balance')}: ${money(balance)}`}</Text>
+          <Text className="text-success text-xs font-semibold">{`${c('paid')}: ${money(fee.amount_paid)}`}</Text>
+          <Text className={cn('text-xs font-semibold', balance > 0 ? 'text-destructive' : balance < 0 ? 'text-success' : 'text-muted-foreground')}>{`${c('balance')}: ${money(balance)}`}</Text>
           <DueDateBadge dueDate={fee.due_date} status={fee.status} />
         </View>
         <View className="flex-row flex-wrap gap-1.5">
@@ -274,7 +275,7 @@ function PillAction({ icon, label, onPress }: { icon: typeof Pencil; label: stri
   return (
     <Pressable onPress={onPress} className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1 active:opacity-70" accessibilityRole="button">
       <Icon as={icon} className="text-brand dark:text-brand-secondary size-3" />
-      <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{label}</Text>
+      <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{label}</Text>
     </Pressable>
   );
 }

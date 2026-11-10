@@ -140,7 +140,7 @@ export default function ExamControlCommittees() {
               <Text className="flex-1 font-semibold">{x.room_label ? `${x.name} · ${x.room_label}` : x.name}</Text>
               <Text className="text-sm tabular-nums">{`${x.count}/${x.capacity}`}</Text>
             </View>
-            <Text variant="muted" className="text-[11px]">
+            <Text variant="muted" className="text-xs">
               {[x.from_seat !== null ? `${x.from_seat} – ${x.to_seat}` : null, x.grades.join('، ') || null, `${t('examControl.occupancy')} ${pct(x.occupancy, 0)}`, x.special ? `${t('examControl.specialCount')} ${x.special}` : null].filter(Boolean).join(' · ')}
             </Text>
             {x.flags.length ? (

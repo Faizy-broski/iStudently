@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, View } from 'react-native';
+import { View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';

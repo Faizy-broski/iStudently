@@ -21,7 +21,7 @@ function Input({ className, icon, onFocus, onBlur, ...props }: InputProps) {
   const field = (
     <TextInput
       className={cn(
-        'border-input bg-card text-foreground w-full min-w-0 border px-4 text-base leading-5',
+        'border-input bg-card text-foreground w-full min-w-0 border px-4 font-sans text-base',
         multiline ? 'min-h-24 rounded-2xl py-3' : 'h-12 rounded-full py-1',
         icon && 'ps-11',
         focused && 'border-brand-secondary',

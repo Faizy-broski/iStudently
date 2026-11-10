@@ -2,7 +2,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Mail, Pencil, Phone } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSWRConfig } from 'swr';
-import { Linking, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { InfoCard, InfoRow } from '@/components/app/info';

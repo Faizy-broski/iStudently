@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { AlertTriangle, ArrowDown, Building2, Calendar, CheckCircle2, Info, TrendingUp, UserCheck, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';
@@ -111,7 +112,7 @@ export default function Rollover() {
         return (
           <Pressable key={item.key} onPress={() => setOptions((o) => ({ ...o, [item.key]: !on }))} className={cn('flex-row items-center gap-3 px-4 py-2.5', i > 0 && 'border-border border-t')}>
             {item.indent ? <Text className="text-muted-foreground ms-3 text-xs">↳</Text> : null}
-            <View className={cn('size-4 items-center justify-center rounded-sm border-2', on ? 'border-success bg-success' : 'border-border')}>{on ? <Text className="text-[10px] font-bold text-white">✓</Text> : null}</View>
+            <View className={cn('size-4 items-center justify-center rounded-sm border-2', on ? 'border-success bg-success' : 'border-border')}>{on ? <Text className="text-2xs font-bold text-white">✓</Text> : null}</View>
             <Text className={cn('flex-1 text-sm', has && on && 'text-muted-foreground')}>{r(`rollover_items.${item.key}`)}</Text>
             {item.info ? (
               <Pressable onPress={() => toast.info(r(`rollover_items.${item.key}_info`))} hitSlop={8}>

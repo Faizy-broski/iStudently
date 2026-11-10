@@ -367,11 +367,11 @@ function RecordCard({ record, fieldDefs, onDeleted }: { record: VaultRecord; fie
             <Text className="font-semibold">{record.title}</Text>
             <View className="flex-row flex-wrap gap-1.5">
               <Badge variant="outline">
-                <Text className="text-[10px]">{record.sub_category}</Text>
+                <Text className="text-2xs">{record.sub_category}</Text>
               </Badge>
               {record.expiry_date ? (
                 <Badge variant={exp === 'expired' ? 'destructive' : exp === 'soon' ? 'default' : 'outline'}>
-                  <Text className="text-[10px]">{v('expires', { date: formatYmd(record.expiry_date.slice(0, 10), lang) })}</Text>
+                  <Text className="text-2xs">{v('expires', { date: formatYmd(record.expiry_date.slice(0, 10), lang) })}</Text>
                 </Badge>
               ) : null}
             </View>

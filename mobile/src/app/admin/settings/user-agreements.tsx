@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { BottomBar } from '@/components/app/layout';
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { FilterChips } from '@/components/app/filter-chips';
@@ -358,12 +359,12 @@ export default function UserAgreementsSettings() {
           </>,
         )}
       </ScrollView>
-      <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
+      <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
         <Button onPress={save} disabled={saving}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{saving ? u('saving') : u('save_all')}</Text>
         </Button>
-      </View>
+      </BottomBar>
     </View>
   );
 }

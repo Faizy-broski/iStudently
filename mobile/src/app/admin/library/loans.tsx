@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { useSWRConfig } from 'swr';
 
 import { Text } from '@/components/ui/text';

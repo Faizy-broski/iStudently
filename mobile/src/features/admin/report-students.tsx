@@ -54,7 +54,7 @@ export function MarkingPeriodChecks({ list, value, onChange }: { list: MarkingPe
     <View className="gap-2">
       {types.map((type) => (
         <View key={type} className="gap-0.5">
-          <Text variant="muted" className="text-[11px] font-semibold">
+          <Text variant="muted" className="text-xs font-semibold">
             {type}
           </Text>
           {list

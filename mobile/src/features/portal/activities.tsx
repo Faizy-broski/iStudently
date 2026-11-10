@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { Calendar, Star } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

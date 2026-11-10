@@ -1,7 +1,8 @@
 import type { AttendanceCode } from '@studently/api-client';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { Picker } from '@/components/app/picker';
@@ -79,7 +80,7 @@ export function CodeChip({ code, size = 'md' }: { code: Pick<AttendanceCode, 'sh
     <View
       className={cn('items-center justify-center rounded-md', size === 'sm' ? 'h-5 min-w-5 px-1' : 'h-7 min-w-7 px-1.5')}
       style={{ backgroundColor: code.color || colors.printMuted }}>
-      <Text className={cn('font-bold text-white', size === 'sm' ? 'text-[10px]' : 'text-xs')}>{code.short_name}</Text>
+      <Text className={cn('font-bold text-white', size === 'sm' ? 'text-2xs' : 'text-xs')}>{code.short_name}</Text>
     </View>
   );
 }

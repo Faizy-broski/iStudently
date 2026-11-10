@@ -1,7 +1,8 @@
 import { router, Stack } from 'expo-router';
 import { Eye, Mic, MicOff, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 
 import { useConfirm } from '@/components/app/confirm';
 import { EmptyState, LoadingList } from '@/components/app/states';

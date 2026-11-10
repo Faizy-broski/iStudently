@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { useFn } from '@/features/admin/fina';
 import { useCampus } from '@/features/campus/campus';
+import i18n from '@/i18n';
 import { fina } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -49,7 +50,7 @@ export function FinaEventsScreen({ canCreate }: { canCreate: boolean }) {
         },
         campusId,
       );
-      if (!r.success) return toast.error(r.error || '');
+      if (!r.success) return toast.error(r.error || i18n.t('common.error'));
       setTitle('');
       setDate('');
       setLocation('');
@@ -63,7 +64,7 @@ export function FinaEventsScreen({ canCreate }: { canCreate: boolean }) {
     setBusy(eventId);
     try {
       const r = await fina.rsvp(eventId, answer, campusId);
-      if (!r.success) return toast.error(r.error || '');
+      if (!r.success) return toast.error(r.error || i18n.t('common.error'));
       res.mutate();
     } finally {
       setBusy(null);

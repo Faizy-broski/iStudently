@@ -3,6 +3,7 @@
 // (the web does not import packages at runtime). Keep both in step.
 import type {
   JcStatus, JcRole, JcSettings, JcSessionSummary, JcSubject, JcGrade, JcOverview, JcStudent, JcCommittee, JcCommitteeStatus, JcAlert, JcDay, JcInvigilator, JcDuty, JcDayStudent, JcEnvelope, JcDayDashboard, JcViolation, JcEntryGrid, JcGate, JcAppeal, JcQuality, JcResults, JcExport, JcDoc, JcAttendanceState, JcEnvelopeCheck, JcTimerFeed, JcTimerMinutes, JcScanResult,
+  JcHonorBoard, JcRound2List, JcComparison, JcInvigilationLoads,
 } from "@studently/api-client/modules/jahbadh-control";
 import { jgRequest, jgOpenPdfPath } from "./jahbadh-grades";
 
@@ -54,7 +55,8 @@ function build() {
     staff: (sessionId: string) => get<{ id: string; profile_id: string; name: string; role: string }[]>(`${s(sessionId)}/staff`),
     invigilation: (sessionId: string) => get<JcDuty[]>(`${s(sessionId)}/invigilation`),
     generateInvigilation: (sessionId: string) =>
-      post<{ duties: JcDuty[]; short_days: { dayId: string; needed: number; eligible: number }[]; loads: Record<string, { duties: number; reserves: number }> }>(`${s(sessionId)}/invigilation/generate`, {}),
+      post<{ duties: JcDuty[]; short_days: { dayId: string; needed: number; eligible: number }[]; loads: Record<string, { duties: number; reserves: number }>; spread: { max: number; min: number; gap: number } }>(`${s(sessionId)}/invigilation/generate`, {}),
+    invigilationLoads: (sessionId: string) => get<JcInvigilationLoads>(`${s(sessionId)}/invigilation/loads`),
     setDuty: (sessionId: string, body: { exam_day_id: string; committee_id: string | null; slot: number; is_reserve?: boolean; staff_id: string | null }) =>
       put<JcDuty[]>(`${s(sessionId)}/invigilation/duty`, body),
     dayDashboard: (sessionId: string, dayId: string) => get<JcDayDashboard>(`${s(sessionId)}/examday/${id(dayId)}/dashboard`),
@@ -81,14 +83,19 @@ function build() {
     revokeUnmask: (sessionId: string) => post<JcGate>(`${s(sessionId)}/unmask/revoke`, {}),
     appeals: (sessionId: string) => get<JcAppeal[]>(`${s(sessionId)}/appeals`),
     addAppeal: (sessionId: string, body: { secret: number; subject_key: string; after: number; reason: string }) => post<JcAppeal[]>(`${s(sessionId)}/appeals`, body),
-    auditSample: (sessionId: string) => get<{ secret: number | null; reviewed: boolean; notes: string | null }[]>(`${s(sessionId)}/audit-sample`),
-    drawAuditSample: (sessionId: string) => post<{ secret: number | null; reviewed: boolean; notes: string | null }[]>(`${s(sessionId)}/audit-sample/draw`, {}),
-    reviewAuditSample: (sessionId: string, body: { secret: number; reviewed: boolean; notes?: string }) => put<unknown>(`${s(sessionId)}/audit-sample`, body),
+    auditSample: (sessionId: string) => get<{ secret: number | null; reviewed: boolean; error_found?: boolean; notes: string | null }[]>(`${s(sessionId)}/audit-sample`),
+    drawAuditSample: (sessionId: string) => post<{ secret: number | null; reviewed: boolean; error_found?: boolean; notes: string | null }[]>(`${s(sessionId)}/audit-sample/draw`, {}),
+    reviewAuditSample: (sessionId: string, body: { secret: number; reviewed: boolean; error_found?: boolean; notes?: string }) => put<unknown>(`${s(sessionId)}/audit-sample`, body),
     graders: (sessionId: string) => get<{ subject_key: string; committee_id: string; staff_id: string }[]>(`${s(sessionId)}/graders`),
     saveGraders: (sessionId: string, graders: { subject_key: string; committee_id: string; staff_id: string | null }[]) => put<unknown>(`${s(sessionId)}/graders`, { graders }),
     quality: (sessionId: string, gradeLevelId?: string | null) => get<JcQuality>(`${s(sessionId)}/quality${q({ grade_level_id: gradeLevelId ?? undefined })}`),
     results: (sessionId: string) => get<JcResults>(`${s(sessionId)}/results`),
     createSecondRound: (sessionId: string) => post<{ session_id: string; students: number }>(`${s(sessionId)}/second-round`, {}),
+    secondRoundList: (sessionId: string) => get<JcRound2List>(`${s(sessionId)}/second-round/list`),
+    honorBoard: (sessionId: string) => get<JcHonorBoard>(`${s(sessionId)}/honor-board`),
+    comparison: (sessionId: string, withSessionId?: string | null) => get<JcComparison>(`${s(sessionId)}/comparison${q({ with_session_id: withSessionId ?? undefined })}`),
+    setParts: (sessionId: string, body: { grade_level_id: string; subject_key: string; parts: { name: string; max: number; subitem_id?: string | null }[] }) =>
+      put<JcGrade[]>(`${s(sessionId)}/exam-parts`, body),
     messages: (sessionId: string, note?: string) => get<{ id: string; name: string; phone: string | null; text: string; whatsapp: string | null }[]>(`${s(sessionId)}/messages${q({ note })}`),
     sendMessages: (sessionId: string, note?: string) => post<unknown>(`${s(sessionId)}/messages/send`, { note }),
     exportPreview: (sessionId: string) => get<JcExport>(`${s(sessionId)}/export-to-grades`),
@@ -110,8 +117,8 @@ function build() {
 export const jcApi = build();
 
 /** Opens a printable control document (PDF) in a new tab. */
-export function openJcDoc(sessionId: string, doc: JcDoc, opts: { committeeId?: string | null; dayId?: string | null } = {}) {
+export function openJcDoc(sessionId: string, doc: JcDoc, opts: { committeeId?: string | null; dayId?: string | null; withSessionId?: string | null } = {}) {
   return jgOpenPdfPath(
-    `/jahbadh-control/sessions/${encodeURIComponent(sessionId)}/print/${doc}${q({ committee_id: opts.committeeId ?? undefined, day_id: opts.dayId ?? undefined })}`,
+    `/jahbadh-control/sessions/${encodeURIComponent(sessionId)}/print/${doc}${q({ committee_id: opts.committeeId ?? undefined, day_id: opts.dayId ?? undefined, with_session_id: opts.withSessionId ?? undefined })}`,
   );
 }

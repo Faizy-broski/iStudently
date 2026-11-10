@@ -3,8 +3,10 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { Headphones, Printer, SpellCheck } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
+import i18n from '@/i18n';
 import { colors } from '@/lib/colors';
 import { FormSection, Initials, StatTile, StatTiles } from '@/components/app/layout';
 import { ErrorState, LoadingList } from '@/components/app/states';
@@ -52,9 +54,9 @@ export function SessionReviewScreen() {
 <table><tr>${stats.map(([k, v]) => `<td><b>${escapeHtml(v)}</b><br/>${escapeHtml(k)}</td>`).join('')}</tr></table>
 ${results.length ? `<p dir="${rtl ? 'rtl' : 'ltr'}" style="font-size:16px;line-height:2">${words.map((w, i) => `<span style="${STATUS_CSS[results[i]?.status ?? 'unread']}">${escapeHtml(w)}</span>`).join(' ')}</p>` : ''}`;
     try {
-      await sharePdf(buildPrintHtml({ title: l.text_title ?? 'Reading', pages: [body], school: print.school, layout: print.layout, withHeader: print.withHeader }), `reading-review-${l.id.slice(0, 8)}.pdf`);
+      await sharePdf(buildPrintHtml({ title: l.text_title ?? i18n.t('app.srs_reading_title'), pages: [body], school: print.school, layout: print.layout, withHeader: print.withHeader }), `reading-review-${l.id.slice(0, 8)}.pdf`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '');
+      toast.error(e instanceof Error && e.message ? e.message : i18n.t('common.error'));
     }
   }
 

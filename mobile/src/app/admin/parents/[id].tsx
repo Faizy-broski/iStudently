@@ -1,7 +1,8 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Link2, Mail, MapPin, Pencil, Phone, Unlink } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { InfoCard, InfoRow } from '@/components/app/info';

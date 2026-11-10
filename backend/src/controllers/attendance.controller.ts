@@ -686,7 +686,8 @@ export const markAttendanceCompleted = async (req: AuthRequest, res: Response) =
     if (!schoolId) return res.status(400).json({ data: null, error: 'School ID required' })
 
     const { staff_id, school_date, period_id, table_name } = req.body
-    const resolvedStaffId = staff_id || req.profile?.id
+    // Teachers mark completion only for themselves (their staff id, not the profile id).
+    const resolvedStaffId = req.profile?.role === 'teacher' ? req.profile?.staff_id : staff_id || req.profile?.staff_id
 
     if (!resolvedStaffId || !school_date || !period_id) {
       return res.status(400).json({
@@ -813,6 +814,27 @@ export const getStaffTakeAttendance = async (req: AuthRequest, res: Response) =>
   }
 }
 
+/** True when every record id is an attendance record of `periodId` on `date` in one of `sectionIds`. */
+export async function recordsBelongToClass(recordIds: unknown[], date: unknown, periodId: unknown, sectionIds: unknown[]): Promise<boolean> {
+  const ids = [...new Set(recordIds.filter((x): x is string => typeof x === 'string' && x.length > 0))]
+  if (ids.length !== recordIds.length) return false
+  if (!ids.length) return true
+  const sections = new Set(sectionIds.filter(Boolean))
+  const { data, error } = await supabase
+    .from('attendance_records')
+    .select('id, attendance_date, timetable_entries!inner(section_id, period_id)')
+    .in('id', ids)
+  if (error) throw error
+  const rows = (data ?? []) as any[]
+  return (
+    rows.length === ids.length &&
+    rows.every((r) => {
+      const te = Array.isArray(r.timetable_entries) ? r.timetable_entries[0] : r.timetable_entries
+      return r.attendance_date === date && te?.period_id === periodId && sections.has(te?.section_id)
+    })
+  )
+}
+
 export const submitStaffAttendance = async (req: AuthRequest, res: Response) => {
   try {
     const isAdmin = req.profile?.role === 'admin' || req.profile?.role === 'super_admin';
@@ -820,20 +842,27 @@ export const submitStaffAttendance = async (req: AuthRequest, res: Response) => 
     if (!isAdmin && !staffId) return res.status(403).json({ error: 'Valid staff context required' });
 
     const { date, period_id, changes } = req.body;
+    if (!Array.isArray(changes)) return res.status(400).json({ error: 'changes must be an array' });
 
     // Admins may submit on behalf of any teacher's course period; teachers are restricted to
-    // course periods they actually own.
+    // course periods they actually own (primary or secondary teacher).
     let periodQuery = supabase
       .from('course_periods')
-      .select('id')
+      .select('id, section_id')
       .eq('period_id', period_id);
     if (!isAdmin) {
-      periodQuery = periodQuery.eq('teacher_id', staffId);
+      periodQuery = periodQuery.or(`teacher_id.eq.${staffId},secondary_teacher_id.eq.${staffId}`);
     }
-    const { data: period, error: pErr } = await periodQuery.single();
+    const { data: periods, error: pErr } = await periodQuery;
 
-    if (pErr || !period) {
+    if (pErr || !periods?.length) {
       return res.status(403).json({ error: 'Forbidden: You do not own this course period' });
+    }
+
+    if (!isAdmin) {
+      // Every record must be this period, this date, in one of the teacher's own sections.
+      const ok = await recordsBelongToClass(changes.map((c: any) => c?.record_id), date, period_id, periods.map((p: any) => p.section_id))
+      if (!ok) return res.status(403).json({ error: 'Forbidden: You can only manage your own classes' });
     }
 
     // Submit changes

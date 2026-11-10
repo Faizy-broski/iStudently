@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { AlertCircle, Check, CheckCircle, Clock, Download, Filter, Receipt, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors as themeColors } from '@/lib/colors';
 import { BrandGradient } from '@/components/app/brand-gradient';
@@ -143,7 +144,7 @@ export default function ParentFeeChallans() {
               <View className="flex-row flex-wrap items-center gap-2">
                 <View className="bg-warning-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
                   <Icon as={Clock} className="text-warning size-3" />
-                  <Text className="text-warning text-[11px] font-semibold">{`${k('due')} ${next.due_date ? formatDate(next.due_date) : '—'}`}</Text>
+                  <Text className="text-warning text-xs font-semibold">{`${k('due')} ${next.due_date ? formatDate(next.due_date) : '—'}`}</Text>
                 </View>
                 {nextDays !== null ? <Text className="text-white text-xs opacity-80">{nextDays >= 0 ? k('days_left', { count: nextDays }) : k('days_overdue', { count: -nextDays })}</Text> : null}
               </View>
@@ -208,7 +209,7 @@ export default function ParentFeeChallans() {
                         <Text className="text-sm font-semibold" numberOfLines={1}>
                           {f.fee_name || f.category || k('fee')}
                         </Text>
-                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        <Text variant="muted" className="text-xs" numberOfLines={1}>
                           {[f.due_date ? `${k('due')}: ${formatDate(f.due_date)}` : null, `${k('amount')}: ${money(f.final_amount || 0)}`].filter(Boolean).join(' · ')}
                         </Text>
                       </View>
@@ -216,10 +217,10 @@ export default function ParentFeeChallans() {
                       <StatusChip label={k(b)} tone={chipTone[b]} className="px-2 py-0.5" />
                     </View>
                     <View className="flex-row items-center justify-between gap-2">
-                      {f.amount_paid > 0 && b !== 'paid' ? <Text className="text-success flex-1 text-[11px]">{k('partial', { paid: money(f.amount_paid), balance: money(f.balance) })}</Text> : <FeeDueDateBadge dueDate={f.due_date} status={f.status} />}
+                      {f.amount_paid > 0 && b !== 'paid' ? <Text className="text-success flex-1 text-xs">{k('partial', { paid: money(f.amount_paid), balance: money(f.balance) })}</Text> : <FeeDueDateBadge dueDate={f.due_date} status={f.status} />}
                       <Pressable onPress={() => challan(f)} className="bg-info-soft flex-row items-center gap-1 rounded-full px-2.5 py-1" accessibilityRole="button">
                         <Icon as={Download} className="text-brand dark:text-brand-secondary size-3.5" />
-                        <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{k('challan')}</Text>
+                        <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{k('challan')}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -243,7 +244,7 @@ export default function ParentFeeChallans() {
                     <Text className="text-sm font-semibold" numberOfLines={1}>
                       {fee.fee_name || fee.category || k('fee')}
                     </Text>
-                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                    <Text variant="muted" className="text-xs" numberOfLines={1}>
                       {[p.payment_date ? formatDate(p.payment_date) : null, p.payment_method].filter(Boolean).join(' · ')}
                     </Text>
                   </View>
@@ -278,7 +279,7 @@ function Stat({ bucket, amount, label }: { bucket: Bucket; amount: string; label
       <Text className={cn('text-sm font-bold', tone.text)} numberOfLines={1} adjustsFontSizeToFit>
         {amount}
       </Text>
-      <Text className="text-muted-foreground text-center text-[11px]">{label}</Text>
+      <Text className="text-muted-foreground text-center text-xs">{label}</Text>
     </Panel>
   );
 }

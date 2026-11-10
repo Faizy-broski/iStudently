@@ -55,6 +55,7 @@ export function ageFrom(iso?: string | null) {
 /** "in 3 days" / "2 hours ago" (web: date-fns formatDistance with suffix). */
 export function formatRelative(iso: string, now = Date.now()) {
   const ms = new Date(iso).getTime() - now
+  if (Number.isNaN(ms)) return ''
   const rtf = new Intl.RelativeTimeFormat(i18n.language === 'ar' ? 'ar' : 'en', { numeric: 'auto' })
   const mins = Math.round(ms / 60000)
   if (Math.abs(mins) < 60) return rtf.format(mins, 'minute')

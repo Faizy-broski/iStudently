@@ -98,7 +98,7 @@ export default function StaffAbsences() {
                 <Initials name={a.staff_name || '?'} />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold">{a.staff_name || s('notAvailable')}</Text>
-                  <Text variant="muted" className="text-[11px] capitalize">
+                  <Text variant="muted" className="text-xs capitalize">
                     {a.staff_role || s('notAvailable')}
                   </Text>
                 </View>

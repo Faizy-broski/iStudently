@@ -1,7 +1,7 @@
-import type { JgCellInput, JgGrid } from '@studently/api-client';
-import { computeSubject, fmtMark, fmtPct, JG_RESULT_LABELS, round2Need, type JgCell } from '@studently/shared-utils';
+import type { JgCellInput, JgComponent, JgEffectiveCell, JgGrid, JgSubItemCellInput } from '@studently/api-client';
+import { computeSubject, fmtMark, fmtPct, JG_RESULT_LABELS, round2Need, subItemsValue, type JgCell } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, ChevronRight, Lock } from 'lucide-react-native';
+import { CalendarRange, ChevronLeft, ChevronRight, Lock } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -19,23 +19,28 @@ import { JgBlocked, needText, parseMark, resultChipTone, useJg, useJgGrid } from
 import { jahbadhGrades } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const cellText = (c?: { value: number | null; absent?: boolean }) => (!c ? '' : c.absent ? 'غ' : fmtMark(c.value));
+const cellText = (c?: { value: number | null; absent?: boolean } | null) => (!c ? '' : c.absent ? 'غ' : fmtMark(c.value));
+/** Draft keys: component id, `s:<sub-item id>` for sub-items, `round2` for the single second-round mark. */
+const subKey = (id: string) => `s:${id}`;
+const enterableComp = (c: JgComponent) => !c.monthly_kind && !c.subitems.length;
+const enterableSub = (c: JgComponent) => !c.monthly_kind;
 
-/** One student's marks in one subject: every component per stage (max shown), absent, second round; live result. */
+/** One student's marks in one subject: every component per stage (max shown), sub-items, absent, second round; live result. */
 export default function JahbadhStudentEntry() {
   const { t } = useTranslation();
   const toast = useToast();
   const { isAdmin, campusId, href } = useJg();
-  const params = useLocalSearchParams<{ section: string; subject: string; index: string }>();
+  const params = useLocalSearchParams<{ section: string; subject: string; index: string; stage?: string }>();
   const sectionId = params.section ?? null;
   const subjectId = params.subject ?? null;
+  const stageParam = params.stage ?? null;
   const index = Number(params.index ?? 0);
   const grid = useJgGrid(sectionId, subjectId, campusId);
   const g = grid.data;
   const row = g?.rows[index];
   const studentId = row?.student.id ?? null;
 
-  // Drafts per student (keyed by component id; "round2" for the second-round mark), reset when the student changes.
+  // Drafts per student, reset when the student changes.
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [draftFor, setDraftFor] = useState<string | null>(null);
   if (studentId !== draftFor) {
@@ -45,40 +50,88 @@ export default function JahbadhStudentEntry() {
   const [saving, setSaving] = useState(false);
 
   const comps = useMemo(() => g?.subject.components ?? [], [g]);
-  const stages = useMemo(() => [...new Set(comps.map((c) => c.stage))].sort((a, b) => a - b), [comps]);
+  const r2Items = useMemo(() => g?.subject.round2_subitems ?? [], [g]);
+  const allStages = useMemo(() => [...new Set(comps.map((c) => c.stage))].sort((a, b) => a - b), [comps]);
+  const serverStage = g?.stage ?? null;
+  const viewStage = stageParam === 'all' ? null : stageParam ? Number(stageParam) : serverStage;
+  const stages = viewStage && allStages.includes(viewStage) ? [viewStage] : allStages;
   const locked = new Set(g?.locked_stages ?? []);
 
   const live = useMemo(() => {
     if (!g || !row) return null;
     const rule = { noFail: g.rule.no_fail, totalMin: Number(g.rule.total_min), examMin: Number(g.rule.exam_min) };
-    const cells: Record<string, JgCell> = {};
     const errors = new Set<string>();
+    const fromDraft = (k: string, max: number): JgCell | undefined | null => {
+      if (!(k in draft)) return null;
+      const p = parseMark(draft[k]);
+      if (!p.ok || (p.value !== null && (p.value < 0 || p.value > max))) {
+        errors.add(k);
+        return null;
+      }
+      return p.value !== null || p.absent ? { value: p.value, absent: p.absent } : undefined;
+    };
+    const subCell = (id: string, max: number): JgCell | undefined => {
+      const d = fromDraft(subKey(id), max);
+      if (d !== null) return d;
+      const server = row.subitem_cells[id];
+      return server && (server.value !== null || server.absent) ? { value: server.value, absent: server.absent } : undefined;
+    };
+    const cells: Record<string, JgCell> = {};
+    const derived: Record<string, JgEffectiveCell> = {};
     for (const c of comps) {
-      if (c.id in draft) {
-        const p = parseMark(draft[c.id]);
-        if (!p.ok || (p.value !== null && (p.value < 0 || p.value > c.max_score))) {
-          errors.add(c.id);
-        } else if (p.value !== null || p.absent) {
-          cells[c.id] = { value: p.value, absent: p.absent };
+      if (c.subitems.length && enterableSub(c)) {
+        const v = subItemsValue(c.subitems.map((si) => subCell(si.id, Number(si.max_score))), Number(c.divisor) || 1);
+        derived[c.id] = { value: v.value, absent: !!v.absent, source: 'teacher', derived: 'subitems', partial: v.partial };
+        if (v.value !== null || v.absent) cells[c.id] = { value: v.value, absent: !!v.absent };
+        continue;
+      }
+      if (!enterableComp(c)) {
+        const server = row.cells[c.id];
+        if (server) {
+          derived[c.id] = server;
+          if (server.value !== null || server.absent) cells[c.id] = { value: server.value, absent: server.absent };
         }
         continue;
       }
+      const d = fromDraft(c.id, Number(c.max_score));
+      if (d !== null) {
+        if (d) cells[c.id] = d;
+        continue;
+      }
       const server = row.cells[c.id];
-      if (server) cells[c.id] = { value: server.value, absent: server.absent };
+      if (server && (server.value !== null || server.absent)) cells[c.id] = { value: server.value, absent: server.absent };
     }
     let round2 = row.round2;
-    if ('round2' in draft) {
+    if (r2Items.length) {
+      const parts = r2Items.map((si) => subCell(si.id, Number(si.max_score))).filter((p): p is JgCell => !!p && p.value !== null);
+      if (parts.length) round2 = parts.reduce((a, p) => a + (p.value ?? 0), 0);
+    } else if ('round2' in draft) {
       const p = parseMark(draft.round2);
       if (!p.ok || p.absent || (p.value !== null && (p.value < 0 || p.value > g.subject.meta.examMax))) errors.add('round2');
       else round2 = p.value;
     }
     const comp = g.subject.components.map((c) => ({ id: c.id, stage: c.stage, max: Number(c.max_score), isExam: c.is_exam }));
-    const result = computeSubject(comp, cells, round2, rule, g.settings.grading_scale);
-    return { result, need: round2Need(comp, result, rule), errors };
-  }, [g, row, comps, draft]);
+    const result = computeSubject(comp, cells, round2, rule, g.settings.grading_scale, { jabrKasur: g.settings.jabr_kasur });
+    return { result, need: round2Need(comp, result, rule), errors, derived, round2 };
+  }, [g, row, comps, r2Items, draft]);
 
   const dirty = Object.keys(draft).length > 0;
-  const go = (i: number) => router.replace(href('/jahbadh/student', { section: sectionId ?? '', subject: subjectId ?? '', index: String(i) }));
+  const go = (i: number) =>
+    router.replace(href('/jahbadh/student', { section: sectionId ?? '', subject: subjectId ?? '', index: String(i), ...(stageParam ? { stage: stageParam } : {}) }));
+  const openMonthly = (stage: number) => router.push(href('/jahbadh/monthly', { section: sectionId ?? '', subject: subjectId ?? '', stage: String(stage) }));
+
+  const maxOf = (k: string): number => {
+    if (k === 'round2') return g?.subject.meta.examMax ?? 0;
+    if (k.startsWith('s:')) {
+      const id = k.slice(2);
+      const si = comps.flatMap((c) => c.subitems).find((x) => x.id === id) ?? r2Items.find((x) => x.id === id);
+      return Number(si?.max_score ?? 0);
+    }
+    return Number(comps.find((c) => c.id === k)?.max_score ?? 0);
+  };
+
+  const errorText = (code?: string, fallback?: string) =>
+    code === 'computed_component' ? t('grades.errComputed') : code === 'monthly_component' || code === 'monthly_subitem' ? t('grades.errMonthly') : code === 'not_migrated' ? t('grades.notMigratedBody') : (fallback ?? t('app.error_title'));
 
   const save = async (then?: () => void) => {
     const sid = sectionId;
@@ -87,22 +140,32 @@ export default function JahbadhStudentEntry() {
     if (!sid || !sub || !stu || !live) return;
     if (live.errors.size) {
       const bad = [...live.errors][0];
-      const max = bad === 'round2' ? (g?.subject.meta.examMax ?? 0) : (comps.find((c) => c.id === bad)?.max_score ?? 0);
-      return toast.error(t('grades.errNumber', { max: fmtMark(max) }));
+      return toast.error(t('grades.errNumber', { max: fmtMark(maxOf(bad)) }));
     }
     setSaving(true);
     let latest: JgGrid | undefined;
     const cells: JgCellInput[] = [];
-    for (const [component_id, text] of Object.entries(draft)) {
-      if (component_id === 'round2') continue;
+    const subCells: JgSubItemCellInput[] = [];
+    for (const [k, text] of Object.entries(draft)) {
+      if (k === 'round2') continue;
       const p = parseMark(text);
-      if (p.ok) cells.push({ student_id: stu, component_id, value: p.value, absent: p.absent });
+      if (!p.ok) continue;
+      if (k.startsWith('s:')) subCells.push({ student_id: stu, subitem_id: k.slice(2), value: p.value, absent: p.absent });
+      else cells.push({ student_id: stu, component_id: k, value: p.value, absent: p.absent });
     }
     if (cells.length) {
       const res = await jahbadhGrades.saveMarks(sid, sub, cells, campusId);
       if (!res.success) {
         setSaving(false);
-        return toast.error(res.error ?? t('app.error_title'));
+        return toast.error(errorText(res.code, res.error));
+      }
+      latest = res.data;
+    }
+    if (subCells.length) {
+      const res = await jahbadhGrades.saveSubItemMarks(sid, sub, subCells, campusId);
+      if (!res.success) {
+        setSaving(false);
+        return toast.error(errorText(res.code, res.error));
       }
       latest = res.data;
     }
@@ -111,7 +174,7 @@ export default function JahbadhStudentEntry() {
       const res = await jahbadhGrades.saveRound2(sid, sub, [{ student_id: stu, value: p.ok ? p.value : null }], campusId);
       if (!res.success) {
         setSaving(false);
-        return toast.error(res.error ?? t('app.error_title'));
+        return toast.error(errorText(res.code, res.error));
       }
       latest = res.data;
     }
@@ -130,6 +193,70 @@ export default function JahbadhStudentEntry() {
   const referred = r.result === 'round2' || r.result === 'pass_round2' || r.result === 'fail';
   const need = needText(live.need, fmtMark, t('grades.impossible'));
   const total = g.rows.length;
+
+  /** One mark input (component, sub-item or second-round branch) with its «غ» toggle. */
+  const markInput = (k: string, label: string, max: number, server: JgEffectiveCell | undefined, disabledBase: boolean, allowAbsent = true) => {
+    const fromControl = server?.source === 'control_import';
+    const disabled = disabledBase || fromControl;
+    const value = k in draft ? draft[k] : cellText(server);
+    const absent = value === 'غ';
+    return (
+      <View key={k} className="gap-1.5">
+        <View className="flex-row items-center justify-between gap-2">
+          <Text className="flex-1 text-sm">{label}</Text>
+          <Text variant="muted" className="text-xs">{`/ ${fmtMark(max)}`}</Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <Input
+            className={cn('flex-1 text-center', live.errors.has(k) && 'border-destructive')}
+            keyboardType="decimal-pad"
+            value={value}
+            editable={!disabled}
+            accessibilityLabel={`${label} / ${fmtMark(max)}`}
+            onChangeText={(v) => setDraft((d) => ({ ...d, [k]: v }))}
+          />
+          {allowAbsent ? (
+            <Pressable
+              disabled={disabled}
+              onPress={() => setDraft((d) => ({ ...d, [k]: absent ? '' : 'غ' }))}
+              accessibilityRole="button"
+              accessibilityLabel="غ"
+              className={cn('size-12 items-center justify-center rounded-full border', absent ? 'bg-muted border-muted-foreground' : 'border-border', disabled && 'opacity-50')}>
+              <Text className={cn('font-bold', absent ? 'text-foreground' : 'text-muted-foreground')}>غ</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {live.errors.has(k) ? <Text className="text-destructive text-xs">{t('grades.errMax', { max: fmtMark(max) })}</Text> : null}
+        {fromControl ? <Text className="text-brand dark:text-brand-secondary text-xs">{t('grades.fromControl')}</Text> : null}
+      </View>
+    );
+  };
+
+  /** A computed value: Σ sub-items ÷ divisor (warning colour while partial) or the monthly mark with ▲▼●. */
+  const derivedRow = (c: JgComponent, cell: JgEffectiveCell | undefined) => {
+    const trendTone = cell?.trend === '▲' ? 'text-success' : cell?.trend === '▼' ? 'text-destructive' : 'text-muted-foreground';
+    const body = (
+      <View className="bg-muted/50 flex-row items-center justify-between gap-2 rounded-xl px-3 py-2.5">
+        <View className="flex-1 gap-0.5">
+          <Text className="text-sm font-semibold">{c.name}</Text>
+          <Text variant="muted" className="text-xs">
+            {c.monthly_kind ? t('grades.fromMonths') : t('grades.fromSubItems')}
+            {cell?.partial ? ` · ${t('grades.partialHint')}` : ''}
+          </Text>
+        </View>
+        <Text className={cn('text-base font-bold', cell?.partial && 'text-warning')}>{`${cellText(cell) || '—'} / ${fmtMark(c.max_score)}`}</Text>
+        {cell?.trend ? <Text className={cn('text-sm font-bold', trendTone)}>{cell.trend}</Text> : null}
+        {c.monthly_kind ? <Icon as={CalendarRange} className="text-brand dark:text-brand-secondary size-4" /> : null}
+      </View>
+    );
+    return c.monthly_kind ? (
+      <Pressable key={c.id} onPress={() => openMonthly(c.stage)} accessibilityRole="button" accessibilityLabel={`${c.name} — ${t('grades.monthlyLog')}`} className="active:opacity-70">
+        {body}
+      </Pressable>
+    ) : (
+      <View key={c.id}>{body}</View>
+    );
+  };
 
   return (
     <>
@@ -166,38 +293,23 @@ export default function JahbadhStudentEntry() {
               {comps
                 .filter((c) => c.stage === stage)
                 .map((c) => {
-                  const server = row.cells[c.id];
-                  const fromControl = server?.source === 'control_import';
-                  const disabled = !canEnter || isLocked || fromControl;
-                  const value = c.id in draft ? draft[c.id] : cellText(server);
-                  const absent = value === 'غ';
+                  const disabled = !canEnter || isLocked;
+                  if (enterableComp(c)) {
+                    return (
+                      <View key={c.id} className="gap-1">
+                        {c.is_exam ? <StatusChip label={t('grades.exam')} tone="info" className="self-start" /> : null}
+                        {markInput(c.id, c.name, Number(c.max_score), row.cells[c.id], disabled)}
+                      </View>
+                    );
+                  }
                   return (
-                    <View key={c.id} className="gap-1.5">
-                      <View className="flex-row items-center justify-between gap-2">
-                        <Text className="flex-1 text-sm">{c.name}</Text>
-                        {c.is_exam ? <StatusChip label={t('grades.exam')} tone="info" /> : null}
-                        <Text variant="muted" className="text-xs">{`/ ${fmtMark(c.max_score)}`}</Text>
-                      </View>
-                      <View className="flex-row items-center gap-2">
-                        <Input
-                          className={cn('flex-1 text-center', live.errors.has(c.id) && 'border-destructive')}
-                          keyboardType="decimal-pad"
-                          value={value}
-                          editable={!disabled}
-                          accessibilityLabel={`${c.name} / ${fmtMark(c.max_score)}`}
-                          onChangeText={(v) => setDraft((d) => ({ ...d, [c.id]: v }))}
-                        />
-                        <Pressable
-                          disabled={disabled}
-                          onPress={() => setDraft((d) => ({ ...d, [c.id]: absent ? '' : 'غ' }))}
-                          accessibilityRole="button"
-                          accessibilityLabel="غ"
-                          className={cn('size-12 items-center justify-center rounded-full border', absent ? 'bg-muted border-muted-foreground' : 'border-border', disabled && 'opacity-50')}>
-                          <Text className={cn('font-bold', absent ? 'text-foreground' : 'text-muted-foreground')}>غ</Text>
-                        </Pressable>
-                      </View>
-                      {live.errors.has(c.id) ? <Text className="text-destructive text-xs">{t('grades.errMax', { max: fmtMark(c.max_score) })}</Text> : null}
-                      {fromControl ? <Text className="text-brand dark:text-brand-secondary text-xs">{t('grades.fromControl')}</Text> : null}
+                    <View key={c.id} className="gap-2">
+                      {derivedRow(c, live.derived[c.id])}
+                      {c.subitems.length && enterableSub(c) ? (
+                        <View className="border-info-soft dark:border-border gap-3 border-s-2 ps-3">
+                          {c.subitems.map((si) => markInput(subKey(si.id), si.name, Number(si.max_score), row.subitem_cells[si.id], disabled))}
+                        </View>
+                      ) : null}
                     </View>
                   );
                 })}
@@ -207,15 +319,24 @@ export default function JahbadhStudentEntry() {
 
         {!g.rule.no_fail && referred ? (
           <FormSection title={t('grades.round2')} description={need ? need.text : undefined}>
-            <Input
-              className={cn('text-center', live.errors.has('round2') && 'border-destructive')}
-              keyboardType="decimal-pad"
-              editable={canEnter}
-              value={'round2' in draft ? draft.round2 : fmtMark(row.round2)}
-              placeholder={`/ ${fmtMark(g.subject.meta.examMax)}`}
-              onChangeText={(v) => setDraft((d) => ({ ...d, round2: v }))}
-            />
-            {live.errors.has('round2') ? <Text className="text-destructive text-xs">{t('grades.errMax', { max: fmtMark(g.subject.meta.examMax) })}</Text> : null}
+            {r2Items.length ? (
+              <>
+                {r2Items.map((si) => markInput(subKey(si.id), si.name, Number(si.max_score), row.subitem_cells[si.id], !canEnter, false))}
+                <Text className="text-sm font-semibold">{`${t('grades.round2')}: ${fmtMark(live.round2) || '—'} / ${fmtMark(g.subject.meta.examMax)}`}</Text>
+              </>
+            ) : (
+              <>
+                <Input
+                  className={cn('text-center', live.errors.has('round2') && 'border-destructive')}
+                  keyboardType="decimal-pad"
+                  editable={canEnter}
+                  value={'round2' in draft ? draft.round2 : fmtMark(row.round2)}
+                  placeholder={`/ ${fmtMark(g.subject.meta.examMax)}`}
+                  onChangeText={(v) => setDraft((d) => ({ ...d, round2: v }))}
+                />
+                {live.errors.has('round2') ? <Text className="text-destructive text-xs">{t('grades.errMax', { max: fmtMark(g.subject.meta.examMax) })}</Text> : null}
+              </>
+            )}
           </FormSection>
         ) : null}
       </ScrollView>

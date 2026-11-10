@@ -2,7 +2,8 @@ import { JC_STATUSES, jcSteps, type JcStatus } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { CheckCircle2, ChevronLeft, Circle, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { FormSection } from '@/components/app/layout';
@@ -88,7 +89,7 @@ export default function ExamControlSession() {
               </Text>
               <View className="flex-1">
                 <Text className="text-sm font-medium">{t(`examControl.step_${s.key}`)}</Text>
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {t(`examControl.step_${s.key}_hint`)}
                 </Text>
               </View>
@@ -105,13 +106,18 @@ export default function ExamControlSession() {
               <Text className="text-brand dark:text-brand-secondary text-sm font-medium">{t('examControl.tab_alerts')}</Text>
             </Pressable>
           ) : null}
+          {r.manage || r.entry ? (
+            <Pressable onPress={() => router.push({ pathname: `${base}/assessment`, params: { id } } as never)} accessibilityRole="button" className="flex-row items-center gap-3 py-1.5">
+              <Text className="text-brand dark:text-brand-secondary text-sm font-medium">{t('examControl.tab_assessment')}</Text>
+            </Pressable>
+          ) : null}
         </FormSection>
         {o.grades.length ? (
           <FormSection title={t('examControl.gradesInSession')}>
             {o.grades.map((g) => (
               <View key={g.grade_level_id} className="gap-0.5">
                 <Text className="text-sm font-medium">{`${g.grade_level_name} · ${t('examControl.numberCode')} ${g.number_code}`}</Text>
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {g.subjects.map((s) => `${s.name} (${s.max})`).join('، ')}
                 </Text>
               </View>

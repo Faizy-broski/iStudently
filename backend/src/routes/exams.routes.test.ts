@@ -25,7 +25,11 @@ jest.mock('../config/supabase', () => ({
       b.eq = (_c: string, v: string) => ((ids = [v]), b)
       b.in = (_c: string, v: string[]) => ((ids = v), b)
       b.maybeSingle = async () => ({ data: rows[ids[0]] ?? null, error: null })
-      b.then = (resolve: any) => resolve({ data: ids.filter((i) => rows[i]).map((i) => ({ id: i, ...rows[i] })), error: null })
+      b.or = () => b
+      b.then = (resolve: any) => {
+        const data = ids.filter((i) => rows[i]).map((i) => ({ id: i, ...rows[i] }))
+        return resolve({ data, count: data.length, error: null })
+      }
       return b
     },
   },

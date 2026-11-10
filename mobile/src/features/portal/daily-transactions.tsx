@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { Calendar, DollarSign } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Picker } from '@/components/app/picker';
 import { EmptyState, LoadingList } from '@/components/app/states';

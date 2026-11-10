@@ -149,7 +149,7 @@ export function CalendarGrid({
       <View className="border-border bg-card gap-1 rounded-xl border p-2">
         <View className="flex-row">
           {(ar ? SHORT_AR : SHORT_EN).map((d) => (
-            <Text key={d} className="flex-1 py-1 text-center text-[10px] font-semibold">
+            <Text key={d} className="flex-1 py-1 text-center text-2xs font-semibold">
               {d}
             </Text>
           ))}

@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, View, type FlatListProps } from 'react-native';
+import { ActivityIndicator, RefreshControl, View, type FlatListProps } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 
 import { Separator } from '@/components/ui/separator';
 import type { ApiError } from '@/lib/data';

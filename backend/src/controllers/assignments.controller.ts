@@ -1,4 +1,6 @@
 import { Request, Response } from 'express'
+import { supabase } from '../config/supabase'
+import { AuthRequest } from '../middlewares/auth.middleware'
 import * as assignmentsService from '../services/assignments.service'
 
 // ============================================================================
@@ -204,13 +206,24 @@ export const getAssignmentSubmissions = async (req: Request, res: Response) => {
 
 export const submitAssignment = async (req: Request, res: Response) => {
   try {
-    const dto = req.body
+    // Students submit only for themselves, and only to an assignment of their own section.
+    const studentId = (req as AuthRequest).profile?.student_id
+    if (!studentId) return res.status(403).json({ success: false, error: 'No student profile found' })
+    const dto = { ...req.body, student_id: studentId }
 
-    if (!dto.assignment_id || !dto.student_id) {
+    if (!dto.assignment_id) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: assignment_id, student_id'
+        error: 'Missing required field: assignment_id'
       })
+    }
+
+    const [{ data: student }, { data: assignment }] = await Promise.all([
+      supabase.from('students').select('section_id').eq('id', studentId).maybeSingle(),
+      supabase.from('assignments').select('section_id').eq('id', dto.assignment_id).maybeSingle(),
+    ])
+    if (!assignment || !student?.section_id || assignment.section_id !== student.section_id) {
+      return res.status(404).json({ success: false, error: 'Not found' })
     }
 
     const result = await assignmentsService.submitAssignment(dto)

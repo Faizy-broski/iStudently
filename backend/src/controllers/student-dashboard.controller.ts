@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
-import { StudentDashboardService } from '../services/student-dashboard.service'
+import { StudentDashboardService, SubmissionError } from '../services/student-dashboard.service'
 
 const dashboardService = new StudentDashboardService()
 
@@ -177,7 +177,7 @@ export class StudentDashboardController {
         return
       }
 
-      const { assignment_id, submission_text, attachments } = req.body
+      const { assignment_id, submission_text, attachments, existing_attachments } = req.body
 
       if (!assignment_id) {
         res.status(400).json({ success: false, error: 'assignment_id is required' })
@@ -187,10 +187,15 @@ export class StudentDashboardController {
       const result = await dashboardService.submitGradebookAssignment(studentId, assignment_id, {
         submission_text,
         attachments,
+        existing_attachments,
       })
 
       res.json({ success: true, data: result })
     } catch (error: any) {
+      if (error instanceof SubmissionError) {
+        res.status(error.status).json({ success: false, error: error.message })
+        return
+      }
       console.error('Submit assignment error:', error)
       res.status(500).json({
         success: false,

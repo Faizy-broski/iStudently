@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { AlertTriangle, Archive, CheckCircle2, Clock, Search, TrendingUp } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { PieChart } from '@/components/app/charts';

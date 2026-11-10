@@ -87,7 +87,7 @@ export default function TeacherStudents() {
                   setGrade('all');
                 }}
               />
-              <RowPill icon={Download} label="CSV" onPress={exportCsv} />
+              <RowPill icon={Download} label={t('app.export_csv')} onPress={exportCsv} />
             </View>
           </View>
         }
@@ -99,8 +99,8 @@ export default function TeacherStudents() {
                 <Text className="text-sm font-semibold">{name(s) || k('na')}</Text>
                 <ConfidentialBadge status={s.confidential_family_status} />
               </View>
-              <Text variant="muted" className="text-[11px]">{`${s.student_number} · ${s.grade_level || k('na')}`}</Text>
-              <Text variant="muted" className="text-[11px]" numberOfLines={1}>{`${s.profile?.email || k('noEmail')} · ${s.profile?.phone || k('noPhone')}`}</Text>
+              <Text variant="muted" className="text-xs">{`${s.student_number} · ${s.grade_level || k('na')}`}</Text>
+              <Text variant="muted" className="text-xs" numberOfLines={1}>{`${s.profile?.email || k('noEmail')} · ${s.profile?.phone || k('noPhone')}`}</Text>
             </View>
             <StatusChip label={k('active')} tone="success" />
             <Icon as={ChevronRight} flipRtl className="text-muted-foreground size-4" />

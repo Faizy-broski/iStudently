@@ -13,7 +13,7 @@ export default function StudentAttendance() {
         const r = await student.getDetailedAttendance(month, year);
         return {
           ...r,
-          data: (r.data ?? []).map((x) => ({ subject: x.timetable_entry.subject.name, period: x.timetable_entry.period.period_name, date: x.attendance_date, status: x.status })),
+          data: (r.data ?? []).map((x) => ({ subject: x.timetable_entry?.subject?.name ?? '—', period: x.timetable_entry?.period?.period_name ?? '', date: x.attendance_date, status: x.status })),
         };
       }}
     />

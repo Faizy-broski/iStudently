@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, Calendar, CircleCheck, DollarSign, Receipt, ReceiptText, Wallet } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Segmented } from '@/components/app/segmented';
 import { HeroCard, IconTile, Initials, RowItem, Section, StatTile, StatTiles } from '@/components/app/layout';
@@ -221,7 +222,7 @@ function Amounts({ children }: { children: ReactNode }) {
 function Amount({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <View>
-      <Text className="text-muted-foreground text-[11px]">{label}</Text>
+      <Text className="text-muted-foreground text-xs">{label}</Text>
       <Text className={cn('text-sm font-medium', tone)}>{value}</Text>
     </View>
   );

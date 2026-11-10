@@ -81,6 +81,15 @@ export const bulkImportTeachers = async (req: Request, res: Response): Promise<v
 // TEACHER / STAFF CONTROLLER
 // ============================================================================
 
+/** Staff columns only admins may read (teachers can list colleagues, but not these). */
+const ADMIN_ONLY_STAFF = /^(custom_fields|permissions)$|salary|bank|iban|national_id|passport/i
+function forCaller<T>(req: Request, data: T): T {
+  const role = (req as AuthRequest).profile?.role
+  if (role === 'admin' || role === 'super_admin') return data
+  const strip = (row: any) => (row && typeof row === 'object' ? Object.fromEntries(Object.entries(row).filter(([k]) => !ADMIN_ONLY_STAFF.test(k))) : row)
+  return (Array.isArray(data) ? data.map(strip) : strip(data)) as T
+}
+
 export const getAllTeachers = async (req: Request, res: Response) => {
   try {
     const isSuperAdmin = (req as AuthRequest).profile?.role === 'super_admin'
@@ -101,7 +110,7 @@ export const getAllTeachers = async (req: Request, res: Response) => {
     const campus_id = req.query.campus_id as string || (isSuperAdmin ? schoolId : undefined)
 
     const result = await teacherService.getAllTeachers(schoolId, { page, limit, search, campus_id })
-    res.json(result)
+    res.json({ ...result, data: forCaller(req, result.data) })
   } catch (error: any) {
     console.error('Error fetching teachers:', error)
     res.status(500).json({
@@ -135,7 +144,7 @@ export const getTeacherById = async (req: Request, res: Response) => {
       }
     }
     
-    res.json(result)
+    res.json({ ...result, data: forCaller(req, result.data) })
   } catch (error: any) {
     console.error('Error fetching teacher:', error)
     res.status(500).json({

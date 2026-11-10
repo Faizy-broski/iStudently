@@ -20,7 +20,7 @@ export function InfoRow({ label, value, icon, onPress }: { label: string; value?
         </View>
       ) : null}
       <View className="flex-1 gap-0.5">
-        <Text className="text-muted-foreground text-[11px]">{label}</Text>
+        <Text className="text-muted-foreground text-xs">{label}</Text>
         {typeof value === 'string' || typeof value === 'number' || empty ? (
           <Text selectable className={empty ? 'text-muted-foreground text-sm italic' : onPress ? 'text-brand-secondary text-sm font-medium' : 'text-sm font-medium'}>
             {empty ? t('school.students.student_details.not_provided') : String(value)}

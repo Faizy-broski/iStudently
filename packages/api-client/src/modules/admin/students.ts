@@ -33,6 +33,8 @@ export interface Student {
   mother_name?: string | null
   place_of_birth?: string | null
   registration_number?: string | null
+  enrollment_status?: string | null
+  registration_type?: string | null
   grade_level_id?: string | null
   section_id?: string | null
   profile?: StudentProfile
@@ -94,6 +96,8 @@ export interface StudentInput {
   mother_name?: string
   place_of_birth?: string
   registration_number?: string
+  enrollment_status?: string
+  registration_type?: string
   medical_info?: { blood_group?: string; allergies?: string[]; notes?: string; [key: string]: unknown }
   custom_fields?: Record<string, any>
 }

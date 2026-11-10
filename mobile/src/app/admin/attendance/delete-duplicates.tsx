@@ -7,7 +7,7 @@ import { Pressable, View } from 'react-native';
 
 import { useConfirm } from '@/components/app/confirm';
 import { DataList } from '@/components/app/data-list';
-import { Initials } from '@/components/app/layout';
+import { Initials, BottomBar } from '@/components/app/layout';
 import { formatYmd } from '@/components/app/date-field';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -81,26 +81,26 @@ export default function DeleteDuplicates() {
               <Initials name={d.student_name || '?'} tone="warning" size={36} />
               <View className="flex-1 gap-0.5">
                 <Text className="text-sm font-semibold">
-                  {d.student_name || 'Unknown'} <Text className="text-muted-foreground text-[11px]">({d.student_id.substring(0, 8)})</Text>
+                  {d.student_name || 'Unknown'} <Text className="text-muted-foreground text-xs">({d.student_id.substring(0, 8)})</Text>
                 </Text>
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {`${a('delete_duplicates_th_period')}: ${d.period_name || 'Unknown'} (${d.period_id.substring(0, 8)}) · ${formatYmd(d.attendance_date, i18n.language)}`}
                 </Text>
               </View>
               <View className="items-center">
                 <Text className="text-destructive text-lg font-semibold">{d.count}</Text>
-                <Text className="text-muted-foreground text-[10px]">{a('delete_duplicates_th_duplicateCount')}</Text>
+                <Text className="text-muted-foreground text-2xs">{a('delete_duplicates_th_duplicateCount')}</Text>
               </View>
             </Pressable>
           )}
           contentContainerClassName="flex-grow pb-24"
         />
-        <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
+        <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
           <Button variant="destructive" onPress={remove} disabled={deleting || !selected.size}>
             <Icon as={Trash2} className="size-4 text-white" />
             <Text>{a('delete_btn')}</Text>
           </Button>
-        </View>
+        </BottomBar>
       </View>
     </>
   );

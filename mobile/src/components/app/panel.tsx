@@ -40,7 +40,7 @@ export function InfoRow({ icon, label, value, onPress, last }: { icon: LucideIco
         <Icon as={icon} className="text-brand dark:text-brand-secondary size-4" />
       </View>
       <View className="flex-1">
-        <Text variant="muted" className="text-[11px]">
+        <Text variant="muted" className="text-xs">
           {label}
         </Text>
         <Text className="text-sm font-medium" selectable numberOfLines={2}>
@@ -71,7 +71,7 @@ export function ActionRow({ icon, title, subtitle, onPress, last, trailing }: { 
           {title}
         </Text>
         {subtitle ? (
-          <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+          <Text variant="muted" className="text-xs" numberOfLines={1}>
             {subtitle}
           </Text>
         ) : null}

@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { Building2, ShieldCheck, TrendingUp, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { StatTile, StatTiles } from '@/components/app/layout';
 import { Panel, PanelTitle } from '@/components/app/panel';

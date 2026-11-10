@@ -27,6 +27,7 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const route = usePathname();
   const config = useAppConfig();
   const [ref] = useState(newRef);
+  const [details, setDetails] = useState(false);
   const supportEmail = config?.links?.support_email ?? null;
 
   useEffect(() => {
@@ -59,12 +60,19 @@ export function AppErrorBoundary({ error, retry }: ErrorBoundaryProps) {
           <Text variant="muted" className="text-center">
             {t('app.crash_body')}
           </Text>
-          {__DEV__ ? <Text className="text-muted-foreground text-center text-xs">{error.message}</Text> : null}
-          <View className="border-border bg-card rounded-full border px-3 py-1">
+          {/* Tapping the reference shows the error itself, so support can be told what broke. */}
+          <Pressable onPress={() => setDetails((v) => !v)} className="border-border bg-card rounded-full border px-3 py-1" accessibilityRole="button">
             <Text className="text-muted-foreground text-xs" selectable>
               {t('app.crash_ref', { ref })}
             </Text>
-          </View>
+          </Pressable>
+          {details || __DEV__ ? (
+            <View className="border-border bg-card max-h-48 self-stretch rounded-xl border p-3">
+              <Text className="text-muted-foreground text-xs" selectable>
+                {[route, `${error.name}: ${error.message}`, error.stack?.split('\n').slice(0, 6).join('\n')].filter(Boolean).join('\n')}
+              </Text>
+            </View>
+          ) : null}
           <Button size="lg" className="mt-2 self-stretch" onPress={restart}>
             <Icon as={RotateCw} className="size-4 text-white" />
             <Text>{t('app.crash_restart')}</Text>

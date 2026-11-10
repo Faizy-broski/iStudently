@@ -2,7 +2,8 @@ import { readingBadge } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { BookOpen, ListChecks, TrendingUp, Trophy, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, RowItem, Section, StatTile, StatTiles } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

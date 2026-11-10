@@ -49,7 +49,7 @@ export default function StudentScheduleList() {
               <Text className="text-sm font-semibold" numberOfLines={1}>
                 {studentFullName(x.profile) || '—'}
               </Text>
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {[x.student_number, x.grade_level].filter(Boolean).join(' · ')}
               </Text>
             </View>

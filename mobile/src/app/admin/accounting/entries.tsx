@@ -83,24 +83,24 @@ export default function AccountingEntries() {
                     <View className="flex-1 gap-0.5 rounded-2xl bg-white/10 p-2.5">
                       <View className="flex-row items-center gap-1">
                         <Icon as={ArrowDownLeft} className="text-white size-3.5" />
-                        <Text className="text-white text-[11px] opacity-80">{t('app.ac_in')}</Text>
+                        <Text className="text-white text-xs opacity-80">{t('app.ac_in')}</Text>
                       </View>
                       <Text className="text-white text-sm font-bold" numberOfLines={1} adjustsFontSizeToFit>
                         {money(tt.total_incomes + tt.total_student_payments)}
                       </Text>
-                      <Text className="text-white text-[10px] opacity-70" numberOfLines={1}>
+                      <Text className="text-white text-2xs opacity-70" numberOfLines={1}>
                         {t('app.ac_incl_fees', { amount: money(tt.total_student_payments) })}
                       </Text>
                     </View>
                     <View className="flex-1 gap-0.5 rounded-2xl bg-white/10 p-2.5">
                       <View className="flex-row items-center gap-1">
                         <Icon as={ArrowUpRight} className="text-white size-3.5" />
-                        <Text className="text-white text-[11px] opacity-80">{t('app.ac_out')}</Text>
+                        <Text className="text-white text-xs opacity-80">{t('app.ac_out')}</Text>
                       </View>
                       <Text className="text-white text-sm font-bold" numberOfLines={1} adjustsFontSizeToFit>
                         {money(tt.total_expenses + tt.total_staff_payments)}
                       </Text>
-                      <Text className="text-white text-[10px] opacity-70" numberOfLines={1}>
+                      <Text className="text-white text-2xs opacity-70" numberOfLines={1}>
                         {t('app.ac_balance', { amount: money(tt.balance) })}
                       </Text>
                     </View>

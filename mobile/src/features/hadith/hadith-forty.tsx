@@ -109,7 +109,7 @@ function Activity({ state, onSaved }: { state: HadithModuleState; onSaved: () =>
             {state.activity.map((p) => (
               <View key={p.date} className="flex-1 items-center gap-1">
                 <View className={cn('w-full rounded-t', p.goalMet ? 'bg-primary' : 'bg-primary/40')} style={{ height: Math.max(4, (p.repetitions / max) * 72) }} accessibilityLabel={`${p.date}: ${p.repetitions}`} />
-                <Text className="text-muted-foreground text-[10px]">{p.date.slice(8, 10)}</Text>
+                <Text className="text-muted-foreground text-2xs">{p.date.slice(8, 10)}</Text>
               </View>
             ))}
           </View>

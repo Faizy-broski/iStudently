@@ -138,12 +138,12 @@ function Dashboard({ id, dayId }: { id: string; dayId: string }) {
             <Text className="font-semibold">{c.committee_name}</Text>
             <EnvelopeState e={c} />
           </View>
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {`${t('examControl.count_students')} ${c.students} · ${t('examControl.present')} ${c.present} · ${t('examControl.absent')} ${c.absent} · ${t('examControl.late')} ${c.late} · ${t('examControl.violations')} ${c.violations}`}
           </Text>
         </View>
       ))}
-      <Text variant="muted" className="text-[11px]">
+      <Text variant="muted" className="text-xs">
         {t('examControl.liveHint')}
       </Text>
     </View>
@@ -349,7 +349,7 @@ function Violations({ id, dayId, manage, camera }: { id: string; dayId: string; 
               </Pressable>
             ) : null}
           </View>
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {`${new Date(v.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${label(JC_VIOLATION_AR, 'vio', v.type)} · ${label(JC_ACTION_AR, 'act', v.action_taken)}`}
           </Text>
           {v.notes ? <Text className="text-xs">{v.notes}</Text> : null}
@@ -389,7 +389,7 @@ function Envelopes({ id, dayId }: { id: string; dayId: string }) {
               <Text className="font-semibold">{e.committee_name}</Text>
               <EnvelopeState e={{ ...e, sealed: false }} />
             </View>
-            <Text variant="muted" className="text-[11px]">{`${t('examControl.count_students')} ${e.students} · ${t('examControl.present')} ${e.present}`}</Text>
+            <Text variant="muted" className="text-xs">{`${t('examControl.count_students')} ${e.students} · ${t('examControl.present')} ${e.present}`}</Text>
             <View className="flex-row items-center gap-2">
               <Input
                 className="flex-1"

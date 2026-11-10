@@ -1,6 +1,7 @@
 import { router, Stack, type Href } from 'expo-router';
 import { BookOpen, Calendar, CalendarCheck, Mic, type LucideIcon } from 'lucide-react-native';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HeroCard, IconTile, RowItem, type Tone } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

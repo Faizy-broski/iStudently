@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { AlertTriangle, FileText, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import Svg, { Circle } from 'react-native-svg';
 
 import { colors } from '@/lib/colors';

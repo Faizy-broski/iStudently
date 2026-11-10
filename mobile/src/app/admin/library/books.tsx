@@ -237,14 +237,14 @@ export default function LibraryBooks() {
                         ) : null}
                       </View>
                       <Text className="text-muted-foreground text-sm">{b.author}</Text>
-                      <Text variant="muted" className="text-[11px]">
+                      <Text variant="muted" className="text-xs">
                         {t('app.lb_ref_isbn')}: {b.reference || b.isbn || t('common.na', { defaultValue: 'N/A' })}
                       </Text>
                       <View className="flex-row items-center gap-2">
                         <View className="flex-1">
                           <UsageBar used={b.total_copies - b.available_copies} total={b.total_copies || 1} />
                         </View>
-                        <Text variant="muted" className="text-[11px]">{`${b.available_copies}/${b.total_copies}`}</Text>
+                        <Text variant="muted" className="text-xs">{`${b.available_copies}/${b.total_copies}`}</Text>
                       </View>
                       <StatusChip label={available ? v('status.available') : v('status.unavailable')} tone={available ? 'success' : 'destructive'} className="self-start px-2 py-0.5" />
                     </View>

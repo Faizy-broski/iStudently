@@ -4,7 +4,10 @@ import { resolve } from 'node:path'
 import { supabase } from '../../config/supabase'
 import { decisionTone, fmtMark, fmtPct, genderForm, learnerWord, type JgRound2Need } from '../../lib/jahbadh'
 import { escapeHtml as esc, renderHtmlToPdf } from '../../utils/html-pdf.util'
-import type { JgResults, JgSecondRound, JgSettings } from './grades.service'
+import type { JgGrid, JgResults, JgSecondRound, JgSettings } from './grades.service'
+import type { JgMonthlyLog } from './monthly.service'
+import { FIT_SCRIPT, fmtPct2, sheet, sheets } from './print-layout'
+import { getHomeroom } from './homeroom.service'
 
 /**
  * Printed documents of the Jahbadh grades plugin: A4 HTML rendered by the shared headless Chromium
@@ -78,9 +81,16 @@ export interface JgPrintHeader {
   homeroomTeacher: string
 }
 
-export async function printHeader(schoolId: string, settings: JgSettings): Promise<JgPrintHeader> {
-  const { data } = await supabase.from('schools').select('name, logo_url').eq('id', schoolId).maybeSingle()
-  const h = settings.header ?? {}
+/**
+ * School identity for prints. With `section`, «رائد الفصل» is the section's assigned homeroom teacher
+ * (jg_homeroom_teachers) and falls back to the settings text.
+ */
+export async function printHeader(schoolId: string, settings: JgSettings, section?: { sectionId: string; yearId: string }): Promise<JgPrintHeader> {
+  const [{ data }, homeroom] = await Promise.all([
+    supabase.from('schools').select('name, logo_url').eq('id', schoolId).maybeSingle(),
+    section ? getHomeroom(section.sectionId, section.yearId).catch(() => null) : Promise.resolve(null),
+  ])
+  const h: Record<string, string> = { ...(settings.header ?? {}), ...(homeroom?.name ? { homeroom_teacher: homeroom.name } : {}) }
   return {
     schoolName: h.school_name || data?.name || '',
     logoUrl: h.logo_url || data?.logo_url || null,
@@ -108,7 +118,45 @@ export function bandHtml(header: JgPrintHeader, subtitle = 'منظومة رصد 
     </div>${logo}</div>`
 }
 
-export const footHtml = (pageLabel = '') => `<div class="foot"><span>${esc(JAHBADH_FOOTER)}</span><span>${esc(pageLabel)}</span></div>`
+/** «تاريخ السحب» (brief A2): when the sheet was printed, Libya time, dd/mm/yyyy hh:mm. */
+export function printedAt(now = new Date()): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Tripoli', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+      .formatToParts(now)
+      .map((p) => [p.type, p.value]),
+  )
+  return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`
+}
+
+/**
+ * Footer of every printed sheet: «تاريخ السحب» always; the Jahbadh line only on working documents
+ * (report cards carry the school's identity only, brief B7).
+ */
+export const footHtml = (pageLabel = '', opts: { brand?: boolean } = {}) =>
+  `<div class="foot"><span>${opts.brand === false ? '' : esc(JAHBADH_FOOTER)}</span><span>${esc(pageLabel)}${pageLabel ? ' — ' : ''}تاريخ السحب: <span class="num">${esc(printedAt())}</span></span></div>`
+
+/**
+ * Official symmetric header (brief B7, workbook «كشف رصد المعلم»): the state, ministry, office and school
+ * on the start side, the year / grade / subject / period on the end side, the school logo in the middle.
+ * School identity only — no Jahbadh branding.
+ */
+export function officialHeaderHtml(header: JgPrintHeader, endLines: [string, string][] = []): string {
+  const startLines = [
+    'دولة ليبيا',
+    'وزارة التربية والتعليم',
+    header.educationOffice ? `مراقبة التربية والتعليم ${header.educationOffice}` : '',
+    header.municipality ? `بلدية ${header.municipality}` : '',
+    header.schoolName,
+  ].filter(Boolean)
+  const logo = header.logoUrl
+    ? `<img src="${esc(header.logoUrl)}" style="height:52px;max-width:90px;object-fit:contain">`
+    : '<div style="width:52px;height:52px;border:1px dashed var(--jg-line);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--jg-muted)">شعار المدرسة</div>'
+  return `<div style="display:flex;align-items:center;gap:8px;border-bottom:2px solid var(--jg-navy);padding-bottom:4px;margin-bottom:4px">
+    <div style="flex:1;font-weight:700;line-height:1.5">${startLines.map((l, i) => `<div style="${i === startLines.length - 1 ? 'font-size:11px;color:var(--jg-navy)' : ''}">${esc(l)}</div>`).join('')}</div>
+    <div style="flex:0 0 auto;text-align:center">${logo}</div>
+    <div style="flex:1;line-height:1.5;text-align:end">${endLines.map(([k, v]) => `<div><span class="muted">${esc(k)}:</span> <b>${esc(v)}</b></div>`).join('')}</div>
+  </div>`
+}
 
 const signaturesHtml = (header: JgPrintHeader) => `<div class="sign">
   <div>المعلم/ـة أو رائد الفصل : ${esc(header.homeroomTeacher)}<br><span class="muted">التوقيع : ..................</span></div>
@@ -130,14 +178,16 @@ export function resultsSheetHtml(r: JgResults, header: JgPrintHeader): string {
     .join('')}<td class="num">${fmtMark(r.grand_max)}</td><td colspan="5"></td></tr>`
   const rows = r.students
     .map((st, i) => {
-      const tone = decisionTone(st.decision)
+      const tone = decisionTone(st.decision || '—')
       return `<tr><td class="num">${i + 1}</td><td class="start">${esc(st.student.name)}</td>${r.subjects
         .map((s) => {
-          const res = st.subjects[s.id].result
+          const x = st.subjects[s.id]
+          const res = x.result
           const t = res.result === 'round2' || res.result === 'fail' ? ` class="t-${res.result === 'fail' ? 'destructive' : 'warning'}"` : ''
-          return `<td${t}><span class="num">${fmtMark(res.final)}</span></td>`
+          // «+1»: the Article 122 extra mark went to this subject.
+          return `<td${t}><span class="num">${fmtMark(res.final)}</span>${x.jabr ? '<sup style="color:var(--jg-success);font-weight:800">+1</sup>' : ''}</td>`
         })
-        .join('')}<td class="num" style="font-weight:700">${fmtMark(st.total)}</td><td class="num">${fmtPct(st.pct, 1)}</td><td>${esc(st.estimate ?? '')}</td><td class="num">${st.rank ?? ''}</td><td class="start" style="font-size:8px">${esc(st.support_subjects.join('، '))}</td><td><span class="chip t-${tone}">${esc(st.decision)}</span></td></tr>`
+        .join('')}<td class="num" style="font-weight:700">${fmtMark(st.total)}</td><td class="num">${fmtPct(st.pct, 1)}</td><td>${esc(st.estimate ?? '')}</td><td class="num">${st.rank ?? ''}</td><td class="start" style="font-size:8px">${esc(st.support_subjects.join('، '))}</td><td><span class="chip t-${tone}">${esc(st.decision)}</span>${st.missing_text ? `<div class="muted" style="font-size:7px">${esc(st.missing_text)}</div>` : ''}</td></tr>`
     })
     .join('')
   return page(
@@ -219,12 +269,26 @@ export interface JgReportCardOptions {
   attendance: boolean
   guardianTips: boolean
   quote: boolean
+  /** Black-and-white printing (no colour fills). */
+  bw: boolean
+  /** «التوقع المبكر» (stage scope): «يحتاج للنجاح» column and the year-end projection (brief B6-30). */
+  prediction: boolean
+  /** «الملاحظات التلقائية»: a generated note when the teacher left the stage note empty (brief B6-33). */
+  autoNotes: boolean
 }
 
-export const JG_REPORT_CARD_ALL_ON: JgReportCardOptions = {
+/** The 12 elements of brief B7 (default on) and the three Wave 2 toggles (default off). */
+export const JG_REPORT_CARD_DEFAULTS: JgReportCardOptions = {
   rank: true, minPass: true, subjectEstimate: true, classAverage: true, performanceBar: true, trend: true,
   badges: true, insight: true, activities: true, attendance: true, guardianTips: true, quote: true,
+  bw: false, prediction: false, autoNotes: false,
 }
+
+/** Every element on (design sample). */
+export const JG_REPORT_CARD_ALL_ON: JgReportCardOptions = { ...JG_REPORT_CARD_DEFAULTS, prediction: true, autoNotes: true }
+
+/** How a stage is printed (brief B7): semesters works/exam/total; periods and the final exam max/score. */
+export type JgStageMode = 'semester' | 'period' | 'exam'
 
 export interface JgReportCardSubject {
   name: string
@@ -241,6 +305,12 @@ export interface JgReportCardSubject {
   classAverage: number | null
   /** Change between the first two stages, in percentage points. */
   trend: number | null
+  /** Final scope: first-round total incl. the Article 122 mark (brief B7). */
+  firstRound?: number | null
+  /** The Article 122 extra mark went to this subject. */
+  jabr?: boolean
+  /** Prediction (stage scope): marks still needed to pass; 'ok' secured, 'impossible' from what remains. */
+  need?: number | 'ok' | 'impossible' | null
 }
 
 export interface JgReportCardData {
@@ -261,6 +331,9 @@ export interface JgReportCardData {
     motherName: string
     birth: string
     listNumber: number
+    nationalId?: string
+    enrollmentStatus?: string
+    registrationType?: string
   }
   subjects: JgReportCardSubject[]
   total: number | null
@@ -279,6 +352,29 @@ export interface JgReportCardData {
   quote: string
   excelRate: number
   followRate: number
+  // ---- Wave 2: the official card fields (brief B7) ----
+  /** «بطاقة تقدير درجات — مرحلة التعليم الأساسي/الثانوي». */
+  cardName?: string
+  /** «للعام الدراسي 1447 / 1448 هـ الموافق 2025 - 2026 م». */
+  yearLine?: string
+  school?: { number: string; locatedAt: string; coordinator: string; subOffice: string }
+  /** Per stage of this card. */
+  stageModes?: JgStageMode[]
+  /** Stage estimate, printed at the start of each stage note. */
+  stageEstimates?: (string | null)[]
+  /** Final scope: the official first / second round sentences (one box in no-fail grades). */
+  rounds?: { first: string | null; second: string | null; single: boolean } | null
+  /** Signature rows per stage (grades 1–5: exams coordinator). */
+  signatureRoles?: string[]
+  /** Weekly periods of art / music / PE (grades 6–8). */
+  activityPeriods?: number[] | null
+  /** Year-end projection (prediction toggle, stage scope). */
+  projection?: { pct: number; estimate: string | null } | null
+  /** «school no. – registration no. – print date» and its QR (verification, brief B7/B6-39). */
+  reference?: string
+  /** Code printed under the QR; checked on the public verification page (brief B6-39). */
+  verifyCode?: string | null
+  qrSvg?: string | null
 }
 
 const bar = (pct: number | null) => {
@@ -331,33 +427,46 @@ export function reportCardBody(d: JgReportCardData, o: JgReportCardOptions = JG_
   const word = learnerWord(d.gradeCode, d.student.gender)
   const stages = d.stageNames
   const stageCols = stages.length
+  const modes: JgStageMode[] = d.stageModes ?? stages.map(() => 'semester')
+  const final = d.rounds !== undefined && d.rounds !== null
+  const predicting = o.prediction && !final && d.subjects.some((s) => s.need !== undefined)
   const extraCols = [
     o.minPass && 'الصغرى',
-    'الدرجة النهائية',
+    final ? 'الدور الأول' : 'الدرجة النهائية',
     d.showRound2 !== false && 'الدور الثاني',
+    predicting && 'يحتاج للنجاح',
     o.subjectEstimate && 'التقدير',
     o.classAverage && 'متوسط الصف',
     o.performanceBar && 'مستوى الأداء',
     o.trend && 'التقدم',
   ].filter(Boolean) as string[]
 
+  const stageSpan = (k: number) => (modes[k] === 'semester' ? 3 : 2)
+  const sub = (t: string) => `<th style="background:var(--jg-blue);font-size:7px">${t}</th>`
   const head1 = `<tr><th rowspan="2" style="min-width:92px">المواد الدراسية المقررة</th><th rowspan="2" style="width:16px;font-size:7px">الحصص</th>${stages
-    .map((s) => `<th colspan="3" style="background:var(--jg-royal)">${esc(s)}</th>`)
+    .map((s, k) => `<th colspan="${stageSpan(k)}" style="background:var(--jg-royal)">${esc(s)}</th>`)
     .join('')}<th rowspan="2">الكبرى</th>${extraCols.map((c) => `<th rowspan="2" style="font-size:7.5px">${esc(c)}</th>`).join('')}</tr>`
-  const head2 = `<tr>${stages.map(() => '<th style="background:var(--jg-blue);font-size:7px">أعمال</th><th style="background:var(--jg-blue);font-size:7px">امتحان</th><th style="background:var(--jg-blue);font-size:7px">المجموع</th>').join('')}</tr>`
+  const head2 = `<tr>${modes
+    .map((m) => (m === 'semester' ? sub('أعمال') + sub('امتحان') + sub('المجموع') : m === 'exam' ? sub('العظمى') + sub('الامتحان') : sub('العظمى') + sub('الدرجة')))
+    .join('')}</tr>`
+  const needCell = (n: JgReportCardSubject['need']) =>
+    n === undefined || n === null ? '—' : n === 'ok' ? '<span style="color:var(--jg-success)">✔</span>' : n === 'impossible' ? '<span style="color:var(--jg-danger)">✖</span>' : fmtMark(n)
   const subjectRows = d.subjects
     .map((s, i) => {
       const cells = s.stages
-        .map((st) =>
-          st.max === 0
-            ? '<td class="muted">—</td><td class="muted">—</td><td class="muted" style="background:var(--jg-blue-soft)">—</td>'
-            : `<td class="num">${fmtMark(st.works)}</td><td class="num">${fmtMark(st.exam)}</td><td class="num" style="font-weight:700;background:var(--jg-blue-soft)">${fmtMark(st.total)}</td>`,
-        )
+        .map((st, k) => {
+          if (st.max === 0) return Array.from({ length: stageSpan(k) }, () => '<td class="muted">—</td>').join('')
+          if (modes[k] === 'semester')
+            return `<td class="num">${fmtMark(st.works)}</td><td class="num">${fmtMark(st.exam)}</td><td class="num" style="font-weight:700;background:var(--jg-blue-soft)">${fmtMark(st.total)}</td>`
+          return `<td class="num muted">${fmtMark(st.max)}</td><td class="num" style="font-weight:700;background:var(--jg-blue-soft)">${fmtMark(st.total)}</td>`
+        })
         .join('')
+      const firstRound = final ? s.firstRound ?? s.final : s.final
       const extras = [
         o.minPass && `<td class="num muted">${s.minPass === null ? '—' : fmtMark(s.minPass)}</td>`,
-        `<td class="num" style="font-weight:800;background:var(--jg-gold-soft)">${fmtMark(s.final)}</td>`,
-        d.showRound2 !== false && `<td class="num">${s.round2 === null ? '—' : fmtMark(s.round2)}</td>`,
+        `<td class="num" style="font-weight:800;background:var(--jg-gold-soft)">${fmtMark(firstRound)}${s.jabr ? '<sup style="color:var(--jg-success);font-weight:800">+1</sup>' : ''}</td>`,
+        d.showRound2 !== false && `<td class="num">${s.round2 === null ? '—' : fmtMark(s.final)}</td>`,
+        predicting && `<td class="num">${needCell(s.need)}</td>`,
         o.subjectEstimate && `<td>${esc(s.estimate ?? '')}</td>`,
         o.classAverage && `<td class="num muted">${fmtMark(s.classAverage)}</td>`,
         o.performanceBar && `<td style="font-size:8px">${bar(s.pct)}</td>`,
@@ -368,25 +477,38 @@ export function reportCardBody(d: JgReportCardData, o: JgReportCardOptions = JG_
     .join('')
   const sumStage = (k: number) => d.subjects.reduce((a, s) => a + (s.stages[k]?.total ?? 0), 0)
   const totalRow = `<tr style="background:var(--jg-navy);color:#fff;font-weight:800"><td class="start" style="color:var(--jg-gold)">المجمـــوع</td><td class="num">${d.subjects.reduce((a, s) => a + s.weeklyPeriods, 0)}</td>${stages
-    .map((_, k) => `<td colspan="3" class="num">${fmtMark(sumStage(k))}</td>`)
+    .map((_, k) => `<td colspan="${stageSpan(k)}" class="num">${fmtMark(sumStage(k))}</td>`)
     .join('')}<td class="num">${fmtMark(d.max)}</td><td colspan="${extraCols.length}" class="num">${fmtMark(d.total)}</td></tr>`
 
   const tone = decisionTone(d.decision)
   const tile = (label: string, value: string, extra = '') =>
     `<td><div style="font-size:7.5px;color:#fff;background:var(--jg-teal);margin:-2px -3px 2px;padding:1px">${esc(label)}</div><div style="font-size:11px;font-weight:800${extra}">${value}</div></td>`
+  const decisionTile = predicting && d.projection
+    ? tile('التوقع لنهاية العام', `${esc(d.projection.estimate ?? '—')} <span class="num">(${fmtPct2(d.projection.pct)})</span>`)
+    : tile('القرار', `<span class="chip t-${tone}">${esc(d.decision)}</span>`)
   const tiles = `<table style="margin-top:4px"><tr>
     ${tile('المجموع العام', `<span class="num">${fmtMark(d.total)}</span> من <span class="num">${fmtMark(d.max)}</span>`)}
-    ${tile('النسبة المئوية', `<span class="num">${fmtPct(d.pct, 1)}</span>`)}
+    ${tile('النسبة المئوية', `<span class="num">${fmtPct2(d.pct)}</span>`)}
     ${tile('التقدير العام', esc(d.estimate ?? ''))}
     ${o.rank ? tile('الترتيب في الفصل', `<span class="num">${d.rank ?? '—'}</span> من <span class="num">${d.classSize}</span>`) : ''}
-    ${tile('القرار', `<span class="chip t-${tone}">${esc(d.decision)}</span>`)}
+    ${decisionTile}
   </tr></table>`
+
+  // First / second round boxes with the official sentences (final scope; one box in no-fail grades).
+  const rounds = d.rounds
+    ? `<div style="display:flex;gap:6px;margin-top:4px">${(d.rounds.single
+        ? [['النتيجة النهائية', d.rounds.first]]
+        : [['نتيجة الدور الأول', d.rounds.first], ['نتيجة الدور الثاني', d.rounds.second]])
+        .map(([label, text]) => `<div style="flex:1;border:1px solid var(--jg-line);border-radius:4px;padding:3px 5px;min-height:28px"><div style="font-weight:800;color:var(--jg-navy)">${esc(label as string)}</div><div style="font-weight:700">${esc((text as string | null) ?? '')}</div></div>`)
+        .join('')}</div>`
+    : ''
 
   const badge = o.badges ? badgeFor(d) : null
   const stageHead = stages.map((s) => `<th style="background:var(--jg-purple-soft);color:var(--jg-purple);font-size:7.5px">${esc(s)}</th>`).join('')
+  const activityName = (name: string, k: number) => (d.activityPeriods?.[k] ? `${name} (${d.activityPeriods[k]})` : name)
   const activities = o.activities
-    ? `<table><tr><th colspan="${stageCols + 1}" style="background:var(--jg-purple)">🎨 مواد النشاط (تقدير لفظي)</th></tr><tr><th style="background:var(--jg-purple-soft);color:var(--jg-purple)">المادة</th>${stageHead}</tr>${d.activities
-        .map((a) => `<tr><td class="start">${esc(a.name)}</td>${stages.map((_, k) => `<td>${esc(a.levels[k] ?? '')}</td>`).join('')}</tr>`)
+    ? `<table><tr><th colspan="${stageCols + 1}" style="background:var(--jg-purple)">🎨 مواد النشاط (تقدير لفظي)</th></tr><tr><th style="background:var(--jg-purple-soft);color:var(--jg-purple)">المادة${d.activityPeriods ? ' (الحصص)' : ''}</th>${stageHead}</tr>${d.activities
+        .map((a, k) => `<tr><td class="start">${esc(activityName(a.name, k))}</td>${stages.map((_, j) => `<td>${esc(a.levels[j] ?? '')}</td>`).join('')}</tr>`)
         .join('')}</table>`
     : ''
   const attPct = (k: number) => {
@@ -408,62 +530,86 @@ export function reportCardBody(d: JgReportCardData, o: JgReportCardOptions = JG_
   const insightHtml = insight
     ? `<table style="margin-top:4px"><tr><th style="background:var(--jg-teal)">✦ قراءة جهبذ لأداء ${esc(word)} ✦</th></tr><tr><td class="start">${esc(insight[0])}</td></tr><tr><td class="start">${esc(insight[1])}</td></tr></table>`
     : ''
+  // Each stage note starts with the stage estimate (brief B7).
+  const noteOf = (k: number) => [d.stageEstimates?.[k] ? `التقدير - ${d.stageEstimates[k]}` : '', d.notes[k] ?? ''].filter(Boolean).join(' — ')
   const notes = `<table><tr><th>📝 ملاحظات على أداء ${esc(word)}</th></tr>${stages
-    .map((s, k) => `<tr><td class="start">${esc(s)}: ${esc(d.notes[k] ?? '')}</td></tr>`)
+    .map((s, k) => `<tr><td class="start">${esc(s)}: ${esc(noteOf(k))}</td></tr>`)
     .join('')}</table>`
   const tips = o.guardianTips
     ? `<table><tr><th>👪 توجيهات إلى أولياء الأمور</th></tr>${d.guardianTips.map((t) => `<tr><td class="start">• ${esc(t)}</td></tr>`).join('')}</table>`
     : ''
 
+  const roles = d.signatureRoles ?? ['رائد الفصل', 'مدير المدرسة', 'ولي الأمر']
   const signatures = `<div style="display:flex;gap:6px;margin-top:4px">
     <table style="flex:2"><tr><th>التوقيعات</th>${stages.map((s) => `<th style="font-size:7.5px">${esc(s)}</th>`).join('')}<th style="font-size:7.5px">النتيجة النهائية</th></tr>
-      ${['رائد الفصل', 'مدير المدرسة', 'ولي الأمر'].map((r) => `<tr><td class="start" style="height:14px">${r}</td>${stages.map(() => '<td></td>').join('')}<td></td></tr>`).join('')}</table>
+      ${roles.map((r) => `<tr><td class="start" style="height:14px">${esc(r)}</td>${stages.map(() => '<td></td>').join('')}<td></td></tr>`).join('')}</table>
     <div style="flex:1;border:1px solid var(--jg-line);border-radius:4px;background:var(--jg-gold-soft);text-align:center;padding:3px">
       <div style="font-weight:800;color:var(--jg-navy)">اعتماد النتيجة</div><div>مدير/ة المدرسة</div><div style="font-weight:700">${esc(d.header.principal) || '..............................'}</div>
       <div style="margin:3px auto 0;width:42px;height:42px;border:2px dashed var(--jg-gold);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--jg-gold);font-weight:800">الختم</div>
     </div></div>`
 
+  const sc = d.school
+  const box = (v: string | undefined, n = 0) =>
+    v ? `<span class="num" style="letter-spacing:1px;border:1px solid var(--jg-line);padding:0 3px;border-radius:2px">${esc(v)}</span>` : n ? `<span class="muted">${'□'.repeat(n)}</span>` : ''
+  const lbl = 'background:var(--jg-blue-soft);font-weight:700'
   const info = `<table style="margin-top:3px"><tr>
-      <td class="start" style="background:var(--jg-blue-soft);font-weight:700;width:14%">اسم ${esc(word)}</td><td class="start" colspan="3" style="font-weight:800;font-size:10px">${esc(d.student.name)}</td>
-      <td style="background:var(--jg-blue-soft);font-weight:700;width:10%">الصف</td><td style="font-weight:700">${esc(d.gradeName)}</td>
-      <td rowspan="4" style="width:58px;color:var(--jg-muted);font-size:7.5px;border-style:dashed">صورة<br>${esc(word)}</td></tr>
-    <tr><td class="start" style="background:var(--jg-blue-soft);font-weight:700">رقم القيد</td><td class="num">${esc(d.student.registrationNumber)}</td>
-      <td style="background:var(--jg-blue-soft);font-weight:700;width:10%">الجنسية</td><td>${esc(d.student.nationality)}</td>
-      <td style="background:var(--jg-blue-soft);font-weight:700">الشعبة</td><td>${esc(d.sectionName)}</td></tr>
-    <tr><td class="start" style="background:var(--jg-blue-soft);font-weight:700">اسم الأم</td><td colspan="3" class="start">${esc(d.student.motherName)}</td>
-      <td style="background:var(--jg-blue-soft);font-weight:700">الميلاد</td><td>${esc(d.student.birth)}</td></tr>
-    <tr><td class="start" style="background:var(--jg-blue-soft);font-weight:700">الرقم في الكشف</td><td class="num">${d.student.listNumber}</td>
-      <td style="background:var(--jg-blue-soft);font-weight:700">النظام</td><td colspan="3">${esc(d.systemName)}</td></tr></table>`
+      <td class="start" style="${lbl};width:14%">اسم ${esc(word)}</td><td class="start" colspan="3" style="font-weight:800;font-size:10px">${esc(d.student.name)}</td>
+      <td style="${lbl};width:10%">الصف</td><td style="font-weight:700">${esc(d.gradeName)}</td>
+      <td rowspan="5" style="width:58px;color:var(--jg-muted);font-size:7.5px;border-style:dashed">صورة<br>${esc(word)}</td></tr>
+    <tr><td class="start" style="${lbl}">رقم القيد</td><td>${box(d.student.registrationNumber, 8)}</td>
+      <td style="${lbl};width:10%">الرقم الوطني</td><td>${box(d.student.nationalId, 12)}</td>
+      <td style="${lbl}">الشعبة</td><td>${esc(d.sectionName)}</td></tr>
+    <tr><td class="start" style="${lbl}">اسم الأم</td><td colspan="3" class="start">${esc(d.student.motherName)}</td>
+      <td style="${lbl}">الجنسية</td><td>${esc(d.student.nationality)}</td></tr>
+    <tr><td class="start" style="${lbl}">مكان وتاريخ الميلاد</td><td colspan="3" class="start">${esc(d.student.birth)}</td>
+      <td style="${lbl}">مستجد / معيد</td><td>${esc(d.student.enrollmentStatus ?? '')}</td></tr>
+    <tr><td class="start" style="${lbl}">الرقم في الكشف</td><td class="num">${d.student.listNumber}</td>
+      <td style="${lbl}">صفة القيد</td><td>${esc(d.student.registrationType ?? '')}</td>
+      <td style="${lbl}">النظام</td><td>${esc(d.systemName)}</td></tr>
+    ${sc ? `<tr><td class="start" style="${lbl}">رقم المدرسة</td><td>${esc(sc.number)}</td><td style="${lbl}">الكائنة بـ</td><td>${esc(sc.locatedAt)}</td><td style="${lbl}">منسق الامتحانات</td><td colspan="2">${esc(sc.coordinator)}</td></tr>` : ''}</table>`
 
-  const body = `<div style="border:1.5px solid var(--jg-navy);border-radius:7px;padding:0 0 4px;position:relative;overflow:hidden">
-    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.035;font-size:300px;font-weight:900;color:var(--jg-navy);pointer-events:none">ج</div>
-    ${bandHtml(d.header)}
+  const transfer = `<div style="margin-top:4px;border:1px solid var(--jg-line);border-radius:4px;padding:2px 5px;font-size:7.5px;display:flex;gap:6px;align-items:center">
+    <div style="flex:1"><b>الانتقال:</b> بناءً على طلب ولي أمر ${esc(word)} فإن إدارة المدرسة توافق على ${genderForm(d.student.gender ?? undefined, 'انتقاله', 'انتقالها')} إلى مدرسة: ............................ — مدير المدرسة: ............ — مكتب الامتحانات: ............ — التاريخ: ..../..../....١٤هـ الموافق ..../..../....٢٠م</div>
+    <div style="width:30px;height:30px;border:1px dashed var(--jg-line);border-radius:50%;font-size:6px;display:flex;align-items:center;justify-content:center" class="muted">ختم</div>
+    <div style="width:30px;height:30px;border:1px dashed var(--jg-line);border-radius:50%;font-size:6px;display:flex;align-items:center;justify-content:center" class="muted">ختم</div></div>`
+  const reference = `<div style="margin-top:3px;display:flex;align-items:center;gap:6px">
+    <div style="flex:1;font-size:8px"><b style="color:var(--jg-danger)">تنبيه: أي كشط أو تغيير في هذه البطاقة يلغيها.</b>${d.reference ? ` — الرقم المرجعي: <span class="num">${esc(d.reference)}</span>` : ''}${d.verifyCode ? ` — رمز التحقق: <span class="num">${esc(d.verifyCode)}</span>` : ''}</div>
+    ${d.qrSvg ? `<div style="flex:0 0 auto">${d.qrSvg}</div>` : ''}</div>`
+
+  const cardName = d.cardName ? `<div style="text-align:center;font-weight:800;color:var(--jg-navy);font-size:11px">${esc(d.cardName)}</div>` : ''
+  const yearText = d.yearLine || (d.yearName ? `${d.yearName} م` : '')
+  // School identity only (brief B7): no Jahbadh band, logo, watermark or footer line.
+  const body = `<div style="border:1.5px solid var(--jg-navy);border-radius:7px;padding:4px 0 4px;position:relative;overflow:hidden${o.bw ? ';filter:grayscale(1)' : ''}">
+    <div style="padding:0 6px">${officialHeaderHtml(d.header, [['العام الدراسي', d.yearName ? `${d.yearName} م` : ''], ['الصف', d.gradeName], ['الشعبة', d.sectionName]])}</div>
     <div style="padding:0 6px">
-      <div class="title">✦ ${esc(d.title)} — ${esc(d.yearName)} م ✦</div>
+      ${cardName}
+      <div class="title">✦ ${esc(d.title)} — ${esc(yearText)} ✦</div>
       ${info}
       <table style="margin-top:4px">${head1}${head2}${subjectRows}${totalRow}</table>
       ${tiles}
+      ${rounds}
       ${badge ? `<div style="text-align:center;margin-top:3px;font-weight:800;color:var(--jg-warning);background:var(--jg-gold-soft);border-radius:4px;padding:2px">${esc(badge)}</div>` : ''}
       ${sideBySide(activities, attendance)}
       ${insightHtml}
       ${sideBySide(notes, tips)}
       ${signatures}
+      ${transfer}
       <div style="margin-top:4px;border:1px solid var(--jg-danger);background:var(--jg-danger-soft);color:var(--jg-danger);border-radius:4px;padding:2px 4px;font-weight:700;font-size:8px">ملاحظة مهمة: ${esc(d.ruleText)}</div>
       ${o.quote ? `<div style="margin-top:3px;color:var(--jg-warning);font-weight:700">✿ ${genderForm(d.student.gender, 'عزيزي', 'عزيزتي')} ${esc(word)}: ${esc(d.quote)}</div>` : ''}
-      <div style="margin-top:3px;text-align:center;color:var(--jg-gold);letter-spacing:3px;font-size:8px">◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆ ◆</div>
-      ${footHtml('منظومة جهبذ لرصد الدرجات')}
+      ${reference}
+      ${footHtml(d.header.schoolName, { brand: false })}
     </div></div>`
   return body
 }
 
+/** One card per A4 page, centred, scaled to fit (13 subjects stay on one page) or stretched a little (few subjects). */
 export function reportCardHtml(d: JgReportCardData, o: JgReportCardOptions = JG_REPORT_CARD_ALL_ON): string {
-  return page(d.title, reportCardBody(d, o), 'portrait', 10)
+  return page(d.title, sheet(reportCardBody(d, o), { grow: 1.15 }, true) + FIT_SCRIPT, 'portrait', 10)
 }
 
 /** Several cards in one document, one per A4 page. */
 export function reportCardsHtml(cards: JgReportCardData[], o: JgReportCardOptions = JG_REPORT_CARD_ALL_ON): string {
-  const bodies = cards.map((d, i) => `<section style="${i < cards.length - 1 ? 'break-after:page;page-break-after:always;' : ''}">${reportCardBody(d, o)}</section>`)
-  return page(cards[0]?.title ?? 'report cards', bodies.join(''), 'portrait', 10)
+  return page(cards[0]?.title ?? 'report cards', sheets(cards.map((d) => reportCardBody(d, o)), { grow: 1.15 }) + FIT_SCRIPT, 'portrait', 10)
 }
 
 export const renderReportCardPdf = (d: JgReportCardData, o?: JgReportCardOptions) =>
@@ -642,3 +788,82 @@ const noMargin = { margin: { top: '0', bottom: '0' } }
 export const renderAnalysisCardPdf = (d: JgAnalysisDoc, h: JgPrintHeader) => renderHtmlToPdf(analysisCardHtml(d, h), noMargin)
 export const renderItemAnalysisPdf = (d: JgItemAnalysisDoc, h: JgPrintHeader) => renderHtmlToPdf(itemAnalysisHtml(d, h), { landscape: true, ...noMargin })
 export const renderStudentProfilePdf = (d: JgProfileDoc, h: JgPrintHeader) => renderHtmlToPdf(studentProfileHtml(d, h), noMargin)
+
+// ---- subject grid (B4: the sheet follows the chosen stage) ------------------------------------------------
+
+/** The subject sheet of one section: the chosen stage (or «كل الكشف»), its components with their maxima. */
+export function subjectGridHtml(g: JgGrid, header: JgPrintHeader): string {
+  const stages = g.stage ? [g.stage] : g.subject.meta.stages
+  const stageName = (n: number) => g.rule.stage_names[n - 1] ?? String(n)
+  const comps = g.subject.components.filter((c) => stages.includes(c.stage))
+  const all = g.stage === null
+  const word = learnerWord(g.rule.grade_code)
+  const title = `كشف مادة ${g.subject.name} — ${all ? 'كل الكشف' : stageName(g.stage!)}`
+  const head1 = `<tr><th rowspan="2" style="width:18px">رقم</th><th rowspan="2" style="min-width:120px">اسم ${esc(word)}/ـة</th>${stages
+    .map((n) => `<th colspan="${comps.filter((c) => c.stage === n).length + 1}" style="background:var(--jg-royal)">${esc(stageName(n))}</th>`)
+    .join('')}${all ? '<th rowspan="2">المجموع</th><th rowspan="2">الدور الثاني</th><th rowspan="2">النهائية</th><th rowspan="2">التقدير</th><th rowspan="2">النتيجة</th>' : ''}</tr>`
+  const head2 = `<tr>${stages
+    .map((n) => comps.filter((c) => c.stage === n).map((c) => `<th style="font-size:7.5px;background:var(--jg-blue)">${esc(c.name)}${c.is_exam ? ' ★' : ''}<div class="num">${fmtMark(c.max_score)}</div></th>`).join('') + `<th style="font-size:7.5px;background:var(--jg-blue)">المجموع<div class="num">${fmtMark(g.subject.meta.stageMax[n])}</div></th>`)
+    .join('')}</tr>`
+  const cell = (v: { value: number | null; absent: boolean; partial?: boolean; trend?: string | null } | undefined) => {
+    if (!v) return '<td></td>'
+    if (v.absent) return '<td>غ</td>'
+    return `<td class="num" style="${v.partial ? 'color:var(--jg-warning);font-weight:700' : ''}">${fmtMark(v.value)}${v.trend ? ` <span style="font-size:7px">${esc(v.trend)}</span>` : ''}</td>`
+  }
+  const rows = g.rows
+    .map((r, i) => `<tr><td class="num">${i + 1}</td><td class="start">${esc(r.student.name)}</td>${stages
+      .map((n) => comps.filter((c) => c.stage === n).map((c) => cell(r.cells[c.id])).join('') + `<td class="num" style="font-weight:700;background:var(--jg-blue-soft)">${fmtMark(r.result.stageTotals[n] ?? null)}</td>`)
+      .join('')}${all ? `<td class="num" style="font-weight:700">${fmtMark(r.result.total)}</td><td class="num">${r.round2 === null ? '' : fmtMark(r.round2)}</td><td class="num" style="font-weight:800;background:var(--jg-gold-soft)">${fmtMark(r.result.final)}</td><td>${esc(r.result.estimate ?? '')}</td><td style="font-size:8px">${esc(r.result.result ? RESULT_AR[r.result.result] ?? '' : '')}</td>` : ''}</tr>`)
+    .join('')
+  const yearName = yearLabel(g.academic_year.name)
+  return page(
+    title,
+    `${officialHeaderHtml(header, [['العام الدراسي', yearName], ['الصف', g.section.grade_level_name], ['الشعبة', g.section.name], ['المادة', g.subject.name]])}
+     <div class="title">${esc(title)}</div>
+     <table>${head1}${head2}${rows}</table>
+     <div class="muted" style="margin-top:3px">★ امتحان — القيمة البرتقالية: لم تُرصد كل بنودها بعد — ▲ تحسّن ▼ تراجع ● ثابت</div>
+     <div class="sign"><div>معلم/ـة المادة: ..................<br><span class="muted">التوقيع : ..................</span></div><div>مدير/ة المدرسة : ${esc(header.principal)}<br><span class="muted">التوقيع والختم : ..................</span></div></div>
+     ${footHtml()}`,
+    'landscape',
+  )
+}
+
+const RESULT_AR: Record<string, string> = {
+  promoted: 'ينقل', incomplete: 'غير مكتملة', pass: 'ناجح', pass_jabr: 'ناجح (جبر +1)', round2: 'دور ثاني', pass_round2: 'ناجح دور ثاني', fail: 'راسب',
+}
+
+export const renderSubjectGridPdf = (g: JgGrid, header: JgPrintHeader) =>
+  renderHtmlToPdf(subjectGridHtml(g, header), { landscape: true, margin: { top: '0', bottom: '0' } })
+
+// ---- monthly activities log («سجل الأنشطة الشهري») --------------------------------------------------------
+
+/** One subject × month on one A4 page, blank (for pen entry) or with the marks (archive). */
+export function monthlyLogHtml(d: JgMonthlyLog, header: JgPrintHeader, blank: boolean): string {
+  const word = learnerWord(d.grade_code)
+  const title = `سجل الأنشطة الشهري — ${d.subject.name} — شهر ${d.month_name}`
+  const byComp = d.components.map((c) => ({ c, cols: d.columns.filter((x) => x.component_id === c.id) }))
+  const head1 = `<tr><th rowspan="2" style="width:18px">رقم</th><th rowspan="2" style="min-width:130px">اسم ${esc(word)}/ـة</th>${byComp
+    .map(({ c, cols }) => `<th colspan="${cols.length + (c.subitems ? 1 : 0)}" style="background:var(--jg-royal)">${esc(c.name)} <span class="num">(${fmtMark(c.max)})</span></th>`)
+    .join('')}<th rowspan="2" style="width:48px">درجة الشهر</th><th rowspan="2" style="min-width:70px">ملاحظات</th></tr>`
+  const head2 = `<tr>${byComp
+    .map(({ c, cols }) => cols.map((x) => `<th style="font-size:7.5px;background:var(--jg-blue)">${x.kind === 'subitem' ? esc(x.name) : 'الدرجة'}<div class="num">${fmtMark(x.max)}</div></th>`).join('') + (c.subitems ? '<th style="font-size:7.5px;background:var(--jg-blue)">المجموع</th>' : ''))
+    .join('')}</tr>`
+  const v = (x: { value: number | null; absent: boolean } | null | undefined) => (blank || !x ? '' : x.absent ? 'غ' : fmtMark(x.value))
+  const rows = d.rows
+    .map((r, i) => `<tr style="height:19px"><td class="num">${i + 1}</td><td class="start">${esc(r.student.name)}</td>${byComp
+      .map(({ c, cols }) => cols.map((x) => `<td class="num">${v(r.values[x.id])}</td>`).join('') + (c.subitems ? `<td class="num" style="background:var(--jg-blue-soft)">${blank ? '' : fmtMark(r.component_month[c.id])}</td>` : ''))
+      .join('')}<td class="num" style="font-weight:700;background:var(--jg-gold-soft)">${blank ? '' : fmtMark(r.month_total)}</td><td></td></tr>`)
+    .join('')
+  return page(
+    title,
+    `${officialHeaderHtml(header, [['العام الدراسي', yearLabel(d.academic_year.name)], ['الصف', d.section.grade_level_name], ['الشعبة', d.section.name], ['المادة', d.subject.name], ['الفترة', d.stage_name], ['الشهر', d.month_name]])}
+     <div class="title">${esc(title)}</div>
+     <table>${head1}${head2}${rows}</table>
+     <div class="sign"><div>معلم/ـة المادة: ..................<br><span class="muted">التوقيع : ..................</span></div><div>مدير/ة المدرسة : ${esc(header.principal)}<br><span class="muted">التوقيع والختم : ..................</span></div></div>
+     ${footHtml()}`,
+    'portrait',
+  )
+}
+
+export const renderMonthlyLogPdf = (d: JgMonthlyLog, header: JgPrintHeader, blank: boolean) =>
+  renderHtmlToPdf(monthlyLogHtml(d, header, blank), { margin: { top: '0', bottom: '0' } })

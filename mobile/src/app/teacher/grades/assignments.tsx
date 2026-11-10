@@ -316,7 +316,7 @@ export default function TeacherGradebookAssignments() {
                   <View className="border-info-soft dark:border-border size-4 rounded-full border" style={{ backgroundColor: x.color || colors.printBorder }} />
                   <View className="flex-1">
                     <Text className={cn('text-sm', typeId === x.id ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')}>{x.title}</Text>
-                    {x.sort_order != null ? <Text className="text-muted-foreground text-[11px]">{`${k('sortOrder')}: ${x.sort_order}`}</Text> : null}
+                    {x.sort_order != null ? <Text className="text-muted-foreground text-xs">{`${k('sortOrder')}: ${x.sort_order}`}</Text> : null}
                   </View>
                   <RowPill label={t('common.edit')} onPress={() => setTypeForm({ id: x.id, title: x.title, sort_order: String(x.sort_order ?? 0), color: x.color ?? colors.white })} />
                 </Pressable>

@@ -1,11 +1,16 @@
 import { Router } from 'express'
 import * as ctrl from '../controllers/jitsi-room.controller'
-import { authenticate } from '../middlewares/auth.middleware'
+import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
+import type { NextFunction, Response } from 'express'
 
 const router = Router()
 router.use(authenticate)
 
-router.post('/', ctrl.createRoom)
+// Students and parents join rooms; they do not create them.
+const notLearnerOrParent = (req: AuthRequest, res: Response, next: NextFunction) =>
+  req.profile?.role === 'student' || req.profile?.role === 'parent' ? res.status(403).json({ data: null, error: 'Not allowed' }) : next()
+
+router.post('/', notLearnerOrParent, ctrl.createRoom)
 router.get('/mine', ctrl.listMyRooms)
 router.get('/school', ctrl.listSchoolRooms)
 router.get('/:id', ctrl.getRoom)

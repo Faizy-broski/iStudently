@@ -134,14 +134,14 @@ export function GrievanceThreadScreen({ grievanceId }: { grievanceId: string }) 
     <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" keyboardShouldPersistTaps="handled">
       <Panel className="gap-4 p-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground font-mono text-[11px]">{g.complaint_number}</Text>
+          <Text className="text-muted-foreground font-mono text-xs">{g.complaint_number}</Text>
           <Text className="text-brand dark:text-foreground text-xl font-bold">{g.title}</Text>
           <View className="flex-row flex-wrap gap-1.5">
             <PriorityPill priority={g.priority} />
             {g.is_confidential ? (
               <View className="bg-muted flex-row items-center gap-1 rounded-full px-2.5 py-1">
                 <Icon as={ShieldAlert} className="text-muted-foreground size-3" />
-                <Text className="text-muted-foreground text-[11px] font-semibold">{t('grievances.list.confidential')}</Text>
+                <Text className="text-muted-foreground text-xs font-semibold">{t('grievances.list.confidential')}</Text>
               </View>
             ) : null}
             {g.is_anonymous ? <OutlinePill label={t('grievances.list.anonymous')} /> : null}
@@ -229,7 +229,7 @@ export function GrievanceThreadScreen({ grievanceId }: { grievanceId: string }) 
                 <Text className="max-w-40 text-xs" numberOfLines={1}>
                   {f.name}
                 </Text>
-                <Pressable onPress={() => setFiles((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
+                <Pressable onPress={() => setFiles((p) => p.filter((_, j) => j !== i))} hitSlop={6} accessibilityRole="button" accessibilityLabel={t('app.st_ad_remove', { name: f.name })}>
                   <Icon as={X} className="text-destructive size-3" />
                 </Pressable>
               </View>

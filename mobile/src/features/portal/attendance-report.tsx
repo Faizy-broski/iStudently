@@ -77,6 +77,8 @@ export function AttendanceView({
         if (r.success && r.data) setRecords(r.data);
         else toast.error(r.error || k('failed'));
       }
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : k('failed'));
     } finally {
       setLoading(false);
     }
@@ -149,7 +151,7 @@ export function AttendanceView({
                   <Text className="text-brand dark:text-brand-secondary w-40 p-2 text-xs font-bold">{k('course')}</Text>
                   <Text className="text-brand dark:text-brand-secondary w-24 p-2 text-xs font-bold">{k('period')}</Text>
                   {dates.map((d) => (
-                    <Text key={d} className="w-14 p-2 text-center text-[11px] font-bold">
+                    <Text key={d} className="w-14 p-2 text-center text-xs font-bold">
                       {colDate(d)}
                     </Text>
                   ))}

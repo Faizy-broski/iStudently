@@ -1,3 +1,4 @@
+import { requireRequestSchoolsInFamily } from '../middlewares/row-school-scope.middleware'
 import { Router } from 'express'
 import * as teacherController from '../controllers/teacher.controller'
 import * as reportCardsController from '../controllers/report-cards.controller'
@@ -48,7 +49,7 @@ router.delete('/setup/comment-codes/:id', requireTeacher, reportCardsController.
 // TEACHER CRUD ROUTES (must come after specific routes)
 router.get('/import-template', requireAdmin, teacherController.getTeacherImportTemplate)
 router.post('/bulk-import',    requireAdmin, teacherController.bulkImportTeachers)
-router.get('/', requireTeacher, teacherController.getAllTeachers)
+router.get('/', requireTeacher, requireRequestSchoolsInFamily, teacherController.getAllTeachers)
 router.get('/:id', requireTeacher, teacherController.getTeacherById)
 router.post('/', requireAdmin, teacherController.createTeacher)
 router.put('/:id', requireAdmin, teacherController.updateTeacher)

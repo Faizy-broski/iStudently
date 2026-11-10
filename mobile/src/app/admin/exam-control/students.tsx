@@ -122,8 +122,11 @@ export default function ExamControlStudents() {
               </Text>
               {s.status !== 'participating' ? <StatusChip label={t(`examControl.studentStatus_${s.status}`)} tone="muted" /> : null}
             </View>
-            <Text variant="muted" className="text-[11px]">
-              {[s.grade_level_name, s.section_name, s.committee_id ? `${t('examControl.committee')} ${s.seat_index ?? ''}${s.paper_model ? ` · ${s.paper_model}` : ''}` : null, s.special_case ? t(`examControl.special_${s.special_case}`) : null].filter(Boolean).join(' · ')}
+            <Text variant="muted" className="text-xs">
+              {[s.grade_level_name, s.section_name, s.enrollment_status, s.committee_id ? `${t('examControl.committee')} ${s.seat_index ?? ''}${s.paper_model ? ` · ${s.paper_model}` : ''}` : null, s.special_case ? t(`examControl.special_${s.special_case}`) : null].filter(Boolean).join(' · ')}
+            </Text>
+            <Text variant="muted" className={`text-xs ${s.national_id ? '' : 'text-warning'}`}>
+              {`${t('examControl.nationalId')}: ${s.national_id ?? t('examControl.noNationalId')}`}
             </Text>
           </Pressable>
         )}

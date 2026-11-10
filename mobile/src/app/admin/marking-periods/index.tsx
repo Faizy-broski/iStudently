@@ -268,12 +268,12 @@ export default function MarkingPeriods() {
                             </Text>
                             <View className="flex-row items-center gap-1.5">
                               {current ? <View className="size-2 rounded-full bg-success" accessibilityLabel={m('active_tooltip')} /> : null}
-                              {mp.does_grades ? <Text className="text-[10px] font-medium text-brand dark:text-brand-secondary">G</Text> : null}
-                              {mp.does_comments ? <Text className="text-[10px] font-medium text-chart-6">C</Text> : null}
+                              {mp.does_grades ? <Text className="text-2xs font-medium text-brand dark:text-brand-secondary">G</Text> : null}
+                              {mp.does_comments ? <Text className="text-2xs font-medium text-chart-6">C</Text> : null}
                             </View>
                           </View>
                           {mp.start_date || mp.end_date ? (
-                            <Text className="text-muted-foreground mt-0.5 text-[11px]">
+                            <Text className="text-muted-foreground mt-0.5 text-xs">
                               {fmt(mp.start_date)} — {fmt(mp.end_date)}
                             </Text>
                           ) : null}

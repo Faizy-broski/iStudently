@@ -101,7 +101,7 @@ export default function InventorySnapshots() {
                           {it.categories.length ? (
                             it.categories.map((c) => (
                               <View key={c.id} className="border-border rounded border px-1.5">
-                                <Text className="text-[11px]">
+                                <Text className="text-xs">
                                   {s(`category_type_${c.category_type.toLowerCase()}`)}: {c.title}
                                 </Text>
                               </View>

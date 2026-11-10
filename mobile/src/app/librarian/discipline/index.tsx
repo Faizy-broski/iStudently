@@ -2,7 +2,8 @@ import type { DisciplineReferral } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { BookOpen, CheckCircle, Plus } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, Initials } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

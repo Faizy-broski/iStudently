@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { BookOpenCheck, FileText, LogOut, Settings } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Tile, TileGrid } from '@/components/app/tile-grid';
 import { useSession } from '@/features/auth/session';

@@ -3,7 +3,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp, ListOrdered, Plus, Save } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FilterChips } from '@/components/app/filter-chips';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
@@ -188,7 +189,7 @@ export default function PeopleFields() {
                     {x.kind === 'default' ? (
                       <View className="items-center">
                         <Switch checked={x.required} onCheckedChange={(v) => toggleRequired(x, v, i)} />
-                        <Text className="text-muted-foreground text-[10px]">{t('app.cf_required')}</Text>
+                        <Text className="text-muted-foreground text-2xs">{t('app.cf_required')}</Text>
                       </View>
                     ) : x.field.required ? (
                       <Badge variant="outline">

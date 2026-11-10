@@ -77,7 +77,7 @@ export default function TeacherCompletion() {
                       disabled={!assigned}
                       onPress={() => setCell({ period: dp.name, teacher: x.staff_name, courses: p?.courses ?? [] })}
                       className={cn('min-w-14 items-center gap-0.5 rounded-xl px-2 py-1.5', !assigned ? 'bg-muted' : p?.completed ? 'bg-success-soft' : 'bg-destructive-soft')}>
-                      <Text className="text-muted-foreground text-[10px]">{dp.name}</Text>
+                      <Text className="text-muted-foreground text-2xs">{dp.name}</Text>
                       {!assigned ? (
                         <Text className="text-muted-foreground">—</Text>
                       ) : p?.completed ? (

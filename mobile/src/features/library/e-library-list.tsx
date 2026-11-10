@@ -59,7 +59,7 @@ export function ELibraryList({ readerPath }: { readerPath: '/admin/library/e-lib
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
       className={cn('rounded-full border active:opacity-70', small ? 'px-3 py-1' : 'px-3.5 py-1.5', on ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
-      <Text className={cn('font-semibold', small ? 'text-xs' : 'text-[13px]', on ? 'text-white' : 'text-muted-foreground')}>{label}</Text>
+      <Text className={cn('font-semibold', small ? 'text-xs' : 'text-sm', on ? 'text-white' : 'text-muted-foreground')}>{label}</Text>
     </Pressable>
   );
 

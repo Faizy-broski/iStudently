@@ -1,5 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Text } from '@/components/ui/text';
 import { useFn } from '@/features/admin/fina';

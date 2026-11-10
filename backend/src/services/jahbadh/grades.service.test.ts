@@ -14,6 +14,8 @@ function query(table: string) {
   let single = false
   let range: [number, number] | null = null
   const rows = () => (db[table] ??= [])
+  // Generated column of jg_monthly_marks (COALESCE(component_id, subitem_id)).
+  const gen = (r: Row) => (table === 'jg_monthly_marks' ? { ...r, target_id: r.component_id ?? r.subitem_id } : r)
   const q: any = {
     select: () => q,
     eq: (k: string, v: unknown) => (filters.push((r) => r[k] === v), q),
@@ -26,8 +28,8 @@ function query(table: string) {
     range: (a: number, b: number) => ((range = [a, b]), q),
     maybeSingle: () => ((single = true), q),
     single: () => ((single = true), q),
-    insert: (p: Row | Row[]) => ((op = 'insert'), (payload = Array.isArray(p) ? p : [p]), q),
-    upsert: (p: Row | Row[], o?: { onConflict?: string }) => ((op = 'upsert'), (payload = Array.isArray(p) ? p : [p]), (conflict = o?.onConflict?.split(',') ?? ['id']), q),
+    insert: (p: Row | Row[]) => ((op = 'insert'), (payload = (Array.isArray(p) ? p : [p]).map(gen)), q),
+    upsert: (p: Row | Row[], o?: { onConflict?: string }) => ((op = 'upsert'), (payload = (Array.isArray(p) ? p : [p]).map(gen)), (conflict = o?.onConflict?.split(',') ?? ['id']), q),
     delete: () => ((op = 'delete'), q),
     update: (p: Row) => ((op = 'update'), (patch = p), q),
     then: (resolve: (v: unknown) => void) => {
@@ -70,7 +72,7 @@ jest.mock('../../utils/html-pdf.util', () => ({
 const sendToProfiles = jest.fn(async () => undefined)
 jest.mock('../push-notifications.service', () => ({ pushNotificationsService: { sendToProfiles } }))
 
-import { JG_DEFAULT_SCALE, jgGrade, subjectMeta } from '../../lib/jahbadh'
+import { JG_DEFAULT_MONTH_NAMES, JG_DEFAULT_SCALE, jgGrade, subjectMeta } from '../../lib/jahbadh'
 import * as jg from './grades.service'
 import * as rc from './report-cards.service'
 import * as an from './analytics.service'
@@ -78,30 +80,47 @@ import { reportCardsHtml } from './print.service'
 
 const admin: jg.JgActor = { profileId: 'p-admin', role: 'admin' }
 
-/** A grade-7 section context with real components (ids "<key>-<stage>-<n>"). */
-function makeCtx(enterable?: string[]): jg.JgSectionContext {
-  const def = jgGrade(7)!
+const SETTINGS: jg.JgSettings = {
+  version_label: '2024-2025', follow_rate: 0.5, excel_rate: 0.85, grading_scale: JG_DEFAULT_SCALE, header: {},
+  jabr_kasur: true, jabr_plus_one: true, act_mode: 'average', month_names: JG_DEFAULT_MONTH_NAMES.map((m) => [...m]), default_stage: null,
+}
+
+/**
+ * A section context with the memo's real components (ids "<key>-<stage>-<n>", sub-items
+ * "<key>-<stage>-<n>-s<i>", second-round branches "<key>-r2-<i>"): grade 7 of 2024-2025 by default.
+ */
+export function makeCtx(enterable?: string[], code = 7, version = '2024-2025', settings: Partial<jg.JgSettings> = {}): jg.JgSectionContext {
+  const def = jgGrade(code, version)!
   const rule: jg.JgRuleRow = {
-    id: 'r7', school_id: 's1', version_label: '2024-2025', grade_code: 7, name: def.name, level: 'basic', track: null,
-    system_name: def.systemName, no_fail: false, total_min: 0.5, exam_min: 0.4, stage_names: def.stageNames,
-    rule_text: def.ruleText, certificate_name: null, next_grade_name: def.nextGradeName,
+    id: `r${code}`, school_id: 's1', version_label: version, grade_code: code, name: def.name, level: def.level, track: def.track,
+    system_name: def.systemName, no_fail: def.noFail, total_min: def.totalMin, exam_min: def.examMin, stage_names: def.stageNames,
+    rule_text: def.ruleText, certificate_name: def.certificateName, next_grade_name: def.nextGradeName, max_round2_subjects: def.maxRound2Subjects ?? 0,
   }
-  const subjects = def.subjects.map((s, i) => {
-    const components = s.stages.flatMap((comps, si) =>
-      comps.map((c, ci) => ({ id: `${s.key}-${si + 1}-${ci + 1}`, subject_id: s.key, stage: si + 1, sort_order: ci + 1, name: c.name, max_score: c.max, is_exam: !!c.exam })),
+  const subjects: jg.JgLoadedSubject[] = def.subjects.map((s, i) => {
+    const components: jg.JgComponentRow[] = s.stages.flatMap((comps, si) =>
+      comps.map((c, ci) => {
+        const id = `${s.key}-${si + 1}-${ci + 1}`
+        return {
+          id, subject_id: s.key, stage: si + 1, sort_order: ci + 1, name: c.name, max_score: c.max, is_exam: !!c.exam,
+          monthly_kind: c.monthly ?? null, divisor: c.divisor ?? 1,
+          subitems: (c.subItems ?? []).map((x, xi) => ({ id: `${id}-s${xi + 1}`, subject_id: s.key, component_id: id, sort_order: xi + 1, name: x.name, max_score: x.max })),
+        }
+      }),
     )
     return {
       id: s.key, key: s.key, name: s.name, short_name: s.name, weekly_periods: s.weeklyPeriods, display_order: i + 1, components,
-      meta: subjectMeta(components.map((c) => ({ id: c.id, stage: c.stage, max: c.max_score, isExam: c.is_exam })), { noFail: false }),
+      round2_subitems: (s.round2SubItems ?? []).map((x, xi) => ({ id: `${s.key}-r2-${xi + 1}`, subject_id: s.key, component_id: null, sort_order: xi + 1, name: x.name, max_score: x.max })),
+      meta: subjectMeta(components.map((c) => ({ id: c.id, stage: c.stage, max: c.max_score, isExam: c.is_exam })), { noFail: def.noFail }),
     }
   })
   return {
-    section: { id: 'sec1', name: 'أ', school_id: 's1', grade_level_id: 'gl7' },
-    gradeLevelName: 'السابع',
+    section: { id: 'sec1', name: 'أ', school_id: 's1', grade_level_id: `gl${code}` },
+    gradeLevelName: def.name,
     rootId: 's1',
     yearId: 'y1',
     yearName: '2025 - 2026',
-    settings: { version_label: '2024-2025', follow_rate: 0.5, excel_rate: 0.85, grading_scale: JG_DEFAULT_SCALE, header: {} },
+    version,
+    settings: { ...SETTINGS, version_label: version, ...settings },
     grade: { rule, subjects },
     enterable: new Set(enterable ?? subjects.map((s) => s.id)),
   }
@@ -215,7 +234,10 @@ describe('report cards', () => {
     const ctx = makeCtx()
     await jg.saveMarks(ctx, 'math', [...fullMath('st1'), ...mathCells('st2', [2, 2, 4, 30, 2, 2, 4, 30])], admin)
     const { cards, options } = await rc.buildReportCards(ctx, 'final')
-    expect(Object.values(options).every(Boolean)).toBe(true)
+    // The 12 B7 elements default on; the Wave 2 toggles (B/W, prediction, auto notes) default off.
+    const { bw, prediction, autoNotes, ...twelve } = options
+    expect(Object.values(twelve).every(Boolean)).toBe(true)
+    expect([bw, prediction, autoNotes]).toEqual([false, false, false])
     expect(cards.map((c) => c.student.listNumber)).toEqual([1, 2])
     const card = cards.find((c) => c.student.name === 'محمد علي')!
     expect(card.stageNames).toEqual(['الفصل الأول', 'الفصل الثاني'])
@@ -225,7 +247,7 @@ describe('report cards', () => {
     expect(math.minPass).toBe(100)
     expect(math.trend).toBeCloseTo(-50)
     expect(card.decision).toBe('النتيجة غير مكتملة') // other subjects not entered
-    expect(card.rank).toBe(1)
+    expect(card.rank).toBeNull() // incomplete results are not ranked (brief F1-6)
     expect(card.max).toBe(1080)
   })
 

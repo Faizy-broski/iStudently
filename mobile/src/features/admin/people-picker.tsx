@@ -13,7 +13,7 @@ import { shortName } from '@/features/admin/people';
 import { adminEmployees, adminParents, adminStudents } from '@/lib/api';
 import { usePagedApi } from '@/lib/data';
 import { useDebounced } from '@/lib/use-debounced';
-import { IconTile } from '@/components/app/layout';
+import { BottomBar, IconTile } from '@/components/app/layout';
 
 export type PersonRow = { id: string; name: string; subtitle: string; email?: string | null };
 /** People lists: group-assign entities, or a staff role list like the web email pages (employees = teachers + staff). */
@@ -158,7 +158,7 @@ export function PeoplePicker({
           />
         )}
       />
-      {footer}
+      {footer ? <BottomBar minPadding={0}>{footer}</BottomBar> : null}
     </View>
   );
 }

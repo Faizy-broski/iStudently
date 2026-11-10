@@ -1,4 +1,5 @@
 import { appConfigApi, type AppConfig } from '@studently/api-client';
+import { Download, Wrench } from 'lucide-react-native';
 import { isUpdateRequired } from '@studently/shared-utils';
 import Constants from 'expo-constants';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -56,6 +57,7 @@ export function AppConfigGate({ children }: { children: ReactNode }) {
     const storeUrl = platform.store_url;
     return (
       <StatusScreen
+        icon={Download}
         title={t('app.update_required_title')}
         body={t('app.update_required_body')}
         actions={storeUrl ? [{ label: t('app.update_button'), onPress: () => Linking.openURL(storeUrl), primary: true }] : []}
@@ -67,6 +69,8 @@ export function AppConfigGate({ children }: { children: ReactNode }) {
     const message = i18n.language === 'ar' ? config.maintenance.message.ar : config.maintenance.message.en;
     return (
       <StatusScreen
+        icon={Wrench}
+        tone="warning"
         title={t('app.maintenance_title')}
         body={message ?? t('app.maintenance_body')}
         actions={[{ label: t('app.retry'), onPress: load, primary: true }]}

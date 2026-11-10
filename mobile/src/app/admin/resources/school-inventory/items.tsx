@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { BottomBar } from '@/components/app/layout';
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
@@ -124,12 +125,12 @@ export default function InventoryItems() {
           </Button>
         </View>
       </ScrollView>
-      <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
+      <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t p-4">
         <Button onPress={save} disabled={saving}>
           <Icon as={Save} className="text-primary-foreground size-4" />
           <Text>{saving ? v('saving_button') : v('save_button')}</Text>
         </Button>
-      </View>
+      </BottomBar>
     </KeyboardAvoidingView>
   );
 }

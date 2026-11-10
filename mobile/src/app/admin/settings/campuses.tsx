@@ -1,7 +1,8 @@
 import { router, Stack } from 'expo-router';
 import { Building2, Mail, MapPin, Paintbrush, Pencil, Phone, Plus, Trash2, User } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { useSWRConfig } from 'swr';
 
 import { useConfirm } from '@/components/app/confirm';

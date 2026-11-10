@@ -1,7 +1,7 @@
 import { jgPdfPath } from '@studently/api-client';
 import { fmtMark } from '@studently/shared-utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { BarChart3, BookOpen, FileText, Palette, ScrollText, Lock, Repeat2, Settings2, TableProperties, Unlock } from 'lucide-react-native';
+import { BarChart3, BookOpen, CalendarRange, FileText, Palette, ScanLine, ScrollText, Lock, Repeat2, Settings2, TableProperties, Unlock } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -13,6 +13,7 @@ import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { SectionDataTools } from '@/features/jahbadh/data';
 import { JgBlocked, SectionPicker, useJg, useJgSections } from '@/features/jahbadh/shared';
 import { jahbadhGrades } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -117,9 +118,36 @@ export default function JahbadhHome() {
                 <ActionRow icon={Repeat2} title={t('grades.secondRound')} onPress={() => router.push(href('/jahbadh/second-round', { section: sectionId ?? '' }))} />
                 <ActionRow icon={ScrollText} title={t('grades.reportCards')} onPress={() => router.push(href('/jahbadh/report-cards', { section: sectionId ?? '' }))} />
                 <ActionRow icon={Palette} title={t('grades.activities')} onPress={() => router.push(href('/jahbadh/activities', { section: sectionId ?? '' }))} />
+                <ActionRow icon={CalendarRange} title={t('grades.monthlyLog')} onPress={() => router.push(href('/jahbadh/monthly', { section: sectionId ?? '' }))} />
+                <ActionRow icon={ScanLine} title={t('grades.qg_title')} onPress={() => router.push(href('/jahbadh/quiz-grading', { section: sectionId ?? '' }))} />
                 <ActionRow icon={FileText} title={t('grades.printResults')} onPress={printResults} />
                 <ActionRow icon={BookOpen} title={t('grades.distribution')} onPress={() => router.push(href('/jahbadh/distribution'))} last={!isAdmin} />
                 {isAdmin ? <ActionRow icon={Settings2} title={t('grades.setup')} onPress={() => router.push('/admin/jahbadh/setup')} last /> : null}
+              </Panel>
+            </Section>
+
+            <Section title={t('grades.officialOutputs')}>
+              <Panel>
+                {(
+                  [
+                    ['/jahbadh/statistics', 'statistics'],
+                    ['/jahbadh/top-students', 'topStudentsList'],
+                    ['/jahbadh/final-sheet', 'finalSheet'],
+                    ['/jahbadh/review-sheet', 'reviewSheet'],
+                    ['/jahbadh/guardian-notices', 'guardianNotices'],
+                    ['/jahbadh/monthly-cards', 'monthlyCards'],
+                    ['/jahbadh/monthly-curve', 'monthlyCurve'],
+                    ['/jahbadh/marking-sheets', 'markingSheets'],
+                  ] as const
+                ).map(([path, key], i, all) => (
+                  <ActionRow
+                    key={key}
+                    icon={FileText}
+                    title={t(`grades.${key}`)}
+                    onPress={() => router.push(href(path, { section: sectionId ?? '' }))}
+                    last={i === all.length - 1}
+                  />
+                ))}
               </Panel>
             </Section>
 
@@ -147,6 +175,29 @@ export default function JahbadhHome() {
                 ))}
               </Panel>
             </Section>
+
+            <Section title={t('grades.insHub')}>
+              <Panel>
+                {(
+                  [
+                    ['/jahbadh/workflow', 'insWorkflow'],
+                    ['/jahbadh/entry-progress', 'insEntryProgress'],
+                    ['/jahbadh/entry-audit', 'insEntryAudit'],
+                    ['/jahbadh/prediction', 'insPrediction'],
+                    ['/jahbadh/edge-students', 'insEdge'],
+                    ['/jahbadh/support-plans', 'insSupportPlans'],
+                    ['/jahbadh/certificates', 'insCertificates'],
+                    ['/jahbadh/approval', 'insApproval'],
+                    ['/jahbadh/end-of-year', 'insEndOfYear'],
+                    ['/jahbadh/insight', 'insHub'],
+                  ] as const
+                ).map(([path, key], i, all) => (
+                  <ActionRow key={key} icon={BarChart3} title={t(`grades.${key}`)} onPress={() => router.push(href(path, { section: sectionId ?? '' }))} last={i === all.length - 1} />
+                ))}
+              </Panel>
+            </Section>
+
+            {sectionId ? <SectionDataTools sectionId={sectionId} campusId={campusId} isAdmin={isAdmin} viewOnly={ov.subjects.every((s) => !s.can_enter)} href={href} /> : null}
 
             {isAdmin ? (
               <Section title={t('grades.stageLocks')}>

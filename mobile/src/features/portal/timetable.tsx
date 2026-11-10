@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { BookOpen, Calendar, ChevronLeft, ChevronRight, Clock, MapPin, User, Users, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { RowPill, StatTile, StatTiles } from '@/components/app/layout';
@@ -93,7 +94,7 @@ export function TimetableView({ week, text }: { week: Res; text?: { title: strin
                   <View key={p.n} className="flex-row gap-1">
                     <View className="bg-muted/50 w-14 items-center justify-center rounded-xl p-1">
                       <Text className="text-muted-foreground text-xs font-medium">{`P${p.n}`}</Text>
-                      <Text className="text-muted-foreground text-[10px]">{p.time}</Text>
+                      <Text className="text-muted-foreground text-2xs">{p.time}</Text>
                     </View>
                     {[1, 2, 3, 4, 5, 6, 7].map((d) => {
                       const e = byDay(d).find((x) => slot(x) === p.n);
@@ -104,11 +105,11 @@ export function TimetableView({ week, text }: { week: Res; text?: { title: strin
                           <Text className="text-xs font-semibold text-white" numberOfLines={1}>
                             {e.subject?.name || t('app.st_unknown')}
                           </Text>
-                          {e.subject?.code ? <Text className="text-[10px] text-white/80">{e.subject.code}</Text> : null}
-                          {e.room_number ? <Text className="mt-0.5 text-[10px] text-white/80">{k('room', { n: e.room_number })}</Text> : null}
+                          {e.subject?.code ? <Text className="text-2xs text-white/80">{e.subject.code}</Text> : null}
+                          {e.room_number ? <Text className="mt-0.5 text-2xs text-white/80">{k('room', { n: e.room_number })}</Text> : null}
                           {now ? (
                             <View className="bg-warning mt-0.5 self-start rounded-full px-1.5">
-                              <Text className="text-[10px] font-semibold text-white">{k('now')}</Text>
+                              <Text className="text-2xs font-semibold text-white">{k('now')}</Text>
                             </View>
                           ) : null}
                         </View>

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { BottomBar } from '@/components/app/layout';
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { DateField } from '@/components/app/date-field';
@@ -296,7 +297,7 @@ export default function AutomaticRecords() {
                     <View className="flex-row items-center justify-between">
                       {row.isDirty ? (
                         <Badge variant="outline" className="border-warning">
-                          <Text className="text-[10px] text-warning">{a('badge_unsaved')}</Text>
+                          <Text className="text-2xs text-warning">{a('badge_unsaved')}</Text>
                         </Badge>
                       ) : (
                         <View />
@@ -337,13 +338,13 @@ export default function AutomaticRecords() {
                     <View className="gap-1.5">
                       <Label>{a('table_header_limit_to')}</Label>
                       <Input value={row.user_profiles} onChangeText={(v) => update(row.uid, { user_profiles: v, grade_levels: '' })} placeholder={a('placeholder_user_profile')} />
-                      <Text className="text-muted-foreground text-[10px]">{a('label_user_profiles')}</Text>
+                      <Text className="text-muted-foreground text-2xs">{a('label_user_profiles')}</Text>
                       <Picker
                         value={row.grade_levels || NONE}
                         onChange={(v) => update(row.uid, { grade_levels: v === NONE ? '' : v, user_profiles: '' })}
                         options={[{ value: NONE, label: a('option_none') }, ...(grades.data ?? []).map((g) => ({ value: g.id, label: g.name }))]}
                       />
-                      <Text className="text-muted-foreground text-[10px]">{a('label_grade_levels')}</Text>
+                      <Text className="text-muted-foreground text-2xs">{a('label_grade_levels')}</Text>
                     </View>
                     {expanded === row.uid ? <ExceptionsPanel ruleId={Object.values(row.existingIds)[0]} schoolId={schoolId} userName={userName} /> : null}
                   </CardContent>
@@ -358,12 +359,12 @@ export default function AutomaticRecords() {
             ) : null}
           </ScrollView>
         )}
-        <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
+        <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
           <Button onPress={save} disabled={saving || !dirtyCount}>
             <Icon as={Save} className="text-primary-foreground size-4" />
             <Text>{`${a('btn_save')}${dirtyCount ? ` (${dirtyCount})` : ''}`}</Text>
           </Button>
-        </View>
+        </BottomBar>
       </View>
     </>
   );

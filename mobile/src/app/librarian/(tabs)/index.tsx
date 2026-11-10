@@ -1,7 +1,8 @@
 import { router, type Href } from 'expo-router';
 import { ArrowUpRight, BookMarked, BookOpen, BookX, CheckCircle2, Library, Plus, Receipt, RefreshCw, RotateCcw, Search, TabletSmartphone, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthBackground } from '@/components/app/auth-background';
@@ -72,7 +73,7 @@ function StatTile({ label, value, note, chip, chipTone = 'success', valueTone, o
       <View className="flex-row flex-wrap items-center gap-1.5">
         {chip ? <StatusChip label={chip} tone={chipTone} className="px-2 py-0.5" /> : null}
         {note ? (
-          <Text className="text-muted-foreground text-[11px]" numberOfLines={1}>
+          <Text className="text-muted-foreground text-xs" numberOfLines={1}>
             {note}
           </Text>
         ) : null}
@@ -86,7 +87,7 @@ function QuickAction({ icon, label, onPress }: { icon: LucideIcon; label: string
   return (
     <Pressable onPress={onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 items-center gap-2 rounded-2xl border px-1 py-3 active:opacity-80" accessibilityRole="button">
       <Icon as={icon} strokeWidth={2.3} className="text-brand dark:text-brand-secondary size-5" />
-      <Text className="text-brand dark:text-brand-secondary text-center text-[11px] font-semibold" numberOfLines={2}>
+      <Text className="text-brand dark:text-brand-secondary text-center text-xs font-semibold" numberOfLines={2}>
         {label}
       </Text>
     </Pressable>
@@ -216,7 +217,7 @@ export default function LibrarianDashboard() {
                             <Text className="text-sm font-semibold" numberOfLines={1}>
                               {b.title}
                             </Text>
-                            <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                            <Text variant="muted" className="text-xs" numberOfLines={1}>
                               {[b.author, b.category].filter(Boolean).join(' · ')}
                             </Text>
                           </View>
@@ -242,13 +243,13 @@ export default function LibrarianDashboard() {
                     (s?.overdue_list ?? []).map((o, i, arr) => (
                       <View key={o.id} className={cn('flex-row items-center gap-3 px-4 py-3', i < arr.length - 1 && 'border-info-soft dark:border-border border-b')}>
                         <View className={cn('size-9 items-center justify-center rounded-full', o.days_overdue > 10 ? 'bg-destructive-soft' : 'bg-warning-soft')}>
-                          <Text className={cn('text-[11px] font-bold', o.days_overdue > 10 ? 'text-destructive' : 'text-warning')}>{initials(o.student_name)}</Text>
+                          <Text className={cn('text-xs font-bold', o.days_overdue > 10 ? 'text-destructive' : 'text-warning')}>{initials(o.student_name)}</Text>
                         </View>
                         <View className="flex-1">
                           <Text className="text-sm font-semibold" numberOfLines={1}>
                             {o.student_name}
                           </Text>
-                          <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                          <Text variant="muted" className="text-xs" numberOfLines={1}>
                             {`${o.book_title} · ${k('due')} ${formatDate(o.due_date)}`}
                           </Text>
                         </View>
@@ -281,7 +282,7 @@ export default function LibrarianDashboard() {
                             <Text className="text-sm font-semibold" numberOfLines={1}>
                               {l.book_title}
                             </Text>
-                            <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                            <Text variant="muted" className="text-xs" numberOfLines={1}>
                               {[l.issue_date ? formatDate(l.issue_date) : null, `${k('due')}: ${formatDate(l.due_date)}`].filter(Boolean).join(' · ')}
                             </Text>
                           </View>
@@ -322,7 +323,7 @@ export default function LibrarianDashboard() {
                           <Text className="text-sm font-semibold" numberOfLines={1}>
                             {f.book_title}
                           </Text>
-                          <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                          <Text variant="muted" className="text-xs" numberOfLines={1}>
                             {[f.student_name, f.type === 'overdue' ? k('fine_overdue') : k('fine_condition'), money(f.amount)].join(' · ')}
                           </Text>
                         </View>

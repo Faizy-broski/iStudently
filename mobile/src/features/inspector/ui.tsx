@@ -1,5 +1,6 @@
 import type { VisitStatus } from '@studently/api-client';
-import { Pressable, ScrollView } from 'react-native';
+import { Pressable } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';

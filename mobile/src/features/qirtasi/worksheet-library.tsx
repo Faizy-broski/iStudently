@@ -39,7 +39,7 @@ function Thumb({ id, campusId, type }: { id: string; campusId?: string; type: st
       ) : (
         <>
           <Icon as={FileText} className="text-brand dark:text-brand-secondary size-8" />
-          <Text className="text-muted-foreground mt-1 text-[10px]">A4 {info ? tt(info.en, info.ar) : ''}</Text>
+          <Text className="text-muted-foreground mt-1 text-2xs">A4 {info ? tt(info.en, info.ar) : ''}</Text>
         </>
       )}
     </View>
@@ -106,7 +106,7 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
 
   const chip = (label: string, on: boolean, onPress: () => void) => (
     <Pressable key={label + on} onPress={onPress} className={cn('rounded-full border px-3 py-1 active:opacity-70', on ? 'bg-brand border-brand dark:bg-brand-secondary dark:border-brand-secondary' : 'border-info-soft dark:border-border bg-card')}>
-      <Text className={cn('text-[11px] font-semibold', on ? 'text-white' : 'text-muted-foreground')}>{label}</Text>
+      <Text className={cn('text-xs font-semibold', on ? 'text-white' : 'text-muted-foreground')}>{label}</Text>
     </Pressable>
   );
 
@@ -184,7 +184,7 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
             })}
             <Pressable onPress={clearAll} className="bg-destructive-soft flex-row items-center gap-1 rounded-full px-3 py-1 active:opacity-70">
               <Icon as={X} className="text-destructive size-3" />
-              <Text className="text-destructive text-[11px] font-semibold">{tt('Clear all', 'مسح الكل')}</Text>
+              <Text className="text-destructive text-xs font-semibold">{tt('Clear all', 'مسح الكل')}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -206,7 +206,7 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
               return (
                 <Panel key={w.id} className="w-[47%] gap-2 p-2">
                   <Thumb id={w.id} campusId={campusId} type={w.worksheet_type} />
-                  {info ? <Text className="text-brand dark:text-brand-secondary text-[11px] font-semibold">{tt(info.en, info.ar)}</Text> : null}
+                  {info ? <Text className="text-brand dark:text-brand-secondary text-xs font-semibold">{tt(info.en, info.ar)}</Text> : null}
                   <Text className="text-sm font-semibold" numberOfLines={2} style={{ writingDirection: 'rtl' }}>
                     {w.title_ar}
                   </Text>
@@ -215,11 +215,11 @@ export function WorksheetLibrary({ canUpload }: { canUpload: boolean }) {
                   ) : null}
                   <View className="flex-row items-center gap-2">
                     <Icon as={Download} className="text-muted-foreground size-3" />
-                    <Text className="text-muted-foreground text-[11px]">{w.download_count}</Text>
+                    <Text className="text-muted-foreground text-xs">{w.download_count}</Text>
                     {w.rating_avg > 0 ? (
                       <>
                         <Icon as={Star} className="size-3 text-warning" />
-                        <Text className="text-muted-foreground text-[11px]">{w.rating_avg.toFixed(1)}</Text>
+                        <Text className="text-muted-foreground text-xs">{w.rating_avg.toFixed(1)}</Text>
                       </>
                     ) : null}
                   </View>

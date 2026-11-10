@@ -7,6 +7,9 @@ export * from './analytics'
 export * from './ideas'
 export * from './control'
 export * from './timer'
+export * from './infographics'
+export * from './insight'
+export * from './assessment'
 
 /** Engine inputs for a seeded subject; component ids are `${stage}.${index}` (stable within a subject). */
 export function jgComponentsOf(subject: JgSubjectDef): JgComponentInput[] {

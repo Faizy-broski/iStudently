@@ -2,7 +2,8 @@ import type { Student } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { BarChart, ChartLegend, PieChart } from '@/components/app/charts';
 import { FilterChips } from '@/components/app/filter-chips';

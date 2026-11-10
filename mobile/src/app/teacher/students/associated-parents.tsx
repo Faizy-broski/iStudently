@@ -55,7 +55,7 @@ function ParentCard({ parent, open, onToggle }: { parent: Parent; open: boolean;
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`teacherPages.studentsAssociatedParents.${key}`, o);
   const detail = useApi(open ? ['teacher', 'parent-children', parent.id] : null, ([, , id]) => adminParents.getWithChildren(id as string));
-  const name = `${parent.profile?.first_name ?? ''} ${parent.profile?.last_name ?? ''}`.trim() || 'N/A';
+  const name = `${parent.profile?.first_name ?? ''} ${parent.profile?.last_name ?? ''}`.trim() || t('app.not_available_short');
   const children = detail.data?.children ?? parent.children ?? [];
   return (
     <Panel>
@@ -63,10 +63,10 @@ function ParentCard({ parent, open, onToggle }: { parent: Parent; open: boolean;
         <PersonAvatar url={parent.profile?.profile_photo_url ?? null} name={name} size={40} />
         <View className="flex-1 gap-0.5">
           <Text className="text-sm font-semibold">{name}</Text>
-          <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+          <Text variant="muted" className="text-xs" numberOfLines={1}>
             {parent.profile?.email || k('noEmail')}
           </Text>
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {parent.profile?.phone || k('noPhone')}
           </Text>
         </View>

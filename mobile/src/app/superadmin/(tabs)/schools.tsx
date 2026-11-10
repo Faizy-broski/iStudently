@@ -75,7 +75,7 @@ export default function SuperadminSchools() {
           ] as const
         ).map(([label, n]) => (
           <View key={label} className="border-info-soft dark:border-border bg-card flex-1 gap-0.5 rounded-2xl border px-3 py-2.5">
-            <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+            <Text variant="muted" className="text-xs" numberOfLines={1}>
               {label}
             </Text>
             <Text className="text-base font-bold">{formatNumber(n)}</Text>
@@ -118,7 +118,7 @@ export default function SuperadminSchools() {
                 <Text className="text-sm font-semibold" numberOfLines={1}>
                   {s.name}
                 </Text>
-                <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                <Text variant="muted" className="text-xs" numberOfLines={1}>
                   {[s.city, t('app.sa_campuses', { count: campusCount[s.id] ?? 0 })].filter(Boolean).join(' · ')}
                 </Text>
               </View>

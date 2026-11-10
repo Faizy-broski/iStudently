@@ -35,33 +35,35 @@ const styles = StyleSheet.create({
   small: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
+    fontFamily: 'IBMPlexSansArabic_500Medium',
   },
   smallBold: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 700,
+    fontFamily: 'IBMPlexSansArabic_700Bold',
   },
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
+    fontFamily: 'IBMPlexSansArabic_500Medium',
   },
   title: {
     fontSize: 48,
-    fontWeight: 600,
+    fontFamily: 'IBMPlexSansArabic_600SemiBold',
     lineHeight: 52,
   },
   subtitle: {
     fontSize: 32,
     lineHeight: 44,
-    fontWeight: 600,
+    fontFamily: 'IBMPlexSansArabic_600SemiBold',
   },
   link: {
+    fontFamily: 'IBMPlexSansArabic_400Regular',
     lineHeight: 30,
     fontSize: 14,
   },
   linkPrimary: {
+    fontFamily: 'IBMPlexSansArabic_400Regular',
     lineHeight: 30,
     fontSize: 14,
     color: colors.brandSecondary,

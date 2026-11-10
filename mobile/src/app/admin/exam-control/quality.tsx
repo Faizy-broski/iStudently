@@ -23,12 +23,12 @@ import { locale } from '@/i18n';
 import { Textarea } from '@/components/ui/textarea';
 import { ShareBar } from '@/features/jahbadh/shared';
 import { ScanField, useScanError } from '@/features/exam-control/scan';
-import { JcError, MiniTile, Note, pct, useOverview, useSessionId } from '@/features/exam-control/shared';
+import { JcError, MiniTile, Note, pct, useOverview, usePrintDoc, useSessionId } from '@/features/exam-control/shared';
 import { jahbadhControl } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { useAction } from '@/lib/use-action';
 
-type Pane = 'gate' | 'mismatches' | 'report' | 'sample' | 'appeals' | 'graders' | 'stubs';
+type Pane = 'gate' | 'mismatches' | 'report' | 'comparison' | 'sample' | 'appeals' | 'graders' | 'stubs';
 const NONE = '__none__';
 
 /** Quality and unmasking (web: exam control › Quality & unmasking). */
@@ -44,6 +44,7 @@ export default function ExamControlQuality() {
     { value: 'gate', label: t('examControl.gate') },
     { value: 'mismatches', label: t('examControl.mismatches') },
     { value: 'report', label: t('examControl.qualityReport') },
+    { value: 'comparison', label: t('examControl.comparison') },
     { value: 'sample', label: t('examControl.auditSample') },
     { value: 'appeals', label: t('examControl.appeals') },
     ...(o.rights.manage ? [{ value: 'graders' as Pane, label: t('examControl.graders') }] : []),
@@ -55,7 +56,7 @@ export default function ExamControlQuality() {
       <Stack.Screen options={{ title: t('examControl.tab_quality') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10">
         <FilterChips value={pane} onChange={setPane} options={panes} />
-        {pane === 'gate' ? <Gate {...props} /> : pane === 'mismatches' ? <Mismatches {...props} /> : pane === 'report' ? <Report {...props} /> : pane === 'sample' ? <Sample {...props} /> : pane === 'appeals' ? <Appeals {...props} /> : pane === 'graders' ? <Graders {...props} /> : <StubCheck {...props} />}
+        {pane === 'gate' ? <Gate {...props} /> : pane === 'mismatches' ? <Mismatches {...props} /> : pane === 'report' ? <Report {...props} /> : pane === 'comparison' ? <Comparison {...props} /> : pane === 'sample' ? <Sample {...props} /> : pane === 'appeals' ? <Appeals {...props} /> : pane === 'graders' ? <Graders {...props} /> : <StubCheck {...props} />}
       </ScrollView>
     </>
   );
@@ -94,7 +95,7 @@ function Gate({ id, o, refresh }: P) {
             <Icon as={ok ? CheckCircle2 : Circle} className={ok ? 'text-success size-5' : 'text-warning size-5'} />
             <View className="flex-1">
               <Text className="text-sm font-medium">{t(`examControl.gate_${c.key}`)}</Text>
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {c.detail}
               </Text>
             </View>
@@ -126,14 +127,31 @@ function Gate({ id, o, refresh }: P) {
         <Note text={t('examControl.chiefOnlyGate')} />
       )}
       {g.events.map((e, i) => (
-        <Text key={i} variant="muted" className="text-[11px]">{`${new Date(e.created_at).toLocaleString(locale)} — ${t(`examControl.event_${e.kind}`)}`}</Text>
+        <Text key={i} variant="muted" className="text-xs">{`${new Date(e.created_at).toLocaleString(locale)} — ${t(`examControl.event_${e.kind}`)}`}</Text>
       ))}
     </FormSection>
   );
 }
 
+/** Name of an entry column key: a subject (`math`) or one exam part (`math~2` → «الرياضيات — الجزء»). */
 function useSubjectName(o: JcOverview) {
-  return (k: string) => o.grades.flatMap((g) => g.subjects).find((s) => s.key === k)?.name ?? k;
+  return (k: string) => {
+    const [key, part] = k.split('~');
+    const s = o.grades.flatMap((g) => g.subjects).find((x) => x.key === key);
+    if (!s) return k;
+    if (!part) return s.name;
+    return `${s.name} — ${s.parts?.find((p) => p.index === Number(part))?.name ?? part}`;
+  };
+}
+
+/** Entry columns of the session's subjects, parts expanded (appeals on a subject with parts are per part). */
+function columnsOf(o: JcOverview) {
+  const seen = new Map<string, { key: string; name: string; max: number }>();
+  for (const s of o.grades.flatMap((g) => g.subjects)) {
+    if (s.parts?.length) for (const p of s.parts) seen.set(`${s.key}~${p.index}`, { key: `${s.key}~${p.index}`, name: `${s.name} — ${p.name}`, max: p.max });
+    else seen.set(s.key, { key: s.key, name: s.name, max: s.max });
+  }
+  return [...seen.values()];
 }
 
 function Mismatches({ id, o }: P) {
@@ -179,12 +197,37 @@ function Report({ id, o }: P) {
   const q = useApi(['jc', 'quality', id] as const, ([, , s]) => jahbadhControl.quality(s));
   const [gradePick, setGrade] = useState<string | null>(null);
   const name = useSubjectName(o);
+  const print = usePrintDoc(id);
   if (q.error) return <Note tone="destructive" text={q.error.message} />;
   if (!q.data) return <LoadingList rows={3} />;
   const g = q.data.grades.find((x) => x.grade_level_id === gradePick) ?? q.data.grades[0];
   if (!g) return <Note text={t('examControl.noGradesYet')} />;
+  const school = q.data.school;
   return (
     <View className="gap-4">
+      <Button variant="outline" onPress={() => print('quality_report')}>
+        <Text>{t('examControl.doc_quality_report')}</Text>
+      </Button>
+      {school?.rows?.length ? (
+        <FormSection title={t('examControl.schoolQualityTable')}>
+          {[...school.rows, school.total].map((r, i) => (
+            <View key={`${r.name}-${i}`} className={`gap-0.5 ${i === school.rows.length ? 'border-border border-t pt-2' : ''}`}>
+              <Text className={`text-sm ${i === school.rows.length ? 'font-bold' : 'font-semibold'}`}>{r.name}</Text>
+              <Text variant="muted" className="text-xs">
+                {[
+                  `${t('examControl.count_students')} ${r.students}`,
+                  `${t('examControl.subjectsCount')} ${r.subjects}`,
+                  `${t('examControl.completion')} ${pct(r.completion)}`,
+                  `${t('examControl.average')} ${pct(r.average)}`,
+                  `${t('examControl.passRate')} ${pct(r.pass_rate)}`,
+                  `${t('examControl.topCount')} ${r.top}`,
+                  `${t('examControl.supportCount')} ${r.support}`,
+                ].join(' · ')}
+              </Text>
+            </View>
+          ))}
+        </FormSection>
+      ) : null}
       <Picker value={g.grade_level_id} onChange={setGrade} options={q.data.grades.map((x) => ({ value: x.grade_level_id, label: x.name }))} />
       <View className="flex-row flex-wrap gap-2">
         <MiniTile label={t('examControl.count_students')} value={g.tiles.students} />
@@ -202,7 +245,7 @@ function Report({ id, o }: P) {
             <Text className="text-sm font-semibold">{pct(s.meanPct)}</Text>
           </View>
           <ShareBar value={s.meanPct} />
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {[
               `${t('examControl.entered')} ${s.entered}${s.missing ? ` (−${s.missing})` : ''}`,
               `${t('examControl.passRate')} ${pct(s.passRate)}`,
@@ -210,12 +253,18 @@ function Report({ id, o }: P) {
               `${t('examControl.weakRate')} ${pct(s.weakRate)}`,
             ].join(' · ')}
           </Text>
-          <Text variant="muted" className="text-[11px]">
+          <Text variant="muted" className="text-xs">
             {Object.entries(s.bands).map(([b, n]) => `${b} ${n}`).join(' · ')}
           </Text>
-          {s.teachers.length ? <Text className="text-[11px]">{`${t('examControl.graders')}: ${s.teachers.join('، ')}`}</Text> : null}
-          {s.clustering.flagged ? <Text className="text-destructive text-[11px]">{t('examControl.clusteringHint', { threshold: s.clustering.threshold, at: s.clustering.atThreshold, below: s.clustering.justBelow })}</Text> : null}
+          {s.teachers.length ? <Text className="text-xs">{`${t('examControl.graders')}: ${s.teachers.join('، ')}`}</Text> : null}
+          {s.clustering.flagged ? <Text className="text-destructive text-xs">{t('examControl.clusteringHint', { threshold: s.clustering.threshold, at: s.clustering.atThreshold, below: s.clustering.justBelow })}</Text> : null}
           {s.verdict ? <Text className="text-xs">{s.verdict}</Text> : null}
+          {(s.parts ?? []).map((p) => (
+            <View key={p.index} className="ms-3 gap-1">
+              <Text className="text-xs">{`${p.name} /${p.max} · ${t('examControl.entered')} ${p.entered} · ${pct(p.meanPct)}`}</Text>
+              <ShareBar value={p.meanPct} />
+            </View>
+          ))}
         </View>
       ))}
       <FormSection title={t('examControl.topTen')}>
@@ -248,6 +297,66 @@ function Report({ id, o }: P) {
   );
 }
 
+const delta = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${v > 0 ? '+' : ''}${(v * 100).toFixed(1).replace(/\.0$/, '')}%`);
+const deltaTone = (v: number | null | undefined) => (v === null || v === undefined || v === 0 ? 'text-muted-foreground' : v > 0 ? 'text-success' : 'text-destructive');
+
+/** Comparison with a previous session or year (C6.7). Aggregates only, so it works before unmasking. */
+function Comparison({ id }: P) {
+  const { t } = useTranslation();
+  const print = usePrintDoc(id);
+  const sessions = useApi(['jc', 'sessions-all'] as const, () => jahbadhControl.sessions());
+  const [withId, setWithId] = useState<string>(NONE);
+  const cmp = useApi(['jc', 'comparison', id, withId] as const, ([, , s, w]) => jahbadhControl.comparison(s, w === NONE ? null : w));
+  const others = (sessions.data ?? []).filter((x) => x.id !== id);
+  const c = cmp.data;
+  return (
+    <View className="gap-3">
+      <Picker
+        value={withId}
+        onChange={setWithId}
+        options={[{ value: NONE, label: t('examControl.comparisonAuto') }, ...others.map((x) => ({ value: x.id, label: `${x.name} · ${x.issue_date}` }))]}
+      />
+      <Button variant="outline" onPress={() => print('comparison', { withSessionId: withId === NONE ? null : withId })}>
+        <Text>{t('examControl.doc_comparison')}</Text>
+      </Button>
+      {cmp.error ? (
+        <Note tone="destructive" text={cmp.error.message} />
+      ) : !c ? (
+        <LoadingList rows={3} />
+      ) : !c.previous ? (
+        <Note text={t('examControl.comparisonNone')} />
+      ) : (
+        <>
+          <Note text={t('examControl.comparisonWith', { current: c.current.name, previous: c.previous.name })} />
+          {c.school ? (
+            <View className="flex-row flex-wrap gap-2">
+              <MiniTile label={t('examControl.average')} value={pct(c.school.current.average)} />
+              <MiniTile label={t('examControl.previousAverage')} value={pct(c.school.previous.average)} />
+              <MiniTile label={t('examControl.passRate')} value={pct(c.school.current.pass_rate)} />
+              <MiniTile label={t('examControl.change')} value={delta(c.school.delta.pass_rate)} tone={(c.school.delta.pass_rate ?? 0) >= 0 ? 'success' : 'destructive'} />
+            </View>
+          ) : null}
+          {c.grades.map((g) => (
+            <FormSection key={g.grade_level_id} title={g.name} description={`${t('examControl.average')} ${delta(g.delta?.average)} · ${t('examControl.passRate')} ${delta(g.delta?.pass_rate)}`}>
+              {g.subjects.map((x) => (
+                <View key={x.key} className="gap-0.5">
+                  <Text className="text-sm font-medium">{x.name}</Text>
+                  <View className="flex-row flex-wrap gap-x-3">
+                    <Text variant="muted" className="text-xs">{`${t('examControl.average')} ${pct(x.current.mean_pct)} (${pct(x.previous?.mean_pct)})`}</Text>
+                    <Text className={`text-xs ${deltaTone(x.delta?.mean_pct)}`}>{delta(x.delta?.mean_pct)}</Text>
+                    <Text variant="muted" className="text-xs">{`${t('examControl.passRate')} ${pct(x.current.pass_rate)} (${pct(x.previous?.pass_rate)})`}</Text>
+                    <Text className={`text-xs ${deltaTone(x.delta?.pass_rate)}`}>{delta(x.delta?.pass_rate)}</Text>
+                  </View>
+                </View>
+              ))}
+            </FormSection>
+          ))}
+        </>
+      )}
+    </View>
+  );
+}
+
 function Sample({ id, o }: P) {
   const { t } = useTranslation();
   const confirm = useConfirm();
@@ -257,13 +366,15 @@ function Sample({ id, o }: P) {
   const [notes, setNotes] = useState<Record<number, string>>({});
   const items = list.data ?? [];
   const done = items.filter((x) => x.reviewed).length;
+  const errors = items.filter((x) => x.error_found).length;
   const doDraw = async () => {
     if (items.length && !(await confirm({ title: t('examControl.drawSample'), body: t('examControl.confirmRedraw') }))) return;
     const res = await draw.run(id);
     if (res.ok) list.mutate(res.data, { revalidate: false });
   };
-  const doReview = async (secret: number, reviewed: boolean) => {
-    if ((await review.run(id, { secret, reviewed, notes: notes[secret] })).ok) list.mutate();
+  const doReview = async (secret: number, reviewed: boolean, errorFound?: boolean) => {
+    const row = items.find((x) => x.secret === secret);
+    if ((await review.run(id, { secret, reviewed, error_found: errorFound ?? row?.error_found ?? false, notes: notes[secret] })).ok) list.mutate();
   };
   return (
     <View className="gap-3">
@@ -276,14 +387,16 @@ function Sample({ id, o }: P) {
       {list.isLoading ? <LoadingList rows={2} /> : null}
       {list.data && !items.length ? <Note text={t('examControl.noSample')} /> : null}
       {items.length ? (
-        <FormSection title={t('examControl.reviewedOf', { done, total: items.length })}>
+        <FormSection title={t('examControl.reviewedOf', { done, total: items.length })} description={errors ? t('examControl.errorsFoundN', { n: errors }) : undefined}>
           <ShareBar value={done / items.length} />
           {items.map((x) =>
             x.secret === null ? null : (
               <View key={x.secret} className="gap-1.5">
                 <View className="flex-row items-center gap-3">
                   <Checkbox checked={x.reviewed} onCheckedChange={(v) => doReview(x.secret as number, !!v)} />
-                  <Text className="font-mono text-sm">{String(x.secret)}</Text>
+                  <Text className="flex-1 font-mono text-sm">{String(x.secret)}</Text>
+                  <Checkbox checked={!!x.error_found} onCheckedChange={(v) => doReview(x.secret as number, x.reviewed, !!v)} />
+                  <Text className={`text-xs ${x.error_found ? 'text-destructive' : ''}`}>{t('examControl.errorFound')}</Text>
                 </View>
                 <Input
                   placeholder={t('examControl.notes')}
@@ -303,7 +416,7 @@ function Sample({ id, o }: P) {
 function Appeals({ id, o }: P) {
   const { t } = useTranslation();
   const list = useApi(['jc', 'appeals', id] as const, ([, , s]) => jahbadhControl.appeals(s));
-  const subjects = useMemo(() => [...new Map(o.grades.flatMap((g) => g.subjects).map((s) => [s.key, s])).values()], [o.grades]);
+  const subjects = useMemo(() => columnsOf(o), [o]);
   const name = useSubjectName(o);
   const [secret, setSecret] = useState('');
   const [subject, setSubject] = useState<string | null>(null);
@@ -354,7 +467,7 @@ function Appeals({ id, o }: P) {
             <StatusChip label={a.applied ? t('examControl.applied') : t('examControl.superseded')} tone={a.applied ? 'success' : 'muted'} />
           </View>
           <Text className="text-xs">{`${name(a.subject_key)}: ${a.before ?? '—'} → ${a.after}`}</Text>
-          <Text variant="muted" className="text-[11px]">{`${new Date(a.created_at).toLocaleString(locale)} · ${a.reason}`}</Text>
+          <Text variant="muted" className="text-xs">{`${new Date(a.created_at).toLocaleString(locale)} · ${a.reason}`}</Text>
         </View>
       ))}
     </View>
@@ -429,7 +542,7 @@ function StubCheck({ id, o }: P) {
         <View key={i} className="bg-card border-border gap-0.5 rounded-2xl border p-3">
           <Text className="font-mono text-sm font-semibold">{`${r.secret} → ${r.seat ?? ''}`}</Text>
           <Text className="text-sm">{r.name}</Text>
-          <Text variant="muted" className="text-[11px]">{[r.grade, r.committee].filter(Boolean).join(' · ')}</Text>
+          <Text variant="muted" className="text-xs">{[r.grade, r.committee].filter(Boolean).join(' · ')}</Text>
         </View>
       ))}
     </View>

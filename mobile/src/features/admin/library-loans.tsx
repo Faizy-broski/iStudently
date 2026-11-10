@@ -99,10 +99,10 @@ export function LoanDirectory({ title = true }: { title?: boolean }) {
                         <Text className="text-sm font-semibold" numberOfLines={1}>
                           {l.book_title}
                         </Text>
-                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        <Text variant="muted" className="text-xs" numberOfLines={1}>
                           {[l.student_name, l.student_number || o('na'), `${o('table.accession')} ${l.accession_number}`].filter(Boolean).join(' · ')}
                         </Text>
-                        <Text variant="muted" className="text-[11px]">
+                        <Text variant="muted" className="text-xs">
                           {o('table.issue_date')}: {date(l.issue_date)} · {o('table.due_date')}: {date(l.due_date)}
                           {od ? ` · ${daysOverdue(l.due_date)} ${o('days')}` : ''}
                         </Text>

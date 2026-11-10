@@ -4,6 +4,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Calendar, ClipboardList, Clock, Edit, FileText, Paperclip, Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSWRConfig } from 'swr';
 import { RefreshControl, View } from 'react-native';
 
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
@@ -37,6 +38,9 @@ type Form = { title: string; description: string; instructions: string; due: str
 export default function TeacherHomeworkDetail() {
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`teacherPages.assignmentDetail.${key}`, o);
+  const { mutate: mutateCache } = useSWRConfig();
+  // Lists keyed ['teacher', 'homework…', …] (assignments list, dashboard, submissions picker).
+  const refreshHomeworkLists = () => mutateCache((key) => Array.isArray(key) && key[0] === 'teacher' && String(key[1]).startsWith('homework'));
   const toast = useToast();
   const confirm = useConfirm();
   const { campusId } = useCampus();
@@ -102,6 +106,7 @@ export default function TeacherHomeworkDetail() {
     const r = await homework.remove(id);
     if (!r.success) return toast.error(r.error || k('deleteFailed'));
     toast.success(k('deleteSuccess'));
+    void refreshHomeworkLists();
     router.back();
   }
 
@@ -207,7 +212,7 @@ export default function TeacherHomeworkDetail() {
                 <InfoRow icon={Calendar} label={k('dueDate')} value={formatDate(a.due_date)} />
                 <InfoRow icon={Clock} label={k('dueTime')} value={a.due_time?.slice(0, 5) || k('noSpecificTime')} />
                 <InfoRow icon={FileText} label={k('maxScore')} value={`${a.max_score} ${k('points')}`} />
-                <InfoRow icon={Calendar} label={t('app.te_hw_assigned')} value={formatDate(a.assigned_date)} last />
+                <InfoRow icon={Calendar} label={t('app.te_hw_assigned')} value={a.assigned_date ? formatDate(a.assigned_date) : '—'} last />
               </Panel>
               <Panel>
                 <PanelTitle title={k('description')} />

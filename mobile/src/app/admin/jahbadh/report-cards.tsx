@@ -1,7 +1,7 @@
-import { jgPdfPath, JG_REPORT_CARD_OPTION_KEYS, type JgReportCardOptions, type JgReportCardSettings, type JgScope } from '@studently/api-client';
-import { decisionTone, fmtMark, fmtPct } from '@studently/shared-utils';
-import { Stack } from 'expo-router';
-import { EyeOff, Printer, Send } from 'lucide-react-native';
+import { jgOfficialPdfPath, jgPdfPath, JG_REPORT_CARD_EXTRA_KEYS, JG_REPORT_CARD_OPTION_KEYS, type JgReportCardOptions, type JgReportCardSettings, type JgScope } from '@studently/api-client';
+import { decisionTone, fmtMark, fmtPct, type JgAuditIssue } from '@studently/shared-utils';
+import { router, Stack } from 'expo-router';
+import { AlertTriangle, EyeOff, FileArchive, Printer, Send } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { locale } from '@/i18n';
 import { chipTone, JgBlocked, useJg, SectionHeader, useJgSection } from '@/features/jahbadh/shared';
+import { jahbadhInsight } from '@/features/jahbadh/insight-shared';
 import { jahbadhGrades } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { shareApiFile } from '@/lib/share-file';
@@ -28,7 +29,7 @@ import { shareApiFile } from '@/lib/share-file';
 export default function JahbadhReportCards() {
   const { t } = useTranslation();
   const toast = useToast();
-  const { isAdmin, campusId } = useJg();
+  const { isAdmin, campusId, href } = useJg();
   const { sections, sectionId, setSection } = useJgSection(campusId);
   const cid = campusId ?? 'own';
   const [scope, setScope] = useState<JgScope>('final');
@@ -36,6 +37,9 @@ export default function JahbadhReportCards() {
   const preview = useApi(sectionId ? (['jg', 'cards', sectionId, scope, cid] as const) : null, ([, , s, sc, c]) => jahbadhGrades.reportCards(s, sc, c === 'own' ? null : c));
   const settings = useApi(sectionId ? (['jg', 'rc-settings', sectionId, cid] as const) : null, ([, , s, c]) => jahbadhGrades.reportCardSettings(s, c === 'own' ? null : c));
   const pubs = useApi(sectionId ? (['jg', 'pubs', sectionId, cid] as const) : null, ([, , s, c]) => jahbadhGrades.publications(s, c === 'own' ? null : c));
+  // Entry errors (brief B6-37) block publishing: a banner, and the list when the server refuses (409 audit_errors).
+  const audit = useApi(sectionId ? (['jg', 'rc-audit', sectionId, cid] as const) : null, ([, , s, c]) => jahbadhInsight.entryAudit(s, c === 'own' ? null : c));
+  const [blocked, setBlocked] = useState<JgAuditIssue[] | null>(null);
 
   const [form, setForm] = useState<{ options: JgReportCardOptions; tips: string; quotes: string } | null>(null);
   const [seen, setSeen] = useState<JgReportCardSettings | null>(null);
@@ -70,12 +74,33 @@ export default function JahbadhReportCards() {
       setBusy(false);
     }
   };
+  const shareZip = async () => {
+    const sid = sectionId;
+    if (!sid) return;
+    setBusy(true);
+    try {
+      await shareApiFile(jgOfficialPdfPath.reportCardsZip(sid, scope, { from: from ? fromN : undefined, to: to ? toN : undefined }, campusId), `report-cards-${scope}.zip`, 'application/zip');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('app.error_title'));
+    } finally {
+      setBusy(false);
+    }
+  };
   const togglePublish = async () => {
     const sid = sectionId;
     if (!sid) return;
     const pubId = published?.id ?? null;
     const res = pubId ? await jahbadhGrades.unpublish(sid, pubId, campusId) : await jahbadhGrades.publish(sid, scope, campusId);
-    if (!res.success) return toast.error(res.error ?? t('app.error_title'));
+    if (!res.success) {
+      if (res.code === 'audit_errors') {
+        const details = res.errorData?.details as { issues?: JgAuditIssue[] } | undefined;
+        setBlocked(details?.issues ?? []);
+        audit.mutate();
+        return toast.error(t('grades.insPublishBlocked'));
+      }
+      return toast.error(res.error ?? t('app.error_title'));
+    }
+    setBlocked(null);
     toast.success(pubId ? t('grades.unpublished') : t('grades.published'));
     pubs.mutate(res.data, { revalidate: false });
   };
@@ -103,6 +128,20 @@ export default function JahbadhReportCards() {
           sectionId ? <Skeleton className="h-64 rounded-2xl" /> : null
         ) : (
           <>
+            {(audit.data?.errors ?? 0) > 0 || blocked ? (
+              <View className="bg-destructive-soft gap-2 rounded-2xl p-3">
+                <View className="flex-row items-start gap-2">
+                  <Icon as={AlertTriangle} className="text-destructive mt-0.5 size-4" />
+                  <Text className="flex-1 text-sm font-semibold">{t('grades.insAuditBlocked', { n: audit.data?.errors ?? blocked?.length ?? 0 })}</Text>
+                </View>
+                {blocked?.slice(0, 20).map((i, k) => (
+                  <Text key={k} className="text-xs">{`• ${i.name} — ${i.label}${i.subject ? ` (${i.subject})` : ''}`}</Text>
+                ))}
+                <Button size="sm" variant="outline" className="self-start" onPress={() => router.push(href('/jahbadh/entry-audit', { section: sectionId ?? '' }))}>
+                  <Text>{t('grades.insOpenAudit')}</Text>
+                </Button>
+              </View>
+            ) : null}
             <FormSection title={t('grades.printCards')} description={`${ov.rule.name} — ${ov.section.name}`}>
               <Picker value={scope} onChange={(v) => setScope(v as JgScope)} options={scopes} />
               <View className="flex-row gap-2">
@@ -119,6 +158,10 @@ export default function JahbadhReportCards() {
               <Button disabled={!count || busy} onPress={() => share({ from: from ? fromN : undefined, to: to ? toN : undefined })}>
                 <Icon as={Printer} className="text-primary-foreground size-4" />
                 <Text>{t('grades.printPdf')}</Text>
+              </Button>
+              <Button variant="outline" disabled={!count || busy} onPress={shareZip}>
+                <Icon as={FileArchive} className="text-foreground size-4" />
+                <Text>{t('grades.downloadZip')}</Text>
               </Button>
             </FormSection>
 
@@ -154,7 +197,7 @@ export default function JahbadhReportCards() {
                       <Text className="flex-1 text-sm font-semibold" numberOfLines={1}>{`${c.student.listNumber}. ${c.student.name}`}</Text>
                       <Icon as={Printer} className="text-muted-foreground size-4" />
                     </View>
-                    <Text variant="muted" className="text-[11px]">
+                    <Text variant="muted" className="text-xs">
                       {`${c.total === null ? '—' : `${fmtMark(c.total)} / ${fmtMark(c.max)}`} · ${fmtPct(c.pct, 1) || '—'}${c.estimate ? ` · ${c.estimate}` : ''}${c.rank ? ` · ${t('grades.rank')} ${c.rank}` : ''}`}
                     </Text>
                     <StatusChip label={c.decision} tone={chipTone(decisionTone(c.decision))} className="self-start" />
@@ -165,10 +208,10 @@ export default function JahbadhReportCards() {
 
             {form ? (
               <FormSection title={t('grades.cardOptions')}>
-                {JG_REPORT_CARD_OPTION_KEYS.map((k) => (
+                {[...JG_REPORT_CARD_OPTION_KEYS, ...JG_REPORT_CARD_EXTRA_KEYS].map((k) => (
                   <View key={k} className="flex-row items-center justify-between gap-2">
                     <Text className="flex-1 text-sm">{t(`grades.opt_${k}`)}</Text>
-                    <Switch checked={form.options[k]} onCheckedChange={(v) => setForm({ ...form, options: { ...form.options, [k]: v } })} />
+                    <Switch checked={!!form.options[k]} onCheckedChange={(v) => setForm({ ...form, options: { ...form.options, [k]: v } })} />
                   </View>
                 ))}
                 <Text variant="muted" className="text-xs">{t('grades.guardianTips')}</Text>

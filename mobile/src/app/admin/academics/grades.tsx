@@ -140,14 +140,14 @@ export default function GradeLevels() {
                   <Text className="text-sm font-semibold" numberOfLines={1}>
                     {x.name}
                   </Text>
-                  <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                  <Text variant="muted" className="text-xs" numberOfLines={1}>
                     {[`${g('capacity')} ${x.capacity ?? '—'}`, `${g('sections')} ${x.sections_count || 0}`, `${g('subjects')} ${x.subjects_count || 0}`].join(' · ')}
                   </Text>
                 </View>
                 <StatusChip label={x.is_active !== false ? g('active') : g('inactive')} tone={x.is_active !== false ? 'success' : 'muted'} className="px-2 py-0.5" />
               </View>
               <View className="gap-1">
-                <Text variant="muted" className="text-[11px]">
+                <Text variant="muted" className="text-xs">
                   {g('next_grade')}
                 </Text>
                 <Picker
@@ -158,7 +158,7 @@ export default function GradeLevels() {
               </View>
               {groupsOn ? (
                 <View className="gap-1">
-                  <Text variant="muted" className="text-[11px]">
+                  <Text variant="muted" className="text-xs">
                     {g('mp_group')}
                   </Text>
                   <Picker value={x.group_id ?? 'default'} onChange={(v) => patch(x.id, { group_id: v === 'default' ? null : v }, 'update_success')} options={[{ value: 'default', label: g('mp_group_default') }, ...(groups.data ?? []).map((y) => ({ value: y.id, label: y.name }))]} />

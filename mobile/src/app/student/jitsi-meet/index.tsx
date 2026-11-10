@@ -1,6 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { Video } from 'lucide-react-native';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { RoomCard, useLc } from '@/features/admin/jitsi';

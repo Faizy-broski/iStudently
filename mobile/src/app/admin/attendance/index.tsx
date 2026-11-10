@@ -208,7 +208,7 @@ export default function AttendanceAdministration() {
                     <Text className="text-sm font-semibold" numberOfLines={1}>
                       {s.student_name}
                     </Text>
-                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                    <Text variant="muted" className="text-xs" numberOfLines={1}>
                       {[s.student_number, s.grade_name, s.section_name].filter(Boolean).join(' · ') || '-'}
                     </Text>
                   </View>
@@ -226,7 +226,7 @@ export default function AttendanceAdministration() {
                     const r = s.period_records[p.id];
                     return (
                       <View key={p.id} className="items-center gap-0.5">
-                        <Text className="text-muted-foreground text-[10px]">{periodLabel(p)}</Text>
+                        <Text className="text-muted-foreground text-2xs">{periodLabel(p)}</Text>
                         {r ? (
                           <CodeSelect codes={codes} value={codeIdOf(r)} onChange={(id) => setCode(r.record_id, id)} pending={changes.has(r.record_id)} />
                         ) : (
@@ -288,7 +288,7 @@ export default function AttendanceAdministration() {
                           <Text className="text-sm">{r.attendance_code.title}</Text>
                           {r.admin_override ? (
                             <Badge variant="outline">
-                              <Text className="text-[10px]">Admin</Text>
+                              <Text className="text-2xs">Admin</Text>
                             </Badge>
                           ) : null}
                         </View>

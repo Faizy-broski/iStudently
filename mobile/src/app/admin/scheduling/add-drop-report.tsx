@@ -95,13 +95,13 @@ export default function AddDropReport() {
               <Text className="text-xs" numberOfLines={1}>
                 {x.course_title}
               </Text>
-              <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+              <Text variant="muted" className="text-xs" numberOfLines={1}>
                 {[x.student_number, x.course_period_title].filter(Boolean).join(' · ')}
               </Text>
             </View>
             <View className="items-end gap-1">
               <StatusChip label={x.action === 'add' ? r('th_enrolled') : r('th_dropped')} tone={x.action === 'add' ? 'success' : 'destructive'} className="px-2 py-0.5" />
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {fmt(x.date)}
               </Text>
             </View>

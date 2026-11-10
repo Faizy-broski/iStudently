@@ -2,7 +2,8 @@ import type { FinaPost } from '@studently/api-client';
 import { Stack } from 'expo-router';
 import { Newspaper, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Panel } from '@/components/app/panel';
 import { EmptyState, LoadingList } from '@/components/app/states';

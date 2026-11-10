@@ -24,6 +24,7 @@ import qirtasiFacetsRoutes from "./routes/qirtasi/facets.routes";
 import qirtasiWorksheetsRoutes from "./routes/qirtasi/worksheets.routes";
 import jahbadhGradesRoutes from "./routes/jahbadh-grades.routes";
 import jahbadhControlRoutes from "./routes/jahbadh-control.routes";
+import jahbadhVerifyRoutes from "./routes/jahbadh-verify.routes";
 import academicsRoutes from "./routes/academics.routes";
 import teacherRoutes from "./routes/teacher.routes";
 import timetableRoutes from "./routes/timetable.routes";
@@ -322,6 +323,9 @@ const registerRoutes = (path: string, router: any) => {
 // iCal routes registered FIRST so the public /subscribe/:token endpoint is never
 // intercepted by routers that apply global authenticate middleware (e.g. rolloverRoutes).
 registerRoutes("", icalRoutes); // /api/ical/link  (auth)  and /api/ical/subscribe/:token  (public)
+// Public report-card verification (QR on printed Jahbadh cards; no sign-in, rate-limited), before
+// any router that applies authenticate globally.
+registerRoutes("/jahbadh-verify", jahbadhVerifyRoutes);
 
 // Public Pages plugin — registered before all auth routes.
 // Contains both public GET routes (/api/public/:slug/...) and

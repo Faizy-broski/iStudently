@@ -146,6 +146,13 @@ export interface CreateGrievanceInput {
   campus_id?: string
 }
 
+export interface GrievanceTeacherOption {
+  profile_id: string
+  first_name: string | null
+  last_name: string | null
+  name: string
+}
+
 export function grievancesApi(api: ApiClient) {
   const base = '/grievances'
   const id = (v: string) => encodeURIComponent(v)
@@ -188,6 +195,9 @@ export function grievancesApi(api: ApiClient) {
     getReport: (params: { from?: string; to?: string; category_id?: string; department?: string; status?: string } = {}) =>
       api.get<GrievanceReport>(`${base}/report${qs(params)}`),
     getCategories: () => api.get<GrievanceCategory[]>(`${base}/categories`),
+    /** Teachers of the caller's school family a grievance can name (id and name only; open to students and parents). */
+    searchTeachers: (search: string, campusId?: string | null) =>
+      api.get<GrievanceTeacherOption[]>(`${base}/teachers${qs({ search, campus_id: campusId ?? undefined })}`),
     createCategory: (name: string, slaDays?: number) =>
       api.post<GrievanceCategory>(`${base}/categories`, { name, sla_days: slaDays }),
     updateCategory: (categoryId: string, updates: { name?: string; is_active?: boolean; sla_days?: number | null }) =>

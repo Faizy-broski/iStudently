@@ -4,7 +4,8 @@ import { router, Stack } from 'expo-router';
 import { AlertTriangle, ArrowRight, Ban, CheckCircle2, Clock, Download, PlayCircle, Printer, RefreshCw, RotateCcw, XCircle } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { colors } from '@/lib/colors';
 import { useConfirm } from '@/components/app/confirm';
@@ -575,10 +576,10 @@ export default function Generate() {
                           <View className="min-h-12 justify-center p-1">
                             {e ? (
                               <>
-                                <Text className="text-primary text-[11px] font-medium" numberOfLines={1}>
+                                <Text className="text-primary text-xs font-medium" numberOfLines={1}>
                                   {e.subject_name}
                                 </Text>
-                                <Text className="text-muted-foreground text-[10px]" numberOfLines={1}>
+                                <Text className="text-muted-foreground text-2xs" numberOfLines={1}>
                                   {e.teacher_name}
                                 </Text>
                               </>

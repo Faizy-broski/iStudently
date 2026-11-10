@@ -2,7 +2,8 @@ import type { TeacherSubjectAssignment } from '@studently/api-client';
 import { router, Stack } from 'expo-router';
 import { BookOpen, FileText, Layers, NotebookPen, Star, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, RowPill, StatTile, StatTiles } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -71,7 +72,7 @@ export default function TeacherSubjects() {
                       <View className="flex-row items-center gap-2">
                         <View className="flex-1">
                           <Text className="text-sm font-semibold">{a.section?.name || k('unknownSection')}</Text>
-                          <Text variant="muted" className="text-[11px]">
+                          <Text variant="muted" className="text-xs">
                             {a.section?.grade_level?.name || k('unknownGrade')}
                           </Text>
                         </View>

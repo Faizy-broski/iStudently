@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { AlertTriangle, BookOpen, Check, ClipboardList, GraduationCap, TrendingUp } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HeroCard, IconTile, StatTile, StatTiles } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -69,7 +70,7 @@ export default function StudentTranscript() {
                     {group.letter_grade ? <Text className="text-brand dark:text-brand-secondary text-lg font-bold">{group.letter_grade}</Text> : null}
                     <Text className={cn('text-xl font-bold', gradeTone(group.average).text)}>{group.average !== null ? `${group.average}%` : '—'}</Text>
                   </View>
-                  <Text className="text-muted-foreground text-[11px]">{k('graded', { done: group.graded_count, total: group.total_assignments })}</Text>
+                  <Text className="text-muted-foreground text-xs">{k('graded', { done: group.graded_count, total: group.total_assignments })}</Text>
                 </View>
               </View>
               {group.grades.map((g, i) => {

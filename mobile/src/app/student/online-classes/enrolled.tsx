@@ -2,12 +2,14 @@ import { router, Stack } from 'expo-router';
 import { CalendarClock, Video, XCircle } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
+import { useConfirm } from '@/components/app/confirm';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -20,11 +22,13 @@ export default function StudentEnrolledClasses() {
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`online_classes.${key}`, o);
   const toast = useToast();
+  const confirm = useConfirm();
   // Polled so the Join button appears when the teacher starts the session.
   const list = useApi(['student', 'online-enrolled'], () => adminOnlineClasses.enrolled(), { refreshInterval: 15000 });
   const [busy, setBusy] = useState<string | null>(null);
 
   async function withdraw(id: string) {
+    if (!(await confirm({ title: t('app.oc_withdraw_confirm'), confirmLabel: k('withdraw'), destructive: true }))) return;
     setBusy(id);
     const r = await adminOnlineClasses.withdraw(id);
     setBusy(null);

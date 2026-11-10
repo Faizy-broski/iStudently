@@ -284,7 +284,7 @@ export function PostCard({ post, onDeleted }: { post: FinaPost; onDeleted: (id: 
               {honor ? (
                 <View className="flex-row items-center gap-1 rounded-full bg-warning-soft px-2.5 py-1">
                   <Icon as={Sparkles} className="size-3 text-warning" />
-                  <Text className="text-[11px] font-semibold text-warning">{f('wall.spotlight_badge')}</Text>
+                  <Text className="text-xs font-semibold text-warning">{f('wall.spotlight_badge')}</Text>
                 </View>
               ) : null}
               <Text className="text-xs font-semibold" style={{ color: meta.color }}>
@@ -382,7 +382,7 @@ export function StoriesBar() {
             <View className="size-16 overflow-hidden rounded-full border-2 border-brand-secondary">
               <GatedImage mediaId={s.media_id} variant="thumb" className="size-full" />
             </View>
-            <Text className="text-[11px] font-medium" numberOfLines={1}>
+            <Text className="text-xs font-medium" numberOfLines={1}>
               {s.author?.first_name || f('story')}
             </Text>
           </Pressable>
@@ -500,7 +500,7 @@ export function NotificationBell({ href = '/admin/fina/notifications' }: { href?
       <Icon as={Bell} className="text-brand dark:text-brand-secondary size-5" />
       {unread > 0 ? (
         <View className="bg-destructive absolute -end-0.5 -top-0.5 min-w-4 items-center rounded-full px-1">
-          <Text className="text-[10px] font-bold text-white">{unread > 9 ? '9+' : unread}</Text>
+          <Text className="text-2xs font-bold text-white">{unread > 9 ? '9+' : unread}</Text>
         </View>
       ) : null}
     </Pressable>

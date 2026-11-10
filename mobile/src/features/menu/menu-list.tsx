@@ -1,7 +1,9 @@
 import type { AdminMenuGroup, AdminMenuItem } from '@studently/shared-types';
 import { useMemo, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Tile, TileGrid } from '@/components/app/tile-grid';

@@ -44,7 +44,7 @@ export default function AverageDailyAttendance() {
 
   const metric = (label: string, value: string | number) => (
     <View className="w-1/3 py-1">
-      <Text variant="muted" className="text-[11px]">
+      <Text variant="muted" className="text-xs">
         {label}
       </Text>
       <Text className="text-sm font-semibold">{value}</Text>

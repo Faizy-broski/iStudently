@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import useSWR from "swr"
-import { ArrowRight, CheckCircle2, Plus, Sparkles, Trash2 } from "lucide-react"
+import { ArrowRight, ArrowUpCircle, CheckCircle2, Plus, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { jgApi, type JgGradeMapEntry, type JgSettings, type JgSubjectLinks } from "@/lib/api/jahbadh-grades"
-import { JG_DISTRIBUTION } from "@/lib/jahbadh"
+import { jgApi, type JgGradeMapEntry, type JgSettings, type JgSubjectLinks, type JgUpgradePreview } from "@/lib/api/jahbadh-grades"
+import { JG_ACT_MODE_LABELS, JG_DEFAULT_MONTH_NAMES, JG_DISTRIBUTION, JG_NO_MONTH, type JgActMode } from "@/lib/jahbadh"
 import { useJgContext } from "./shared"
 
 const NONE = "__none__"
@@ -63,6 +64,8 @@ export function JahbadhSetup() {
           )}
         </CardContent>
       </Card>
+
+      {rules.data?.source === "school" ? <MemoUpgrade onDone={() => rules.mutate()} /> : null}
 
       <Tabs defaultValue="map">
         <TabsList>
@@ -184,7 +187,7 @@ function SubjectLinksEditor({ campusId, ready }: { campusId: string | null; read
   )
 }
 
-const HEADER_FIELDS = ["school_name", "education_office", "municipality", "principal", "homeroom_teacher", "logo_url"] as const
+const HEADER_FIELDS = ["school_name", "education_office", "sub_office", "municipality", "located_at", "school_number", "principal", "homeroom_teacher", "exams_coordinator", "hijri_year", "logo_url"] as const
 
 function SettingsForm({ campusId }: { campusId: string | null }) {
   const t = useTranslations("grades")
@@ -193,7 +196,7 @@ function SettingsForm({ campusId }: { campusId: string | null }) {
   const [seen, setSeen] = useState<unknown>(null)
   if (settings.data && settings.data !== seen) {
     setSeen(settings.data)
-    setForm(structuredClone(settings.data))
+    setForm(withRuleDefaults(structuredClone(settings.data)))
   }
   if (!form) return <Skeleton className="h-64 w-full" />
 
@@ -234,6 +237,7 @@ function SettingsForm({ campusId }: { campusId: string | null }) {
           </Button>
           <p className="text-xs text-muted-foreground">{t("scaleHint")}</p>
         </div>
+        <RuleSettings form={form} setForm={setForm} />
         <div className="grid gap-3 sm:grid-cols-2">
           {HEADER_FIELDS.map((f) => (
             <div key={f} className="space-y-1">
@@ -243,6 +247,162 @@ function SettingsForm({ campusId }: { campusId: string | null }) {
           ))}
         </div>
         <Button onClick={save}>{t("save")}</Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+const ALL = "all"
+
+/** Settings saved before the 2026-27 keys existed get the workbook defaults. */
+function withRuleDefaults(s: JgSettings): JgSettings {
+  return {
+    ...s,
+    jabr_kasur: s.jabr_kasur ?? true,
+    jabr_plus_one: s.jabr_plus_one ?? true,
+    act_mode: s.act_mode ?? "average",
+    month_names: s.month_names?.length === 3 ? s.month_names : JG_DEFAULT_MONTH_NAMES.map((m) => [...m]),
+    default_stage: s.default_stage ?? null,
+  }
+}
+
+/** Art. 122 options, «حساب الأنشطة الشهرية», month names (4 per stage, «—» hides) and the grid's default stage. */
+function RuleSettings({ form, setForm }: { form: JgSettings; setForm: (f: JgSettings) => void }) {
+  const t = useTranslations("grades")
+  const setMonth = (stage: number, i: number, value: string) =>
+    setForm({ ...form, month_names: form.month_names.map((row, s) => (s === stage ? row.map((m, j) => (j === i ? value : m)) : row)) })
+  return (
+    <div className="space-y-4 rounded-lg border p-4">
+      <p className="font-semibold">{t("rulesTitle")}</p>
+      {(["jabr_kasur", "jabr_plus_one"] as const).map((k) => (
+        <div key={k} className="flex items-center justify-between gap-3">
+          <Label htmlFor={k} className="font-normal">{t(k === "jabr_kasur" ? "jabrKasur" : "jabrPlusOne")}</Label>
+          <Switch id={k} checked={form[k]} onCheckedChange={(v) => setForm({ ...form, [k]: v })} />
+        </div>
+      ))}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label>{t("actMode")}</Label>
+          <Select value={form.act_mode} onValueChange={(v) => setForm({ ...form, act_mode: v as JgActMode })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(JG_ACT_MODE_LABELS) as JgActMode[]).map((m) => <SelectItem key={m} value={m}>{JG_ACT_MODE_LABELS[m]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>{t("defaultStage")}</Label>
+          <Select value={form.default_stage ? String(form.default_stage) : ALL} onValueChange={(v) => setForm({ ...form, default_stage: v === ALL ? null : Number(v) })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>{t("allStages")}</SelectItem>
+              {[1, 2, 3].map((n) => <SelectItem key={n} value={String(n)}>{t("stageN", { n })}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>{t("monthNames")}</Label>
+        {form.month_names.map((row, stage) => (
+          <div key={stage} className="grid grid-cols-[5rem_repeat(4,minmax(0,1fr))] items-center gap-2">
+            <span className="text-sm text-muted-foreground">{t("stageN", { n: stage + 1 })}</span>
+            {row.map((m, i) => (
+              <Input key={i} dir="auto" aria-label={`${t("stageN", { n: stage + 1 })} — ${i + 1}`} value={m === JG_NO_MONTH ? "" : m} placeholder={JG_NO_MONTH}
+                onChange={(e) => setMonth(stage, i, e.target.value.trim() === "" ? JG_NO_MONTH : e.target.value)} />
+            ))}
+          </div>
+        ))}
+        <p className="text-xs text-muted-foreground">{t("monthNamesHint")}</p>
+      </div>
+    </div>
+  )
+}
+
+const UPGRADE_TARGET = "2026-2027"
+
+/** Moves the current academic year to the 2026-2027 memo: preview the differences, then apply. */
+function MemoUpgrade({ onDone }: { onDone: () => void }) {
+  const t = useTranslations("grades")
+  const [preview, setPreview] = useState<JgUpgradePreview | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const explain = (code: string | undefined, error: string | undefined) =>
+    code === "same_version" ? t("upgradeSame", { version: UPGRADE_TARGET })
+      : code === "not_seeded" ? t("upgradeNotSeeded")
+      : code === "not_migrated" ? t("notMigratedBody")
+      : error ?? t("loadError")
+
+  const load = async () => {
+    setBusy(true)
+    setMessage(null)
+    const res = await jgApi.upgradePreview(UPGRADE_TARGET)
+    setBusy(false)
+    if (!res.success) return setMessage(explain(res.code, res.error))
+    setPreview(res.data!)
+  }
+  const apply = async () => {
+    if (!preview || !window.confirm(t("upgradeConfirm", { from: preview.from, to: preview.to }))) return
+    setBusy(true)
+    const res = await jgApi.upgrade(UPGRADE_TARGET, preview.academic_year.id)
+    setBusy(false)
+    if (!res.success) return toast.error(explain(res.code, res.error))
+    toast.success(t("upgradeDone", { moved: res.data!.marks_moved, unmapped: res.data!.marks_unmapped }))
+    setPreview(null)
+    setMessage(t("upgradeSame", { version: res.data!.to }))
+    onDone()
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{t("upgradeTitle")}</CardTitle>
+        <CardDescription>{t("upgradeBody")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+        {!preview ? (
+          <Button variant="outline" onClick={load} disabled={busy}><ArrowUpCircle className="size-4" />{t("upgradePreview")}</Button>
+        ) : (
+          <>
+            <p className="text-sm">{t("upgradeYear", { year: preview.academic_year.name ?? "", from: preview.from, to: preview.to })}</p>
+            <div className="overflow-auto rounded-lg border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted text-xs">
+                  <tr>
+                    <th className="p-2 text-start">{t("gradeLabel")}</th>
+                    <th className="p-2">{t("totalBefore")}</th>
+                    <th className="p-2">{t("totalAfter")}</th>
+                    <th className="p-2 text-start">{t("subjectsAdded")}</th>
+                    <th className="p-2 text-start">{t("subjectsRemoved")}</th>
+                    <th className="p-2">{t("componentsChanged")}</th>
+                    <th className="p-2">{t("marksMoved")}</th>
+                    <th className="p-2">{t("marksUnmapped")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.grades.map((g) => (
+                    <tr key={g.grade_code} className="border-t">
+                      <td className="p-2" dir="rtl">{g.name}</td>
+                      <td className="p-2 text-center tabular-nums">{g.total_before ?? "—"}</td>
+                      <td className="p-2 text-center font-semibold tabular-nums">{g.total_after}</td>
+                      <td className="p-2" dir="rtl">{g.subjects_added.join("، ") || "—"}</td>
+                      <td className="p-2" dir="rtl">{g.subjects_removed.join("، ") || "—"}</td>
+                      <td className="p-2 text-center tabular-nums" title={g.components_changed.map((c) => `${c.subject}: ${c.before} → ${c.after}`).join("\n")}>{g.components_changed.length}</td>
+                      <td className="p-2 text-center tabular-nums">{g.marks}</td>
+                      <td className={`p-2 text-center tabular-nums ${g.marks_unmapped ? "font-semibold text-destructive" : ""}`}>{g.marks_unmapped}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("upgradeHint")}</p>
+            <div className="flex gap-2">
+              <Button onClick={apply} disabled={busy}><ArrowUpCircle className="size-4" />{t("upgradeApply")}</Button>
+              <Button variant="outline" onClick={() => setPreview(null)} disabled={busy}>{t("cancel")}</Button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   )

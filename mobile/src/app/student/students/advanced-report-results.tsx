@@ -1,7 +1,8 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { FileDown } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HeaderButton, Section } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';

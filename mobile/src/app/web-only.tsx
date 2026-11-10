@@ -1,4 +1,5 @@
 import { openBrowserAsync } from 'expo-web-browser';
+import { Globe } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { StatusScreen } from '@/components/status-screen';
@@ -11,6 +12,7 @@ export default function WebOnly() {
   const { signOut } = useSession();
   return (
     <StatusScreen
+      icon={Globe}
       title={t('app.web_only_title')}
       body={t('app.web_only_body')}
       actions={[

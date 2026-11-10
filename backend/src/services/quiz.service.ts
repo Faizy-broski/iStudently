@@ -836,6 +836,23 @@ async function updateGradebookFromQuiz(quizId: string, studentId: string) {
 // Returns quizzes available to a student based on their section's course periods
 // ============================================================================
 
+/**
+ * Whether a student may take a quiz: a quiz targeted to students is for those students only;
+ * otherwise it must belong to a course period of the student's section (same rules as the list).
+ */
+export const studentMayTakeQuiz = async (
+  quiz: { assigned_student_ids?: string[] | null; course_period_id?: string | null },
+  studentId: string
+): Promise<boolean> => {
+  if (quiz.assigned_student_ids?.length) return quiz.assigned_student_ids.includes(studentId)
+  if (!quiz.course_period_id) return false
+  const [{ data: student }, { data: cp }] = await Promise.all([
+    supabase.from('students').select('section_id').eq('id', studentId).maybeSingle(),
+    supabase.from('course_periods').select('section_id').eq('id', quiz.course_period_id).maybeSingle(),
+  ])
+  return !!student?.section_id && cp?.section_id === student.section_id
+}
+
 export const getStudentQuizzes = async (studentId: string) => {
   // Get student's section and school
   const { data: student } = await supabase

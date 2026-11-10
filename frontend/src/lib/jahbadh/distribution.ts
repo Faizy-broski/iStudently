@@ -1,20 +1,43 @@
 // GENERATED from packages/shared-utils/src/jahbadh/distribution.ts by scripts/sync-jahbadh-engine.sh — do not edit.
 /**
- * Official grade distribution for basic and secondary education, 2024-2025
- * (Curriculum and Educational Research Center, Libya) — Jahbadh brief, Appendix A.
+ * Official grade distributions (Curriculum and Educational Research Center, Libya), per memo year:
+ * - 2026-2027 (current): generated from the brief's Appendix A/B into distribution-2026-2027.ts
+ *   (scripts/jahbadh-parse-memo.ts) — Al-Quran and «التربية الوطنية» as subjects, sub-items, monthly entry.
+ * - 2024-2025: kept below so marks entered under the old memo still compute.
  *
  * Single source of truth: the seed SQL (scripts/jahbadh-seed-sql.ts), the backend and the web
- * read copies of this file (scripts/sync-jahbadh-engine.sh). Arabic labels are official wording:
+ * read copies of these files (scripts/sync-jahbadh-engine.sh). Arabic labels are official wording:
  * do not rephrase.
  */
+import { JG_DISTRIBUTION_2026_2027 } from './distribution-2026-2027'
 
 export type JgStage = 1 | 2 | 3
+
+/** One sub-item of a component (brief Appendix B): a footnote item or a subject branch. */
+export interface JgSubItemDef {
+  name: string
+  max: number
+}
+
+/**
+ * How a component is recorded month by month (brief B4, «سجل الأنشطة الشهري»):
+ * - `activity`: daily activities; branch mark = average of months, or best of (average, last month);
+ * - `applications`: monthly applications / written tests; always the average of the months entered;
+ * - `items`: grades 1–3 English and Mathematics; each component = average of months, month mark = Σ components.
+ * Undefined = entered once (midterms, exams, practical work …).
+ */
+export type JgMonthlyKind = 'activity' | 'applications' | 'items'
 
 export interface JgComponentDef {
   name: string
   max: number
   /** Counts toward the exam threshold and is replaced by the second-round exam. */
   exam?: boolean
+  monthly?: JgMonthlyKind
+  /** When present the component is computed: ROUND(Σ sub-items ÷ divisor, 2), read-only. */
+  subItems?: JgSubItemDef[]
+  /** Σ sub-item maxima ÷ component max (1 when omitted). */
+  divisor?: number
 }
 
 export interface JgSubjectDef {
@@ -25,6 +48,8 @@ export interface JgSubjectDef {
   weeklyPeriods: number
   /** Components of stage 1, 2 and 3 (an empty array = the stage does not exist for this grade). */
   stages: [JgComponentDef[], JgComponentDef[], JgComponentDef[]]
+  /** Branches of the second-round exam (summed, ÷1), when the memo splits it. */
+  round2SubItems?: JgSubItemDef[]
 }
 
 export interface JgGradeDef {
@@ -44,17 +69,20 @@ export interface JgGradeDef {
   certificateName: string | null
   /** Used in «ينقل إلى الصف …»; null for certificate years. */
   nextGradeName: string | null
+  /** Article 51: the second round is only for students who failed at most this many subjects (0 = no limit). */
+  maxRound2Subjects?: number
   subjects: JgSubjectDef[]
 }
 
-/** The 18 subjects of the prototype, in its display order, with their short Arabic names. */
+/** The 20 subjects of the prototype, in its display order (k = index + 1 in «ناقل جهبذ»), with their short Arabic names. */
 export const JG_SUBJECT_KEYS = [
-  'islamic', 'arabic', 'writing', 'english', 'math', 'science', 'social', 'history', 'geography',
+  'quran', 'islamic', 'arabic', 'writing', 'english', 'math', 'science', 'social', 'history', 'geography', 'national',
   'computer', 'it', 'physics', 'chemistry', 'biology', 'statistics', 'philosophy', 'sociology', 'psychology',
 ] as const
 export type JgSubjectKey = (typeof JG_SUBJECT_KEYS)[number]
 
 export const JG_SUBJECT_SHORT_NAMES: Record<JgSubjectKey, string> = {
+  quran: 'القرآن الكريم',
   islamic: 'التربية الإسلامية',
   arabic: 'اللغة العربية',
   writing: 'الكتابة',
@@ -64,6 +92,7 @@ export const JG_SUBJECT_SHORT_NAMES: Record<JgSubjectKey, string> = {
   social: 'الاجتماعيات',
   history: 'التاريخ',
   geography: 'الجغرافيا',
+  national: 'التربية الوطنية',
   computer: 'الحاسوب',
   it: 'تقنية المعلومات',
   physics: 'الفيزياء',
@@ -361,11 +390,9 @@ const grade12Humanities = secondaryCertificateGrade(14, 'الثالث الثان
   avgWritten('psychology', 2, 3, 6, 56),
 ])
 
-// ---- the 14 grades ---------------------------------------------------------------------------------
+// ---- the 14 grades, per memo year -------------------------------------------------------------------
 
-export const JG_DISTRIBUTION_VERSION = '2024-2025'
-
-export const JG_DISTRIBUTION: JgGradeDef[] = [
+export const JG_DISTRIBUTION_2024_2025: JgGradeDef[] = [
   earlyGrade(1, 'الأول', 'الثاني', false),
   earlyGrade(2, 'الثاني', 'الثالث', false),
   earlyGrade(3, 'الثالث', 'الرابع', true),
@@ -382,6 +409,23 @@ export const JG_DISTRIBUTION: JgGradeDef[] = [
   grade12Humanities,
 ]
 
-export function jgGrade(code: number): JgGradeDef | undefined {
-  return JG_DISTRIBUTION.find((g) => g.code === code)
+export { JG_DISTRIBUTION_2026_2027 }
+
+/** Every memo year we can compute, newest first. */
+export const JG_DISTRIBUTIONS: Record<string, JgGradeDef[]> = {
+  '2026-2027': JG_DISTRIBUTION_2026_2027,
+  '2024-2025': JG_DISTRIBUTION_2024_2025,
+}
+
+/** The current memo year: new schools and new academic years start from it. */
+export const JG_DISTRIBUTION_VERSION = '2026-2027'
+
+export const JG_DISTRIBUTION: JgGradeDef[] = JG_DISTRIBUTIONS[JG_DISTRIBUTION_VERSION]
+
+export function jgDistribution(version: string = JG_DISTRIBUTION_VERSION): JgGradeDef[] | undefined {
+  return JG_DISTRIBUTIONS[version]
+}
+
+export function jgGrade(code: number, version: string = JG_DISTRIBUTION_VERSION): JgGradeDef | undefined {
+  return JG_DISTRIBUTIONS[version]?.find((g) => g.code === code)
 }

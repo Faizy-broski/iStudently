@@ -33,7 +33,7 @@ export function FeeDueDateBadge({ dueDate, status }: { dueDate?: string | null; 
   return (
     <View className={cn('flex-row items-center gap-1 self-start rounded-full px-2.5 py-1', box)}>
       <View className={cn('size-1.5 rounded-full', dot)} />
-      <Text className={cn('text-[11px] font-semibold', text)}>{label}</Text>
+      <Text className={cn('text-xs font-semibold', text)}>{label}</Text>
     </View>
   );
 }
@@ -90,13 +90,13 @@ export function FinancialWidget({ fees, isLoading, money, onViewAll }: { fees: W
               {overdue > 0 ? (
                 <View className="bg-destructive-soft flex-row items-center gap-1 rounded-full px-2.5 py-1">
                   <Icon as={AlertTriangle} className="text-destructive size-3" />
-                  <Text className="text-destructive text-[11px] font-semibold">{t('app.fw_overdue', { count: overdue })}</Text>
+                  <Text className="text-destructive text-xs font-semibold">{t('app.fw_overdue', { count: overdue })}</Text>
                 </View>
               ) : null}
               {dueToday > 0 ? (
                 <View className="bg-card flex-row items-center gap-1 rounded-full px-2.5 py-1">
                   <Icon as={Clock} className="text-warning size-3" />
-                  <Text className="text-warning text-[11px] font-semibold">{t('app.fw_due_today_count', { count: dueToday })}</Text>
+                  <Text className="text-warning text-xs font-semibold">{t('app.fw_due_today_count', { count: dueToday })}</Text>
                 </View>
               ) : null}
             </View>
@@ -139,7 +139,7 @@ export function FeeStatus({ status }: { status: string }) {
   const [box, text, key] = STATUS[status] ?? ['bg-warning-soft', 'text-warning', 'status_pending'];
   return (
     <View className={cn('self-start rounded-full px-2.5 py-1', box)}>
-      <Text className={cn('text-[11px] font-semibold', text)}>{t(`student_billing.fees.${key}`)}</Text>
+      <Text className={cn('text-xs font-semibold', text)}>{t(`student_billing.fees.${key}`)}</Text>
     </View>
   );
 }

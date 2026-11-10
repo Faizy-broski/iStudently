@@ -2,7 +2,7 @@ import { Router } from 'express'
 import * as academicsController from '../controllers/academics.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher, requireStaff, requireRole } from '../middlewares/role.middleware'
-import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
+import { requireRequestSchoolsInFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
 const router = Router()
 
@@ -20,9 +20,11 @@ router.post(
   academicsController.createGradeLevel
 )
 
+// Students and parents read the lists for forms (e.g. grievances); school_id must be in their family.
 router.get(
   '/grades',
-  requireRole('super_admin', 'admin', 'teacher', 'librarian'),
+  requireRole('super_admin', 'admin', 'teacher', 'librarian', 'student', 'parent'),
+  requireRequestSchoolsInFamily,
   academicsController.getGradeLevels
 )
 
@@ -90,7 +92,8 @@ router.post(
 
 router.get(
   '/subjects',
-  requireTeacher,
+  requireRole('super_admin', 'admin', 'teacher', 'student', 'parent'),
+  requireRequestSchoolsInFamily,
   academicsController.getSubjects
 )
 

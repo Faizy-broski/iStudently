@@ -69,7 +69,7 @@ export default function PublicPagesList() {
                   <Text className="text-sm font-semibold" numberOfLines={1}>
                     {p.title}
                   </Text>
-                  <Text variant="muted" className="text-[11px]" numberOfLines={2}>
+                  <Text variant="muted" className="text-xs" numberOfLines={2}>
                     {[t(`app.pp_type_${p.page_type}`), p.visible_to_roles?.length ? p.visible_to_roles.map((r) => t(`app.pp_role_${r}`)).join(', ') : t('app.pp_everyone')].join(' · ')}
                   </Text>
                   {p.is_template ? <StatusChip label={t('app.pp_status_draft')} tone="muted" className="mt-1 self-start px-2 py-0.5" /> : null}

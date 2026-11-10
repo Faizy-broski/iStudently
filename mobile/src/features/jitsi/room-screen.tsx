@@ -21,6 +21,7 @@ import { Text } from '@/components/ui/text';
 import { useLc } from '@/features/admin/jitsi';
 import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
+import i18n from '@/i18n';
 import { jitsi } from '@/lib/api';
 import { useApi } from '@/lib/data';
 
@@ -60,7 +61,7 @@ function Polls({ roomId }: { roomId: string }) {
     setBusy(true);
     try {
       const r = await jitsi.launchPoll(roomId, { question_text: question.trim(), question_type: type, options: opts });
-      if (!r.success) return toast.error(r.error || '');
+      if (!r.success) return toast.error(r.error || i18n.t('common.error'));
       setQuestion('');
       setOptions('');
       polls.mutate();
@@ -73,7 +74,7 @@ function Polls({ roomId }: { roomId: string }) {
     setBusy(true);
     try {
       const r = await jitsi.closePoll(openId);
-      if (!r.success) return toast.error(r.error || '');
+      if (!r.success) return toast.error(r.error || i18n.t('common.error'));
       polls.mutate();
     } finally {
       setBusy(false);
@@ -173,7 +174,7 @@ function PollResponder({ roomId }: { roomId: string }) {
     setBusy(true);
     const r = await jitsi.respondPoll(pollId, { selected_options: selected, answer_text: text || undefined, rating_value: rating ?? undefined });
     setBusy(false);
-    if (!r.success) return toast.error(r.error || '');
+    if (!r.success) return toast.error(r.error || i18n.t('common.error'));
     setAnsweredId(pollId);
     toast.success(l('toast_response_submitted'));
   }
@@ -232,7 +233,7 @@ export function RoomScreen({ basePath }: { basePath: '/admin/jitsi-meet' | '/stu
   if (res.isLoading) return <LoadingList rows={3} />;
   if (res.error || !room) return <ErrorState message={res.error?.message || l('room_not_found')} onRetry={() => res.mutate()} />;
 
-  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'User';
+  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || i18n.t('app.jitsi_guest');
   const meetUrl = `https://${jitsiDomain(room.jitsi_domain)}/${encodeURIComponent(room.room_name)}#userInfo.displayName=${encodeURIComponent(JSON.stringify(displayName))}${room.start_audio_only ? '&config.startAudioOnly=true' : ''}`;
   const onlineClassId = room.online_class_id ?? null;
 
@@ -241,7 +242,7 @@ export function RoomScreen({ basePath }: { basePath: '/admin/jitsi-meet' | '/stu
     setEnding(true);
     try {
       const r = await jitsi.endSession(onlineClassId);
-      if (!r.success) return toast.error(r.error || '');
+      if (!r.success) return toast.error(r.error || i18n.t('common.error'));
       toast.success(l('session_ended'));
       router.back();
     } finally {

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { BottomBar } from '@/components/app/layout';
 import { DataList } from '@/components/app/data-list';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { SearchBar } from '@/components/app/search-bar';
@@ -113,12 +114,12 @@ export default function PrintAttendanceSheets() {
           )}
           contentContainerClassName="flex-grow pb-24"
         />
-        <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
+        <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
           <Button onPress={create} disabled={downloading || !selected.size}>
             <Icon as={Printer} className="text-primary-foreground size-4" />
             <Text>{a('print_createBtn')}</Text>
           </Button>
-        </View>
+        </BottomBar>
       </View>
     </>
   );

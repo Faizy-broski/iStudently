@@ -140,12 +140,12 @@ export default function Rooms() {
                     <Text className="text-sm font-semibold" numberOfLines={1}>
                       {room.name}
                     </Text>
-                    <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                    <Text variant="muted" className="text-xs" numberOfLines={1}>
                       {[`${r('capacity_short')} ${room.capacity ?? '—'}`, room.building, room.floor ? `${r('f_floor')} ${room.floor}` : null].filter(Boolean).join(' · ')}
                     </Text>
                   </View>
                   <View className={cn('rounded-full px-2 py-0.5', ROOM_TYPE_TONE[room.room_type])}>
-                    <Text className={cn('text-[11px] font-semibold', ROOM_TYPE_TONE[room.room_type])}>{typeLabel(room.room_type)}</Text>
+                    <Text className={cn('text-xs font-semibold', ROOM_TYPE_TONE[room.room_type])}>{typeLabel(room.room_type)}</Text>
                   </View>
                 </View>
                 <View className="flex-row items-center justify-between">

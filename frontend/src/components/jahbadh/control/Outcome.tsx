@@ -59,13 +59,14 @@ function AlertRow({ alert: a }: { alert: JcAlert }) {
 const DOC_GROUPS: { key: string; docs: JcDoc[] }[] = [
   { key: "lists", docs: ["general_list", "secret_lists", "committee_mirror", "seating_map", "student_cards", "booklet_covers"] },
   { key: "planning", docs: ["timetable", "invigilation"] },
-  { key: "examday", docs: ["attendance_sheet", "envelope_mirror", "delivery_sheet", "minutes_open", "minutes_absence", "minutes_seal", "minutes_incident"] },
-  { key: "outcome", docs: ["results", "honor_board", "certificates"] },
+  { key: "examday", docs: ["attendance_sheet", "envelope_mirror", "delivery_sheet", "minutes_open", "minutes_absence", "minutes_seal", "minutes_incident", "violations_log"] },
+  { key: "outcome", docs: ["results", "honor_board", "certificates", "second_round_list", "quality_report", "comparison"] },
 ]
 const CONFIDENTIAL: JcDoc[] = ["general_list", "secret_lists", "booklet_covers"]
 const NEEDS_DAY: JcDoc[] = ["attendance_sheet", "minutes_open", "minutes_absence", "minutes_seal", "minutes_incident"]
 const PER_COMMITTEE: JcDoc[] = ["committee_mirror", "seating_map", "student_cards", "booklet_covers", "attendance_sheet", "minutes_open", "minutes_absence", "minutes_seal", "minutes_incident", "secret_lists"]
-const NEEDS_UNMASK: JcDoc[] = ["results", "honor_board", "certificates"]
+// The honor board prints before unmasking (names replaced by «يظهر الاسم بعد فك السرية»).
+const NEEDS_UNMASK: JcDoc[] = ["results", "certificates", "second_round_list"]
 const ALL = "__all"
 
 export function PrintsTab({ sessionId, overview: o }: TabProps) {

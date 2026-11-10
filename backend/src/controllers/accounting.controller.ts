@@ -906,6 +906,28 @@ export class AccountingController {
      * Reuses salaryService.getPaySlipByPeriod (normally admin-only via /api/salary) with the
      * identity forced from req.profile — never from client input.
      */
+    /** Self-service list of the caller's own salary records (teacher payslips page); identity from the token only. */
+    async getTeacherOwnSalaryRecords(req: AuthRequest, res: Response) {
+        try {
+            const profile = req.profile
+            if (!profile?.staff_id) return res.status(403).json({ success: false, error: 'Valid staff context required' })
+
+            const campusId = (profile.campus_id || profile.school_id) as string
+            const page = Math.max(1, parseInt(req.query.page as string, 10) || 1)
+            const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50))
+            const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined
+
+            const result = await salaryService.getSalaryRecords(campusId, { staff_id: profile.staff_id, year, page, limit })
+            return res.json({
+                success: true,
+                data: result.data,
+                pagination: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
+            })
+        } catch (error: any) {
+            return handleError(res, 'Error getting own salary records:', error)
+        }
+    }
+
     async getTeacherOwnPayslip(req: AuthRequest, res: Response) {
         try {
             const profile = req.profile

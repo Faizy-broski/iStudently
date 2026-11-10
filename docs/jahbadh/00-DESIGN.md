@@ -313,7 +313,85 @@ The timer is at `/admin/exam-timer` and `/teacher/exam-timer`, on the web and in
 - **Event log** with printable minutes and copy. **Attach** sends the minutes to the committee's exam-day record, where they are visible under *Exam day › Timer minutes*.
 - **Reload continuity**: the full state is kept on the device, so a refresh or crash resumes exactly. Once loaded, the timer runs without a network connection.
 
-## 11. Going live (school side)
+## 11. 2026-2027 memo and Wave 1 (built 2026-11-09)
+
+Source: the client package «منظومة جهبذ 2026-2027 — الحزمة الكاملة» (brief updated 2026-11-02). Gap analysis and Waves 2–7: plan file `~/.claude/plans/merry-mixing-donut.md`.
+
+- **Memo 2026-27.** Generated from Appendix A/B (`scripts/jahbadh-parse-memo.ts`). It adds القرآن الكريم to every grade and التربية الوطنية from grade 7 (a branch of الاجتماعيات in grades 4–6). Grade totals: 760/760/840/1000/1000/1080/1160/1160/1200/1360/1320/1320/1400/1360. The 2024-25 memo is kept; each academic year is linked to its memo (`jg_year_versions`). Setup → «اعتماد مذكرة 2026-2027» previews, then moves the year's marks.
+- **Sub-items** (Appendix B). A component's value is Σ ÷ divisor; it is read-only and shown orange while partial. Second-round branches are included.
+- **Monthly log «سجل الأنشطة الشهري».** Settings: 4 month names per stage («—» hides a month) and «حساب الأنشطة الشهرية» (average / best of average and last month).
+  - Activities follow that setting; applications use the average of the months.
+  - Grades 1–3 English and Maths, and branched applications, are entered month by month.
+  - The grid shows the computed mark with ▲▼●.
+  - A subject-month A4 sheet prints blank or filled.
+- **Rules.**
+  - Art. 122 «جبر الكسور» and «جبر +1» (school toggles).
+  - Art. 51 second-round limit (3 subjects for 3rd secondary).
+  - The decision lists the missing marks.
+  - Incomplete students are not ranked or listed.
+- **Grid** stage selector and «كل الكشف», with a default from Setup; the PDF follows it.
+- **Prints.** Report cards carry school identity only; every Jahbadh print has «تاريخ السحب».
+- **Tests.** Fixtures built from the 14 sample files: all 420 §F4 decisions match. Brief F4 totals use the old memo; F1-1, F1-2 and F1-3b list old numbers. To be raised with the client.
+
+## 12. Wave 2: official outputs and data workflows (built 2026-11-09)
+
+**Official outputs.** Each output has a data view and a PDF (backend `official.service.ts`, `print-official.service.ts`, `print-monthly.service.ts`, `print-layout.ts`; web `components/jahbadh/Official.tsx`; app `features/jahbadh/official.tsx`):
+- **Monthly report card and monthly curve:** «الصحيفة الشهرية» prints two per A4 page, with absence days taken from daily attendance; «المنحنى الشهري» charts each subject month by month.
+- **Teacher's marking sheet «كشف رصد المعلم»:** fixed geometry and a signed, digits-only QR code, ready for OCR in Wave 7. A «درجة الأعمال» column comes before the exam column.
+- **Class lists:** statistics by gender «الإحصائية», the review sheet (7 students per page), top students «كشف الأوائل» (only students who can be ranked), and the final result sheet with a summary and signatures.
+- **Second round:** a timetable, parent notices, and an entry sheet. Students over the Art. 51 limit are left out.
+- **Guardian notices:** a WhatsApp link plus an in-app send.
+- **Report card:**
+  - official B7 fields, the transfer strip, a reference number with a QR code, and signature rows that change by grade;
+  - optional black-and-white, prediction and automatic notes;
+  - stays on one A4 page with 13 subjects (tested);
+  - a ZIP with one PDF per student.
+- **Layout:** every print is centred and scaled to fit A4, with «تاريخ السحب» on each page. «رائد الفصل» shows the assigned homeroom teacher.
+
+**Data workflows** (backend `import`, `attendance`, `rollover` and `homeroom` services; web `NameImport`, `DailyAttendance`, `Rollover` and `SectionDataTools`; app `features/jahbadh/data.tsx`):
+- **Name import:** column detection with a mapping preview. Students are matched by registration number, then national ID, then name.
+- **Daily attendance:** codes غ / ع / ت / ح, pre-filled from platform attendance, with a calendar and a 10-day absence alert. Stage totals feed the report cards.
+- **Rollover:** fills in the platform's year-end rollover plan from each student's decision.
+- **Homeroom teachers:** one per section per year, with read-only access to all of the section's subjects.
+
+**Student fields.** Students gain `enrollment_status` (مستجد / معيد) and `registration_type` (نظامي / منازل), editable on the web forms and in the app. National ID comes from `profiles.national_id`.
+
+## 13. Waves 3, 5 and 6 (built 2026-11-10)
+
+**Wave 3: Exam Control alignment** (migration `jahbadh_wave3_control.sql`).
+- **Exam parts:** `jc_exam_parts`; entry cells are `subject~n`, each checked against its part max. Parts must add up to the subject max and are locked once a score exists. Export writes each part to its grade sub-item.
+- **Students:** national ID is read from `profiles.national_id`, together with مستجد/معيد; alerts for duplicate or missing IDs.
+- **Second round:** built from the Grades decision (Art. 122/51 applied), with a printout and seat numbers. Without the grades module the list is provisional and creating the session is refused.
+- **Honour board:** incomplete students are left out, and the board shows «يظهر الاسم بعد فك السرية» before unmasking.
+- **Absence and appeals:** exam-day absence exports as «غ», and an appeal approved after export is written straight to the grade sheet.
+- **Reports and prints:**
+  - comparison report against a previous session or year, and a school-wide quality table with PDF;
+  - student cards with photo and paper model, 8 per A4;
+  - booklet covers with total in words;
+  - violations log and an audit-sample "error found" column.
+- **Invigilation:** the highest-to-lowest load gap is shown.
+
+**Wave 5: insight and administration** (migration `jahbadh_wave5.sql`).
+- **Infographics:** all 12 reports are computed in `shared-utils/jahbadh/infographics.ts`, ported from the client's offline tool, with a hub. They print as A4-landscape PDF and save as PNG at 3×; the app shares PNG or PDF.
+- **Insight items:** prediction, students on the edge, inflation index, automatic comments (phrase bank), weak sub-items map, what-if simulator (never writes), support plans and absence impact.
+- **Quality and governance:**
+  - entry auditor, which blocks publishing;
+  - approval seal with change log;
+  - verification codes: report cards print a code and QR, and the public page shows valid, outdated or not found;
+  - certificates (5 types), entry progress and reminders, excellence points.
+- **School-wide items:** section allocation, marking fairness, end-of-year report, principal dashboard, workflow home with coordinator and inspector read-only views.
+
+**Wave 6: assessment tools** (migration `jahbadh_wave6.sql`).
+- **Answer keys and marking:**
+  - keys per paper or part and version A/B;
+  - marking with normal / credit-all / excluded questions;
+  - answers entered by secret number (no names before unmasking), then transferred into score entry through blind entry.
+- **Analysis and prints:** item analysis with KR-20, answer similarity, objective mastery, marking fairness, test archive, error slips and bubble sheets (fixed geometry and signed QR, ready for Wave 7 OMR).
+- **#61 quiz auto-grading:** a teacher's quiz writes a scaled score into a grade column (own components only; source `auto_grading`).
+
+**Not built:** Wave 4 (Ministry transfer) and Wave 7 (OCR/OMR/assistant).
+
+## 14. Going live (school side)
 
 1. Run `jahbadh_grades.sql`, `jahbadh_grades_seed.sql`, `jahbadh_report_cards.sql`, `jahbadh_analytics.sql`, then `jahbadh_control.sql`, in the database. Set `JC_QR_SECRET` on the server (any long random string) so QR signatures do not depend on another key.
 2. Activate the **Jahbadh Grades** plugin for the school.

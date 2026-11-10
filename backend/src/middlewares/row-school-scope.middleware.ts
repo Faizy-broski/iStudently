@@ -3,6 +3,7 @@ import { NextFunction, Response } from 'express'
 import { supabase } from '../config/supabase'
 import { campusIdsAllowed } from '../utils/campus-validation'
 import { AuthRequest } from './auth.middleware'
+import { teacherSectionIds } from './own-course-period.middleware'
 
 /**
  * For routes that act on a row by id (no school_id in the request): load the row's school and
@@ -72,9 +73,9 @@ export function requireStudentAccess(param = 'studentId') {
     if (role === 'super_admin') return next()
     const id = req.params[param]
     try {
-      const { data, error } = await supabase.from('students').select('id, school_id, profile_id').eq('id', id).maybeSingle()
+      const { data, error } = await supabase.from('students').select('id, school_id, profile_id, section_id').eq('id', id).maybeSingle()
       if (error) throw error
-      const row = data as { id: string; school_id: string | null; profile_id: string | null } | null
+      const row = data as { id: string; school_id: string | null; profile_id: string | null; section_id: string | null } | null
       const notFound = () => res.status(404).json({ success: false, error: 'Not found' })
       if (!row?.school_id || !(await campusIdsAllowed(req.profile?.school_id, [row.school_id]))) return notFound()
       if (role === 'student') return row.id === req.profile?.student_id || row.profile_id === req.profile?.id ? next() : notFound()
@@ -87,6 +88,12 @@ export function requireStudentAccess(param = 'studentId') {
           .eq('parent.profile_id', req.profile?.id)
           .maybeSingle()
         return link ? next() : notFound()
+      }
+      // Teachers: only students of sections they teach.
+      if (role === 'teacher') {
+        const staffId = req.profile?.staff_id
+        const own = staffId ? await teacherSectionIds(staffId) : []
+        return row.section_id && own.includes(row.section_id) ? next() : notFound()
       }
       return next()
     } catch (err) {

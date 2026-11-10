@@ -63,7 +63,7 @@ export function GrievanceListScreen({ isAdmin, detailHref, submitHref }: { isAdm
         renderItem={(g) => (
           <Pressable onPress={() => router.push(detailHref(g.id))} className="gap-2 px-4 py-3 active:opacity-70">
             <View className="flex-row flex-wrap items-center gap-1.5">
-              <Text className="text-muted-foreground font-mono text-[11px]">{g.complaint_number}</Text>
+              <Text className="text-muted-foreground font-mono text-xs">{g.complaint_number}</Text>
               <PriorityPill priority={g.priority} />
               {g.is_confidential ? <OutlinePill label={l('confidential')} /> : null}
               {g.is_anonymous ? <OutlinePill label={l('anonymous')} /> : null}

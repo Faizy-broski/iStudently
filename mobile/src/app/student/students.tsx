@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { AlertCircle, Mail, MapPin, School } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { DetailHeader, IconTile } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -20,7 +21,7 @@ const longDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateStrin
 function Row({ label, value }: { label: string; value?: string | null }) {
   return (
     <View className="border-info-soft dark:border-border gap-0.5 border-b px-4 py-2.5 last:border-b-0">
-      <Text className="text-muted-foreground text-[11px]">{label}</Text>
+      <Text className="text-muted-foreground text-xs">{label}</Text>
       <Text className="text-sm font-medium" selectable>
         {value || '—'}
       </Text>

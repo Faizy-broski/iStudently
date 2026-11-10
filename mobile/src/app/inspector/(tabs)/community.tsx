@@ -89,7 +89,7 @@ export default function InspectorCommunity() {
                   <View key={b.id} className={i < broadcasts.length - 1 ? 'border-info-soft dark:border-border gap-0.5 border-b px-4 py-3' : 'gap-0.5 px-4 py-3'}>
                     <Text className="text-sm font-semibold">{b.title}</Text>
                     <Text className="text-muted-foreground text-xs">{b.body}</Text>
-                    <Text className="text-muted-foreground mt-1 text-[11px]">{`${b.inspector ? `${b.inspector.first_name} ${b.inspector.last_name} · ` : ''}${formatDateTime(b.created_at)}`}</Text>
+                    <Text className="text-muted-foreground mt-1 text-xs">{`${b.inspector ? `${b.inspector.first_name} ${b.inspector.last_name} · ` : ''}${formatDateTime(b.created_at)}`}</Text>
                   </View>
                 ))
               )}

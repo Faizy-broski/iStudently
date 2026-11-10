@@ -21,7 +21,7 @@ export function mediaApi(api: ApiClient) {
     uploadRecording: (file: UploadFile) => {
       const form = new FormData()
       form.append('file', file as Blob)
-      return api.post<{ url: string }>('/media/upload', form, { timeout: 120_000 })
+      return api.post<{ url: string; path: string; mime_type: string; size: number }>('/media/upload', form, { timeout: 120_000 })
     },
     uploadImage: (file: UploadFile) => {
       const form = new FormData()

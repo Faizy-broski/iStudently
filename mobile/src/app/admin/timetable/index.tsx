@@ -4,7 +4,8 @@ import { router, Stack } from 'expo-router';
 import { Calendar, ChevronLeft, ChevronRight, DoorOpen, Download, FileText, ListChecks, Plus, RefreshCw, Settings, Sparkles, Upload, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { useSWRConfig } from 'swr';
 
 import { colors } from '@/lib/colors';
@@ -245,14 +246,14 @@ export default function Timetable() {
                               {e ? (
                                 <View>
                                   <View className="flex-row items-start justify-between gap-1">
-                                    <Text className="text-primary flex-1 text-[11px] font-medium" numberOfLines={1}>
+                                    <Text className="text-primary flex-1 text-xs font-medium" numberOfLines={1}>
                                       {e.subject_name}
                                     </Text>
                                     <Pressable onPress={() => remove(e)} hitSlop={6} accessibilityLabel={t('common.delete')}>
                                       <Icon as={X} className="text-muted-foreground size-3" />
                                     </Pressable>
                                   </View>
-                                  <Text className="text-muted-foreground text-[10px]" numberOfLines={1}>
+                                  <Text className="text-muted-foreground text-2xs" numberOfLines={1}>
                                     {e.teacher_name}
                                   </Text>
                                 </View>

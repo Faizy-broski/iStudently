@@ -1,7 +1,8 @@
 import { router, Stack } from 'expo-router';
 import { BookOpen, Info, Settings, Wallet } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { useSWRConfig } from 'swr';
 
 import { HeaderButton, HeroCard, StatTile, StatTiles } from '@/components/app/layout';

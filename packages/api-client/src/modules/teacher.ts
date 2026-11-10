@@ -2,7 +2,7 @@
 import type { ApiClient } from '../client'
 import { qs } from '../query'
 import type { CoursePeriod } from './admin/courses'
-import type { Payslip } from './admin/salary'
+import type { Payslip, SalaryRecord } from './admin/salary'
 
 const id = (v: string) => encodeURIComponent(v)
 
@@ -153,6 +153,8 @@ export function teacherApi(api: ApiClient) {
     ownSalaries: (campusId?: string, academicYear?: string) => api.get<OwnSalary[]>(`/accounting/staff/salaries${qs({ campus_id: campusId, academic_year: academicYear })}`),
     ownPayments: (campusId?: string, academicYear?: string) => api.get<OwnPayment[]>(`/accounting/staff/payments${qs({ campus_id: campusId, academic_year: academicYear })}`),
     myPayslip: (month: number, year: number) => api.get<Payslip>(`/accounting/staff/payslip${qs({ month, year })}`),
+    /** The caller's own salary records (payslips list); the server takes identity from the token. */
+    mySalaryRecords: (opts: { year?: number; page?: number; limit?: number } = {}) => api.get<SalaryRecord[]>(`/accounting/staff/salary-records${qs(opts)}`),
     requestAdvance: (body: { amount: number; reason?: string }) => api.post<unknown>('/accounting/staff/advances', body),
   }
 }

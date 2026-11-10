@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { CalendarRange, FileDown, ListChecks, Printer } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FormSection } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';

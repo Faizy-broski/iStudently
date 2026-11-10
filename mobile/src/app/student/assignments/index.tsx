@@ -2,7 +2,8 @@ import { router, Stack } from 'expo-router';
 import { ClipboardList } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 
 import { IconTile } from '@/components/app/layout';
 import { ListCard } from '@/components/app/panel';

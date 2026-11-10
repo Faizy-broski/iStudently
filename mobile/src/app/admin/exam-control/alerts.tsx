@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FormSection } from '@/components/app/layout';
 import { LoadingList } from '@/components/app/states';
@@ -57,7 +58,7 @@ function AlertRow({ a }: { a: JcAlert }) {
         <Text className={`text-sm font-semibold ${a.status === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>{String(a.count)}</Text>
       </View>
       {open && a.details?.length ? (
-        <Text variant="muted" className="ms-6 text-[11px]">
+        <Text variant="muted" className="ms-6 text-xs">
           {a.details.join('، ')}
         </Text>
       ) : null}

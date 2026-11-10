@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { CalendarDays, Clock, IdCard, Lock, Mail, Phone, QrCode, Save, Shield, User } from 'lucide-react-native';
+import { CalendarDays, Clock, Download, IdCard, Lock, Mail, Phone, QrCode, Save, Share2, Shield, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Share, View } from 'react-native';
@@ -19,6 +19,8 @@ import { auth } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { env } from '@/lib/env';
 import { formatDate, formatDateTime } from '@/lib/format';
+import { qrGifBase64 } from '@/lib/print';
+import { shareBase64File } from '@/lib/share-file';
 import { cn } from '@/lib/utils';
 
 /** The student's account: phone, password, account details and identity QR (web: /student/profile). */
@@ -26,11 +28,12 @@ export default function StudentProfile() {
   const { t } = useTranslation();
   const k = (key: string) => t(`app.st_pf_${key}`);
   const toast = useToast();
-  const { me } = useSession();
+  const { me, refreshMe } = useSession();
   const profile = me.status === 'ready' ? me.me.profile : null;
   const pid = profile?.id ?? null;
   const last = useApi(pid ? ['portal', 'last-login', pid] : null, ([, , id]) => auth.lastLogin(id as string));
-  const [phone, setPhone] = useState('');
+  // null until edited: the field shows the saved number.
+  const [phone, setPhone] = useState<string | null>(null);
   const [pw, setPw] = useState({ next: '', confirm: '' });
   const [saving, setSaving] = useState(false);
   const [changing, setChanging] = useState(false);
@@ -43,10 +46,12 @@ export default function StudentProfile() {
 
   async function save() {
     setSaving(true);
-    const r = await auth.updateProfile({ phone });
+    const r = await auth.updateProfile({ phone: phone ?? profile?.phone ?? '' });
     setSaving(false);
     if (!r.success) return toast.error(r.error || k('save_failed'));
     toast.success(k('saved'));
+    await refreshMe();
+    setPhone(null);
   }
   async function changePassword() {
     if (pw.next.length < 8) return toast.error(k('pw_short'));
@@ -82,7 +87,7 @@ export default function StudentProfile() {
             <Text className="text-muted-foreground mt-1 text-xs">{k('email_hint')}</Text>
           </Field>
           <Field icon={Phone} label={k('phone')}>
-            <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder={k('phone_ph')} />
+            <Input value={phone ?? profile.phone ?? ''} onChangeText={setPhone} keyboardType="phone-pad" placeholder={k('phone_ph')} />
           </Field>
           <Button onPress={save} disabled={saving} className={female ? 'bg-chart-6' : undefined}>
             <Icon as={Save} className="size-4 text-white" />
@@ -109,7 +114,7 @@ export default function StudentProfile() {
           <InfoRow icon={IdCard} label={k('student_id')} value={profile.student_id ? `${profile.student_id.slice(0, 8)}...` : '—'} />
           <InfoRow icon={Shield} label={k('role')} value={role} />
           <InfoRow icon={CalendarDays} label={k('since')} value={profile.created_at ? formatDate(profile.created_at) : '—'} />
-          <InfoRow icon={Clock} label={k('last_login')} value={last.data?.last_sign_in ? formatDateTime(last.data.last_sign_in) : '—'} last />
+          <InfoRow icon={Clock} label={k('last_login')} value={last.data?.last_sign_in ? formatDateTime(last.data.last_sign_in) : last.error ? k('last_login_unavailable') : '—'} last />
         </Panel>
 
         <FormSection icon={QrCode} title={k('qr')} description={k('qr_desc')}>
@@ -119,7 +124,12 @@ export default function StudentProfile() {
             </View>
             <Text className="text-sm font-semibold">{`${name} · ${role}`}</Text>
             <Button variant="outline" onPress={() => Share.share({ message: qr })}>
+              <Icon as={Share2} className="size-4" />
               <Text>{t('app.qr_share')}</Text>
+            </Button>
+            <Button variant="outline" onPress={() => shareBase64File(`qr-${profile.id.slice(0, 8)}.gif`, qrGifBase64(qr), 'image/gif')}>
+              <Icon as={Download} className="size-4" />
+              <Text>{t('app.qr_save_image')}</Text>
             </Button>
           </View>
         </FormSection>

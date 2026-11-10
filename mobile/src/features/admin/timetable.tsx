@@ -81,7 +81,7 @@ export function TimetableGrid({
   const periodHead = (p: BellPeriod) => (
     <View>
       <Text className="text-xs font-semibold">{periodShort(p)}</Text>
-      <Text className="text-muted-foreground text-[10px]">{periodTime(p, tt('unit_min'))}</Text>
+      <Text className="text-muted-foreground text-2xs">{periodTime(p, tt('unit_min'))}</Text>
     </View>
   );
   const dayHead = (d: TtDay, i: number) => (
@@ -541,7 +541,7 @@ export function TimetableBuilder({
                 {e ? (
                   <View className="gap-0.5">
                     <View className="flex-row items-start justify-between gap-1">
-                      <Text className="text-primary flex-1 text-[11px] font-medium" numberOfLines={1}>
+                      <Text className="text-primary flex-1 text-xs font-medium" numberOfLines={1}>
                         {e.subject_name}
                       </Text>
                       <Pressable onPress={() => toggleLock(e)} disabled={locking === e.id} hitSlop={6} accessibilityLabel={isLocked ? a('unlock_cell') : a('lock_cell')}>
@@ -550,11 +550,11 @@ export function TimetableBuilder({
                     </View>
                     <View className="flex-row items-center gap-0.5">
                       <Icon as={User} className="text-muted-foreground size-2.5" />
-                      <Text className="text-muted-foreground flex-1 text-[10px]" numberOfLines={1}>
+                      <Text className="text-muted-foreground flex-1 text-2xs" numberOfLines={1}>
                         {e.teacher_name}
                       </Text>
                     </View>
-                    {e.room_number ? <Text className="text-muted-foreground text-[10px]">{e.room_number}</Text> : null}
+                    {e.room_number ? <Text className="text-muted-foreground text-2xs">{e.room_number}</Text> : null}
                     {e.generated_by_job_id ? (
                       <View className="flex-row items-center gap-0.5 self-start rounded bg-chart-6/10 px-1 ">
                         <Icon as={Sparkles} className="size-2.5 text-chart-6 " />

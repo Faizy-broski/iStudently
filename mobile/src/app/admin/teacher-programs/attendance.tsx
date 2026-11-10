@@ -25,10 +25,11 @@ import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 type Row = { student_id: string; student_name: string; student_number: string; status: ClassAttendanceStatus; remarks?: string };
+// `letter`: app.att_letter_* (P / A / L in English).
 const CHOICES: { status: ClassAttendanceStatus; key: string; letter: string; on: string }[] = [
-  { status: 'present', key: 'presentColumn', letter: 'P', on: 'bg-success border-success' },
-  { status: 'absent', key: 'absentColumn', letter: 'A', on: 'bg-destructive border-destructive' },
-  { status: 'late', key: 'tardyColumn', letter: 'L', on: 'bg-warning border-warning' },
+  { status: 'present', key: 'presentColumn', letter: 'att_letter_present', on: 'bg-success border-success' },
+  { status: 'absent', key: 'absentColumn', letter: 'att_letter_absent', on: 'bg-destructive border-destructive' },
+  { status: 'late', key: 'tardyColumn', letter: 'att_letter_late', on: 'bg-warning border-warning' },
 ];
 
 /**
@@ -96,7 +97,7 @@ export default function AdminTakeAttendance() {
 
   useEffect(() => {
     if (!records.data) return;
-    setRows(records.data.map((r) => ({ student_id: r.student_id, student_name: r.student_name || 'Unknown Student', student_number: r.student_number || '', status: r.status, remarks: r.remarks ?? undefined })));
+    setRows(records.data.map((r) => ({ student_id: r.student_id, student_name: r.student_name || t('app.att_unknown_student'), student_number: r.student_number || '', status: r.status, remarks: r.remarks ?? undefined })));
     setDirty(false);
   }, [records.data]);
   // Web: once the checkpoint data arrives, students not back are suggested absent (only those still "present").
@@ -224,13 +225,13 @@ export default function AdminTakeAttendance() {
                     </Text>
                     {sel ? (
                       <Text variant="muted" className="text-xs">
-                        {`${sel.subject_name ?? ''} · P${sel.period_number} · ${sel.start_time?.substring(0, 5)}–${sel.end_time?.substring(0, 5)}${sel.room_number ? ` · ${sel.room_number}` : ''}`}
+                        {`${sel.subject_name ?? ''} · ${t('app.att_period_short', { n: sel.period_number })} · ${sel.start_time?.substring(0, 5)}–${sel.end_time?.substring(0, 5)}${sel.room_number ? ` · ${sel.room_number}` : ''}`}
                       </Text>
                     ) : null}
                   </View>
                   <Pressable onPress={() => setDate(todayYmd())} className={cn('flex-row items-center gap-1 rounded-full px-2.5 py-1', isToday ? 'bg-info-soft' : 'bg-muted')} accessibilityRole="button">
                     <Icon as={CalendarDays} className={cn('size-3.5', isToday ? 'text-brand dark:text-brand-secondary' : 'text-muted-foreground')} />
-                    <Text className={cn('text-[11px] font-semibold', isToday ? 'text-brand dark:text-brand-secondary' : 'text-muted-foreground')}>{t('app.att_today')}</Text>
+                    <Text className={cn('text-xs font-semibold', isToday ? 'text-brand dark:text-brand-secondary' : 'text-muted-foreground')}>{t('app.att_today')}</Text>
                   </Pressable>
                 </View>
                 <DateField label={a('dateLabel')} value={date} onChange={(d) => d && setDate(d)} />
@@ -240,9 +241,9 @@ export default function AdminTakeAttendance() {
                     value={activeClass}
                     onChange={setClassId}
                     placeholder={schedule.isLoading ? a('loadingClasses') : a('classPlaceholder')}
-                    options={classes.map((c) => ({ value: c.id, label: `P${c.period_number} — ${c.subject_name ?? ''} · ${c.section_name ?? ''}` }))}
+                    options={classes.map((c) => ({ value: c.id, label: `${t('app.att_period_short', { n: c.period_number })} — ${c.subject_name ?? ''} · ${c.section_name ?? ''}` }))}
                   />
-                  <Pressable onPress={() => records.mutate()} disabled={!activeClass} className="bg-info-soft size-11 items-center justify-center rounded-full" accessibilityLabel="Refresh">
+                  <Pressable onPress={() => records.mutate()} disabled={!activeClass} className="bg-info-soft size-11 items-center justify-center rounded-full" accessibilityLabel={t('app.att_refresh')}>
                     <Icon as={RefreshCw} className="text-brand dark:text-brand-secondary size-4" />
                   </Pressable>
                 </View>
@@ -254,6 +255,11 @@ export default function AdminTakeAttendance() {
                     {mp?.post_start_date && mp?.post_end_date ? ta('postingWindow', { start: mp.post_start_date, end: mp.post_end_date }) : ta('postingWindowHint')}
                   </Text>
                   {mp ? <Text className="text-muted-foreground text-xs">{ta('markingPeriodLabel', { type: mp.mp_type })}</Text> : null}
+                  {!allowEdit ? (
+                    <Text className="text-warning text-xs font-medium">
+                      {date > todayYmd() ? t('app.att_ro_future') : !mp ? t('app.att_ro_no_period') : t('app.att_ro_outside_window')}
+                    </Text>
+                  ) : null}
                 </View>
               ) : null}
               {(teacherId || bySection) && rows.length ? (
@@ -310,7 +316,7 @@ export default function AdminTakeAttendance() {
                     <Text className="text-sm font-semibold" numberOfLines={1}>
                       {r.student_name}
                     </Text>
-                    <Text variant="muted" className="text-[11px]">{`#${rows.indexOf(r) + 1}${r.student_number ? ` · ${r.student_number}` : ''}`}</Text>
+                    <Text variant="muted" className="text-xs">{`#${rows.indexOf(r) + 1}${r.student_number ? ` · ${r.student_number}` : ''}`}</Text>
                     {checkpoint && eeMap.get(r.student_id) ? (
                       <View className="mt-1 flex-row flex-wrap gap-1">
                         {eeMap.get(r.student_id)?.last_record_type ? (
@@ -341,7 +347,7 @@ export default function AdminTakeAttendance() {
                         accessibilityLabel={a(c.key)}
                         accessibilityState={{ checked: on }}
                         className={cn('size-9 items-center justify-center rounded-full border', on ? c.on : 'border-border bg-card')}>
-                        <Text className={cn('text-xs font-bold', on ? 'text-white' : 'text-muted-foreground')}>{c.letter}</Text>
+                        <Text className={cn('text-xs font-bold', on ? 'text-white' : 'text-muted-foreground')}>{t(`app.${c.letter}`)}</Text>
                       </Pressable>
                     );
                   })}

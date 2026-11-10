@@ -64,6 +64,8 @@ const baseSchema = z.object({
   mother_name: z.string().trim().max(120, 'app.v_too_long'),
   place_of_birth: z.string().trim().max(120, 'app.v_too_long'),
   registration_number: z.string().trim().max(40, 'app.v_too_long'),
+  enrollment_status: z.enum(['مستجد', 'معيد', '']),
+  registration_type: z.enum(['نظامي', 'منازل', '']),
   email: z.union([z.literal(''), z.string().trim().email(`${V}email_invalid`)]),
   phone: z.string().trim().max(30, 'app.v_too_long'),
   address: z.string().trim().max(300, 'app.v_too_long'),
@@ -131,6 +133,8 @@ function fromStudent(s: Student): FormValues {
     mother_name: s.mother_name ?? '',
     place_of_birth: s.place_of_birth ?? '',
     registration_number: s.registration_number ?? '',
+    enrollment_status: s.enrollment_status === 'مستجد' || s.enrollment_status === 'معيد' ? s.enrollment_status : '',
+    registration_type: s.registration_type === 'نظامي' || s.registration_type === 'منازل' ? s.registration_type : '',
     email: s.profile?.email ?? '',
     phone: s.profile?.phone ?? '',
     address: personal.address ?? '',
@@ -187,7 +191,7 @@ export default function StudentForm() {
     resolver: (values, ctx, opts) => zodResolver(buildSchema(rules.current.isRequired, rules.current.gradeHasSections))(values, ctx, opts),
     defaultValues: {
       first_name: '', father_name: '', grandfather_name: '', last_name: '', gender: '', date_of_birth: '', national_id: '',
-      nationality: '', mother_name: '', place_of_birth: '', registration_number: '',
+      nationality: '', mother_name: '', place_of_birth: '', registration_number: '', enrollment_status: '', registration_type: '',
       email: '', phone: '', address: '', student_number: suggestNumber(), grade_level_id: '', section_id: '', admission_date: '',
       blood_group: '', allergies: '', medical_notes: '', username: '', password: '', photo: null,
     },
@@ -206,7 +210,7 @@ export default function StudentForm() {
     setContacts(ec.map((c) => ({ name: c.name ?? '', relationship: c.relationship ?? '', phone: c.phone ?? '', address: c.address ?? '' })));
   }
 
-  const [gradeId, photo, gender] = useWatch({ control, name: ['grade_level_id', 'photo', 'gender'] });
+  const [gradeId, photo, gender, enrollmentStatus, registrationType] = useWatch({ control, name: ['grade_level_id', 'photo', 'gender', 'enrollment_status', 'registration_type'] });
   const sections = useApi(gradeId ? ['admin', 'sections', campusId ?? 'school', gradeId] : null, () => adminAcademics.sections(campusId, gradeId));
   const gradeHasSections = (sections.data?.length ?? 0) > 0;
   // Latest rules for the resolver (read at validation time), updated after render.
@@ -251,6 +255,8 @@ export default function StudentForm() {
         mother_name: editing ? f.mother_name : f.mother_name || undefined,
         place_of_birth: editing ? f.place_of_birth : f.place_of_birth || undefined,
         registration_number: editing ? f.registration_number : f.registration_number || undefined,
+        enrollment_status: editing ? f.enrollment_status : f.enrollment_status || undefined,
+        registration_type: editing ? f.registration_type : f.registration_type || undefined,
         grade_level_id: f.grade_level_id,
         grade_level: grade?.name,
         section_id: f.section_id || (editing ? null : undefined),
@@ -393,6 +399,24 @@ export default function StudentForm() {
             <TextField control={control} name="mother_name" label={tf('mother_name')} />
             <TextField control={control} name="place_of_birth" label={tf('place_of_birth')} />
             <TextField control={control} name="registration_number" label={tf('registration_number')} />
+            <Label>{tf('enrollment_status')}</Label>
+            <FilterChips<'مستجد' | 'معيد'>
+              value={enrollmentStatus as 'مستجد' | 'معيد'}
+              onChange={(v) => setValue('enrollment_status', v === enrollmentStatus ? '' : v, { shouldDirty: true })}
+              options={[
+                { value: 'مستجد', label: 'مستجد' },
+                { value: 'معيد', label: 'معيد' },
+              ]}
+            />
+            <Label>{tf('registration_type')}</Label>
+            <FilterChips<'نظامي' | 'منازل'>
+              value={registrationType as 'نظامي' | 'منازل'}
+              onChange={(v) => setValue('registration_type', v === registrationType ? '' : v, { shouldDirty: true })}
+              options={[
+                { value: 'نظامي', label: 'نظامي' },
+                { value: 'منازل', label: 'منازل' },
+              ]}
+            />
             <TextField control={control} name="email" label={tf('email') + req('email')} hint={editing ? undefined : t('school.students.add_student.help_email_optional')} keyboardType="email-address" autoCapitalize="none" />
             <TextField control={control} name="phone" label={tf('phone_number') + req('phoneNumber')} keyboardType="phone-pad" />
             <TextField control={control} name="address" label={tf('address') + req('address')} multiline />

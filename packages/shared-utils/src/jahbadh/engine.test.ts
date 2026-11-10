@@ -6,6 +6,8 @@ import {
   estimateFor,
   fmtMark,
   JG_DISTRIBUTION,
+  JG_DISTRIBUTION_VERSION,
+  JG_DISTRIBUTIONS,
   jgComponentsOf,
   jgGrade,
   jgRuleOf,
@@ -30,24 +32,34 @@ function cellsOf(subject: JgSubjectDef, values: (number | null)[]): Record<strin
   return Object.fromEntries(comps.map((c, i) => [c.id, { value: values[i] ?? null }]))
 }
 
-describe('official distribution (Appendix A)', () => {
-  it('grade totals match the memo', () => {
+describe('official distribution 2026-2027 (Appendix A)', () => {
+  it('is the current memo year', () => {
+    expect(JG_DISTRIBUTION_VERSION).toBe('2026-2027')
+    expect(JG_DISTRIBUTION).toBe(JG_DISTRIBUTIONS['2026-2027'])
+  })
+
+  it('grade totals match the memo (readme «الجديد في نسخة 2026-2027»)', () => {
     expect(JG_DISTRIBUTION.map(gradeTotal)).toEqual([
-      720, 720, 840, 920, 920, 1000, 1080, 1080, 1120, 1240, 1200, 1200, 1280, 1240,
+      760, 760, 840, 1000, 1000, 1080, 1160, 1160, 1200, 1360, 1320, 1320, 1400, 1360,
     ])
   })
 
-  it('secondary semesters are 620 (grade 10) and 600 (grade 11)', () => {
-    expect([stageTotal(jgGrade(10)!, 0), stageTotal(jgGrade(10)!, 1)]).toEqual([620, 620])
-    for (const code of [11, 12]) expect([stageTotal(jgGrade(code)!, 0), stageTotal(jgGrade(code)!, 1)]).toEqual([600, 600])
+  it('secondary semesters are 680 (grade 10) and 660 (grade 11, both tracks)', () => {
+    expect([stageTotal(jgGrade(10)!, 0), stageTotal(jgGrade(10)!, 1)]).toEqual([680, 680])
+    for (const code of [11, 12]) expect([stageTotal(jgGrade(code)!, 0), stageTotal(jgGrade(code)!, 1)]).toEqual([660, 660])
   })
 
-  it('taught subjects per grade', () => {
-    expect(jgGrade(1)!.subjects.map((s) => s.key)).toEqual(['islamic', 'arabic', 'english', 'math', 'computer'])
-    expect(jgGrade(3)!.subjects).toHaveLength(6)
-    expect(jgGrade(7)!.subjects).toHaveLength(9)
-    expect(jgGrade(14)!.subjects).toHaveLength(10)
-    expect(jgGrade(10)!.subjects).toHaveLength(11)
+  it('taught subjects per grade: Al-Quran everywhere, «التربية الوطنية» from grade 7', () => {
+    expect(jgGrade(1)!.subjects.map((s) => s.key)).toEqual(['quran', 'islamic', 'arabic', 'english', 'computer', 'math'])
+    expect(jgGrade(3)!.subjects).toHaveLength(7)
+    expect(jgGrade(7)!.subjects).toHaveLength(11)
+    expect(jgGrade(10)!.subjects).toHaveLength(13)
+    expect(jgGrade(14)!.subjects).toHaveLength(12)
+    for (const g of JG_DISTRIBUTION) {
+      expect(g.subjects[0].key).toBe('quran')
+      expect(g.subjects.some((s) => s.key === 'national')).toBe(g.code >= 7)
+    }
+    expect(jgGrade(4)!.subjects.find((s) => s.key === 'social')!.name).toBe('الاجتماعيات (التاريخ والجغرافيا والتربية الوطنية)')
   })
 
   it('grades 1–3 have no exam components; every other subject has some', () => {
@@ -71,6 +83,48 @@ describe('official distribution (Appendix A)', () => {
     expect(jgGrade(7)!.stageNames[2]).toBeNull()
     expect(jgGrade(7)!.subjects.every((s) => s.stages[2].length === 0)).toBe(true)
     expect(jgGrade(9)!.subjects.every((s) => s.stages[2].length > 0)).toBe(true)
+  })
+
+  it('Article 51 limit: 3 subjects for the secondary certificate only', () => {
+    expect(JG_DISTRIBUTION.map((g) => g.maxRound2Subjects)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3])
+  })
+
+  it('grades 4–5 rule text carries the 75% attendance sentence', () => {
+    for (const code of [4, 5]) expect(jgGrade(code)!.ruleText).toContain('حضور 75% من أيام الدراسة')
+  })
+
+  it('every sub-item set adds up to its component after the divisor (F1-3b)', () => {
+    let sets = 0
+    for (const g of JG_DISTRIBUTION) {
+      for (const s of g.subjects) {
+        for (const c of s.stages.flat()) {
+          if (!c.subItems) continue
+          sets++
+          expect(sum(c.subItems.map((x) => x.max)) / (c.divisor ?? 1)).toBeCloseTo(c.max, 9)
+        }
+        if (s.round2SubItems) {
+          const examMax = sum(s.stages.flat().filter((c) => c.exam).map((c) => c.max))
+          expect(sum(s.round2SubItems.map((x) => x.max))).toBeCloseTo(examMax, 9)
+        }
+      }
+    }
+    expect(sets).toBeGreaterThan(400)
+  })
+
+  it('monthly entry: activities, applications/written tests, grades 1–3 English and Maths items', () => {
+    const g1 = jgGrade(1)!
+    expect(g1.subjects.find((s) => s.key === 'english')!.stages[0].map((c) => c.monthly)).toEqual(['items', 'items'])
+    expect(g1.subjects.find((s) => s.key === 'computer')!.stages[0].map((c) => c.monthly)).toEqual(['activity', 'applications'])
+    const math7 = jgGrade(7)!.subjects.find((s) => s.key === 'math')!.stages[0]
+    expect(math7.map((c) => c.monthly ?? null)).toEqual(['activity', 'applications', null, null])
+    for (const g of JG_DISTRIBUTION) for (const s of g.subjects) for (const c of s.stages.flat()) if (c.exam) expect(c.monthly).toBeUndefined()
+  })
+
+  it('the 2024-2025 memo is kept for old years', () => {
+    expect(JG_DISTRIBUTIONS['2024-2025'].map(gradeTotal)).toEqual([
+      720, 720, 840, 920, 920, 1000, 1080, 1080, 1120, 1240, 1200, 1200, 1280, 1240,
+    ])
+    expect(jgGrade(1, '2024-2025')!.subjects.map((s) => s.key)).toEqual(['islamic', 'arabic', 'english', 'math', 'computer'])
   })
 })
 

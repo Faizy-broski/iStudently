@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { TrendingUp, Users } from 'lucide-react-native';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { Card, CardContent } from '@/components/ui/card';

@@ -83,20 +83,24 @@ export default function JahbadhResults() {
                   <Text className="text-sm font-semibold" numberOfLines={1}>
                     {s.student.name}
                   </Text>
-                  <Text variant="muted" className="text-[11px]">
-                    {`${fmtMark(s.total) || '—'} / ${fmtMark(s.max || grandMax)} · ${fmtPct(s.pct, 1) || '—'}${s.estimate ? ` · ${s.estimate}` : ''}${s.rank ? ` · ${t('grades.rank')} ${s.rank}` : ''}`}
+                  <Text variant="muted" className="text-xs">
+                    {`${fmtMark(s.total) || '—'} / ${fmtMark(s.max || grandMax)} · ${fmtPct(s.pct, 1) || '—'}${s.estimate ? ` · ${s.estimate}` : ''} · ${t('grades.rank')} ${s.rank ?? '—'}`}
                   </Text>
                 </View>
               </View>
               <View className="flex-row flex-wrap gap-1.5">
                 {subjects.map((sub) => {
-                  const x = s.subjects[sub.id]?.result;
+                  const entry = s.subjects[sub.id];
+                  const x = entry?.result;
                   if (!x || x.final === null) return null;
-                  const tone = x.result === 'fail' ? 'destructive' : x.result === 'round2' ? 'warning' : 'muted';
-                  return <StatusChip key={sub.id} label={`${sub.short_name} ${fmtMark(x.final)}`} tone={tone} />;
+                  const tone = x.result === 'fail' ? 'destructive' : x.result === 'round2' ? 'warning' : x.result === 'pass_jabr' ? 'success' : 'muted';
+                  return <StatusChip key={sub.id} label={`${sub.short_name} ${fmtMark(x.final)}${entry.jabr ? ' (+1)' : ''}`} tone={tone} />;
                 })}
               </View>
-              <StatusChip label={s.decision} tone={chipTone(decisionTone(s.decision))} className="self-start" />
+              {s.decision ? <StatusChip label={s.decision} tone={chipTone(decisionTone(s.decision))} className="self-start" /> : null}
+              {s.missing_text ? <Text variant="muted" className="text-xs">{s.missing_text}</Text> : null}
+              {s.over_round2_limit ? <Text className="text-destructive text-xs">{t('grades.overRound2Limit')}</Text> : null}
+              {s.incomplete ? <Text variant="muted" className="text-xs">{t('grades.unrankedHint')}</Text> : null}
             </View>
           )}
         />

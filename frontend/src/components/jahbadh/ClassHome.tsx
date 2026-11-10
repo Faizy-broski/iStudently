@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect } from "react"
 import { useTranslations } from "next-intl"
 import useSWR from "swr"
-import { BarChart3, BookOpen, FileBarChart, Palette, ScrollText, FileText, Lock, Repeat2, Settings2, SlidersHorizontal, TableProperties, Unlock } from "lucide-react"
+import { BarChart3, BookOpen, CalendarRange, FileBarChart, Palette, ScrollText, FileText, Lock, Repeat2, Settings2, SlidersHorizontal, TableProperties, Unlock } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { jgApi, openJgPdf } from "@/lib/api/jahbadh-grades"
 import { fmtMark } from "@/lib/jahbadh"
 import { cn } from "@/lib/utils"
 import { JgBlocked, SectionPicker, useJgContext, useJgSections, useSectionParam, type JgBase } from "./shared"
+import { SectionDataTools } from "./SectionDataTools"
 
 /** Class home (brief B6-1): section, system and rule text, taught subjects only, reports. */
 export function ClassHome({ base }: { base: JgBase }) {
@@ -131,6 +132,9 @@ export function ClassHome({ base }: { base: JgBase }) {
               <Button variant="outline" asChild>
                 <Link href={`${base}/activities${query}`}><Palette className="size-4" />{t("activities")}</Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link href={`${base}/monthly${query}`}><CalendarRange className="size-4" />{t("monthlyLog")}</Link>
+              </Button>
               <Button variant="outline" onClick={() => openJgPdf("results", sectionId!, campusId).catch((e) => toast.error(e.message))}>
                 <FileBarChart className="size-4" />{t("printResults")}
               </Button>
@@ -139,6 +143,22 @@ export function ClassHome({ base }: { base: JgBase }) {
                   <FileText className="size-4" />{t("sampleCard")}
                 </Button>
               ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("officialOutputs")}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              {([
+                ["statistics", "statistics"], ["top-students", "topStudentsList"], ["final-sheet", "finalSheet"], ["review-sheet", "reviewSheet"],
+                ["guardian-notices", "guardianNotices"], ["monthly-cards", "monthlyCards"], ["monthly-curve", "monthlyCurve"], ["marking-sheets", "markingSheets"],
+              ] as const).map(([path, key]) => (
+                <Button key={path} variant="outline" asChild>
+                  <Link href={`${base}/${path}${query}`}><FileText className="size-4" />{t(key)}</Link>
+                </Button>
+              ))}
             </CardContent>
           </Card>
 
@@ -157,6 +177,25 @@ export function ClassHome({ base }: { base: JgBase }) {
               ))}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("insHub")}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              {([
+                ["workflow", "insWorkflow"], ["entry-progress", "insEntryProgress"], ["entry-audit", "insEntryAudit"], ["prediction", "insPrediction"],
+                ["edge-students", "insEdge"], ["support-plans", "insSupportPlans"], ["certificates", "insCertificates"], ["approval", "insApproval"],
+                ["end-of-year", "insEndOfYear"], ["insight", "insHub"],
+              ] as const).map(([path, key]) => (
+                <Button key={path} variant="outline" asChild>
+                  <Link href={`${base}/${path}${query}`}><BarChart3 className="size-4" />{t(key)}</Link>
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+
+          <SectionDataTools base={base} sectionId={sectionId!} campusId={campusId} isAdmin={isAdmin} viewOnly={ov.subjects.every((s) => !s.can_enter)} />
 
           {isAdmin ? (
             <Card>

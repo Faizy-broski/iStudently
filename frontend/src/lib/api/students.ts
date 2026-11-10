@@ -98,6 +98,8 @@ export interface Student {
   mother_name?: string | null
   place_of_birth?: string | null
   registration_number?: string | null
+  enrollment_status?: string | null
+  registration_type?: string | null
   confidential_family_status?: ConfidentialFamilyStatus | null
   medical_info?: {
     id: string

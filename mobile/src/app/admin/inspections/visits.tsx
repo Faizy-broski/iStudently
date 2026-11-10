@@ -91,7 +91,7 @@ export default function InspectionVisits() {
                       <Icon as={Calendar} className="text-muted-foreground size-3" />
                       <Text className="text-muted-foreground text-xs">{`${x.scheduled_date}${x.scheduled_start_time ? ` · ${x.scheduled_start_time}` : ''}`}</Text>
                       <Badge variant="secondary">
-                        <Text className="text-[10px]">{v(`visit_type_${x.visit_type}`)}</Text>
+                        <Text className="text-2xs">{v(`visit_type_${x.visit_type}`)}</Text>
                       </Badge>
                     </View>
                   </View>

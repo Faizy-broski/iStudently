@@ -95,6 +95,9 @@ function computePoints(correctWords: number, targetWpm: number, comprehensionBon
   return comprehensionBonus ? base * 2 : base
 }
 
+/** Invalid reading-log input (answered with 400). */
+export class SpeedReadingInputError extends Error {}
+
 class SpeedReadingService {
   async getTexts(schoolId: string, gradeLevelId?: string, campusId?: string): Promise<ReadingText[]> {
     const rootId = await getEffectiveSchoolId(schoolId)
@@ -218,6 +221,17 @@ class SpeedReadingService {
   }
 
   async submitLog(schoolId: string, studentId: string, dto: SubmitLogDto): Promise<{ points_earned: number }> {
+    // Scores come from the device: keep them within the text (a text of the caller's school family)
+    // and derive accuracy here, so the leaderboard cannot be fed made-up numbers.
+    const allIds = await getAllCampusIds(await getEffectiveSchoolId(schoolId))
+    const { data: text } = await supabase.from('reading_texts').select('word_count, content').eq('id', dto.text_id).in('school_id', allIds).maybeSingle()
+    if (!text) throw new SpeedReadingInputError('Reading text not found')
+    const total = Number(text.word_count) || computeWordCount(text.content ?? '')
+    const int = (v: number) => (Number.isFinite(v) ? Math.round(v) : 0)
+    dto.correct_words = Math.min(total, Math.max(0, int(dto.correct_words)))
+    dto.incorrect_words = Math.max(0, total - dto.correct_words)
+    dto.accuracy_percentage = total > 0 ? Math.round((dto.correct_words / total) * 10000) / 100 : 0
+    dto.target_wpm = Math.min(1000, Math.max(1, int(dto.target_wpm)))
     const pointsEarned = computePoints(dto.correct_words, dto.target_wpm, dto.comprehension_bonus)
 
     const { error } = await supabase

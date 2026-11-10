@@ -120,7 +120,7 @@ export default function Subjects() {
                   <Text className="text-sm font-semibold" numberOfLines={1}>
                     {x.name}
                   </Text>
-                  <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                  <Text variant="muted" className="text-xs" numberOfLines={1}>
                     {[x.code, x.grade_name].filter(Boolean).join(' · ')}
                   </Text>
                 </View>

@@ -441,7 +441,7 @@ function OrderedList<T extends { id: string; sort_order?: number }>({
           ) : null}
           <Pressable onPress={onSelect ? () => onSelect(x) : undefined} disabled={!onSelect} className="flex-1 flex-row items-center gap-2.5 py-1 active:opacity-70">
             <View className={cn('size-7 items-center justify-center rounded-full', selectedId === x.id ? 'bg-brand dark:bg-brand-secondary' : 'bg-muted')}>
-              <Text className={cn('text-[11px] font-bold', selectedId === x.id ? 'text-white' : 'text-muted-foreground')}>{i + 1}</Text>
+              <Text className={cn('text-xs font-bold', selectedId === x.id ? 'text-white' : 'text-muted-foreground')}>{i + 1}</Text>
             </View>
             <Text className={cn('flex-1 text-sm', selectedId === x.id ? 'text-brand dark:text-brand-secondary font-semibold' : 'font-medium')} numberOfLines={2}>
               {label(x)}

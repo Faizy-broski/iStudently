@@ -1,5 +1,6 @@
 import { router, type Href } from 'expo-router';
 import {
+  AlertCircle,
   AlertTriangle,
   Bell,
   BookOpen,
@@ -19,7 +20,8 @@ import {
 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthBackground } from '@/components/app/auth-background';
@@ -81,7 +83,7 @@ function StatTile({ label, value, note, chip, chipTone = 'success', onPress }: {
   const c = useColors();
   return (
     <Pressable onPress={onPress} disabled={!onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 gap-1 rounded-2xl border p-3 active:opacity-80" accessibilityRole={onPress ? 'button' : undefined}>
-      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+      <Text variant="muted" className="text-xs" numberOfLines={1}>
         {label}
       </Text>
       <Text className="text-brand dark:text-foreground text-xl font-bold" numberOfLines={1}>
@@ -89,7 +91,7 @@ function StatTile({ label, value, note, chip, chipTone = 'success', onPress }: {
       </Text>
       {chip ? <StatusChip label={chip} tone={chipTone} className="self-start px-2 py-0.5" /> : null}
       {note ? (
-        <Text className="text-muted-foreground text-[11px]" numberOfLines={1}>
+        <Text className="text-muted-foreground text-xs" numberOfLines={1}>
           {note}
         </Text>
       ) : null}
@@ -102,7 +104,7 @@ function QuickAction({ icon, label, onPress }: { icon: LucideIcon; label: string
   return (
     <Pressable onPress={onPress} style={raised(c.brand)} className="border-info-soft dark:border-border bg-card flex-1 items-center gap-2 rounded-2xl border px-1 py-3 active:opacity-80" accessibilityRole="button">
       <Icon as={icon} strokeWidth={2.3} className="text-brand dark:text-brand-secondary size-5" />
-      <Text className="text-brand dark:text-brand-secondary text-center text-[11px] font-semibold" numberOfLines={2}>
+      <Text className="text-brand dark:text-brand-secondary text-center text-xs font-semibold" numberOfLines={2}>
         {label}
       </Text>
     </Pressable>
@@ -130,6 +132,7 @@ export default function TeacherDashboard() {
   const plugins = usePortalPlugins();
   const [now, setNow] = useState(() => new Date());
   const [rosterOpen, setRosterOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const today = ymd(now);
 
   const schedule = useApi(staffId ? ['teacher', 'schedule', staffId, today] : null, ([, , s, d]) => adminTimetable.teacherSchedule(s as string, d as string));
@@ -137,7 +140,7 @@ export default function TeacherDashboard() {
   const perf = useApi(staffId ? ['teacher', 'my-score'] : null, () => adminPerformance.myScore());
   const students = useApi(cpId ? ['teacher', 'cp-students', cpId] : null, ([, , c]) => teacher.myCoursePeriodStudents(c as string));
   // Same keys as the submissions and inbox screens, so the caches are shared.
-  const hw = useApi(staffId ? ['teacher', 'homework-all', staffId] : null, ([, , s]) => homework.teacherList(s as string, { is_archived: false }));
+  const hw = useApi(staffId ? ['teacher', 'homework-all', staffId] : null, ([, , s]) => homework.teacherList(s as string, { is_archived: false, limit: 500 }));
   const inbox = useApi(['messaging', 'list', 'inbox', '', 'desc'], () => messaging.listMessages('inbox', { page: 1, limit: 50, order: 'desc' }));
   const exams = useTeacherExams();
   const weatherOn = plugins.includes('weather_alerts');
@@ -204,22 +207,28 @@ export default function TeacherDashboard() {
   const messages = (inbox.data ?? []).slice(0, 2);
   const roster = students.data ?? [];
 
-  const refresh = () => {
+  const refresh = async () => {
+    setRefreshing(true);
     setNow(new Date());
-    return Promise.all([schedule.mutate(), overview.mutate(), perf.mutate(), students.mutate(), hw.mutate(), inbox.mutate(), exams.mutate(), weather.mutate()]);
+    try {
+      await Promise.all([schedule.mutate(), overview.mutate(), perf.mutate(), students.mutate(), hw.mutate(), inbox.mutate(), exams.mutate(), weather.mutate()]);
+    } finally {
+      setRefreshing(false);
+    }
   };
+  const loadError = schedule.error ?? overview.error ?? students.error ?? exams.error ?? hw.error ?? null;
 
   return (
     <AuthBackground>
       <SafeAreaView edges={['top']} className="flex-1">
-        <ScrollView contentContainerClassName="gap-5 p-4 pb-8" refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}>
+        <ScrollView contentContainerClassName="gap-5 p-4 pb-8" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
           {/* Header */}
           <View className="flex-row items-center gap-3">
             <Pressable onPress={() => open('/teacher/settings', 'settings')} accessibilityRole="button" accessibilityLabel={fullName}>
               <PersonAvatar url={profile.profile_photo_url} name={fullName} size={44} />
             </Pressable>
             <View className="flex-1">
-              <Text className="text-brand dark:text-foreground text-lg font-bold" numberOfLines={1}>
+              <Text className="text-brand dark:text-foreground text-xl font-bold" numberOfLines={1}>
                 {x('hello', { name: profile.first_name ?? '' })}
               </Text>
               <Text variant="muted" className="text-xs" numberOfLines={1}>
@@ -230,6 +239,16 @@ export default function TeacherDashboard() {
             <RoundButton icon={Bell} label={t('app.pn_title')} onPress={() => go('/teacher/portal/notes')} />
           </View>
 
+          {loadError ? (
+            <View className="bg-destructive-soft flex-row items-center gap-3 rounded-2xl p-4">
+              <Icon as={AlertCircle} className="text-destructive size-5" />
+              <View className="flex-1">
+                <Text className="text-destructive font-medium">{t('dashboard.error_loading')}</Text>
+                <Text className="text-destructive text-sm">{loadError.message}</Text>
+              </View>
+            </View>
+          ) : null}
+
           {/* Attendance to mark */}
           {toMark.length ? (
             <View className="bg-warning-soft flex-row items-center gap-3 rounded-2xl p-3">
@@ -238,7 +257,7 @@ export default function TeacherDashboard() {
                 <Text className="text-warning text-sm font-semibold" numberOfLines={1}>
                   {x('to_mark', { count: toMark.length })}
                 </Text>
-                <Text className="text-warning text-[11px]" numberOfLines={1}>
+                <Text className="text-warning text-xs" numberOfLines={1}>
                   {`${toMark[0].subject} · ${toMark[0].section} · ${hm(toMark[0].start_time)}`}
                 </Text>
               </View>
@@ -290,7 +309,7 @@ export default function TeacherDashboard() {
                       className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', live && 'bg-info-soft/60', i < classes.length - 1 && 'border-info-soft dark:border-border border-b')}>
                       <View className="w-12">
                         <Text className="text-sm font-bold">{hm(c.start_time)}</Text>
-                        <Text variant="muted" className="text-[11px]">
+                        <Text variant="muted" className="text-xs">
                           {hm(c.end_time)}
                         </Text>
                       </View>
@@ -299,7 +318,7 @@ export default function TeacherDashboard() {
                         <Text className={cn('text-sm font-semibold', done && 'text-muted-foreground')} numberOfLines={1}>
                           {`${c.subject} · ${c.section}`}
                         </Text>
-                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        <Text variant="muted" className="text-xs" numberOfLines={1}>
                           {[c.grade, c.room_number ? k('roomLabel', { room: c.room_number }) : null, c.att ? k('presentCount', { present: c.att.present + c.att.late, total: c.att.total, percentage: c.att.percentage }) : null]
                             .filter(Boolean)
                             .join(' · ')}
@@ -351,6 +370,7 @@ export default function TeacherDashboard() {
                   <Pressable
                     key={h.id}
                     onPress={() => router.push({ pathname: '/teacher/submissions', params: { assignment: h.id } })}
+                    accessibilityRole="button"
                     className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < toReview.length - 1 && 'border-info-soft dark:border-border border-b')}>
                     <View className="bg-info-soft size-9 items-center justify-center rounded-full">
                       <Icon as={FilePenLine} className="text-brand dark:text-brand-secondary size-4" />
@@ -359,7 +379,7 @@ export default function TeacherDashboard() {
                       <Text className="text-sm font-semibold" numberOfLines={1}>
                         {h.title}
                       </Text>
-                      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      <Text variant="muted" className="text-xs" numberOfLines={1}>
                         {[h.section?.name, h.subject?.name, formatDate(h.due_date)].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
@@ -378,6 +398,7 @@ export default function TeacherDashboard() {
                   <Pressable
                     key={e.id}
                     onPress={() => router.push({ pathname: '/teacher/exams/[id]', params: { id: e.id } })}
+                    accessibilityRole="button"
                     className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < upcomingExams.length - 1 && 'border-info-soft dark:border-border border-b')}>
                     <View className={cn('size-9 items-center justify-center rounded-xl', e.is_published ? 'bg-info-soft' : 'bg-warning-soft')}>
                       <Icon as={FileText} className={cn('size-4', e.is_published ? 'text-brand dark:text-brand-secondary' : 'text-warning')} />
@@ -386,7 +407,7 @@ export default function TeacherDashboard() {
                       <Text className="text-sm font-semibold" numberOfLines={1}>
                         {[e.section?.name, e.exam_name].filter(Boolean).join(' ')}
                       </Text>
-                      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      <Text variant="muted" className="text-xs" numberOfLines={1}>
                         {[e.exam_date ? formatDate(e.exam_date) : null, e.subject?.name, e.exam_type?.name].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
@@ -420,7 +441,7 @@ export default function TeacherDashboard() {
                     <View className="flex-row">
                       {roster.slice(0, 5).map((s, i) => (
                         <View key={s.id} className={cn('border-card bg-success-soft size-9 items-center justify-center rounded-full border-2', i > 0 && '-ms-2.5')}>
-                          <Text className="text-success text-[11px] font-bold">{initials(s.profile?.first_name, s.profile?.last_name)}</Text>
+                          <Text className="text-success text-xs font-bold">{initials(s.profile?.first_name, s.profile?.last_name)}</Text>
                         </View>
                       ))}
                     </View>
@@ -428,7 +449,7 @@ export default function TeacherDashboard() {
                       <Text className="text-sm font-semibold" numberOfLines={1}>
                         {cp.short_name || cp.title || k('coursePeriod')}
                       </Text>
-                      <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                      <Text variant="muted" className="text-xs" numberOfLines={1}>
                         {[k('studentsCount', { count: roster.length }), cp.section?.name, cp.section?.grade_level?.name].filter(Boolean).join(' · ')}
                       </Text>
                     </View>
@@ -442,7 +463,7 @@ export default function TeacherDashboard() {
                           </View>
                           <View className="flex-1">
                             <Text className="text-sm font-medium" numberOfLines={1}>{`${s.profile?.first_name ?? ''} ${s.profile?.last_name ?? ''}`}</Text>
-                            <Text variant="muted" className="text-[11px]">
+                            <Text variant="muted" className="text-xs">
                               {s.student_number}
                             </Text>
                           </View>
@@ -464,15 +485,16 @@ export default function TeacherDashboard() {
                     <Pressable
                       key={m.id}
                       onPress={() => open('/teacher/messaging', 'messaging')}
+                      accessibilityRole="button"
                       className={cn('flex-row items-center gap-3 px-4 py-3 active:opacity-70', i < messages.length - 1 && 'border-info-soft dark:border-border border-b')}>
                       <View className="bg-success-soft size-9 items-center justify-center rounded-full">
-                        <Text className="text-success text-[11px] font-bold">{initials(first, rest.pop())}</Text>
+                        <Text className="text-success text-xs font-bold">{initials(first, rest.pop())}</Text>
                       </View>
                       <View className="flex-1">
                         <Text className="text-sm font-semibold" numberOfLines={1}>
                           {m.sender_name}
                         </Text>
-                        <Text variant="muted" className="text-[11px]" numberOfLines={1}>
+                        <Text variant="muted" className="text-xs" numberOfLines={1}>
                           {`${m.messages?.subject ?? ''} · ${m.messages?.created_at ? formatRelative(m.messages.created_at) : ''}`}
                         </Text>
                       </View>
@@ -505,7 +527,7 @@ export default function TeacherDashboard() {
           {weatherOn ? <WeatherCard data={weather.data} loading={weather.isLoading} failed={!!weather.error} /> : null}
 
           <View className="items-center">
-            <Text variant="muted" className="text-[11px]">{`${now.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })} · ${now.toLocaleDateString(loc, { weekday: 'long' })}, ${formatDate(today)}`}</Text>
+            <Text variant="muted" className="text-xs">{`${now.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })} · ${now.toLocaleDateString(loc, { weekday: 'long' })}, ${formatDate(today)}`}</Text>
           </View>
         </ScrollView>
       </SafeAreaView>

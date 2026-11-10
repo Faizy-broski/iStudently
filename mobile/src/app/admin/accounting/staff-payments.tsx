@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { ArrowLeft, Check, CheckCircle2, Plus, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Linking, Pressable, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
+import { FlatList } from '@/components/app/lists';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';

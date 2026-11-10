@@ -1,7 +1,8 @@
 import { router, Stack } from 'expo-router';
 import { BookOpen, GraduationCap, TriangleAlert, Users, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HeroCard, IconTile, RowItem, Section, type Tone } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -46,7 +47,7 @@ export default function AcademicsOverview() {
             {items.map((s) => (
               <View key={s.href} className="flex-1 rounded-2xl bg-white/15 px-3 py-2">
                 <Text className="text-xl font-bold text-white">{s.n}</Text>
-                <Text className="text-[11px] text-white/80" numberOfLines={1}>
+                <Text className="text-xs text-white/80" numberOfLines={1}>
                   {s.title}
                 </Text>
               </View>

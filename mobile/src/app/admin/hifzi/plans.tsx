@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { CirclePicker, NoCircles, NoRoster, RosterPicker, useHifziCircles, useHifziRoster, useHz, useRiwayat } from '@/features/admin/hifzi';
+import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
 import { adminHifzi } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -90,6 +91,9 @@ function PlanDialog({ studentId, circleId, editing, onClose, onSaved }: { studen
 
 /** Student plan and today's assignment items; admins can regenerate the assignment (web: /admin/hifzi/plans). */
 export default function HifziPlans() {
+  const { me } = useSession();
+  // Regenerating plans is admin-only on the server (POST /hifzi/plans/assignments/generate).
+  const canRegenerate = me.status === 'ready' && (me.me.profile.role === 'admin' || me.me.profile.role === 'super_admin');
   const { h, a, t, isAr } = useHz('plans');
   const toast = useToast();
   const confirm = useConfirm();
@@ -146,11 +150,13 @@ export default function HifziPlans() {
       <Stack.Screen
         options={{
           title: t('hifzi.recitation.title'),
-          headerRight: () => (
-            <Pressable onPress={regenerate} disabled={busy || !studentId} hitSlop={8} className="p-1" accessibilityLabel={a('hz_regenerate')}>
-              <Icon as={RefreshCw} className="text-foreground size-5" />
-            </Pressable>
-          ),
+          headerRight: canRegenerate
+            ? () => (
+                <Pressable onPress={regenerate} disabled={busy || !studentId} hitSlop={8} className="p-1" accessibilityLabel={a('hz_regenerate')}>
+                  <Icon as={RefreshCw} className="text-foreground size-5" />
+                </Pressable>
+              )
+            : undefined,
         }}
       />
       <ScrollView contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => (plans.mutate(), assignment.mutate())} />}>

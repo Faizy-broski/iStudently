@@ -9,7 +9,7 @@ import { DateField, todayYmd } from '@/components/app/date-field';
 import { FormSection, IconTile } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -96,6 +96,8 @@ export default function TeacherClassDiary() {
           <EmptyState icon={BookOpen} title={k('selectClassHint')} />
         ) : entries.isLoading ? (
           <LoadingList rows={3} />
+        ) : entries.error && !entries.data ? (
+          <ErrorState message={entries.error.message} onRetry={() => entries.mutate()} />
         ) : !(entries.data ?? []).length ? (
           <EmptyState icon={NotebookPen} title={k('noDiaryEntries')} />
         ) : (
@@ -104,7 +106,7 @@ export default function TeacherClassDiary() {
               <View key={e.id} className={cn('flex-row items-start gap-3 px-4 py-3', i < arr.length - 1 && 'border-info-soft dark:border-border border-b')}>
                 <IconTile icon={NotebookPen} size={40} />
                 <View className="flex-1 gap-1">
-                  <Text className="text-sm font-semibold">{new Date(`${e.diary_date.slice(0, 10)}T00:00:00`).toLocaleDateString(loc, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</Text>
+                  <Text className="text-sm font-semibold">{e.diary_date ? new Date(`${e.diary_date.slice(0, 10)}T00:00:00`).toLocaleDateString(loc, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}</Text>
                   {e.is_published || e.enable_comments ? (
                     <View className="flex-row flex-wrap gap-1.5">
                       {e.is_published ? <StatusChip label={k('published')} tone="success" /> : null}

@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Picker } from '@/components/app/picker';
 import { LoadingList } from '@/components/app/states';

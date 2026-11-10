@@ -4,7 +4,8 @@ import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { Award, BookOpen, CheckCircle, ClipboardList, Copy, Eye, Pencil, Plus, Trash2, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { EmptyState, LoadingList } from '@/components/app/states';

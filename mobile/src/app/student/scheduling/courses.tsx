@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { AlertCircle, BookOpen, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, Section } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -62,7 +63,7 @@ export default function StudentCourses() {
                   <Detail label={k('title_label')} value={`${course?.subject_name} - ${teacher(course)}`} />
                   <Detail label={k('teacher')} value={teacher(course)} />
                   <View className="gap-1">
-                    <Text className="text-muted-foreground text-[11px]">{k('status')}</Text>
+                    <Text className="text-muted-foreground text-xs">{k('status')}</Text>
                     <StatusChip label={k('enrolled')} tone="success" className="self-start" />
                   </View>
                 </>
@@ -122,7 +123,7 @@ export default function StudentCourses() {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <View className="gap-0.5">
-      <Text className="text-muted-foreground text-[11px]">{label}</Text>
+      <Text className="text-muted-foreground text-xs">{label}</Text>
       <Text className="text-sm font-medium">{value}</Text>
     </View>
   );

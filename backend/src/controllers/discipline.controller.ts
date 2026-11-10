@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { teacherSectionIds } from '../middlewares/own-course-period.middleware';
 import { supabase } from '../config/supabase';
 import type { AuthRequest } from '../middlewares/auth.middleware';
 import { getStudentDisciplineScore } from '../services/discipline-score.service';
@@ -81,6 +82,20 @@ const DEFAULT_DISCIPLINE_FIELDS = [
 // ---------------------------------------------------------------------------
 
 const isLibrarian = (req: Request) => (req as AuthRequest).profile?.role === 'librarian';
+
+
+const isTeacher = (req: Request) => (req as AuthRequest).profile?.role === 'teacher';
+
+/** Ids of students in the sections a teacher teaches (empty when none). */
+async function teacherStudentIds(req: Request): Promise<string[]> {
+  const staffId = (req as AuthRequest).profile?.staff_id;
+  if (!staffId) return [];
+  const sections = await teacherSectionIds(staffId);
+  if (!sections.length) return [];
+  const { data, error } = await supabase.from('students').select('id').in('section_id', sections);
+  if (error) throw error;
+  return (data ?? []).map((r: { id: string }) => r.id);
+}
 
 function resolveSchoolId(req: Request): string | undefined {
   const body = (req as AuthRequest).body?.school_id;
@@ -373,6 +388,13 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
     if (start_date) query = query.gte('incident_date', start_date);
     if (end_date) query = query.lte('incident_date', end_date);
     if (filteredStudentIds) query = query.in('student_id', filteredStudentIds);
+    // Teachers see student referrals they filed or about students of their own classes (never staff ones).
+    if (isTeacher(req)) {
+      const own = await teacherStudentIds(req);
+      const me = (req as AuthRequest).profile?.id ?? '';
+      query = query.eq('target_type', 'student');
+      query = own.length ? query.or(`reporter_id.eq.${me},student_id.in.(${own.join(',')})`) : query.eq('reporter_id', me);
+    }
     // Librarians only ever see library-related student referrals; others may ask for just those.
     if (isLibrarian(req)) query = query.eq('library_related', true).eq('target_type', 'student');
     else if (req.query.library_related === 'true') query = query.eq('library_related', true);
@@ -423,6 +445,14 @@ export async function getReferralById(req: Request, res: Response): Promise<void
     if (isLibrarian(req) && !data?.library_related) {
       res.status(404).json({ error: 'Not found' });
       return;
+    }
+    if (isTeacher(req)) {
+      const mine = data?.reporter_id === (req as AuthRequest).profile?.id;
+      const ownStudent = data?.target_type === 'student' && !!data?.student_id && (await teacherStudentIds(req)).includes(data.student_id);
+      if (!mine && !ownStudent) {
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
     }
 
     if (data && data.reporter && data.reporter.first_name !== undefined) {
@@ -480,6 +510,8 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       res.status(403).json({ error: 'Librarians can only report students' });
       return;
     }
+    // Librarians and teachers file as themselves.
+    const selfReporter = librarian || isTeacher(req);
     const targetType: 'student' | 'teacher' | 'staff' =
       target_type === 'teacher' ? 'teacher' : target_type === 'staff' ? 'staff' : 'student';
     const usesStaffId = targetType === 'teacher' || targetType === 'staff';
@@ -499,7 +531,7 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       target_type: targetType,
       student_id: targetType === 'student' ? tid : null,
       staff_id: usesStaffId ? tid : null,
-      reporter_id: librarian ? ((req as AuthRequest).profile?.id ?? null) : reporter_id || null,
+      reporter_id: selfReporter ? ((req as AuthRequest).profile?.id ?? null) : reporter_id || null,
       incident_date: incident_date || new Date().toISOString().slice(0, 10),
       field_values: field_values || {},
       academic_year_id: academic_year_id || null,

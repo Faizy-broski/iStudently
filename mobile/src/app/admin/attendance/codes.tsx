@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { BottomBar } from '@/components/app/layout';
 import { ScrollView } from '@/components/app/keyboard';
 import { useConfirm } from '@/components/app/confirm';
 import { Picker } from '@/components/app/picker';
@@ -193,12 +194,12 @@ export default function AttendanceCodes() {
             </Card>
           </ScrollView>
         )}
-        <View className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
+        <BottomBar className="border-border bg-background absolute inset-x-0 bottom-0 border-t px-4 pb-6 pt-3">
           <Button onPress={save} disabled={saving || !canSave}>
             <Icon as={Save} className="text-primary-foreground size-4" />
             <Text>{t('common.save')}</Text>
           </Button>
-        </View>
+        </BottomBar>
       </View>
     </>
   );

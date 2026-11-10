@@ -71,7 +71,7 @@ export default function FinaAudit() {
                   <View className="gap-0.5 py-2.5">
                     <View className="flex-row items-center justify-between gap-2">
                       <Text className="flex-1 font-mono text-xs font-semibold">{r.action}</Text>
-                      <Text className="text-muted-foreground text-[11px]">{new Date(r.occurred_at).toLocaleString(lang)}</Text>
+                      <Text className="text-muted-foreground text-xs">{new Date(r.occurred_at).toLocaleString(lang)}</Text>
                     </View>
                     <Text className="text-muted-foreground text-xs">
                       {f('col_actor')}: {r.actor_role || '—'} · {f('col_subject')}: {r.subject_type || '—'}

@@ -300,6 +300,8 @@ export interface StudentFormData {
   motherName?: string
   placeOfBirth?: string
   registrationNumber?: string
+  enrollmentStatus?: string
+  registrationType?: string
   studentPhoto: string
   address: string
   email: string

@@ -3,6 +3,7 @@ import { Lock, MessageCircle, Plus, Send } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 
+import { BottomBar } from '@/components/app/layout';
 import { KeyboardAvoidingView, ScrollView } from '@/components/app/keyboard';
 import { ListRow } from '@/components/app/list-row';
 import { EmptyState, LoadingList } from '@/components/app/states';
@@ -15,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { personName, useFinaViewer, useFn } from '@/features/admin/fina';
 import { useCampus } from '@/features/campus/campus';
+import i18n from '@/i18n';
 import { fina } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -42,7 +44,7 @@ export function ThreadListScreen({ role, detail }: { role: ThreadRole; detail: (
     setBusy(true);
     const r = await fina.openThread(role === 'teacher' ? { guardian_profile_id: contactId, student_id: ward } : { teacher_profile_id: contactId, student_id: ward });
     setBusy(false);
-    if (!r.success || !r.data) return toast.error(r.error || 'Failed');
+    if (!r.success || !r.data) return toast.error(r.error || i18n.t('common.error'));
     setPicker(false);
     res.mutate();
   }
@@ -164,7 +166,7 @@ export function ThreadScreen({ id, canSend }: { id: string; canSend: boolean }) 
             const own = m.sender_id === profileId;
             return (
               <View key={m.id} className={cn('max-w-[85%] gap-0.5', own ? 'self-end' : 'self-start')}>
-                <Text className={cn('text-muted-foreground text-[11px]', own && 'text-end')}>
+                <Text className={cn('text-muted-foreground text-xs', own && 'text-end')}>
                   {personName(m.sender)} · {new Date(m.created_at).toLocaleString(lang)}
                 </Text>
                 <View className={cn('rounded-2xl px-3 py-2', own ? 'bg-brand' : 'bg-muted')}>
@@ -176,12 +178,12 @@ export function ThreadScreen({ id, canSend }: { id: string; canSend: boolean }) 
         )}
       </ScrollView>
       {canSend ? (
-        <View className="border-border flex-row items-center gap-2 border-t p-3">
+        <BottomBar className="border-border flex-row items-center gap-2 border-t p-3">
           <Input className="flex-1" value={body} onChangeText={setBody} placeholder={f('write_placeholder')} onSubmitEditing={send} returnKeyType="send" />
           <Button size="icon" onPress={send} disabled={sending || !body.trim()} accessibilityLabel={f('write_placeholder')}>
             <Icon as={Send} className="text-primary-foreground size-4" />
           </Button>
-        </View>
+        </BottomBar>
       ) : null}
     </KeyboardAvoidingView>
   );

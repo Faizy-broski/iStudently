@@ -1,5 +1,6 @@
 import { supabase } from '../../../config/supabase'
-import { adjacentPairs, assignInvigilation, seatingMap } from '../../../lib/jahbadh'
+import { adjacentPairs, assignInvigilation, isValidSecretKey, seatingMap } from '../../../lib/jahbadh'
+import { decryptSecret } from '../../../utils/crypto'
 import { JgError } from '../grades.service'
 import { getGrades, listCommittees, loadSecrets, loadStudents, logJc, need, type JcContext } from './core'
 
@@ -112,9 +113,9 @@ export async function generateInvigilation(ctx: JcContext) {
   if (!days.length) throw new JgError(400, 'Add the exam timetable first')
   const students = await loadStudents(ctx)
   const active = committees.filter((c) => students.some((x) => x.committee_id === c.id))
-  // Days are numbered in timetable order; each day only needs the committees of its grades.
+  // Days are numbered in timetable order; each day only needs the committees of its grades (C9).
   const result = assignInvigilation(
-    days.map((d) => ({ id: d.id, subjectKey: d.subject_key.split('#')[0] })),
+    days.map((d) => ({ id: d.id, subjectKey: d.subject_key.split('#')[0], committeeIds: dayCommittees(d, active, students) })),
     active.map((c) => c.id),
     invs.map((t) => ({ id: t.staff_id, specialization: t.specialization, available: t.available, unavailableDays: t.unavailable_days })),
     s.obs_per_committee,
@@ -130,7 +131,30 @@ export async function generateInvigilation(ctx: JcContext) {
     if (error) throw error
   }
   await logJc(ctx, 'invigilation.generate', 'jc_invigilation', null, { count: before.length }, { count: result.duties.length })
-  return { duties: await listInvigilation(ctx), short_days: result.shortDays, loads: result.loads }
+  return { duties: await listInvigilation(ctx), short_days: result.shortDays, loads: result.loads, spread: result.spread }
+}
+
+/** Committees that sit a day's exam: those holding a participating student of the day's grades. */
+function dayCommittees(day: JcDay, committees: { id: string }[], students: { committee_id: string | null; grade_code: number; status: string }[]) {
+  return committees
+    .filter((c) => students.some((x) => x.committee_id === c.id && x.status === 'participating' && day.grade_codes.includes(x.grade_code)))
+    .map((c) => c.id)
+}
+
+/** Current invigilation loads per teacher (after manual changes) and the highest–lowest gap (C9). */
+export async function invigilationLoads(ctx: JcContext) {
+  need(ctx.can.manage)
+  const [duties, invs] = await Promise.all([listInvigilation(ctx), listInvigilators(ctx)])
+  const rows = invs.map((t) => {
+    const mine = duties.filter((d: any) => d.staff_id === t.staff_id)
+    const dutiesN = mine.filter((d: any) => !d.is_reserve).length
+    const reserves = mine.filter((d: any) => d.is_reserve).length
+    return { staff_id: t.staff_id, name: t.name, available: t.available, duties: dutiesN, reserves, total: dutiesN + reserves }
+  })
+  const totals = rows.filter((r) => r.available).map((r) => r.total)
+  const max = totals.length ? Math.max(...totals) : 0
+  const min = totals.length ? Math.min(...totals) : 0
+  return { rows: rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'ar')), spread: { max, min, gap: max - min } }
 }
 
 /** Manual change of one duty (logged). */
@@ -228,8 +252,29 @@ export async function alerts(ctx: JcContext, extra: JcAlert[] = []): Promise<JcA
   const secretValues = [...secrets.values()].map((x) => x.secret)
   add('duplicate_numbers', 'before', seats.length - new Set(seats).size + (secretValues.length - new Set(secretValues).size))
   add('numbers_missing', 'before', part.filter((x) => x.seat_number === null || !secrets.has(x.id)).length)
-  const needed = committees.filter((c) => status.find((x) => x.id === c.id)?.count).length * s.obs_per_committee + s.reserve_per_day
-  const shortDays = days.filter((d) => invs.filter((t) => t.available && !t.unavailable_days.includes(d.id) && t.specialization !== d.subject_key.split('#')[0]).length < needed)
+  // National ID (C6.2, C6.4): duplicates and students without one (the export to the grades module matches on it).
+  const byNid = new Map<string, string[]>()
+  for (const x of part) if (x.national_id) byNid.set(x.national_id, [...(byNid.get(x.national_id) ?? []), x.name])
+  const dupNid = [...byNid.entries()].filter(([, n]) => n.length > 1)
+  add('duplicate_national_ids', 'before', dupNid.length, dupNid.map(([id, names]) => `${id}: ${names.join('، ')}`))
+  add('missing_national_ids', 'before', part.filter((x) => !x.national_id).length, part.filter((x) => !x.national_id).map((x) => x.name), true)
+  // Encrypted secret mode needs a valid KEY (odd, not ending in 5) and OFFSET before numbers are generated.
+  if (s.secret_mode === 'encrypted') {
+    const { data: k } = await supabase.from('jc_sessions').select('key_enc').eq('id', ctx.session.id).maybeSingle()
+    let valid = false
+    try {
+      const parsed = k?.key_enc ? JSON.parse(decryptSecret(k.key_enc)) : null
+      valid = !!parsed && isValidSecretKey(Number(parsed.key)) && Number.isInteger(Number(parsed.offset)) && Number(parsed.offset) >= 0
+    } catch {
+      valid = false
+    }
+    add('invalid_key', 'before', valid ? 0 : 1)
+  }
+  const active = committees.filter((c) => status.find((x) => x.id === c.id)?.count)
+  const shortDays = days.filter((d) => {
+    const needed = dayCommittees(d, active, students).length * s.obs_per_committee + s.reserve_per_day
+    return invs.filter((t) => t.available && !t.unavailable_days.includes(d.id) && t.specialization !== d.subject_key.split('#')[0]).length < needed
+  })
   add('short_invigilators', 'before', invs.length ? shortDays.length : 0, shortDays.map((d) => `${d.exam_date} ${d.subject_name}`))
   add('map_too_small', 'before', status.filter((c) => Math.ceil(c.count / Math.max(1, c.seat_columns)) > 8).length, status.filter((c) => Math.ceil(c.count / Math.max(1, c.seat_columns)) > 8).map((c) => c.name), true)
   add('special_mixed', 'before', committees.filter((c) => {

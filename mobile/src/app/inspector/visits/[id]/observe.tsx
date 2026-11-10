@@ -4,8 +4,10 @@ import * as WebBrowser from 'expo-web-browser';
 import { Camera, Check, FileAudio, Image as ImageIcon, Mic, Send, TrendingUp, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollView } from '@/components/app/keyboard';
 import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
 import { EmptyState, LoadingList } from '@/components/app/states';
@@ -35,6 +37,7 @@ export default function ObserveVisit() {
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`inspections.observe.${key}`, o);
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const { id, teacher } = useLocalSearchParams<{ id: string; teacher?: string }>();
   const visit = useApi(id ? ['inspector', 'visit', id] : null, ([, , v]) => inspector.visit(v as string));
   const v = visit.data;
@@ -183,7 +186,7 @@ export default function ObserveVisit() {
           {avg !== null ? (
             <View className="items-end">
               <Text className="text-brand dark:text-foreground text-2xl font-bold">{avg.toFixed(1)}</Text>
-              <Text variant="muted" className="text-[11px]">
+              <Text variant="muted" className="text-xs">
                 {t('app.obs_avg')}
               </Text>
             </View>
@@ -353,7 +356,7 @@ export default function ObserveVisit() {
         ) : null}
       </ScrollView>
       {e && isDraft && e.rubric_template ? (
-        <View className="bg-background absolute inset-x-0 bottom-0 gap-2.5 px-4 pb-6 pt-3">
+        <View className="bg-background absolute inset-x-0 bottom-0 gap-2.5 px-4 pt-3" style={{ paddingBottom: Math.max(insets.bottom, 24) }}>
           <View className="flex-row items-center gap-3">
             <View className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
               <View className={cn('h-2 rounded-full', missing > 0 ? 'bg-warning' : 'bg-success')} style={{ width: `${all.length ? ((all.length - missing) / all.length) * 100 : 0}%` }} />
@@ -413,7 +416,7 @@ function EvidenceTile({ id, name, type, editable, onRemove }: { id: string; name
   return (
     <Pressable onPress={view} className="border-info-soft dark:border-border bg-info-soft/40 size-[76px] items-center justify-center gap-1 rounded-2xl border p-1.5" accessibilityRole="link" accessibilityLabel={name}>
       {loading ? <ActivityIndicator size="small" /> : <Icon as={type === 'photo' ? ImageIcon : Mic} className="text-brand dark:text-brand-secondary size-5" />}
-      <Text className="text-[10px]" numberOfLines={1}>
+      <Text className="text-2xs" numberOfLines={1}>
         {name}
       </Text>
       {editable ? (

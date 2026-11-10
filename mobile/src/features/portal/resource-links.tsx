@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { ExternalLink, Link2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

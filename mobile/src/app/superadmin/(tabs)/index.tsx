@@ -3,7 +3,8 @@ import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 import { Bell, Building2, Bug, CalendarClock, CreditCard, FileWarning, Lightbulb, Plus, Search, Settings, ShieldAlert, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useSWRConfig } from 'swr';
@@ -80,7 +81,7 @@ function Chip({ label, tone }: { label: string; tone: 'success' | 'warning' | 'd
   }[tone].split(' ');
   return (
     <View className={cn('self-start rounded-full px-2 py-0.5', cls[0])}>
-      <Text className={cn('text-[11px] font-semibold', cls[1])}>{label}</Text>
+      <Text className={cn('text-xs font-semibold', cls[1])}>{label}</Text>
     </View>
   );
 }
@@ -134,7 +135,7 @@ function Hero({ data, currency, monthly, overdue }: { data: PlatformSummary; cur
           <Text className="text-white text-xs opacity-80">{t('app.sad_paid_month')}</Text>
           {r.change_pct !== null ? (
             <View className="bg-overlay-light rounded-full px-2 py-0.5">
-              <Text className="text-white text-[11px] font-semibold">{`${up ? '+' : ''}${formatNumber(r.change_pct)}%`}</Text>
+              <Text className="text-white text-xs font-semibold">{`${up ? '+' : ''}${formatNumber(r.change_pct)}%`}</Text>
             </View>
           ) : null}
         </View>
@@ -149,7 +150,7 @@ function Hero({ data, currency, monthly, overdue }: { data: PlatformSummary; cur
             [t('app.sad_overdue'), formatNumber(overdue)],
           ].map(([label, value]) => (
             <View key={label} className="flex-1 gap-0.5">
-              <Text className="text-white text-[11px] opacity-70">{label}</Text>
+              <Text className="text-white text-xs opacity-70">{label}</Text>
               <Text className="text-white text-sm font-semibold" numberOfLines={1}>
                 {value}
               </Text>
@@ -262,7 +263,7 @@ function QuickAction({ icon, label, href }: { icon: LucideIcon; label: string; h
       <View className="bg-info-soft size-9 items-center justify-center rounded-xl">
         <Icon as={icon} className="text-brand dark:text-brand-secondary size-4" />
       </View>
-      <Text className="text-[11px] font-medium" numberOfLines={1}>
+      <Text className="text-xs font-medium" numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -459,7 +460,7 @@ export default function SuperadminDashboard() {
               ].map(([v, l]) => (
                 <Panel key={l} className="flex-1 gap-0.5 p-3">
                   <Text className="text-lg font-bold">{v}</Text>
-                  <Text variant="muted" className="text-[11px]" numberOfLines={2}>
+                  <Text variant="muted" className="text-xs" numberOfLines={2}>
                     {l}
                   </Text>
                 </Panel>

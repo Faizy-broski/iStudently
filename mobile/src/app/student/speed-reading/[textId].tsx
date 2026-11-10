@@ -60,6 +60,12 @@ export default function SpeedReadingSession() {
 
   const finalText = useRef('');
   const audioRef = useRef<string | null>(null);
+  // The scroll animation's finish callback runs end() from the render where reading started;
+  // it reads the words heard so far and the mode from here so the result uses live values.
+  const live = useRef({ spoken, mode });
+  useEffect(() => {
+    live.current = { spoken, mode };
+  }, [spoken, mode]);
   const subs = useRef<Sub[]>([]);
   const [progress] = useState(() => new Animated.Value(0));
   const at = useRef(0);
@@ -88,7 +94,9 @@ export default function SpeedReadingSession() {
         const tr = ev.results[0]?.transcript ?? '';
         if (ev.isFinal) finalText.current = `${finalText.current} ${tr}`.trim();
         const all = ev.isFinal ? finalText.current : `${finalText.current} ${tr}`.trim();
-        setSpoken(all.split(/\s+/).filter(Boolean));
+        const heard = all.split(/\s+/).filter(Boolean);
+        live.current = { ...live.current, spoken: heard };
+        setSpoken(heard);
       }),
       m.addListener('audioend', (ev: { uri: string | null }) => {
         if (ev.uri) {
@@ -99,6 +107,7 @@ export default function SpeedReadingSession() {
       m.addListener('error', (ev: { error: string }) => {
         if (ev.error === 'aborted' || ev.error === 'no-speech') return;
         setVoiceOk(false);
+        live.current = { ...live.current, mode: 'manual' };
         setMode('manual');
       }),
       m.addListener('end', () => setListening(false)),
@@ -115,7 +124,7 @@ export default function SpeedReadingSession() {
   function end() {
     stopListening();
     if (!text) return;
-    if (mode === 'manual') setPhase('manual-grade');
+    if (live.current.mode === 'manual') setPhase('manual-grade');
     else if (text.quiz_questions?.length) setPhase('quiz');
     else finalise(false);
   }
@@ -129,6 +138,7 @@ export default function SpeedReadingSession() {
   async function finalise(bonus: boolean) {
     if (!text) return;
     const total = text.word_count;
+    const { spoken, mode } = live.current;
     let computed: Mark[] = [];
     let correct: number;
     if (mode === 'voice') {
@@ -464,12 +474,12 @@ export default function SpeedReadingSession() {
       <StatTiles>
         <StatTile icon={Target} tone="success" label={s('accuracy')} value={`${result?.accuracy ?? 0}%`} />
         <StatTile icon={CheckCircle2} label={s('wordsReadCorrectly')} value={String(result?.correct ?? 0)} />
-        <StatTile icon={Gauge} tone="warning" label="WPM" value={String(wpm)} />
+        <StatTile icon={Gauge} tone="warning" label={s('sessions.colWpm')} value={String(wpm)} />
       </StatTiles>
       {result?.bonus ? (
         <View className="bg-success-soft flex-row items-center justify-center gap-2 rounded-2xl p-3">
           <Icon as={Trophy} className="text-success size-5" />
-          <Text className="text-success font-medium">{`${s('comprehensionBonus')} ×2!`}</Text>
+          <Text className="text-success font-medium">{`${s('comprehensionBonus')} ×2`}</Text>
         </View>
       ) : null}
       {saveFailed ? <Text className="text-destructive text-center text-sm">{a('save_failed')}</Text> : null}

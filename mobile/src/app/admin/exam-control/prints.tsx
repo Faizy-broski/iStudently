@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { Lock, Printer } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FormSection } from '@/components/app/layout';
 import { Picker } from '@/components/app/picker';
@@ -18,13 +19,14 @@ import { useApi } from '@/lib/data';
 const GROUPS: { key: string; docs: JcDoc[] }[] = [
   { key: 'lists', docs: ['general_list', 'secret_lists', 'committee_mirror', 'seating_map', 'student_cards', 'booklet_covers'] },
   { key: 'planning', docs: ['timetable', 'invigilation'] },
-  { key: 'examday', docs: ['attendance_sheet', 'envelope_mirror', 'delivery_sheet', 'minutes_open', 'minutes_absence', 'minutes_seal', 'minutes_incident'] },
-  { key: 'outcome', docs: ['results', 'honor_board', 'certificates'] },
+  { key: 'examday', docs: ['attendance_sheet', 'envelope_mirror', 'delivery_sheet', 'minutes_open', 'minutes_absence', 'minutes_seal', 'minutes_incident', 'violations_log'] },
+  { key: 'outcome', docs: ['results', 'honor_board', 'certificates', 'second_round_list', 'quality_report', 'comparison'] },
 ];
 const CONFIDENTIAL: JcDoc[] = ['general_list', 'secret_lists', 'booklet_covers'];
 const NEEDS_DAY: JcDoc[] = ['attendance_sheet', 'minutes_open', 'minutes_absence', 'minutes_seal', 'minutes_incident'];
 const PER_COMMITTEE: JcDoc[] = ['committee_mirror', 'seating_map', 'student_cards', 'booklet_covers', 'attendance_sheet', 'minutes_open', 'minutes_absence', 'minutes_seal', 'minutes_incident', 'secret_lists'];
-const NEEDS_UNMASK: JcDoc[] = ['results', 'honor_board', 'certificates'];
+// The honor board prints before unmasking (names replaced by «يظهر الاسم بعد فك السرية»).
+const NEEDS_UNMASK: JcDoc[] = ['results', 'certificates', 'second_round_list'];
 const ALL = '__all__';
 
 /** Printable documents, shared as PDF (web: exam control › Prints). */
@@ -75,7 +77,7 @@ export default function ExamControlPrints() {
                     <Icon as={CONFIDENTIAL.includes(doc) ? Lock : Printer} className={CONFIDENTIAL.includes(doc) ? 'text-warning size-4' : 'text-brand dark:text-brand-secondary size-4'} />
                     <View className="flex-1">
                       <Text className="text-sm font-medium">{t(`examControl.doc_${doc}`)}</Text>
-                      <Text variant="muted" className="text-[11px]">
+                      <Text variant="muted" className="text-xs">
                         {t(`examControl.docHint_${doc}`)}
                       </Text>
                     </View>

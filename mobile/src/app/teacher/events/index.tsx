@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { Calendar, ChevronRight, Clock } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { FilterChips } from '@/components/app/filter-chips';
 import { Section } from '@/components/app/layout';
@@ -103,7 +104,7 @@ function EventRow({ event, today, past, last }: { event: SchoolEvent; today?: bo
       accessibilityRole="button"
       className={cn('flex-row items-start gap-3 px-4 py-3 active:opacity-70', !last && 'border-info-soft dark:border-border border-b', isToday && 'bg-info-soft')}>
       <View className={cn('min-w-12 items-center rounded-xl px-2 py-1.5', isToday ? 'bg-brand dark:bg-brand-secondary' : 'bg-info-soft')}>
-        <Text className={cn('text-[10px] font-semibold uppercase', isToday ? 'text-white/85' : 'text-brand dark:text-brand-secondary')}>{start.toLocaleDateString(loc, { month: 'short' })}</Text>
+        <Text className={cn('text-2xs font-semibold uppercase', isToday ? 'text-white/85' : 'text-brand dark:text-brand-secondary')}>{start.toLocaleDateString(loc, { month: 'short' })}</Text>
         <Text className={cn('text-lg font-bold', isToday ? 'text-white' : 'text-brand dark:text-brand-secondary')}>{String(start.getDate())}</Text>
       </View>
       <View className="flex-1 gap-1">

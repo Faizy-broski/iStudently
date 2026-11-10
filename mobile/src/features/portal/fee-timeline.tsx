@@ -1,7 +1,8 @@
 import { CalendarClock, CalendarDays, CheckCircle2, Clock3, CreditCard, PieChart, Receipt, ShieldCheck, Wallet, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { Picker } from '@/components/app/picker';
 import { Button } from '@/components/ui/button';
@@ -75,7 +76,7 @@ export function FeePaymentTimeline({ fees, money, onPay }: { fees: TimelineFee[]
               <View className="flex-1" />
             )}
             <View className="bg-info-soft items-end rounded-xl px-3 py-1.5">
-              <Text className="text-muted-foreground text-[11px]">{k('total_fee')}</Text>
+              <Text className="text-muted-foreground text-xs">{k('total_fee')}</Text>
               <Text className="text-brand dark:text-foreground text-lg font-bold">{money(total)}</Text>
             </View>
           </View>
@@ -95,20 +96,20 @@ export function FeePaymentTimeline({ fees, money, onPay }: { fees: TimelineFee[]
                 <View key={f.id} className="flex-row items-start">
                   <View className="w-36 items-center gap-2">
                     <View className={cn('rounded-full px-2.5 py-1', st.badge[0])}>
-                      <Text className={cn('text-[11px] font-semibold', st.badge[1])}>{k(st.badge[2])}</Text>
+                      <Text className={cn('text-xs font-semibold', st.badge[1])}>{k(st.badge[2])}</Text>
                     </View>
                     <View className={cn('size-24 items-center justify-center rounded-full border-4', st.ring, st.bg)}>
                       <View className={cn('border-background absolute -end-1 -top-1 size-7 items-center justify-center rounded-full border-2', st.bg)}>
                         <Icon as={st.icon} className={cn('size-4', st.text)} />
                       </View>
                       <Text className="text-lg font-bold">{ordinal(i + 1)}</Text>
-                      <Text className="text-muted-foreground text-[11px]">{k('installment_word')}</Text>
+                      <Text className="text-muted-foreground text-xs">{k('installment_word')}</Text>
                     </View>
                     <Text className="text-sm font-semibold">{money(f.final_amount)}</Text>
                     <Text className="text-muted-foreground text-center text-xs">{`${k('due_label')}: ${f.due_date ? formatDate(f.due_date) : '—'}`}</Text>
                     {stage === 'paid' ? (
                       <View className="bg-success-soft rounded-full px-2.5 py-1">
-                        <Text className="text-success text-[11px] font-semibold">{k('payment_completed')}</Text>
+                        <Text className="text-success text-xs font-semibold">{k('payment_completed')}</Text>
                       </View>
                     ) : (
                       <FeeDueDateBadge dueDate={f.due_date} status={f.status} />

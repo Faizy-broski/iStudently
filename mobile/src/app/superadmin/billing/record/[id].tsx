@@ -2,7 +2,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { CalendarCheck, CalendarClock, CalendarDays, CheckCircle2, CreditCard, FileDown, FileText, Hash, Pencil, Printer, Repeat, StickyNote, Tag, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { useToast } from '@/components/app/toast';

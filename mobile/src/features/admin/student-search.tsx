@@ -37,7 +37,7 @@ export function StudentSearchSelect({ value, onChange }: { value: PickedStudent 
         <Initials name={value.name} />
         <View className="flex-1">
           <Text className="text-sm font-semibold">{value.name}</Text>
-          <Text className="text-muted-foreground text-[11px]">{value.number}</Text>
+          <Text className="text-muted-foreground text-xs">{value.number}</Text>
         </View>
         <Pressable onPress={() => onChange(null)} hitSlop={8} accessibilityLabel={t('app.ss_change')} className="bg-card size-8 items-center justify-center rounded-full active:opacity-70">
           <Icon as={X} className="text-muted-foreground size-4" />
@@ -59,7 +59,7 @@ export function StudentSearchSelect({ value, onChange }: { value: PickedStudent 
                 <Initials name={shortName(s.profile) || s.student_number} size={32} />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold">{shortName(s.profile) || s.student_number}</Text>
-                  <Text className="text-muted-foreground text-[11px]">{[s.student_number, s.grade?.name ?? s.grade_level].filter(Boolean).join(' · ')}</Text>
+                  <Text className="text-muted-foreground text-xs">{[s.student_number, s.grade?.name ?? s.grade_level].filter(Boolean).join(' · ')}</Text>
                 </View>
               </Pressable>
             </View>

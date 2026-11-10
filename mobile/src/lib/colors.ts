@@ -17,6 +17,7 @@ export type ColorToken =
   | 'successSoft' | 'warningSoft' | 'destructiveSoft' | 'infoSoft'
   | 'chart1' | 'chart2' | 'chart3' | 'chart4' | 'chart5' | 'chart6' | 'chart7' | 'chart8'
   | 'printText' | 'printMuted' | 'printBorder' | 'printSurface'
+  | 'infInk' | 'infInk2' | 'infSlate' | 'infMute' | 'infHair' | 'infHairSoft' | 'infMist' | 'infGold' | 'infGoldD' | 'infGoldL' | 'infGoldLine' | 'infGoldText' | 'infInkSoftText' | 'infStable' | 'infSilver' | 'infBronze' | 'infRed' | 'infRedText' | 'infRedBg' | 'infRedLine' | 'infGreen' | 'infGreenBg' | 'infGreenLine' | 'infGreenText' | 'infGreenSoft' | 'infBlue' | 'infTeal' | 'infOrange' | 'infL0' | 'infL1' | 'infL2' | 'infL3' | 'infL4' | 'infL0l' | 'infL1l' | 'infL2l' | 'infL3l' | 'infL4l' | 'infGoldBox' | 'infSilverBox' | 'infBronzeBox' | 'infGreenBox' | 'infRedBox' | 'infMedal2' | 'infMedal3'
   | 'white' | 'black' | 'overlayLight' | 'overlayLightStrong'
   | 'sidebarPresetDefaultBlue' | 'sidebarPresetDeepNavy' | 'sidebarPresetForestGreen' | 'sidebarPresetBurgundy'
   | 'sidebarPresetCharcoal' | 'sidebarPresetDarkTeal' | 'sidebarPresetRoyalPurple' | 'sidebarPresetSlate'

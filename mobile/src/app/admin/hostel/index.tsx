@@ -1,7 +1,8 @@
 import { router, Stack, type Href } from 'expo-router';
 import { BedDouble, Building2, DoorOpen, Eye, TrendingUp, Users, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HeroCard, IconTile, Initials, RowItem, Section, StatTile, StatTiles, type Tone } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
@@ -86,7 +87,7 @@ export default function HostelDashboard() {
                   title={v.visitor_name}
                   meta={[`${d('th_student')}: ${v.student_name || v.student_id}`, v.room_number ? `${d('th_room')}: ${v.room_number}` : null, v.visitor_relation].filter(Boolean).join(' · ')}
                   trailing={
-                    <Text variant="muted" className="text-[11px]">
+                    <Text variant="muted" className="text-xs">
                       {new Date(v.check_in).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' })}
                     </Text>
                   }

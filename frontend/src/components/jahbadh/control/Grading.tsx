@@ -15,11 +15,11 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { jcApi, type JcEntryGrid } from "@/lib/api/jahbadh-control"
+import { jcApi, type JcEntryGrid, type JcQualitySchoolRow } from "@/lib/api/jahbadh-control"
 import { cn } from "@/lib/utils"
 import { ShareBar, Tile } from "../shared"
 import { ScanInput, useScanError } from "./ScanInput"
-import { EmptyCard, Note, jcRun, pct, useJc, type TabProps } from "./shared"
+import { DocButton, EmptyCard, Note, jcColumnName, jcColumns, jcRun, pct, useJc, type TabProps } from "./shared"
 
 const NONE = "__none"
 const ABSENT = /^(غ|a|A|abs)$/
@@ -71,7 +71,8 @@ export function EntryTab({ sessionId, overview: o }: TabProps) {
 
 function EntryGrid({ sessionId, data, readOnly, camera, onSaved }: { sessionId: string; data: JcEntryGrid; readOnly: boolean; camera: boolean; onSaved: () => void }) {
   const t = useTranslations("examControl")
-  const subjects = data.grade.subjects
+  // Entry columns: a subject, or one column per exam part («المادة — الجزء», key `subject~n`).
+  const subjects = data.columns?.length ? data.columns : data.grade.subjects
   const [edits, setEdits] = useState<Record<string, string>>({})
   const [last, setLast] = useState<Record<string, string> | null>(null)
   const [saving, setSaving] = useState(false)
@@ -80,7 +81,11 @@ function EntryGrid({ sessionId, data, readOnly, camera, onSaved }: { sessionId: 
   const scanError = useScanError()
   const refs = useRef(new Map<string, HTMLInputElement>())
   const key = (secret: number, subj: string) => `${secret}|${subj}`
-  const valueOf = (secret: number, subj: string) => edits[key(secret, subj)] ?? cellText(data.rows.find((r) => r.secret === secret)!.cells[subj])
+  const cellOf = (secret: number, subj: string) => data.rows.find((r) => r.secret === secret)?.cells[subj]
+  const valueOf = (secret: number, subj: string) => {
+    const c = cellOf(secret, subj)
+    return edits[key(secret, subj)] ?? (c ? cellText(c) : "")
+  }
   const invalid = useMemo(
     () => new Set(Object.entries(edits).filter(([k, v]) => !parseScore(v, subjects.find((s) => s.key === k.split("|")[1])?.max ?? 0).ok).map(([k]) => k)),
     [edits, subjects],
@@ -96,7 +101,8 @@ function EntryGrid({ sessionId, data, readOnly, camera, onSaved }: { sessionId: 
     })
     const previous = Object.fromEntries(Object.keys(edits).map((k) => {
       const [secret, subj] = k.split("|")
-      return [k, cellText(data.rows.find((r) => r.secret === Number(secret))!.cells[subj])]
+      const c = cellOf(Number(secret), subj)
+      return [k, c ? cellText(c) : ""]
     }))
     setSaving(true)
     const res = await jcRun(jcApi.saveEntry(sessionId, data.entry, cells), t("savedCells", { n: cells.length }))
@@ -125,16 +131,22 @@ function EntryGrid({ sessionId, data, readOnly, camera, onSaved }: { sessionId: 
   const move = (secret: number, subj: string, dRow: number, dCol: number) => {
     const ri = data.rows.findIndex((r) => r.secret === secret)
     const ci = subjects.findIndex((s) => s.key === subj)
-    const r = data.rows[ri + dRow]
-    const c = subjects[ci + dCol]
-    if (r && c) refs.current.get(key(r.secret, c.key))?.focus()
+    // Skips cells the student doesn't sit (second-round students sit only their referred subjects).
+    for (let i = ri + dRow; i >= 0 && i < data.rows.length; i += dRow || 1) {
+      const r = data.rows[i]
+      const c = subjects[ci + dCol]
+      if (!r || !c) return
+      const el = refs.current.get(key(r.secret, c.key))
+      if (el) { el.focus(); return }
+      if (!dRow) return
+    }
   }
 
   /** Jumps to a secret number's row, in the locked subject (or the first one). */
   const focusSecret = (secret: number) => {
     const row = data.rows.find((r) => r.secret === secret)
     if (!row) return { ok: false, message: t("secretNotInGrade") }
-    const subj = lock !== NONE ? lock : subjects[0].key
+    const subj = lock !== NONE ? lock : (subjects.find((s) => row.cells[s.key]) ?? subjects[0]).key
     const el = refs.current.get(key(row.secret, subj))
     el?.focus()
     el?.select()
@@ -151,13 +163,16 @@ function EntryGrid({ sessionId, data, readOnly, camera, onSaved }: { sessionId: 
     let entered = 0
     let mismatch = 0
     let single = 0
+    let total = 0
     for (const r of data.rows) for (const s of subjects) {
       const c = r.cells[s.key]
+      if (!c) continue
+      total++
       if (c.entered) entered++
       if (c.mismatch) mismatch++
       if (c.single) single++
     }
-    return { entered, mismatch, single, total: data.rows.length * subjects.length }
+    return { entered, mismatch, single, total }
   }, [data, subjects])
 
   return (
@@ -211,6 +226,7 @@ function EntryGrid({ sessionId, data, readOnly, camera, onSaved }: { sessionId: 
                     {subjects.map((s) => {
                       const k = key(r.secret, s.key)
                       const c = r.cells[s.key]
+                      if (!c) return <td key={s.key} className="px-1 py-1 text-center text-xs text-muted-foreground" title={t("notTaken")}>—</td>
                       return (
                         <td key={s.key} className="px-1 py-1 text-center">
                           <input
@@ -228,7 +244,9 @@ function EntryGrid({ sessionId, data, readOnly, camera, onSaved }: { sessionId: 
                               !invalid.has(k) && c.mismatch && "border-destructive bg-destructive/10",
                               !invalid.has(k) && !c.mismatch && c.single && "bg-warning/10",
                               edits[k] !== undefined && !invalid.has(k) && "bg-primary/5",
+                              !c.entered && c.exam_day_absent && edits[k] === undefined && "border-dashed border-warning",
                             )}
+                            placeholder={!c.entered && c.exam_day_absent ? "غ" : undefined}
                             value={valueOf(r.secret, s.key)}
                             onChange={(e) => setEdits((x) => ({ ...x, [k]: e.target.value }))}
                             onKeyDown={(e) => {
@@ -237,7 +255,7 @@ function EntryGrid({ sessionId, data, readOnly, camera, onSaved }: { sessionId: 
                               else if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); move(r.secret, s.key, 1, 0) }
                               else if (e.key === "ArrowUp") { e.preventDefault(); move(r.secret, s.key, -1, 0) }
                             }}
-                            title={invalid.has(k) ? t("errMax", { max: s.max }) : c.mismatch ? t("mismatchCell") : c.single ? t("singleCell") : undefined}
+                            title={invalid.has(k) ? t("errMax", { max: s.max }) : c.mismatch ? t("mismatchCell") : c.single ? t("singleCell") : !c.entered && c.exam_day_absent ? t("examDayAbsentHint") : undefined}
                           />
                         </td>
                       )
@@ -264,6 +282,7 @@ export function QualityTab(props: TabProps) {
         <TabsTrigger value="gate">{t("gate")}</TabsTrigger>
         <TabsTrigger value="mismatches">{t("mismatches")}</TabsTrigger>
         <TabsTrigger value="report">{t("qualityReport")}</TabsTrigger>
+        <TabsTrigger value="comparison">{t("comparison")}</TabsTrigger>
         <TabsTrigger value="sample">{t("auditSample")}</TabsTrigger>
         <TabsTrigger value="appeals">{t("appeals")}</TabsTrigger>
         {r.manage ? <TabsTrigger value="graders">{t("graders")}</TabsTrigger> : null}
@@ -272,6 +291,7 @@ export function QualityTab(props: TabProps) {
       <TabsContent value="gate"><GateCard {...props} /></TabsContent>
       <TabsContent value="mismatches"><Mismatches {...props} /></TabsContent>
       <TabsContent value="report"><QualityReport {...props} /></TabsContent>
+      <TabsContent value="comparison"><Comparison {...props} /></TabsContent>
       <TabsContent value="sample"><AuditSample {...props} /></TabsContent>
       <TabsContent value="appeals"><Appeals {...props} /></TabsContent>
       {r.manage ? <TabsContent value="graders"><Graders {...props} /></TabsContent> : null}
@@ -345,7 +365,7 @@ function GateCard({ sessionId, overview: o, refresh }: TabProps) {
 function Mismatches({ sessionId, overview: o }: TabProps) {
   const t = useTranslations("examControl")
   const m = useJc(["jc-mismatches", sessionId], () => jcApi.mismatches(sessionId))
-  const subjectName = (k: string) => o.grades.flatMap((g) => g.subjects).find((s) => s.key === k)?.name ?? k
+  const subjectName = (k: string) => jcColumnName(o.grades, k)
   if (!m.data) return <Skeleton className="h-40" />
   if (!m.data.double_entry) return <Note>{t("doubleEntryOff")}</Note>
   const d = m.data
@@ -397,8 +417,20 @@ function QualityReport({ sessionId, overview: o }: TabProps) {
   const g = q.data.grades.find((x) => x.grade_level_id === grade) ?? q.data.grades[0]
   if (!g) return <EmptyCard text={t("noGradesYet")} />
   const bands = Object.keys(g.subjects[0]?.bands ?? {})
+  const school = q.data.school
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <DocButton sessionId={sessionId} doc="quality_report" />
+      </div>
+      {school?.rows?.length ? (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">{t("schoolQualityTable")}</CardTitle></CardHeader>
+          <CardContent className="overflow-x-auto p-0">
+            <SchoolQualityTable rows={school.rows} total={school.total} />
+          </CardContent>
+        </Card>
+      ) : null}
       <Select value={g.grade_level_id} onValueChange={setGrade}>
         <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
         <SelectContent>{q.data.grades.map((x) => <SelectItem key={x.grade_level_id} value={x.grade_level_id}>{x.name}</SelectItem>)}</SelectContent>
@@ -428,7 +460,7 @@ function QualityReport({ sessionId, overview: o }: TabProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {g.subjects.map((s) => (
+              {g.subjects.flatMap((s) => [
                 <TableRow key={s.key}>
                   <TableCell className="font-medium">
                     {s.name}
@@ -445,8 +477,17 @@ function QualityReport({ sessionId, overview: o }: TabProps) {
                   <TableCell className="tabular-nums">{pct(s.weakRate)}</TableCell>
                   {bands.map((b) => <TableCell key={b} className="tabular-nums">{s.bands[b]}</TableCell>)}
                   <TableCell className="text-xs">{s.verdict ?? "—"}</TableCell>
-                </TableRow>
-              ))}
+                </TableRow>,
+                ...(s.parts ?? []).map((p) => (
+                  <TableRow key={`${s.key}~${p.index}`} className="bg-muted/30 text-xs">
+                    <TableCell className="ps-8">{p.name} <span className="text-muted-foreground">/{p.max}</span></TableCell>
+                    <TableCell />
+                    <TableCell className="tabular-nums">{p.entered}</TableCell>
+                    <TableCell className="min-w-28"><span className="tabular-nums">{pct(p.meanPct)}</span><ShareBar value={p.meanPct} /></TableCell>
+                    <TableCell colSpan={4 + bands.length} />
+                  </TableRow>
+                )),
+              ])}
             </TableBody>
           </Table>
         </CardContent>
@@ -508,6 +549,121 @@ function QualityReport({ sessionId, overview: o }: TabProps) {
   )
 }
 
+function SchoolQualityTable({ rows, total }: { rows: JcQualitySchoolRow[]; total: JcQualitySchoolRow }) {
+  const t = useTranslations("examControl")
+  const row = (r: JcQualitySchoolRow, bold = false) => (
+    <TableRow key={r.name} className={bold ? "font-semibold" : undefined}>
+      <TableCell>{r.name}</TableCell>
+      <TableCell className="tabular-nums">{r.students}</TableCell>
+      <TableCell className="tabular-nums">{r.subjects}</TableCell>
+      <TableCell className="tabular-nums">{pct(r.completion)}</TableCell>
+      <TableCell className="tabular-nums">{pct(r.average)}</TableCell>
+      <TableCell className="tabular-nums">{pct(r.pass_rate)}</TableCell>
+      <TableCell className="tabular-nums">{r.top}</TableCell>
+      <TableCell className="tabular-nums">{r.support}</TableCell>
+    </TableRow>
+  )
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t("grade")}</TableHead>
+          <TableHead>{t("count_students")}</TableHead>
+          <TableHead>{t("subjectsCount")}</TableHead>
+          <TableHead>{t("completion")}</TableHead>
+          <TableHead>{t("average")}</TableHead>
+          <TableHead>{t("passRate")}</TableHead>
+          <TableHead>{t("topCount")}</TableHead>
+          <TableHead>{t("supportCount")}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((r) => row(r))}
+        {row(total, true)}
+      </TableBody>
+    </Table>
+  )
+}
+
+const delta = (v: number | null | undefined) => (v === null || v === undefined ? "—" : `${v > 0 ? "+" : ""}${(v * 100).toFixed(1).replace(/\.0$/, "")}%`)
+const deltaTone = (v: number | null | undefined) => (v === null || v === undefined || v === 0 ? "text-muted-foreground" : v > 0 ? "text-success" : "text-destructive")
+
+/** Comparison with a previous session or year (C6.7). Aggregates only, so it works before unmasking. */
+function Comparison({ sessionId }: TabProps) {
+  const t = useTranslations("examControl")
+  const sessions = useJc(["jc-sessions-all"], () => jcApi.sessions())
+  const [withId, setWithId] = useState<string>(NONE)
+  const cmp = useJc(["jc-comparison", sessionId, withId], () => jcApi.comparison(sessionId, withId === NONE ? null : withId))
+  const others = (sessions.data ?? []).filter((x) => x.id !== sessionId)
+  const c = cmp.data
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={withId} onValueChange={setWithId}>
+          <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>{t("comparisonAuto")}</SelectItem>
+            {others.map((x) => <SelectItem key={x.id} value={x.id}>{x.name} · {x.issue_date}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <DocButton sessionId={sessionId} doc="comparison" withSessionId={withId === NONE ? null : withId} />
+      </div>
+      {cmp.error ? <Note tone="destructive">{cmp.error.message}</Note> : !c ? <Skeleton className="h-48" /> : !c.previous ? <EmptyCard text={t("comparisonNone")} /> : (
+        <>
+          <Note>{t("comparisonWith", { current: c.current.name, previous: c.previous.name })}</Note>
+          {c.school ? (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Tile label={t("average")} value={pct(c.school.current.average)} />
+              <Tile label={t("previousAverage")} value={pct(c.school.previous.average)} tone="muted" />
+              <Tile label={t("passRate")} value={pct(c.school.current.pass_rate)} />
+              <Tile label={t("change")} value={delta(c.school.delta.pass_rate)} tone={(c.school.delta.pass_rate ?? 0) >= 0 ? "success" : "destructive"} />
+            </div>
+          ) : null}
+          {c.grades.map((g) => (
+            <Card key={g.grade_level_id}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex flex-wrap items-center gap-3 text-base">
+                  {g.name}
+                  <span className={cn("text-sm", deltaTone(g.delta?.average))}>{t("average")} {delta(g.delta?.average)}</span>
+                  <span className={cn("text-sm", deltaTone(g.delta?.pass_rate))}>{t("passRate")} {delta(g.delta?.pass_rate)}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-auto p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("subject")}</TableHead>
+                      <TableHead>{t("average")}</TableHead>
+                      <TableHead>{t("previousAverage")}</TableHead>
+                      <TableHead>{t("change")}</TableHead>
+                      <TableHead>{t("passRate")}</TableHead>
+                      <TableHead>{t("previousPassRate")}</TableHead>
+                      <TableHead>{t("change")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {g.subjects.map((x) => (
+                      <TableRow key={x.key}>
+                        <TableCell className="font-medium">{x.name}</TableCell>
+                        <TableCell className="tabular-nums">{pct(x.current.mean_pct)}</TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">{pct(x.previous?.mean_pct)}</TableCell>
+                        <TableCell className={cn("tabular-nums", deltaTone(x.delta?.mean_pct))} dir="ltr">{delta(x.delta?.mean_pct)}</TableCell>
+                        <TableCell className="tabular-nums">{pct(x.current.pass_rate)}</TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">{pct(x.previous?.pass_rate)}</TableCell>
+                        <TableCell className={cn("tabular-nums", deltaTone(x.delta?.pass_rate))} dir="ltr">{delta(x.delta?.pass_rate)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
 function AuditSample({ sessionId, overview: o }: TabProps) {
   const t = useTranslations("examControl")
   const list = useJc(["jc-audit-sample", sessionId], () => jcApi.auditSample(sessionId))
@@ -517,11 +673,13 @@ function AuditSample({ sessionId, overview: o }: TabProps) {
     const res = await jcRun(jcApi.drawAuditSample(sessionId), t("drawn"))
     if (res) list.mutate(res, false)
   }
-  const review = async (secret: number, reviewed: boolean) => {
-    const res = await jcRun(jcApi.reviewAuditSample(sessionId, { secret, reviewed, notes: notes[secret] }))
+  const review = async (secret: number, reviewed: boolean, errorFound?: boolean) => {
+    const row = list.data?.find((x) => x.secret === secret)
+    const res = await jcRun(jcApi.reviewAuditSample(sessionId, { secret, reviewed, error_found: errorFound ?? row?.error_found ?? false, notes: notes[secret] }))
     if (res) list.mutate()
   }
   const done = list.data?.filter((x) => x.reviewed).length ?? 0
+  const errors = list.data?.filter((x) => x.error_found).length ?? 0
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -531,7 +689,10 @@ function AuditSample({ sessionId, overview: o }: TabProps) {
       {!list.data ? <Skeleton className="h-40" /> : !list.data.length ? <EmptyCard text={t("noSample")} /> : (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">{t("reviewedOf", { done, total: list.data.length })}</CardTitle>
+            <CardTitle className="text-base">
+              {t("reviewedOf", { done, total: list.data.length })}
+              {errors ? <span className="ms-2 text-sm text-destructive">{t("errorsFoundN", { n: errors })}</span> : null}
+            </CardTitle>
             <ShareBar value={done / list.data.length} />
           </CardHeader>
           <CardContent className="space-y-2">
@@ -539,6 +700,10 @@ function AuditSample({ sessionId, overview: o }: TabProps) {
               <div key={x.secret} className="flex flex-wrap items-center gap-2">
                 <Checkbox checked={x.reviewed} onCheckedChange={(v) => review(x.secret!, !!v)} />
                 <span className="w-24 font-mono" dir="ltr">{x.secret}</span>
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox checked={!!x.error_found} onCheckedChange={(v) => review(x.secret!, x.reviewed, !!v)} />
+                  {t("errorFound")}
+                </label>
                 <Input className="h-8 flex-1" placeholder={t("notes")} defaultValue={x.notes ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [x.secret!]: e.target.value }))} onBlur={() => notes[x.secret!] !== undefined && review(x.secret!, x.reviewed)} />
               </div>
             ))}
@@ -556,8 +721,9 @@ function Appeals({ sessionId, overview: o }: TabProps) {
   const [subject, setSubject] = useState<string>(NONE)
   const [after, setAfter] = useState("")
   const [reason, setReason] = useState("")
-  const subjects = useMemo(() => [...new Map(o.grades.flatMap((g) => g.subjects).map((s) => [s.key, s])).values()], [o.grades])
-  const subjectName = (k: string) => subjects.find((s) => s.key === k)?.name ?? k
+  // Appeals on a subject with exam parts are made per part.
+  const subjects = useMemo(() => jcColumns(o.grades), [o.grades])
+  const subjectName = (k: string) => jcColumnName(o.grades, k)
   const add = async () => {
     const res = await jcRun(jcApi.addAppeal(sessionId, { secret: Number(secret), subject_key: subject, after: Number(after), reason }), t("appealSaved"))
     if (res) {

@@ -109,7 +109,7 @@ function MediaDialog({ selected, onToggle, onClose }: { selected: string[]; onTo
                       <Pressable key={m.id} onPress={() => setTagging(m.id)} className="aspect-square w-[31.5%] overflow-hidden rounded-md">
                         <GatedImage mediaId={m.id} raw thumb className="size-full opacity-60" />
                         <View className="absolute inset-x-0 bottom-0 bg-black/60 py-0.5">
-                          <Text className="text-center text-[10px] text-white">{f('tap_to_tag')}</Text>
+                          <Text className="text-center text-2xs text-white">{f('tap_to_tag')}</Text>
                         </View>
                       </Pressable>
                     ))}

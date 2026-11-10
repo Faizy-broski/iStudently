@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { FileText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { EmptyState, LoadingList } from '@/components/app/states';
 import { Text } from '@/components/ui/text';

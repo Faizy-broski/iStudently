@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { BarChart3, BookOpen, GraduationCap, Layers, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { HeroCard, Section, StatTile, StatTiles } from '@/components/app/layout';
 import { ErrorState, LoadingList } from '@/components/app/states';

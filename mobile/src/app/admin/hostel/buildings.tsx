@@ -2,7 +2,8 @@ import type { HostelBuilding } from '@studently/shared-types';
 import { router, Stack } from 'expo-router';
 import { Building2, MapPin, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View, Pressable } from 'react-native';
+import { RefreshControl, View, Pressable } from 'react-native';
+import { ScrollView } from '@/components/app/keyboard';
 
 import { useConfirm } from '@/components/app/confirm';
 import { EmptyState, LoadingList } from '@/components/app/states';
