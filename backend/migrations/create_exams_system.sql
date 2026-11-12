@@ -195,10 +195,10 @@ CREATE POLICY "Teachers can update results"
 -- Insert default exam types
 INSERT INTO exam_types (school_id, name, description, weightage)
 SELECT 
-    id as school_id,
-    name,
-    description,
-    weightage
+    schools.id AS school_id,
+    exam_type_data.name,
+    exam_type_data.description,
+    exam_type_data.weightage
 FROM schools, (VALUES
     ('Midterm Exam', 'Mid-semester examination', 30.00),
     ('Final Exam', 'End-of-semester examination', 50.00),

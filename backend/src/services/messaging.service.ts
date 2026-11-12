@@ -693,8 +693,13 @@ export class MessagingService {
    * created during onboarding, has no `staff` table row.
    */
   private async getTeacherAllowedStaffProfileIds(schoolId: string): Promise<string[]> {
+    // A campus teacher's admin lives on the parent (root) school, so admins of the
+    // campus and of its parent school are both messageable.
+    const { data: schoolRow } = await supabase.from('schools').select('parent_school_id').eq('id', schoolId).maybeSingle()
+    const adminSchoolIds = [schoolId, (schoolRow?.parent_school_id as string | null) ?? null].filter((v): v is string => !!v)
+
     const [{ data: admins, error: adminsError }, { data: whitelisted, error: whitelistError }] = await Promise.all([
-      supabase.from('profiles').select('id').eq('school_id', schoolId).eq('role', 'admin'),
+      supabase.from('profiles').select('id').in('school_id', adminSchoolIds).eq('role', 'admin'),
       supabase.from('teacher_message_allowed_staff').select('staff_profile_id').eq('school_id', schoolId),
     ])
 
