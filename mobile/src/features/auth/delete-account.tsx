@@ -29,7 +29,7 @@ export function DeleteAccountSheet({ open, onClose }: { open: boolean; onClose: 
     setBusy(true);
     try {
       if (!(await verifyCurrentPassword(password))) return toast.error(t('app.st_current_password_wrong'));
-      const r = await auth.deleteAccount(reason.trim() || undefined);
+      const r = await auth.deleteAccount(password, reason.trim() || undefined);
       if (!r.success) return toast.error(r.error || t('app.error_title'));
       toast.success(t('app.set_delete_done'));
       onClose();

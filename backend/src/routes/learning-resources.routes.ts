@@ -4,6 +4,7 @@ import { authenticate } from '../middlewares/auth.middleware'
 import { requireTeacher } from '../middlewares/role.middleware'
 import { requireBodyRowsInSchoolFamily, requireRequestSchoolsInFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 import { requireOwnStudent } from '../middlewares/student-access.middleware'
+import { parentOwnSectionQuery, parentOwnSectionRow } from '../middlewares/parent-sections.middleware'
 import { requireOwnClass, requireOwnRow, requireSelfTeacherId } from '../middlewares/own-course-period.middleware'
 
 const router = express.Router()
@@ -37,10 +38,10 @@ const viewRefs = [
 
 // Get resources (by teacher or section)
 router.get('/teacher', requireTeacher, teacherInQuery, requireSelfTeacherId('query'), learningResourcesController.getTeacherResources)
-router.get('/section', querySection, learningResourcesController.getSectionResources)
+router.get('/section', querySection, parentOwnSectionQuery(), learningResourcesController.getSectionResources)
 
 // CRUD operations
-router.get('/:id', resourceRow, learningResourcesController.getResource)
+router.get('/:id', resourceRow, parentOwnSectionRow('learning_resources'), learningResourcesController.getResource)
 router.post('/', requireTeacher, ...createRefs, requireSelfTeacherId('body'), requireOwnClass('section', (req) => req.body?.section_id), learningResourcesController.createResource)
 router.put('/:id', requireTeacher, resourceRow, ownResource, ...createRefs, requireSelfTeacherId('body'), requireOwnClass('section', (req) => req.body?.section_id), learningResourcesController.updateResource)
 router.delete('/:id', requireTeacher, resourceRow, ownResource, learningResourcesController.deleteResource)

@@ -20,7 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useAcademicYear } from '@/features/admin/use-academic-year';
-import { CATEGORY_ICONS, EVENT_CATEGORIES, EVENT_COLORS, EventLine, ymdOf } from '@/features/admin/events';
+import { CATEGORY_ICONS, EVENT_CATEGORIES, EVENT_COLORS, EventLine, TintBox, ymdOf } from '@/features/admin/events';
 import { usePluginActive } from '@/features/admin/plugins';
 import { useHijriOffset } from '@/features/admin/use-hijri-offset';
 import { useCampus } from '@/features/campus/campus';
@@ -221,9 +221,9 @@ export default function Events() {
         <View className="flex-row flex-wrap gap-2">
           {EVENT_CATEGORIES.map((c) => (
             <Pressable key={c} onPress={() => setCategory(category === c ? 'all' : c)} className={cn('bg-card border-border w-[31.5%] flex-row items-center gap-2 rounded-xl border p-2.5', category === c && 'border-primary border-2')}>
-              <View className="rounded-lg p-1.5" style={{ backgroundColor: `${EVENT_COLORS[c]}20` }}>
+              <TintBox color={EVENT_COLORS[c]} className="rounded-lg p-1.5">
                 <Icon as={CATEGORY_ICONS[c]} size={16} color={EVENT_COLORS[c]} />
-              </View>
+              </TintBox>
               <View className="flex-1">
                 <Text className="text-lg font-bold">{countsData?.[c] ?? 0}</Text>
                 <Text className="text-muted-foreground text-2xs" numberOfLines={1}>

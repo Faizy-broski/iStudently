@@ -6,6 +6,7 @@ import { requestAccountDeletion } from '../services/account-deletion.service'
 import { supabase } from '../config/supabase'
 import { twoFAService } from '../services/two-fa.service'
 import { userAgreementService } from '../services/user-agreement.service'
+import { verifyPassword } from '../utils/reauth'
 
 // ============================================================================
 // AUTH CONTROLLER — password management
@@ -390,6 +391,14 @@ export const deleteAccount = async (req: Request, res: Response) => {
   try {
     const profile = (req as AuthRequest).profile
     if (!profile?.id) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    // Re-authenticate with the current password (the app confirms it, the server now enforces it).
+    const password = req.body?.password
+    if (typeof password !== 'string' || !password) {
+      return res.status(400).json({ success: false, error: 'Enter your current password to delete your account', code: 'password_required' })
+    }
+    if (!(await verifyPassword((req as AuthRequest).user?.email, password))) {
+      return res.status(403).json({ success: false, error: 'The password is not correct', code: 'wrong_password' })
+    }
     const result = await requestAccountDeletion({ id: profile.id, role: profile.role, school_id: profile.school_id }, req.body?.reason)
     if (result.ok === false) return res.status(result.status).json({ success: false, error: result.error, code: result.code })
     res.json({ success: true, message: 'Account deletion requested' })

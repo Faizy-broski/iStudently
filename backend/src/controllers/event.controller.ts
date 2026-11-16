@@ -15,6 +15,29 @@ export interface AuthRequest extends Request {
   }
 }
 
+/**
+ * Which `visible_to_roles` audience a caller may read events as.
+ * Students, parents and teachers always read as their own token role: a client-sent `user_role`
+ * is ignored for them (a parent used to be able to pass user_role=admin and read admin-only events).
+ * Admins and super admins may preview as another audience via `user_role` (the web/app calendar
+ * filter). Other staff roles (librarian, inspector, ...) have no audience of their own in
+ * `visible_to_roles`, so they stay unfiltered as before and the client value is ignored.
+ */
+const AUDIENCES = ['super_admin', 'admin', 'teacher', 'student', 'parent']
+export function eventAudience(profileRole: string | undefined, requested: unknown): string | undefined {
+  if (profileRole === 'student' || profileRole === 'parent' || profileRole === 'teacher') return profileRole
+  if (profileRole === 'admin' || profileRole === 'super_admin') {
+    return typeof requested === 'string' && AUDIENCES.includes(requested) ? requested : undefined
+  }
+  return undefined
+}
+
+/** True when the caller's role may read this event (only enforced for student/parent/teacher). */
+export function eventVisibleTo(profileRole: string | undefined, event: { visible_to_roles?: string[] | null }): boolean {
+  if (profileRole !== 'student' && profileRole !== 'parent' && profileRole !== 'teacher') return true
+  return Array.isArray(event.visible_to_roles) && event.visible_to_roles.includes(profileRole)
+}
+
 export class EventController {
   private eventService: EventService
 
@@ -44,7 +67,7 @@ export class EventController {
         category: req.query.category as any,
         start_date: req.query.start_date as string,
         end_date: req.query.end_date as string,
-        user_role: req.query.user_role as any,
+        user_role: eventAudience(req.profile?.role, req.query.user_role) as any,
         grade_level: req.query.grade_level as string
       }
 
@@ -81,7 +104,8 @@ export class EventController {
         return
       }
 
-      const { start_date, end_date, category, user_role, campus_id } = req.query
+      const { start_date, end_date, category, campus_id } = req.query
+      const user_role = eventAudience(req.profile?.role, req.query.user_role)
 
       if (!start_date || !end_date) {
         res.status(400).json({
@@ -129,7 +153,7 @@ export class EventController {
       }
 
       const limit = parseInt(req.query.limit as string) || 10
-      const userRole = req.query.user_role as any
+      const userRole = eventAudience(req.profile?.role, req.query.user_role) as any
 
       const events = await this.eventService.getUpcomingEvents(schoolId, userRole, limit)
 
@@ -202,7 +226,8 @@ export class EventController {
 
       const event = await this.eventService.getEventById(id, schoolId)
 
-      if (!event) {
+      // Same 404 as a missing event so the id of an event outside the caller's audience is not confirmed.
+      if (!event || !eventVisibleTo(req.profile?.role, event as any)) {
         res.status(404).json({
           success: false,
           error: 'Event not found'

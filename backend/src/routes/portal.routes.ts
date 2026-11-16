@@ -1,5 +1,5 @@
 import { Router, Response } from 'express'
-import { portalService } from '../services/portal.service'
+import { portalService, portalAudienceAllows } from '../services/portal.service'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
 import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 const router = Router()
@@ -64,7 +64,8 @@ router.get('/notes/:id', noteRow, async (req: AuthRequest, res: Response) => {
     const { id } = req.params
     const note = await portalService.getNoteById(id)
 
-    if (!note) {
+    // A note outside the caller's audience or date window answers like a missing one.
+    if (!note || !portalAudienceAllows(note, req.profile?.role)) {
       return res.status(404).json({ success: false, error: 'Note not found' })
     }
 
@@ -208,7 +209,7 @@ router.get('/polls/:id', pollRow, async (req: AuthRequest, res: Response) => {
 
     const poll = await portalService.getPollById(id, userId)
 
-    if (!poll) {
+    if (!poll || !portalAudienceAllows(poll, req.profile?.role)) {
       return res.status(404).json({ success: false, error: 'Poll not found' })
     }
 
@@ -311,7 +312,7 @@ router.get('/polls/:id/results', pollRow, async (req: AuthRequest, res: Response
 
     // Check if user can view results
     const poll = await portalService.getPollById(id)
-    if (!poll) {
+    if (!poll || !portalAudienceAllows(poll, role)) {
       return res.status(404).json({ success: false, error: 'Poll not found' })
     }
 
@@ -344,12 +345,19 @@ router.post('/polls/:id/respond', pollRow, async (req: AuthRequest, res: Respons
 
     // Check if poll exists and is active
     const poll = await portalService.getPollById(id)
-    if (!poll) {
+    // Only the poll's audience may answer it, and only inside its open window.
+    if (!poll || !portalAudienceAllows({ ...poll, is_active: true }, req.profile?.role)) {
       return res.status(404).json({ success: false, error: 'Poll not found' })
     }
 
     if (!poll.is_active) {
       return res.status(400).json({ success: false, error: 'Poll is closed' })
+    }
+
+    // Every answer must belong to a question of THIS poll.
+    const questionIds = new Set((poll.questions ?? []).map((q) => q.id))
+    if (!responses.every((r: { question_id?: string }) => typeof r?.question_id === 'string' && questionIds.has(r.question_id))) {
+      return res.status(400).json({ success: false, error: 'Unknown question' })
     }
 
     if (!userId) {

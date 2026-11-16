@@ -13,7 +13,7 @@ import { Panel } from '@/components/app/panel';
 import { raised } from '@/components/app/tile-grid';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { CATEGORY_ICONS, EVENT_CATEGORIES, EVENT_COLORS } from '@/features/admin/events';
+import { CATEGORY_ICONS, EVENT_CATEGORIES, EVENT_COLORS, TintBox } from '@/features/admin/events';
 import { useHijriOffset } from '@/features/admin/use-hijri-offset';
 import { NoChild, ParentError, useChild } from '@/features/parent/child';
 import { adminCalendars, events as eventsApi } from '@/lib/api';
@@ -106,9 +106,9 @@ export default function ParentEvents() {
               accessibilityState={{ selected: category === c }}
               style={raised(colors.brand)}
               className={cn('w-[31.5%] flex-row items-center gap-2 rounded-2xl border p-2.5 active:opacity-80', category === c ? 'border-brand-secondary bg-info-soft' : 'border-info-soft dark:border-border bg-card')}>
-              <View className="rounded-xl p-1.5" style={{ backgroundColor: `${EVENT_COLORS[c]}20` }}>
+              <TintBox color={EVENT_COLORS[c]} className="rounded-xl p-1.5">
                 <Icon as={CATEGORY_ICONS[c]} size={16} color={EVENT_COLORS[c]} />
-              </View>
+              </TintBox>
               <View className="flex-1">
                 <Text className="text-brand dark:text-foreground text-lg font-bold">{counts.data?.[c] ?? 0}</Text>
                 <Text className="text-muted-foreground text-2xs" numberOfLines={1}>

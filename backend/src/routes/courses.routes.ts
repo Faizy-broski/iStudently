@@ -3,6 +3,7 @@ import * as coursesController from '../controllers/courses.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 import { requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
+import { parentOwnChild } from '../middlewares/parent-sections.middleware'
 
 const router = express.Router()
 
@@ -66,7 +67,7 @@ router.delete('/:courseId/periods/:cpId', requireAdmin, courseParam, cp, courses
 router.get('/teacher/:teacherId', requireTeacher, teacher, coursesController.getCoursePeriodsByTeacher)
 
 // GET /courses/student/:studentId           - Course periods for a student
-router.get('/student/:studentId', student, coursesController.getCoursePeriodsByStudent)
+router.get('/student/:studentId', student, parentOwnChild((req) => req.params.studentId), coursesController.getCoursePeriodsByStudent)
 
 // GET /courses/section/:sectionId           - Course periods for a section (for timetable assignment)
 router.get('/section/:sectionId', requireAdmin, section, coursesController.getCoursePeriodsBySection)
