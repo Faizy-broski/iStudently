@@ -176,16 +176,19 @@ export class StudentController {
           return
         }
       } else if (role === 'parent') {
-        const isLinkedChild = (student as any).parent_links?.some(
-          (link: any) => link.parent?.profile?.id === callerProfileId || link.parent?.profile_id === callerProfileId
+        // Only the caller's own active link counts; other guardians' contact details are never returned.
+        const ownLinks = ((student as any).parent_links || []).filter(
+          (link: any) => link.is_active !== false && link.parent?.profile_id === callerProfileId
         )
-        if (!isLinkedChild) {
+        if (ownLinks.length === 0) {
           res.status(403).json({
             success: false,
             error: 'Forbidden: You can only view your linked children records'
           })
           return
         }
+        ;(student as any).parent_links = ownLinks
+        delete (student as any).last_sign_in
       }
 
       res.json({

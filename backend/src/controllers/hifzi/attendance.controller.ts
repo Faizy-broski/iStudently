@@ -1,3 +1,4 @@
+import { supabase } from '../../config/supabase'
 import { Response } from 'express'
 import { AuthRequest } from '../../middlewares/auth.middleware'
 import { hifziAttendanceService } from '../../services/hifzi/attendance.service'
@@ -36,6 +37,22 @@ export const createLeaveRequest = async (req: AuthRequest, res: Response) => {
   try {
     if (!(await assertCanAccessStudent(req, req.body.student_id))) {
       return res.status(403).json({ success: false, error: 'Forbidden' })
+    }
+    const { circle_id, start_date, end_date } = req.body
+    const isDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v))
+    if (typeof circle_id !== 'string' || !isDate(start_date) || !isDate(end_date) || start_date > end_date) {
+      return res.status(400).json({ success: false, error: 'circle_id and a valid date range are required' })
+    }
+    // Students and parents may only file leave into a circle the student is actively enrolled in.
+    if (req.profile.role === 'parent' || req.profile.role === 'student') {
+      const { data: enrolment } = await supabase
+        .from('hifzi_enrollments')
+        .select('id')
+        .eq('student_id', req.body.student_id)
+        .eq('circle_id', circle_id)
+        .eq('status', 'active')
+        .limit(1)
+      if (!enrolment?.length) return res.status(403).json({ success: false, error: 'Forbidden' })
     }
     const data = await hifziAttendanceService.createLeaveRequest(req.body.student_id, req.body.circle_id, req.body.start_date, req.body.end_date, req.body.reason, req.profile.id)
     return res.status(201).json({ success: true, data })

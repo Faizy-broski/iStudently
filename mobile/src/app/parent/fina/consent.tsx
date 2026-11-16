@@ -7,7 +7,7 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { Initials, RowItem, RowPill } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -73,6 +73,8 @@ export default function ParentFinaConsent() {
         <Text variant="muted">{k('page_subtitle')}</Text>
         {wards.isLoading ? (
           <LoadingList rows={2} />
+        ) : wards.error ? (
+          <ErrorState message={wards.error.message} onRetry={() => wards.mutate()} />
         ) : list.length === 0 ? (
           <EmptyState icon={Users} title={k('empty_wards')} />
         ) : (

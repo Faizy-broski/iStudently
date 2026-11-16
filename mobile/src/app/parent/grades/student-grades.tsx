@@ -12,7 +12,7 @@ import { IconTile, Initials, RowItem } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
 import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
-import { NoChild, useChild } from '@/features/parent/child';
+import { NoChild, ParentError, useChild } from '@/features/parent/child';
 import { adminGrades } from '@/lib/api';
 import { useApi } from '@/lib/data';
 
@@ -28,6 +28,7 @@ export default function ParentStudentGrades() {
   const [search, setSearch] = useState('');
 
   if (!child) return <NoChild />;
+  if (grades.error && !grades.data) return <ParentError message={grades.error.message} onRetry={() => grades.mutate()} />;
   const q = search.trim().toLowerCase();
   const rows = (grades.data ?? [])
     .filter((g) => mp === 'all' || g.marking_period_id === mp)

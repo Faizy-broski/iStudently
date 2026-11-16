@@ -2,6 +2,8 @@ import { supabase } from '../config/supabase'
 import { campusIdsAllowed } from '../utils/campus-validation'
 import { substituteMessageTokens, resolveRecipientSubstitutionData } from './message-substitution.service'
 
+const PARENT_MAX_RECIPIENTS = 20
+
 /** A send the caller is not allowed to make (answered with 403). */
 export class MessagingAccessError extends Error {}
 
@@ -69,6 +71,22 @@ export class MessagingService {
       const invalidIds = recipientProfileIds.filter((id) => id !== senderProfileId && !allowedIds.has(id))
       if (invalidIds.length > 0) {
         throw new Error('You can only message students in your own classes, school admins, or staff approved by your admin.')
+      }
+    }
+
+    // Parents may only message their children's teachers, school admins and admin-approved staff.
+    if (senderRole === 'parent') {
+      const ids = [...new Set(recipientProfileIds.filter((id) => id !== senderProfileId))]
+      if (ids.length > PARENT_MAX_RECIPIENTS) {
+        throw new MessagingAccessError(`You can message at most ${PARENT_MAX_RECIPIENTS} people at once.`)
+      }
+      if (attachments?.some((a) => !/^https?:\/\//i.test(a.url))) {
+        throw new MessagingAccessError('Invalid attachment link.')
+      }
+      const allowed = await this.getParentAllowedRecipients(senderProfileId)
+      const invalidIds = ids.filter((id) => !allowed.all.has(id))
+      if (invalidIds.length > 0) {
+        throw new MessagingAccessError("You can only message your children's teachers, school admins, or staff approved by the school.")
       }
     }
 
@@ -459,7 +477,8 @@ export class MessagingService {
     sectionIds?: string[],
     staffId?: string,
     page: number = 1,
-    limit: number = 25
+    limit: number = 25,
+    viewerProfileId?: string
   ) {
     const term = search?.trim().toLowerCase()
     const isTeacher = role === 'teacher'
@@ -487,6 +506,27 @@ export class MessagingService {
     // their own students, school admins, and admin-approved staff.
     if (isTeacher && (type === 'teachers' || type === 'parents')) {
       return paginate([])
+    }
+
+    // A parent may only reach their children's teachers, school admins and
+    // admin-approved staff (the same set sendMessage enforces).
+    if (role === 'parent') {
+      if (!viewerProfileId || type === 'students' || type === 'parents') return paginate([])
+      const allowed = await this.getParentAllowedRecipients(viewerProfileId)
+      const ids = Array.from(type === 'teachers' ? allowed.teachers : allowed.staff)
+      if (ids.length === 0) return paginate([])
+      const profiles = await this.fetchProfilesByIds(ids)
+      const all = ids
+        .map((profileId) => {
+          const profile = profiles.get(profileId)
+          return {
+            profileId,
+            name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim(),
+            subtitle: type === 'teachers' ? 'Teacher' : profile?.role === 'admin' ? 'Admin' : (profile?.role as string) || 'Staff',
+          }
+        })
+        .filter((r) => !term || r.name.toLowerCase().includes(term))
+      return paginate(all)
     }
 
     if (type === 'students') {
@@ -693,14 +733,21 @@ export class MessagingService {
    * created during onboarding, has no `staff` table row.
    */
   private async getTeacherAllowedStaffProfileIds(schoolId: string): Promise<string[]> {
-    // A campus teacher's admin lives on the parent (root) school, so admins of the
+    return this.getAllowedStaffProfileIdsForSchools([schoolId])
+  }
+
+  /** Admins (of each school and its parent school) + the approved-staff whitelist of each school. */
+  private async getAllowedStaffProfileIdsForSchools(schoolIds: string[]): Promise<string[]> {
+    const ownIds = [...new Set(schoolIds.filter(Boolean))]
+    if (ownIds.length === 0) return []
+    // A campus's admin lives on the parent (root) school, so admins of the
     // campus and of its parent school are both messageable.
-    const { data: schoolRow } = await supabase.from('schools').select('parent_school_id').eq('id', schoolId).maybeSingle()
-    const adminSchoolIds = [schoolId, (schoolRow?.parent_school_id as string | null) ?? null].filter((v): v is string => !!v)
+    const { data: schoolRows } = await supabase.from('schools').select('id, parent_school_id').in('id', ownIds)
+    const adminSchoolIds = [...new Set([...ownIds, ...(schoolRows || []).map((r: any) => r.parent_school_id as string | null).filter((v): v is string => !!v)])]
 
     const [{ data: admins, error: adminsError }, { data: whitelisted, error: whitelistError }] = await Promise.all([
       supabase.from('profiles').select('id').in('school_id', adminSchoolIds).eq('role', 'admin'),
-      supabase.from('teacher_message_allowed_staff').select('staff_profile_id').eq('school_id', schoolId),
+      supabase.from('teacher_message_allowed_staff').select('staff_profile_id').in('school_id', ownIds),
     ])
 
     if (adminsError) throw new Error(`Failed to list school admins: ${adminsError.message}`)
@@ -710,6 +757,60 @@ export class MessagingService {
     for (const a of admins || []) ids.add(a.id as string)
     for (const w of whitelisted || []) ids.add(w.staff_profile_id as string)
     return Array.from(ids)
+  }
+
+  /**
+   * Profile ids a parent may message: teachers (primary or secondary) of the
+   * course periods in their active linked children's sections, plus school
+   * admins and the admin-approved staff of the children's campuses.
+   */
+  private async getParentAllowedRecipients(parentProfileId: string): Promise<{ teachers: Set<string>; staff: Set<string>; all: Set<string> }> {
+    const teachers = new Set<string>()
+    const staff = new Set<string>()
+
+    const { data: links, error: linksError } = await supabase
+      .from('parent_student_links')
+      .select('student:students(section_id, school_id), parent:parents!inner(profile_id, school_id)')
+      .eq('is_active', true)
+      .eq('parent.profile_id', parentProfileId)
+    if (linksError) throw new Error(`Failed to resolve linked children: ${linksError.message}`)
+
+    const sectionIds = new Set<string>()
+    const schoolIds = new Set<string>()
+    for (const l of (links || []) as any[]) {
+      const st = Array.isArray(l.student) ? l.student[0] : l.student
+      const par = Array.isArray(l.parent) ? l.parent[0] : l.parent
+      if (st?.section_id) sectionIds.add(st.section_id)
+      if (st?.school_id) schoolIds.add(st.school_id)
+      if (par?.school_id) schoolIds.add(par.school_id)
+    }
+    if (schoolIds.size === 0) return { teachers, staff, all: new Set() }
+
+    if (sectionIds.size > 0) {
+      const { data: cps, error: cpError } = await supabase
+        .from('course_periods')
+        .select('teacher_id, secondary_teacher_id')
+        .in('section_id', Array.from(sectionIds))
+      if (cpError) throw new Error(`Failed to resolve children's teachers: ${cpError.message}`)
+      const staffIds = new Set<string>()
+      for (const cp of cps || []) {
+        if (cp.teacher_id) staffIds.add(cp.teacher_id as string)
+        if (cp.secondary_teacher_id) staffIds.add(cp.secondary_teacher_id as string)
+      }
+      if (staffIds.size > 0) {
+        const { data: rows, error: staffError } = await supabase
+          .from('staff')
+          .select('profile_id')
+          .in('id', Array.from(staffIds))
+          .not('profile_id', 'is', null)
+        if (staffError) throw new Error(`Failed to resolve teacher profiles: ${staffError.message}`)
+        for (const r of rows || []) teachers.add(r.profile_id as string)
+      }
+    }
+
+    for (const id of await this.getAllowedStaffProfileIdsForSchools(Array.from(schoolIds))) staff.add(id)
+
+    return { teachers, staff, all: new Set([...teachers, ...staff]) }
   }
 
   /** Full set of profile ids a teacher is allowed to message: their students + allowed staff. */

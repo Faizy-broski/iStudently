@@ -36,6 +36,14 @@ export class PushNotificationsController {
         return res.status(400).json({ success: false, error: 'endpoint and keys.p256dh/keys.auth are required' })
       }
 
+      // The server later POSTs to this URL: only a public https endpoint is acceptable.
+      let endpointUrl: URL | null = null
+      try { endpointUrl = typeof endpoint === 'string' ? new URL(endpoint) : null } catch { endpointUrl = null }
+      const host = endpointUrl?.hostname ?? ''
+      if (!endpointUrl || endpointUrl.protocol !== 'https:' || host === 'localhost' || /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|0\.|\[)/.test(host) || !host.includes('.')) {
+        return res.status(400).json({ success: false, error: 'Invalid push endpoint' })
+      }
+
       await pushNotificationsService.subscribe({
         profileId,
         schoolId,

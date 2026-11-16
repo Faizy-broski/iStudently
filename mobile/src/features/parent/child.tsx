@@ -9,7 +9,7 @@ import { BottomSheet } from '@/components/app/bottom-sheet';
 import { PersonAvatar } from '@/components/app/person-avatar';
 import { raised } from '@/components/app/tile-grid';
 import { Icon } from '@/components/ui/icon';
-import { EmptyState } from '@/components/app/states';
+import { EmptyState, ErrorState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { parent } from '@/lib/api';
@@ -116,11 +116,27 @@ export function ChildSwitcher({ className }: { className?: string }) {
   );
 }
 
+/** Full-screen load failure with retry, for parent pages whose main query failed. */
+export function ParentError({ message, onRetry }: { message?: string; onRetry: () => void }) {
+  return (
+    <View className="bg-background flex-1 items-center justify-center p-6">
+      <ErrorState message={message} onRetry={onRetry} />
+    </View>
+  );
+}
+
 /** Shown by parent pages while there is no selected child. */
 export function NoChild() {
   const { t } = useTranslation();
-  const { isLoading } = useChild();
+  const { isLoading, error, refresh } = useChild();
   if (isLoading) return null;
+  if (error) {
+    return (
+      <View className="bg-background flex-1 items-center justify-center p-6">
+        <ErrorState message={error.message} onRetry={refresh} />
+      </View>
+    );
+  }
   return (
     <View className="bg-background flex-1 items-center justify-center gap-2 p-6">
       <Icon as={User} className="text-muted-foreground size-10" />

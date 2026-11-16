@@ -113,6 +113,7 @@ class ParentDashboardService {
         )
       `)
       .eq('parent_id', parentId)
+      .eq('is_active', true)
 
     if (error) throw error
 
@@ -347,7 +348,7 @@ class ParentDashboardService {
             )
           `)
           .eq('student_id', studentId)
-          .eq('exam.subject_id', subject.id)
+              .eq('exam.subject_id', subject.id)
 
         const totalMarks = (results || []).reduce((sum, r: any) => sum + (r.exam?.max_marks || 0), 0)
         const obtainedMarks = (results || []).reduce((sum, r: any) => sum + (r.marks_obtained || 0), 0)
@@ -1130,6 +1131,7 @@ class ParentDashboardService {
         )
       `)
       .eq('section_id', student.section_id)
+      .eq('is_published', true)
       .order('diary_date', { ascending: false })
       .limit(50)
 

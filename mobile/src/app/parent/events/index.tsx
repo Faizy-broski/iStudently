@@ -15,7 +15,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { CATEGORY_ICONS, EVENT_CATEGORIES, EVENT_COLORS } from '@/features/admin/events';
 import { useHijriOffset } from '@/features/admin/use-hijri-offset';
-import { NoChild, useChild } from '@/features/parent/child';
+import { NoChild, ParentError, useChild } from '@/features/parent/child';
 import { adminCalendars, events as eventsApi } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { useColors } from '@/lib/colors';
@@ -77,6 +77,8 @@ export default function ParentEvents() {
   const days = useApi(calId ? ['parent', 'calendar-days', calId, startKey, endKey] : null, ([, , id, s, en]) => adminCalendars.days(id as string, s as string, en as string));
 
   if (!child) return <NoChild />;
+  const loadError = calendars.error ?? events.error ?? days.error ?? null;
+  if (loadError && !events.data) return <ParentError message={loadError.message} onRetry={() => Promise.all([calendars.mutate(), events.mutate(), days.mutate()])} />;
   const loading = events.isLoading && !events.data;
   const updating = events.isValidating || days.isValidating;
 

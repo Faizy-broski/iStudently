@@ -15,7 +15,7 @@ import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
 import { CheckMark } from '@/components/app/layout';
 import { Text } from '@/components/ui/text';
-import { NoChild, useChild } from '@/features/parent/child';
+import { NoChild, ParentError, useChild } from '@/features/parent/child';
 import { usePortalAcademic } from '@/features/portal/academic';
 import { usePortalPrintContext } from '@/features/portal/print-context';
 import { adminScheduling } from '@/lib/api';
@@ -41,6 +41,7 @@ export default function ParentPrintClassPictures() {
   const [busy, setBusy] = useState<'print' | 'pdf' | null>(null);
 
   if (!child) return <NoChild />;
+  if (schedule.error && !schedule.data) return <ParentError message={schedule.error.message} onRetry={() => schedule.mutate()} />;
 
   // One entry per course period of the child's schedule: "Period - Course - Teacher".
   const seen = new Set<string>();

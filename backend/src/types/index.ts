@@ -525,6 +525,7 @@ export interface StudentWithRelationship {
   };
   relationship: string;
   is_emergency_contact: boolean;
+  school_id?: string;
 }
 
 export interface CreateParentDTO {
