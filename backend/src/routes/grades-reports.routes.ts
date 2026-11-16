@@ -1,7 +1,7 @@
 import express from 'express'
 import * as gradesReportsController from '../controllers/grades-reports.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
+import { requireAdmin, requireStaff, requireTeacher } from '../middlewares/role.middleware'
 import { ownStudentsOr } from '../middlewares/student-access.middleware'
 import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
@@ -14,14 +14,15 @@ router.use(authenticate)
 // ============================================================================
 
 // GET /grades-reports/honor-roll?marking_period_id=&academic_year_id=&campus_id=
-router.get('/honor-roll', gradesReportsController.getHonorRollStudents)
+// School-wide lists: never for parents or students.
+router.get('/honor-roll', requireStaff, gradesReportsController.getHonorRollStudents)
 
 // ============================================================================
 // CLASS RANK
 // ============================================================================
 
 // GET /grades-reports/class-rank?school_id=&academic_year_id=&marking_period_id=&section_id=&grade_level_id=
-router.get('/class-rank', gradesReportsController.getClassRanks)
+router.get('/class-rank', requireStaff, gradesReportsController.getClassRanks)
 // Teachers see only students in their own classes (ranks stay relative to the whole grade).
 router.get('/gpa-rank', requireTeacher, gradesReportsController.getGpaRankList)
 
@@ -29,7 +30,7 @@ router.get('/gpa-rank', requireTeacher, gradesReportsController.getGpaRankList)
 router.post('/class-rank/recalculate', requireAdmin, gradesReportsController.recalculateRanks)
 
 // GET /grades-reports/course-class-rank?course_period_id=&marking_period_id=
-router.get('/course-class-rank', gradesReportsController.getCourseClassRank)
+router.get('/course-class-rank', requireStaff, gradesReportsController.getCourseClassRank)
 
 // ============================================================================
 // TRANSCRIPTS

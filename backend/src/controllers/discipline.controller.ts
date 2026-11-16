@@ -820,10 +820,21 @@ export async function getParentReferrals(req: AuthRequest, res: Response): Promi
     }
 
     // 1. Fetch dependent student IDs securely
+    const { data: parentRec } = await supabase
+      .from('parents')
+      .select('id')
+      .eq('profile_id', parentProfileId)
+      .maybeSingle();
+    if (!parentRec?.id) {
+      res.json({ data: [] });
+      return;
+    }
+
     const { data: rels } = await supabase
-      .from('parent_student_associations')
+      .from('parent_student_links')
       .select('student_id')
-      .eq('parent_id', parentProfileId);
+      .eq('parent_id', parentRec.id)
+      .eq('is_active', true);
 
     const studentIds = rels?.map(r => r.student_id) || [];
     if (studentIds.length === 0) {

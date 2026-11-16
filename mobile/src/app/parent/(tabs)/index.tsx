@@ -13,7 +13,7 @@ import { StatusChip, type ChipTone } from '@/components/app/status-chip';
 import { raised } from '@/components/app/tile-grid';
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EmptyState } from '@/components/app/states';
+import { EmptyState, ErrorState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
@@ -154,6 +154,7 @@ export default function ParentDashboard() {
   const paidPct = totalFees > 0 ? Math.min(100, (paidFees / totalFees) * 100) : 0;
   const overdue = (fs?.overdue_amount ?? 0) > 0;
 
+  const dataError = fees.error ?? feeStatus.error ?? history.error ?? gpa.error ?? homework.error ?? grades.error ?? exams.error ?? null;
   const last7 = records.slice(-7);
   const lastAbsence = [...records].reverse().find((r) => r.status === 'absent');
   const noteList = (notes.data ?? []).slice(0, 2);
@@ -180,7 +181,8 @@ export default function ParentDashboard() {
             <RoundButton icon={Bell} label={t('app.pn_title')} onPress={() => go('/parent/portal/notes')} />
           </View>
 
-          {error ? <Text className="text-destructive">{k('failed', { message: error.message })}</Text> : null}
+          {error ? <ErrorState message={k('failed', { message: error.message })} onRetry={onRefresh} /> : null}
+          {!error && dataError ? <ErrorState message={k('partial_failed')} onRetry={onRefresh} /> : null}
 
           <ChildSwitcher />
 

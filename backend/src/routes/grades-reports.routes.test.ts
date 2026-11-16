@@ -61,6 +61,15 @@ const call = (method: string, path: string, body?: unknown, role = 'admin', head
   fetch(`${base}${path}`, { method, headers: { 'x-test-role': role, 'content-type': 'application/json', ...headers }, body: body === undefined ? undefined : JSON.stringify(body) })
 
 describe('grades-reports routes', () => {
+  it('keeps school-wide rank and honor lists away from parents and students', async () => {
+    for (const path of ['/honor-roll', '/class-rank', '/course-class-rank']) {
+      expect((await call('GET', path, undefined, 'parent')).status).toBe(403)
+      expect((await call('GET', path, undefined, 'student')).status).toBe(403)
+      expect((await call('GET', path, undefined, 'admin')).status).toBe(200)
+      expect((await call('GET', path, undefined, 'teacher')).status).toBe(200)
+    }
+  })
+
   it('generates transcripts for admins, and for a student only about themselves', async () => {
     const self = { 'x-test-id': 'pA', 'x-test-student': 'stuA' }
     expect((await call('POST', '/transcripts/generate', { student_ids: ['stuA'] }, 'student', self)).status).toBe(200)

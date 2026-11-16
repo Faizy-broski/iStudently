@@ -193,7 +193,8 @@ export class MessagingController {
         sectionIds,
         req.profile.staff_id,
         page,
-        limit
+        limit,
+        req.profile.id
       )
 
       res.json({ success: true, data: result.data, pagination: result.pagination })

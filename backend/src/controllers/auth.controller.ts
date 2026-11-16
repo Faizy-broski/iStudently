@@ -61,6 +61,18 @@ export const updateProfile = async (req: Request, res: Response) => {
       logo_border_color,
     } = req.body
 
+    const textFields = { first_name, last_name, phone, avatar_url, profile_photo_url, logo_shape, logo_border_color }
+    for (const [k, v] of Object.entries(textFields)) {
+      if (v !== undefined && v !== null && typeof v !== 'string') {
+        return res.status(400).json({ success: false, error: `${k} must be a string` })
+      }
+    }
+    for (const url of [avatar_url, profile_photo_url]) {
+      if (typeof url === 'string' && url && !/^https?:\/\//i.test(url)) {
+        return res.status(400).json({ success: false, error: 'Photo URL must be http(s)' })
+      }
+    }
+
     await authService.updateProfile(userId, {
       first_name,
       last_name,

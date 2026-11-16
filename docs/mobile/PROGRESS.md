@@ -581,3 +581,9 @@
     - app: shared `features/library/library-settings.tsx`, routes `/librarian/library-settings` (More tab tile, menu mapping) and `/admin/library/settings` (gear in the library dashboard header);
     - api-client `adminLibrary.settings/saveSettings`.
   - Tests: `backend/src/controllers/library-settings-gpa.test.ts` (8).
+- 2026-11-16: **Parent role released** (the "Coming soon" page is gone for parents).
+  - Audit: web parent has ~70 pages; the app has a native screen for every menu item, UI rules pass. Backend `/parent-dashboard/*` was sound; other routes parents reach were not.
+  - Backend hardening: messaging recipients limited for parents (child's teachers + admins + approved staff), grades-reports lists staff-only, grievance comment access check, active-link filters (students list, attendance summary), discipline referrals (wrong table), children fees/library (bad `fee_structures` column, campus children), published-only class diary, `GET /students/:id` for linked parents, Hifzi leave-request validation, push endpoint and profile validation. Tests: `messaging.parent`, `grievance.comment`, `parent-dashboard.links`, grades-reports route.
+  - App: error + retry on every parent screen that swallowed load errors, dashboard failure banner, `NoChild` no longer hides a failed children load, settings (dead address field removed, real 2FA state), ID card loading flash. `release.ts` += parent; `destination.test.ts` updated.
+  - Open: smoke-test with a real parent (fees/library for campus children, Miqat, calendars, custom fields, Fina consent); decide grade visibility vs `exams.is_published`; the Low backend items listed in CLAUDE.md; ID card still local template (not `getStudentIdCard`).
+

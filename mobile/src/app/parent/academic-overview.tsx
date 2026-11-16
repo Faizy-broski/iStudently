@@ -6,7 +6,7 @@ import { ScrollView } from '@/components/app/keyboard';
 
 import { HeroCard, IconTile, RowItem, Section } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { StatusChip, type ChipTone } from '@/components/app/status-chip';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -66,6 +66,8 @@ export default function ParentAcademicOverview() {
         <Section title={k('recent')}>
           {recent.isLoading ? (
             <LoadingList rows={3} />
+          ) : recent.error && !recent.data ? (
+            <ErrorState message={recent.error.message} onRetry={() => recent.mutate()} />
           ) : recent.data?.length ? (
             <Panel>
               {recent.data.map((g, i, arr) => (
@@ -87,6 +89,8 @@ export default function ParentAcademicOverview() {
         <Section title={k('upcoming')}>
           {exams.isLoading ? (
             <LoadingList rows={3} />
+          ) : exams.error && !exams.data ? (
+            <ErrorState message={exams.error.message} onRetry={() => exams.mutate()} />
           ) : exams.data?.length ? (
             <Panel>
               {exams.data.map((e, i, arr) => (

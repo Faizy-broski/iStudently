@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
-import { useChild } from '@/features/parent/child';
+import { ParentError, useChild } from '@/features/parent/child';
 import { adminMiqat } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { formatDate } from '@/lib/format';
@@ -61,6 +61,7 @@ export default function ParentMiqat() {
   }
 
   if (kids.isLoading) return <LoadingList rows={4} />;
+  if (kids.error) return <ParentError message={kids.error.message} onRetry={() => kids.mutate()} />;
   if (!kid) return <EmptyState title={g('noChildren')} />;
   const list = days.data ?? [];
   const lateness = list.reduce((s, d) => s + (d.lateness_minutes || 0), 0);

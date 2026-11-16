@@ -2,7 +2,7 @@ import { router, Stack } from 'expo-router';
 import { RefreshControl, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { RoomCard, useLc } from '@/features/admin/jitsi';
 import { jitsi } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -18,6 +18,8 @@ export default function ParentMeet() {
       <ScrollView contentContainerClassName="gap-3 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => res.mutate()} />}>
         {res.isLoading ? (
           <LoadingList rows={3} />
+        ) : res.error && !res.data ? (
+          <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : !rooms.length ? (
           <EmptyState title={l('no_rooms_yet')} />
         ) : (

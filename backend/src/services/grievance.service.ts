@@ -537,6 +537,10 @@ export class GrievanceService {
   // ── Comments / attachments ───────────────────────────────────────────────
 
   async addComment(grievanceId: string, profile: GrievanceProfile, body: string, isInternalNote: boolean) {
+    // Only someone who may view the complaint (owner, assignee, admin of its school) may respond.
+    const grievance = await this.fetchGrievanceForAccess(grievanceId, profile.school_id)
+    await this.assertCanView(grievance, profile)
+
     if (isInternalNote && !(await this.canManageGrievance(profile, grievanceId))) {
       throw new Error('Only staff assigned to this complaint can add internal notes')
     }
@@ -780,6 +784,7 @@ export class GrievanceService {
       .from('grievances')
       .select('submitter_profile_id, school_id, status')
       .eq('id', grievanceId)
+      .eq('school_id', profile.school_id)
       .single()
 
     if (!grievance) throw new Error('Complaint not found')

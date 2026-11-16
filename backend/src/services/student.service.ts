@@ -553,6 +553,7 @@ export class StudentService {
           relation_type,
           parent:parents(
             id,
+            profile_id,
             profile:profiles(
               first_name,
               last_name,

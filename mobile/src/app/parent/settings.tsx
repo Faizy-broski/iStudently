@@ -1,6 +1,6 @@
 import Storage from 'expo-sqlite/kv-store';
 import { router, Stack } from 'expo-router';
-import { Bell, Clock, Lock, Mail, MapPin, Phone, Save, Settings, ShieldCheck, User } from 'lucide-react-native';
+import { Bell, Clock, Lock, Mail, Phone, Save, Settings, ShieldCheck, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
-import { auth, media } from '@/lib/api';
+import { auth, media, twoFa } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { env } from '@/lib/env';
 import { formatDateTime } from '@/lib/format';
@@ -43,7 +43,9 @@ export default function ParentSettings() {
   const profile = me.status === 'ready' ? me.me.profile : null;
   const profileId = profile?.id ?? null;
   const last = useApi(profileId ? ['portal', 'last-login', profileId] : null, ([, , id]) => auth.lastLogin(id as string));
-  const [form, setForm] = useState(() => ({ first: profile?.first_name ?? '', last: profile?.last_name ?? '', phone: profile?.phone ?? '', address: '' }));
+  const twoFaState = useApi(profileId ? ['parent', 'two-fa-status', profileId] : null, () => twoFa.status());
+  const twoFaOn = twoFaState.data?.enabled === true;
+  const [form, setForm] = useState(() => ({ first: profile?.first_name ?? '', last: profile?.last_name ?? '', phone: profile?.phone ?? '' }));
   const notifyKey = `parent.notify.${profileId ?? ''}`;
   const [notify, setNotify] = useState<Notify>(() => {
     try {
@@ -116,7 +118,6 @@ export default function ParentSettings() {
             <Field label={k('last_name')} value={form.last} onChange={(v) => setForm({ ...form, last: v })} />
             <Field label={k('email')} icon={Mail} value={profile.email ?? ''} editable={false} />
             <Field label={k('phone')} icon={Phone} value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} keyboardType="phone-pad" placeholder={k('phone_placeholder')} />
-            <Field label={k('address')} icon={MapPin} value={form.address} onChange={(v) => setForm({ ...form, address: v })} placeholder={k('address_placeholder')} />
             <View className="bg-info-soft flex-row items-center gap-3 rounded-xl px-3 py-2.5">
               <Icon as={Clock} className="text-brand dark:text-brand-secondary size-4" />
               <View className="flex-1">
@@ -158,8 +159,10 @@ export default function ParentSettings() {
               icon={ShieldCheck}
               title={k('two_fa')}
               subtitle={k('two_fa_desc')}
-              onPress={() => router.push({ pathname: '/two-fa', params: { mode: 'setup' } })}
-              trailing={<RowPill label={k('enable_2fa')} onPress={() => router.push({ pathname: '/two-fa', params: { mode: 'setup' } })} />}
+              onPress={() => {
+                if (!twoFaOn) router.push({ pathname: '/two-fa', params: { mode: 'setup' } });
+              }}
+              trailing={twoFaOn ? <RowPill label={k('two_fa_on')} tone="success" onPress={() => {}} /> : <RowPill label={k('enable_2fa')} onPress={() => router.push({ pathname: '/two-fa', params: { mode: 'setup' } })} />}
             />
             <ActionRow icon={Settings} title={k('app_settings')} onPress={() => router.push('/settings')} last />
           </Panel>

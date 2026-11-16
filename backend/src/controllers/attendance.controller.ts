@@ -951,7 +951,8 @@ export const getParentDailySummary = async (req: AuthRequest, res: Response) => 
     const { data: rels } = await supabase
       .from('parent_student_links')
       .select('student_id')
-      .eq('parent_id', parentRec.id);
+      .eq('parent_id', parentRec.id)
+      .eq('is_active', true);
 
     const studentIds = rels?.map(r => r.student_id) || [];
     if (studentIds.length === 0) {

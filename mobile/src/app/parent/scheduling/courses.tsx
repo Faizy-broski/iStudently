@@ -11,7 +11,7 @@ import { EmptyState, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { NoChild, useChild } from '@/features/parent/child';
+import { NoChild, ParentError, useChild } from '@/features/parent/child';
 import { parent } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ export default function ParentCourses() {
   const [selected, setSelected] = useState<string | null>(null);
 
   if (!child) return <NoChild />;
+  if (courses.error && !courses.data) return <ParentError message={courses.error.message} onRetry={() => courses.mutate()} />;
   const list = courses.data ?? [];
   const course = list.find((c) => c.subject_id === selected) ?? null;
 

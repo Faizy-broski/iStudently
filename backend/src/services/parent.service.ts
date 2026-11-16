@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { campusIdsAllowed } from '../utils/campus-validation'
 import { SAFE_PROFILE_COLUMNS } from '../utils/profile-columns'
 import {
   Parent,
@@ -782,9 +783,15 @@ export class ParentService {
       throw new Error(`Failed to fetch children: ${error.message}`)
     }
 
-    // Filter only children from the same school
+    // Keep children of the same school family (campus-enrolled children of a
+    // parent registered at the root school included), drop anything outside it.
+    const childSchoolIds = [...new Set((data || []).map((l: any) => l.student?.school_id).filter(Boolean))] as string[]
+    const allowedSchools = new Set<string>()
+    for (const id of childSchoolIds) {
+      if (id === schoolId || (await campusIdsAllowed(schoolId, [id]))) allowedSchools.add(id)
+    }
     return data
-      ?.filter((link: any) => link.student?.school_id === schoolId)
+      ?.filter((link: any) => allowedSchools.has(link.student?.school_id))
       .map((link: any) => ({
         id: link.student?.id || '',
         student_id: link.student_id,
@@ -792,7 +799,8 @@ export class ParentService {
         grade_level: link.student?.grade_level || null,
         profile: link.student?.profile,
         relationship: link.relationship,
-        is_emergency_contact: link.is_emergency_contact
+        is_emergency_contact: link.is_emergency_contact,
+        school_id: link.student?.school_id
       })) || []
   }
 
@@ -914,11 +922,10 @@ export class ParentService {
           profile:profiles(first_name, last_name)
         ),
         fee_structure:fee_structures(
-          name,
+          period_name,
           category:fee_categories(name, code)
         )
       `)
-      .eq('school_id', schoolId)
       .in('student_id', studentIds)
       .order('due_date', { ascending: true })
 
@@ -974,7 +981,6 @@ export class ParentService {
           book:library_books(title, author, isbn)
         )
       `)
-      .eq('school_id', schoolId)
       .in('student_id', studentIds)
       .in('status', ['active', 'overdue'])
       .order('due_date', { ascending: true })
@@ -998,7 +1004,7 @@ export class ParentService {
           )
         )
       `)
-      .eq('school_id', schoolId)
+      .in('school_id', [...new Set([schoolId, ...children.map((c: any) => c.school_id).filter(Boolean)])])
       .eq('is_paid', false)
 
     if (finesError) {

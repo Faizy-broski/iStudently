@@ -9,7 +9,7 @@ import QRCode from 'react-qr-code';
 
 import { colors } from '@/lib/colors';
 import { HeroCard, Section } from '@/components/app/layout';
-import { EmptyState } from '@/components/app/states';
+import { EmptyState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -22,7 +22,7 @@ export default function ParentIdCard() {
   const { t } = useTranslation();
   const k = (key: string, o?: Record<string, unknown>) => t(`app.pic_${key}`, o);
   const toast = useToast();
-  const { child } = useChild();
+  const { child, isLoading: childLoading } = useChild();
   const [busy, setBusy] = useState(false);
 
   function html() {
@@ -104,6 +104,8 @@ export default function ParentIdCard() {
               <Text className="text-sm text-brand dark:text-brand-secondary">{k('note')}</Text>
             </View>
           </>
+        ) : childLoading ? (
+          <LoadingList rows={3} />
         ) : (
           <EmptyState icon={CreditCard} title={k('none')} body={k('none_body')} />
         )}
