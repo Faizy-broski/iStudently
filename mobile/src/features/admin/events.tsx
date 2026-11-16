@@ -1,7 +1,7 @@
 import type { EventCategory, SchoolEvent } from '@studently/api-client';
 import { Bell, BookOpen, Calendar, FileText, Users, Zap, type LucideIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { StyleSheet, View, type ViewProps } from 'react-native';
 
 import { colors } from '@/lib/colors';
 import { Icon } from '@/components/ui/icon';
@@ -37,16 +37,26 @@ export const ymdOf = (iso: string) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+/** A soft tinted background for any colour (token, rgb or hex): a faded layer behind the children, no string maths on the colour. */
+export function TintBox({ color, opacity = 0.13, className, children, ...rest }: ViewProps & { color: string; opacity?: number }) {
+  return (
+    <View className={`overflow-hidden ${className ?? ''}`} {...rest}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: color, opacity }]} />
+      {children}
+    </View>
+  );
+}
+
 export function CategoryBadge({ category }: { category: EventCategory }) {
   const { t } = useTranslation();
   const color = EVENT_COLORS[category];
   return (
-    <View className="flex-row items-center gap-1 self-start rounded-full px-2.5 py-1" style={{ backgroundColor: `${color}22` }}>
+    <TintBox color={color} opacity={0.14} className="flex-row items-center gap-1 self-start rounded-full px-2.5 py-1">
       <Icon as={CATEGORY_ICONS[category]} size={12} color={color} />
       <Text className="text-xs font-semibold" style={{ color }}>
         {t(`school.events.categories.${category}`)}
       </Text>
-    </View>
+    </TintBox>
   );
 }
 

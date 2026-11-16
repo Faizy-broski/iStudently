@@ -18,7 +18,7 @@ export function readCustomValue(values: Record<string, any> | null | undefined, 
   return raw && typeof raw === 'object' && !Array.isArray(raw) && 'value' in raw ? (raw as { value: unknown }).value : raw;
 }
 
-function display(def: CustomFieldDefinition, stored: unknown, yes: string, no: string): string | undefined {
+export function displayCustomValue(def: CustomFieldDefinition, stored: unknown, yes: string, no: string): string | undefined {
   const raw = stored;
   if (raw === null || raw === undefined || raw === '') return undefined;
   const ar = locale === 'ar';
@@ -54,7 +54,7 @@ export function CustomFieldValues({ defs, values, hideEmpty }: { defs?: CustomFi
   const categories = new Map<string, { name: string; order: number; fields: CustomFieldDefinition[] }>();
   const yes = t('school.students.student_details.yes');
   const no = t('school.students.student_details.no');
-  const shown = (d: CustomFieldDefinition) => !hideEmpty || display(d, readCustomValue(values, d), yes, no) !== undefined;
+  const shown = (d: CustomFieldDefinition) => !hideEmpty || displayCustomValue(d, readCustomValue(values, d), yes, no) !== undefined;
   for (const d of defs.filter((x) => x.is_active !== false && shown(x))) {
     const c = categories.get(d.category_id) ?? { name: d.category_name, order: d.category_order ?? 0, fields: [] };
     c.fields.push(d);
@@ -72,7 +72,7 @@ export function CustomFieldValues({ defs, values, hideEmpty }: { defs?: CustomFi
                 .sort((a, b) => a.sort_order - b.sort_order)
                 .map((d, i, arr) => (
                   <View key={d.id} className={i < arr.length - 1 ? 'border-info-soft dark:border-border border-b' : undefined}>
-                    <InfoRow label={(ar && d.label_ar) || d.label} value={display(d, readCustomValue(values, d), yes, no)} />
+                    <InfoRow label={(ar && d.label_ar) || d.label} value={displayCustomValue(d, readCustomValue(values, d), yes, no)} />
                   </View>
                 ))}
             </View>

@@ -84,6 +84,16 @@ export interface DashboardData {
   recent_grade: RecentGrade | null
 }
 
+/**
+ * GRADE VISIBILITY RULE (parent = student = web parent pages).
+ * A child's exam result or grade is visible as soon as marks are ENTERED: exam_results with
+ * marks_obtained not null (absent / unmarked rows are never shown) and gradebook_grades with points
+ * not null. There is deliberately NO `exams.is_published` gate on results: the student dashboard and
+ * the web parent pages never had one, exams created in the web or the app are saved as published,
+ * and gating here would hide marks parents see today. `is_published` only decides which FUTURE exams
+ * are announced (getUpcomingExams): a draft exam is not announced. Report cards that need release
+ * (Jahbadh) are published-only in their own service. Pinned by parent-dashboard.grades-rule.test.ts.
+ */
 class ParentDashboardService {
   /**
    * Get list of all children for a parent

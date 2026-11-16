@@ -7,6 +7,7 @@ import { requireOwnClass, requireOwnRow, requireSelfTeacherId } from '../middlew
 import { requireRole } from '../middlewares/role.middleware'
 import { requireBodyRowsInSchoolFamily, requireRequestSchoolsInFamily, requireRowInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 import { campusIdsAllowed } from '../utils/campus-validation'
+import { parentOwnSectionQuery, parentOwnSectionRow } from '../middlewares/parent-sections.middleware'
 
 const router = Router()
 const diaryController = new ClassDiaryController()
@@ -68,7 +69,7 @@ async function canDeleteComment(req: AuthRequest, res: Response, next: NextFunct
  * Get diary entries in read view (by date + optional filters)
  * All authenticated users can access
  */
-router.get('/read', studentOwnSection, (req, res) =>
+router.get('/read', studentOwnSection, parentOwnSectionQuery(), (req, res) =>
   diaryController.getDiaryReadView(req, res)
 )
 
@@ -77,7 +78,7 @@ router.get('/read', studentOwnSection, (req, res) =>
  * Get all diary entries with optional filters
  * All authenticated users can access
  */
-router.get('/', studentOwnSection, (req, res) =>
+router.get('/', studentOwnSection, parentOwnSectionQuery(), (req, res) =>
   diaryController.getDiaryEntries(req, res)
 )
 
@@ -85,7 +86,7 @@ router.get('/', studentOwnSection, (req, res) =>
  * GET /api/class-diary/:id
  * Get a single diary entry by ID
  */
-router.get('/:id', entryRow, studentOwnSection, (req, res) =>
+router.get('/:id', entryRow, studentOwnSection, parentOwnSectionRow('class_diary_entries'), (req, res) =>
   diaryController.getDiaryEntryById(req, res)
 )
 
@@ -148,7 +149,7 @@ router.delete('/files/:fileId', requireRole('admin', 'teacher'), fileRow, ownFil
  * Add a comment to a diary entry
  * All authenticated users can comment (if comments enabled)
  */
-router.post('/:id/comments', entryRow, (req, res) =>
+router.post('/:id/comments', entryRow, parentOwnSectionRow('class_diary_entries'), (req, res) =>
   diaryController.addComment(req, res)
 )
 

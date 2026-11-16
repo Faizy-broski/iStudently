@@ -144,6 +144,24 @@ export interface PollResponseDTO {
 // PORTAL SERVICE
 // ================================================================
 
+/**
+ * Is a note or poll meant for this caller right now? Same audience rule the list endpoints apply
+ * (active, role in visible_to_roles, inside visible_from..visible_until), now also applied when a
+ * note/poll is addressed by id or answered. Admins and super admins see everything.
+ */
+export function portalAudienceAllows(
+  row: { is_active?: boolean; visible_to_roles?: string[] | null; visible_from?: string | null; visible_until?: string | null },
+  role: string | undefined,
+  now: Date = new Date()
+): boolean {
+  if (role === 'admin' || role === 'super_admin') return true
+  if (!role || row.is_active === false) return false
+  if (!Array.isArray(row.visible_to_roles) || !row.visible_to_roles.includes(role)) return false
+  if (row.visible_from && new Date(row.visible_from) > now) return false
+  if (row.visible_until && new Date(row.visible_until) < now) return false
+  return true
+}
+
 class PortalService {
   // ----------------------------------------------------------------
   // NOTES

@@ -1,4 +1,4 @@
-import type { ParentStudent } from '@studently/api-client';
+import type { CustomFieldDefinition, ParentStudent, StudentInfoData } from '@studently/api-client';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { FileDown } from 'lucide-react-native';
 import { useState } from 'react';
@@ -15,12 +15,13 @@ import { Icon } from '@/components/ui/icon';
 import { EmptyState } from '@/components/app/states';
 import { Text } from '@/components/ui/text';
 import { useChild } from '@/features/parent/child';
-import { adminCustomFields } from '@/lib/api';
+import { displayCustomValue, readCustomValue } from '@/features/admin/custom-field-values';
+import { adminCustomFields, parent } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { shareTextFile } from '@/lib/share-file';
 import { cn } from '@/lib/utils';
 
-// Web: the parent report reads the children list, so only these standard fields have values; custom fields show '-'.
+// Standard fields come from the children list; custom field values come from each child's student info.
 const FIELD_MAP: Record<string, keyof ParentStudent> = {
   student_number: 'student_number',
   first_name: 'first_name',
@@ -42,7 +43,20 @@ export default function ParentReportResults() {
     selected = [];
   }
   const { children: kids, isLoading } = useChild();
-  const defs = useApi(['portal', 'custom-field-defs', 'student'], () => adminCustomFields.list('student'));
+  // Field definitions per campus of the linked children, merged by field key (children can sit in different campuses).
+  const campusKey = [...new Set(kids.map((c) => c.campus_id))].sort().join(',');
+  const defs = useApi<CustomFieldDefinition[]>(kids.length ? ['parent', 'report-defs', campusKey] : null, async (key) => {
+    const lists = await Promise.all(String((key as string[])[2]).split(',').map((id) => adminCustomFields.list('student', id)));
+    const merged = new Map<string, CustomFieldDefinition>();
+    for (const l of lists) for (const d of l.data ?? []) if (!merged.has(d.field_key)) merged.set(d.field_key, d);
+    return { success: true, data: [...merged.values()] };
+  });
+  const idsKey = kids.map((c) => c.id).join(',');
+  const infos = useApi<Record<string, StudentInfoData | null>>(kids.length ? ['parent', 'report-infos', idsKey] : null, async (key) => {
+    const list = String((key as string[])[2]).split(',');
+    const res = await Promise.all(list.map((id) => parent.getStudentInfo(id)));
+    return { success: true, data: Object.fromEntries(list.map((id, i) => [id, res[i].data ?? null])) };
+  });
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
   const rows = q ? kids.filter((s) => Object.values(s).some((v) => String(v).toLowerCase().includes(q))) : kids;
@@ -54,7 +68,14 @@ export default function ParentReportResults() {
     }
     return k(`f_${f}`, { defaultValue: f });
   };
+  const yes = t('school.students.student_details.yes');
+  const no = t('school.students.student_details.no');
   const valueOf = (s: ParentStudent, f: string) => {
+    if (f.startsWith('custom_')) {
+      const d = (defs.data ?? []).find((x) => x.field_key === f.slice(7));
+      const shown = d ? displayCustomValue(d, readCustomValue(infos.data?.[s.id]?.custom_fields, d), yes, no) : undefined;
+      return shown ?? '-';
+    }
     const key = FIELD_MAP[f];
     const v = key ? s[key] : null;
     return v != null ? String(v) : '-';
@@ -67,7 +88,8 @@ export default function ParentReportResults() {
     toast.success(k('exported'));
   }
 
-  if (isLoading) {
+  const needsCustom = selected.some((f) => f.startsWith('custom_'));
+  if (isLoading || (needsCustom && kids.length > 0 && (infos.isLoading || defs.isLoading))) {
     return (
       <View className="bg-background flex-1 items-center justify-center gap-3">
         <ActivityIndicator />
