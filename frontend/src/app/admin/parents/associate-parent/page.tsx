@@ -12,12 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Link2, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useCampus } from "@/context/CampusContext";
 import { searchParents, linkParentToStudent, type Parent } from "@/lib/api/parents";
 import { getStudents, type Student } from "@/lib/api/students";
 import { useTranslations } from "next-intl";
 
 export default function AssociateParentPage() {
   const t = useTranslations("parents");
+  const campusContext = useCampus();
+  const campusId = campusContext?.selectedCampus?.id;
   const [selectedParent, setSelectedParent] = useState<string>("");
   const [parentSearchQuery, setParentSearchQuery] = useState("");
   const [searchStudent, setSearchStudent] = useState("");
@@ -85,6 +88,7 @@ export default function AssociateParentPage() {
           search: debouncedStudentSearch || undefined,
           grade_level: gradeFilter !== "all" ? gradeFilter : undefined,
           limit: 100, // Get more students for selection
+          campus_id: campusId || undefined,
         });
 
         if (response.success && response.data) {
@@ -102,7 +106,7 @@ export default function AssociateParentPage() {
     };
 
     fetchStudents();
-  }, [debouncedStudentSearch, gradeFilter]);
+  }, [debouncedStudentSearch, gradeFilter, campusId]);
 
   // Get selected parent details
   const selectedParentDetails = parents.find(p => p.id === selectedParent);
