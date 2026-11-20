@@ -82,7 +82,7 @@ export function requireStudentAccess(param = 'studentId') {
       if (role === 'parent') {
         const { data: link } = await supabase
           .from('parent_student_links')
-          .select('id, parent:parents!inner(profile_id)')
+          .select('student_id, parent:parents!inner(profile_id)')
           .eq('student_id', row.id)
           .eq('is_active', true)
           .eq('parent.profile_id', req.profile?.id)

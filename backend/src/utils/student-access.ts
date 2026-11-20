@@ -17,7 +17,7 @@ export async function canViewStudent(req: Caller, studentId: string): Promise<bo
   if (profile.role === 'parent') {
     const { data } = await supabase
       .from('parent_student_links')
-      .select('id, parent:parents!inner(profile_id)')
+      .select('student_id, parent:parents!inner(profile_id)')
       .eq('student_id', studentId)
       .eq('is_active', true)
       .eq('parent.profile_id', profile.id)
