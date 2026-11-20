@@ -170,3 +170,27 @@ export async function campusIdsAllowed(profileSchoolId: string | null | undefine
   }
   return true
 }
+
+const SCOPE_TTL_MS = 5 * 60 * 1000
+const scopeCache = new Map<string, { ids: string[]; at: number }>()
+
+/**
+ * The school itself plus every campus below it (follows parent_school_id). A main-school admin
+ * therefore sees records stored under any of their campuses; a campus user only their own campus.
+ * Cached briefly. Use for reads/writes of rows that can live on either level (e.g. parents).
+ */
+export async function schoolScopeIds(schoolId: string): Promise<string[]> {
+  const hit = scopeCache.get(schoolId)
+  if (hit && Date.now() - hit.at < SCOPE_TTL_MS) return hit.ids
+  const ids = new Set<string>([schoolId])
+  let frontier = [schoolId]
+  for (let depth = 0; depth < 4 && frontier.length; depth++) {
+    const { data, error } = await supabase.from('schools').select('id').in('parent_school_id', frontier)
+    if (error) throw error
+    frontier = (data ?? []).map((r: any) => r.id as string).filter((id) => !ids.has(id))
+    frontier.forEach((id) => ids.add(id))
+  }
+  const out = [...ids]
+  scopeCache.set(schoolId, { ids: out, at: Date.now() })
+  return out
+}
