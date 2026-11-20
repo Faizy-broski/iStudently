@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase'
-import { campusIdsAllowed } from '../utils/campus-validation'
+import { campusIdsAllowed, schoolScopeIds } from '../utils/campus-validation'
 import { SAFE_PROFILE_COLUMNS } from '../utils/profile-columns'
 import {
   Parent,
@@ -55,7 +55,7 @@ export class ParentService {
           is_active
         )
       `, { count: 'exact' })
-      .eq('school_id', schoolId)
+      .in('school_id', await schoolScopeIds(schoolId))
       .order('created_at', { ascending: false })
 
     // Apply search filter on profile fields
@@ -129,7 +129,7 @@ export class ParentService {
           is_active
         )
       `, { count: 'exact' })
-      .eq('school_id', schoolId)
+      .in('school_id', await schoolScopeIds(schoolId))
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -247,7 +247,7 @@ export class ParentService {
         )
       `)
       .eq('id', parentId)
-      .eq('school_id', schoolId)
+      .in('school_id', await schoolScopeIds(schoolId))
       .single()
 
     if (error) {
@@ -304,8 +304,9 @@ export class ParentService {
     }
 
     // Filter only children from the same school
+    const scope = new Set(await schoolScopeIds(schoolId))
     const children = links
-      ?.filter((link: any) => link.student?.school_id === schoolId)
+      ?.filter((link: any) => scope.has(link.student?.school_id))
       .map((link: any) => ({
         id: link.student?.id || '',
         student_id: link.student_id,
@@ -489,7 +490,7 @@ export class ParentService {
         .from('parents')
         .update(parentUpdates)
         .eq('id', parentId)
-        .eq('school_id', schoolId)
+        .in('school_id', await schoolScopeIds(schoolId))
         .select(`
           *,
           profile:profiles(${SAFE_PROFILE_COLUMNS})
@@ -521,7 +522,7 @@ export class ParentService {
       .from('parents')
       .delete()
       .eq('id', parentId)
-      .eq('school_id', schoolId)
+      .in('school_id', await schoolScopeIds(schoolId))
 
     if (error) {
       throw new Error(`Failed to delete parent: ${error.message}`)
@@ -545,7 +546,7 @@ export class ParentService {
       .from('students')
       .select('id, school_id')
       .eq('id', linkData.student_id)
-      .eq('school_id', schoolId)
+      .in('school_id', await schoolScopeIds(schoolId))
       .single()
 
     if (studentError || !student) {
@@ -727,7 +728,7 @@ export class ParentService {
       .from('students')
       .select('id')
       .eq('id', studentId)
-      .eq('school_id', schoolId)
+      .in('school_id', await schoolScopeIds(schoolId))
       .single()
 
     if (!student) {
@@ -821,7 +822,7 @@ export class ParentService {
           phone
         )
       `)
-      .eq('school_id', schoolId)
+      .in('school_id', await schoolScopeIds(schoolId))
       .limit(50)
 
     if (error) {
@@ -1050,7 +1051,7 @@ export class ParentService {
     const { data: rows, error: fetchErr } = await supabase
       .from('parents')
       .select('id, profile_id, custom_fields')
-      .eq('school_id', schoolId)
+      .in('school_id', await schoolScopeIds(schoolId))
       .in('id', params.parent_ids)
 
     if (fetchErr) throw new Error(`Failed to resolve parents for group assign: ${fetchErr.message}`)
@@ -1196,11 +1197,12 @@ export async function getStudentRelatives(
       .eq('is_active', true)
       .neq('student_id', studentId)
 
-    // Deduplicate by student id and filter to same school
+    // Deduplicate by student id and filter to same school (or its campuses)
+    const siblingScope = new Set(await schoolScopeIds(schoolId))
     const seen = new Set<string>()
     for (const link of (siblingLinks || [])) {
       const s = link.student as any
-      if (!s || seen.has(s.id) || s.school_id !== schoolId) continue
+      if (!s || seen.has(s.id) || !siblingScope.has(s.school_id)) continue
       seen.add(s.id)
       siblings.push({
         id: s.id,
