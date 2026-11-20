@@ -305,11 +305,7 @@ class ParentDashboardService {
 
     const { data, error } = await supabase
       .from('attendance_records')
-      .select(`
-        attendance_date,
-        status,
-        marked_by:profiles!attendance_records_marked_by_fkey(first_name, last_name)
-      `)
+      .select('attendance_date, status, marked_by')
       .eq('student_id', studentId)
       .gte('attendance_date', startDate)
       .lte('attendance_date', endDate)
@@ -317,10 +313,19 @@ class ParentDashboardService {
 
     if (error) throw error
 
+    // Resolve who marked it in a second query: an embedded join needs the exact foreign-key name,
+    // and a wrong name fails the whole request (and with it the parent dashboard).
+    const markerIds = [...new Set((data || []).map((r: any) => r.marked_by).filter(Boolean))] as string[]
+    const markers = new Map<string, string>()
+    if (markerIds.length) {
+      const { data: people } = await supabase.from('profiles').select('id, first_name, last_name').in('id', markerIds)
+      for (const p of people || []) markers.set(p.id as string, `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim())
+    }
+
     return (data || []).map((record: any) => ({
       date: record.attendance_date,
       status: record.status,
-      marked_by: record.marked_by ? `${record.marked_by.first_name} ${record.marked_by.last_name}` : undefined
+      marked_by: record.marked_by ? markers.get(record.marked_by) || undefined : undefined
     }))
   }
 
