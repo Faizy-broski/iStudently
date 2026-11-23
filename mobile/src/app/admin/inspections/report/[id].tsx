@@ -48,13 +48,18 @@ export default function InspectionReportSign() {
 
   if (res.isLoading) return <LoadingList rows={3} />;
   const rep = res.data;
-  if (!rep) return <ErrorState message={r('report_not_found')} onRetry={() => res.mutate()} />;
+  if (!rep) return <ErrorState message={res.error ? res.error.message : r('report_not_found')} onRetry={() => res.mutate()} />;
 
   const byRole = new Map(rep.signatures.map((s) => [s.signer_role, s]));
   const isTeacher = myId === rep.teacher_profile_id;
   const isInspector = myId === rep.inspector_profile_id;
   const canSign = isTeacher || isInspector || isAdmin;
   const signedByMe = (isTeacher && byRole.has('teacher')) || (isInspector && byRole.has('inspector')) || (isAdmin && byRole.has('principal') && !isTeacher && !isInspector);
+
+  // Signing order enforced by the server: teacher, then principal, then inspector. Until the earlier signers have signed the button stays off.
+  const mySigner: 'teacher' | 'inspector' | 'principal' | null = isTeacher ? 'teacher' : isInspector ? 'inspector' : isAdmin ? 'principal' : null;
+  const waitingOn = mySigner === 'inspector' ? (['teacher', 'principal'] as const).filter((x) => !byRole.has(x)) : mySigner === 'principal' ? (['teacher'] as const).filter((x) => !byRole.has(x)) : [];
+  const signBlocked = waitingOn.length > 0;
 
   async function viewPdf() {
     setViewing(true);
@@ -163,10 +168,13 @@ export default function InspectionReportSign() {
               );
             })}
             {canSign && !signedByMe ? (
-              <Button onPress={() => setOpen(true)}>
-                <Icon as={PenLine} className="text-primary-foreground size-4" />
-                <Text>{r('btn_sign')}</Text>
-              </Button>
+              <>
+                {signBlocked ? <Text className="text-muted-foreground text-xs">{t('app.in_sign_waiting', { roles: waitingOn.map((x) => r(`role_${x}`)).join(', ') })}</Text> : null}
+                <Button onPress={() => setOpen(true)} disabled={signBlocked}>
+                  <Icon as={PenLine} className="text-primary-foreground size-4" />
+                  <Text>{r('btn_sign')}</Text>
+                </Button>
+              </>
             ) : null}
           </CardContent>
         </Card>

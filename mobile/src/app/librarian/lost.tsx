@@ -12,17 +12,14 @@ import { FormSection } from '@/components/app/layout';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
 import { isLibraryKey } from '@/features/admin/library';
 import { ActiveLoansCard, StudentSelectCard } from '@/features/library/librarian';
 import { adminLibrary } from '@/lib/api';
+import { useCurrency } from '@/features/admin/use-currency';
 import { formatDate } from '@/lib/format';
-
-/** Web: a fixed processing fee added to the replacement cost. */
-const PROCESSING_FEE = 10;
 
 /** Mark a student's loaned book lost and charge its replacement cost (web: /librarian/lost). */
 export default function LibrarianLost() {
@@ -30,24 +27,22 @@ export default function LibrarianLost() {
   const k = (key: string, o?: Record<string, unknown>) => t(`app.li_${key}`, o);
   const toast = useToast();
   const { mutate } = useSWRConfig();
+  const { money } = useCurrency();
   const [now] = useState(() => Date.now());
   const [student, setStudent] = useState<LibraryStudentHit | null>(null);
   const [loan, setLoan] = useState<BookLoan | null>(null);
-  const [cost, setCost] = useState('');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function markLost() {
     if (!loan) return toast.error(k('select_loan_lost'));
-    const c = parseFloat(cost);
-    if (!cost || !(c > 0)) return toast.error(k('enter_cost'));
     setBusy(true);
-    const r = await adminLibrary.markLost(loan.id, { replacement_cost: c, processing_fee: PROCESSING_FEE, notes: notes.trim() || undefined });
+    // The server charges the copy's own price plus its processing fee; the app sends only the loan and the note.
+    const r = await adminLibrary.markLost(loan.id, { notes: notes.trim() || undefined });
     setBusy(false);
     if (!r.success) return toast.error(r.error || k('lost_failed'));
     toast.success(k('lost_ok'));
     setLoan(null);
-    setCost('');
     setNotes('');
     mutate(isLibraryKey);
     mutate((key) => Array.isArray(key) && key[0] === 'librarian' && key[1] === 'active-loans');
@@ -78,9 +73,10 @@ export default function LibrarianLost() {
                 <Text className="text-sm">{`${k('copy')}: ${loan.accession_number ?? '—'}`}</Text>
                 <Text className="text-sm">{`${k('due_date')}: ${formatDate(loan.due_date)}`}</Text>
               </View>
-              <View className="gap-1.5">
-                <Label>{k('replacement_cost')}</Label>
-                <Input value={cost} onChangeText={(v) => setCost(v.replace(/[^0-9.]/g, ''))} keyboardType="decimal-pad" placeholder="0.00" />
+              <View className="bg-muted/50 gap-1 rounded-xl p-3">
+                <Text className="text-sm font-semibold">{k('replacement_cost')}</Text>
+                <Text className="text-sm">{loan.book_price != null ? money(loan.book_price) : k('price_by_server')}</Text>
+                <Text variant="muted" className="text-xs">{k('lost_charge_note')}</Text>
               </View>
               <View className="gap-1.5">
                 <Label>{k('notes_optional')}</Label>
@@ -102,7 +98,7 @@ export default function LibrarianLost() {
                   <Text>{t('common.cancel')}</Text>
                 </Button>
                 <Button variant="destructive" className="flex-1" onPress={markLost} disabled={busy}>
-                  <Text className="text-white">{busy ? k('processing') : k('mark_as_lost')}</Text>
+                  <Text className="text-destructive-foreground">{busy ? k('processing') : k('mark_as_lost')}</Text>
                 </Button>
               </View>
             </FormSection>

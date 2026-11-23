@@ -525,6 +525,16 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       return;
     }
 
+    // A librarian can only file about students of their own campus.
+    if (librarian && targetType === 'student') {
+      const ownCampus = (req as AuthRequest).profile?.campus_id || (req as AuthRequest).profile?.school_id;
+      const { data: studs, error: studsErr } = await supabase.from('students').select('id, school_id').in('id', targetIds);
+      if (studsErr || (studs ?? []).length !== new Set(targetIds).size || (studs ?? []).some((st: any) => st.school_id !== ownCampus)) {
+        res.status(403).json({ error: 'You can only report students of your own campus' });
+        return;
+      }
+    }
+
     const rows = targetIds.map((tid) => ({
       school_id: schoolId,
       campus_id: campus_id || null,

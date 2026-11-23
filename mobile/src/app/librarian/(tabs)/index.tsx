@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthBackground } from '@/components/app/auth-background';
 import { Panel } from '@/components/app/panel';
 import { PersonAvatar } from '@/components/app/person-avatar';
-import { LoadingList } from '@/components/app/states';
+import { InlineError, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { raised } from '@/components/app/tile-grid';
 import { Button } from '@/components/ui/button';
@@ -111,8 +111,8 @@ export default function LibrarianDashboard() {
   const plugins = usePortalPlugins();
   const res = useApi(['librarian', 'stats', campusId ?? 'school'], () => adminLibrary.stats(campusId ?? undefined));
   // Same keys as the books and fines screens (shared cache).
-  const books = useApi(['admin', 'library-books'], () => adminLibrary.books());
-  const fines = useApi(['admin', 'library-fine-stats'], () => adminLibrary.fineStats());
+  const books = useApi(['admin', 'library-books', campusId ?? 'school'], () => adminLibrary.books());
+  const fines = useApi(['admin', 'library-fine-stats', campusId ?? 'school'], () => adminLibrary.fineStats());
   const s = res.data;
   const first = profile?.first_name || t('app.role_librarian');
   const overdue = s?.overdue_loans ?? 0;
@@ -169,6 +169,7 @@ export default function LibrarianDashboard() {
             </Panel>
           ) : (
             <>
+              {books.error || fines.error ? <InlineError message={k('partial_failed')} onRetry={refresh} /> : null}
               {/* Tiles */}
               <View className="gap-2.5">
                 <View className="flex-row gap-2.5">

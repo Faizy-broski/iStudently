@@ -2,6 +2,7 @@ import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
 import { getImpersonationHeaders } from './abortable-fetch'
+import { getDeviceId } from '@/lib/device-id'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,36 @@ interface ApiResponse<T = unknown> {
   code?: string
 }
 
+// ─── Device limit types ──────────────────────────────────────────────────────
+
+export interface VLabyDevice {
+  id: string
+  label: string | null
+  platform: string | null
+  first_seen_at: string
+  last_seen_at: string
+  is_current?: boolean
+}
+
+export interface VLabyDeviceLimitData {
+  limit: number | null
+  devices: VLabyDevice[]
+}
+
+export interface VLabySchoolDevice {
+  id: string
+  profile_id: string
+  user_name: string | null
+  role: string | null
+  label: string | null
+  platform: string | null
+  first_seen_at: string
+  last_seen_at: string
+}
+
+export const VLABY_DEVICE_LIMIT = 'VLABY_DEVICE_LIMIT'
+export const VLABY_DEVICE_ID_REQUIRED = 'VLABY_DEVICE_ID_REQUIRED'
+
 // ─── LocalStorage token helpers ──────────────────────────────────────────────
 
 const TOKEN_KEY = 'vlaby_token'
@@ -101,6 +132,10 @@ async function apiRequest<T = unknown>(
     ...getImpersonationHeaders(),
   }
 
+  // Identifies this browser for the per-user VLaby device limit.
+  const deviceId = getDeviceId()
+  if (deviceId) headers['X-Device-Id'] = deviceId
+
   if (vlabyToken) headers['x-vlaby-token'] = vlabyToken
 
   try {
@@ -117,7 +152,12 @@ async function apiRequest<T = unknown>(
     }
 
     if (!response.ok) {
-      return { success: false, error: data.error || `Request failed with status ${response.status}`, code: data.code }
+      return {
+        success: false,
+        error: data.error || `Request failed with status ${response.status}`,
+        code: data.code,
+        data: data.data,
+      }
     }
 
     return data
@@ -225,4 +265,46 @@ export async function getVLabyExperiment(
 ): Promise<ApiResponse<{ experiment: VLabyExperimentDetail }>> {
   const token = getStoredVLabyToken()
   return apiRequest<{ experiment: VLabyExperimentDetail }>(`/vlaby/experiment/${id}`, {}, token)
+}
+
+// ─── Device limit (per user) ──────────────────────────────────────────────────
+
+export async function getMyVLabyDevices(): Promise<ApiResponse<VLabyDeviceLimitData>> {
+  return apiRequest<VLabyDeviceLimitData>('/vlaby/my-devices')
+}
+
+export async function releaseMyVLabyDevice(deviceId: string): Promise<ApiResponse<void>> {
+  return apiRequest<void>(`/vlaby/my-devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' })
+}
+
+// ─── Device limit (super admin, per school) ───────────────────────────────────
+
+export async function getVLabyDeviceLimit(
+  schoolId: string
+): Promise<ApiResponse<{ school_id: string; limit: number | null }>> {
+  return apiRequest<{ school_id: string; limit: number | null }>(`/vlaby/device-limit${qs({ school_id: schoolId })}`)
+}
+
+export async function setVLabyDeviceLimit(
+  schoolId: string,
+  limit: number | null
+): Promise<ApiResponse<{ school_id: string; limit: number | null }>> {
+  return apiRequest<{ school_id: string; limit: number | null }>('/vlaby/device-limit', {
+    method: 'PUT',
+    body: JSON.stringify({ school_id: schoolId, limit }),
+  })
+}
+
+export async function getVLabySchoolDevices(schoolId: string): Promise<ApiResponse<VLabySchoolDevice[]>> {
+  return apiRequest<VLabySchoolDevice[]>(`/vlaby/devices${qs({ school_id: schoolId })}`)
+}
+
+export async function removeVLabySchoolDevice(deviceId: string): Promise<ApiResponse<void>> {
+  return apiRequest<void>(`/vlaby/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' })
+}
+
+export async function resetVLabyUserDevices(profileId: string, schoolId: string): Promise<ApiResponse<void>> {
+  return apiRequest<void>(`/vlaby/devices/user/${encodeURIComponent(profileId)}${qs({ school_id: schoolId })}`, {
+    method: 'DELETE',
+  })
 }

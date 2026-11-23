@@ -151,11 +151,26 @@ export async function listReportsForInspector(inspectorProfileId: string) {
   return data || []
 }
 
+/**
+ * Who may replace a report's PDF: never the inspected teacher; never anyone once the report is
+ * fully signed (the signed document is final); an inspector only for their OWN report and only
+ * while still assigned to the campus; an admin only for a campus they administer.
+ */
+async function assertCanReplaceReportPdf(report: InspectionReport, caller: CallerContext) {
+  await assertCanViewReport(report, caller)
+  if (caller.role === 'teacher') throw new Error('Access denied: teachers cannot replace the report PDF')
+  if (report.status === 'fully_signed') throw new Error('Access denied: a fully signed report cannot be changed')
+  if (caller.role === 'inspector') {
+    if (report.inspector_profile_id !== caller.profileId) throw new Error('Access denied: only the inspector who wrote this report can replace its PDF')
+    const stillAssigned = await assertInspectorCanAccessSchool(caller.profileId, report.school_id, caller.role)
+    if (!stillAssigned) throw new Error('Access denied: not assigned to this campus')
+  }
+}
+
 /** Pre-flight check for inspection-media.controller.ts::uploadReportPdf — call BEFORE writing bytes to storage. */
 export async function assertCanUploadReportPdf(caller: CallerContext, reportId: string): Promise<InspectionReport> {
   const report = await getReportOrThrow(reportId)
-  await assertCanViewReport(report, caller)
-  if (caller.role === 'teacher') throw new Error('Access denied: teachers cannot replace the report PDF')
+  await assertCanReplaceReportPdf(report, caller)
   return report
 }
 
@@ -166,16 +181,12 @@ export interface UploadPdfDTO {
 
 /**
  * Records where the generated PDF landed in storage — the actual bytes are
- * uploaded by inspection-media.controller.ts. Callable by anyone who can
- * view the report (not just the inspector): a viewer regenerating/re-saving
- * the rendered PDF isn't introducing new information, just persisting a
- * rendering of data they already have full read access to.
+ * uploaded by inspection-media.controller.ts. Only the report's own inspector
+ * (or an admin of the campus) may do so, and never after it is fully signed.
  */
 export async function recordReportPdf(caller: CallerContext, reportId: string, dto: UploadPdfDTO): Promise<InspectionReport> {
   const report = await getReportOrThrow(reportId)
-  await assertCanViewReport(report, caller)
-  // The inspected teacher signs the report but never replaces its PDF (that could swap in a forged one).
-  if (caller.role === 'teacher') throw new Error('Access denied: teachers cannot replace the report PDF')
+  await assertCanReplaceReportPdf(report, caller)
   // Only a file in this report's own storage folder (as uploadReportPdf writes it).
   const prefix = `${report.school_id}/reports/${reportId}/`
   if (typeof dto.file_url !== 'string' || !dto.file_url.startsWith(prefix) || dto.file_url.includes('..') || !dto.file_url.endsWith('.pdf')) {

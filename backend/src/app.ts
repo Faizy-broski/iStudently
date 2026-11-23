@@ -211,7 +211,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Accept, Accept-Language, Content-Language, Content-Type, Authorization, X-Requested-With, X-API-Key, Origin, X-Locale, X-VLaby-Token, X-School-Id",
+    "Accept, Accept-Language, Content-Language, Content-Type, Authorization, X-Requested-With, X-API-Key, Origin, X-Locale, X-VLaby-Token, X-Device-Id, X-School-Id",
   );
   res.setHeader("Access-Control-Max-Age", "86400");
   res.setHeader("Vary", "Origin");

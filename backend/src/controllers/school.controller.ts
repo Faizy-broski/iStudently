@@ -562,7 +562,8 @@ export class SchoolController {
   /** GET /api/schools/settings/library — the school's library policies (admins and librarians). */
   async getLibrarySettings(req: AuthRequest, res: Response) {
     try {
-      const schoolId = req.profile?.school_id;
+      // Library data lives on the campus (same id the loan rules read), not the main school.
+      const schoolId = req.profile?.campus_id || req.profile?.school_id;
       if (!schoolId) return res.status(400).json({ success: false, error: 'School ID is required' });
       res.json({ success: true, data: await schoolService.getLibrarySettings(schoolId) });
     } catch (error: any) {
@@ -574,7 +575,7 @@ export class SchoolController {
   /** PUT /api/schools/settings/library { fine_per_day, max_books_per_student, loan_duration_days } */
   async updateLibrarySettings(req: AuthRequest, res: Response) {
     try {
-      const schoolId = req.profile?.school_id;
+      const schoolId = req.profile?.campus_id || req.profile?.school_id;
       if (!schoolId) return res.status(400).json({ success: false, error: 'School ID is required' });
       const b = req.body ?? {};
       const fine = Number(b.fine_per_day);

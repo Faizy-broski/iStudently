@@ -1,5 +1,20 @@
 import { Request, Response } from 'express'
 import { supabase } from '../config/supabase'
+import {
+  UUID_RE,
+  MAX_DEVICE_LIMIT,
+  type DeviceCheck,
+  checkAndRegisterDevice,
+  getVlabyDeviceLimit,
+  isMissingSchema,
+  listSchoolDevices,
+  listUserDevices,
+  releaseOwnDevice,
+  removeDevice,
+  resetUserDevices,
+  setVlabyDeviceLimit,
+  toView,
+} from '../utils/vlaby-devices'
 
 interface AuthRequest extends Request {
   profile?: {
@@ -56,6 +71,47 @@ function sendTokenExpired(res: Response): void {
     error: 'VLaby session expired. Please log in again.',
     code: 'VLABY_TOKEN_EXPIRED',
   })
+}
+
+// ─── Device limit (super admin sets the limit per school) ─────────────────────
+
+function deviceIdOf(req: Request): string | null {
+  const raw = req.headers['x-device-id']
+  return typeof raw === 'string' && raw ? raw : null
+}
+
+/**
+ * Registers the calling device or refuses. Returns true when a response was already sent (blocked).
+ * Refusals are HTTP 200 like VLABY_TOKEN_EXPIRED, so the web client does not read them as a
+ * Studently session problem.
+ */
+async function deviceBlocked(req: AuthRequest, res: Response): Promise<boolean> {
+  if (!req.profile) return false
+  try {
+    const check = await checkAndRegisterDevice({
+      schoolId: req.profile.school_id,
+      profileId: req.profile.id,
+      role: req.profile.role,
+      deviceId: deviceIdOf(req),
+      userAgent: (req.headers['user-agent'] as string | undefined) ?? null,
+    })
+    if (check.allowed) return false
+    const refused = check as Extract<DeviceCheck, { allowed: false }>
+    res.json({
+      success: false,
+      code: refused.code,
+      error:
+        refused.code === 'VLABY_DEVICE_ID_REQUIRED'
+          ? 'This device could not be identified. Update the app or reload the page and try again.'
+          : `You can use Virtual Labs on at most ${refused.limit} device${refused.limit === 1 ? '' : 's'}. Release one of your devices to use this one.`,
+      data: { limit: refused.limit, devices: refused.devices },
+    })
+    return true
+  } catch (err) {
+    console.error('VLaby device check error:', err)
+    res.status(503).json({ success: false, retryable: true, error: 'Could not verify this device. Please try again.' })
+    return true
+  }
 }
 
 // ─── School-level VLaby token helpers ────────────────────────────────────────
@@ -169,6 +225,8 @@ export const getUserExperiments = async (req: AuthRequest, res: Response): Promi
     return
   }
 
+  if (await deviceBlocked(req, res)) return
+
   try {
     const { httpStatus, body } = await proxyGet(
       `${VLABY_BASE}/user/experiments`,
@@ -202,6 +260,8 @@ export const getExperiment = async (req: AuthRequest, res: Response): Promise<vo
     res.status(400).json({ success: false, error: 'Invalid experiment ID' })
     return
   }
+
+  if (await deviceBlocked(req, res)) return
 
   try {
     // Resolve token: user's own first, then school-level fallback
@@ -386,3 +446,137 @@ export const getSubjectsBySemester = async (req: AuthRequest, res: Response): Pr
     res.json({ success: true, data: body.data })
   } catch { res.status(502).json({ success: false, error: 'Could not reach VLaby API' }) }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Device limit: a user's own devices
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** GET /vlaby/my-devices: the caller's limit and registered devices. */
+export const myDevices = async (req: AuthRequest, res: Response): Promise<void> => {
+  const profile = req.profile
+  if (!profile) { res.status(401).json({ success: false, error: 'Unauthorized' }); return }
+  try {
+    const limit = profile.role === 'super_admin' || !profile.school_id ? null : await getVlabyDeviceLimit(profile.school_id)
+    const rows = await listUserDevices(profile.id)
+    const current = deviceIdOf(req)
+    res.json({ success: true, data: { limit, devices: rows.map((r) => toView(r, current)) } })
+  } catch (err: any) {
+    if (isMissingSchema(err)) { res.json({ success: true, data: { limit: null, devices: [] } }); return }
+    console.error('VLaby my-devices error:', err)
+    res.status(500).json({ success: false, error: 'Failed to load your devices' })
+  }
+}
+
+/** DELETE /vlaby/my-devices/:id: release one of the caller's own devices. */
+export const releaseMyDevice = async (req: AuthRequest, res: Response): Promise<void> => {
+  const profile = req.profile
+  if (!profile) { res.status(401).json({ success: false, error: 'Unauthorized' }); return }
+  try {
+    const removed = await releaseOwnDevice(profile.id, req.params.id)
+    if (!removed) { res.status(404).json({ success: false, error: 'Device not found' }); return }
+    res.json({ success: true })
+  } catch (err: any) {
+    console.error('VLaby release device error:', err)
+    res.status(500).json({ success: false, error: 'Failed to release the device' })
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Device limit: super admin
+// ─────────────────────────────────────────────────────────────────────────────
+
+function schoolIdParam(value: unknown): string | null {
+  return typeof value === 'string' && UUID_RE.test(value) ? value : null
+}
+
+function notMigrated(res: Response): void {
+  res.status(503).json({ success: false, code: 'not_migrated', error: 'Run backend/migrations/vlaby_devices.sql first.' })
+}
+
+/** GET /vlaby/device-limit?school_id= */
+export const getDeviceLimit = async (req: AuthRequest, res: Response): Promise<void> => {
+  const schoolId = schoolIdParam(req.query.school_id)
+  if (!schoolId) { res.status(400).json({ success: false, error: 'school_id is required' }); return }
+  try {
+    res.json({ success: true, data: { school_id: schoolId, limit: await getVlabyDeviceLimit(schoolId) } })
+  } catch (err: any) {
+    if (isMissingSchema(err)) { notMigrated(res); return }
+    console.error('VLaby device-limit read error:', err)
+    res.status(500).json({ success: false, error: 'Failed to read the device limit' })
+  }
+}
+
+/** PUT /vlaby/device-limit  body { school_id, limit: 1..20 | null } */
+export const setDeviceLimit = async (req: AuthRequest, res: Response): Promise<void> => {
+  const schoolId = schoolIdParam(req.body?.school_id)
+  if (!schoolId) { res.status(400).json({ success: false, error: 'school_id is required' }); return }
+  const limit = req.body?.limit
+  if (limit !== null && !(typeof limit === 'number' && Number.isInteger(limit) && limit >= 1 && limit <= MAX_DEVICE_LIMIT)) {
+    res.status(400).json({ success: false, error: `limit must be a whole number from 1 to ${MAX_DEVICE_LIMIT}, or null for unlimited` })
+    return
+  }
+  try {
+    const { data: school } = await supabase.from('schools').select('id').eq('id', schoolId).maybeSingle()
+    if (!school) { res.status(404).json({ success: false, error: 'School not found' }); return }
+    await setVlabyDeviceLimit(schoolId, limit)
+    res.json({ success: true, data: { school_id: schoolId, limit } })
+  } catch (err: any) {
+    if (isMissingSchema(err)) { notMigrated(res); return }
+    console.error('VLaby device-limit write error:', err)
+    res.status(500).json({ success: false, error: 'Failed to save the device limit' })
+  }
+}
+
+/** GET /vlaby/devices?school_id= */
+export const listDevices = async (req: AuthRequest, res: Response): Promise<void> => {
+  const schoolId = schoolIdParam(req.query.school_id)
+  if (!schoolId) { res.status(400).json({ success: false, error: 'school_id is required' }); return }
+  try {
+    const rows = await listSchoolDevices(schoolId)
+    res.json({
+      success: true,
+      data: rows.map((r) => ({
+        id: r.id,
+        profile_id: r.profile_id,
+        user_name: r.user_name,
+        role: r.role,
+        label: r.label,
+        platform: r.platform,
+        first_seen_at: r.first_seen_at,
+        last_seen_at: r.last_seen_at,
+      })),
+    })
+  } catch (err: any) {
+    if (isMissingSchema(err)) { notMigrated(res); return }
+    console.error('VLaby devices list error:', err)
+    res.status(500).json({ success: false, error: 'Failed to list devices' })
+  }
+}
+
+/** DELETE /vlaby/devices/:id */
+export const deleteDevice = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const removed = await removeDevice(req.params.id)
+    if (!removed) { res.status(404).json({ success: false, error: 'Device not found' }); return }
+    res.json({ success: true })
+  } catch (err: any) {
+    if (isMissingSchema(err)) { notMigrated(res); return }
+    console.error('VLaby device delete error:', err)
+    res.status(500).json({ success: false, error: 'Failed to remove the device' })
+  }
+}
+
+/** DELETE /vlaby/devices/user/:profileId?school_id= : free every slot of one user. */
+export const resetDevicesOfUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  const schoolId = schoolIdParam(req.query.school_id)
+  const profileId = schoolIdParam(req.params.profileId)
+  if (!schoolId || !profileId) { res.status(400).json({ success: false, error: 'school_id and a valid user id are required' }); return }
+  try {
+    res.json({ success: true, data: { deleted: await resetUserDevices(schoolId, profileId) } })
+  } catch (err: any) {
+    if (isMissingSchema(err)) { notMigrated(res); return }
+    console.error('VLaby device reset error:', err)
+    res.status(500).json({ success: false, error: 'Failed to reset the devices' })
+  }
+}
+

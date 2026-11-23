@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase'
 import { pushNotificationsService } from './push-notifications.service'
 import { listAssignedSchoolIds, assertCanAccessSchoolFeed } from '../utils/inspector-access'
+import { assertMaxLength } from '../utils/inspection-scope'
 import type { ForumThread, ForumPost } from '../types/inspector-community.types'
 
 export interface CallerContext {
@@ -33,6 +34,8 @@ export async function createThread(caller: CallerContext, dto: CreateThreadDTO):
     throw new Error('Access denied')
   }
   if (!dto.title?.trim() || !dto.body?.trim()) throw new Error('title and body are required')
+  assertMaxLength(dto.title, 200, 'title')
+  assertMaxLength(dto.body, 5000, 'body')
 
   let targetSchoolIds: string[]
   if (caller.role === 'teacher') {
@@ -116,6 +119,7 @@ export async function addPost(caller: CallerContext, threadId: string, body: str
   const thread = await getThreadOrThrow(threadId)
   await assertCanAccessThread(thread, caller)
   if (!body?.trim()) throw new Error('body is required')
+  assertMaxLength(body, 5000, 'body')
 
   const { data, error } = await supabase
     .from('forum_posts')
@@ -128,10 +132,13 @@ export async function addPost(caller: CallerContext, threadId: string, body: str
   await supabase.from('forum_threads').update({ updated_at: new Date().toISOString() }).eq('id', threadId)
 
   if (thread.created_by !== caller.profileId) {
+    // Deep-link to the creator's own portal (a teacher-started thread lives under /teacher).
+    const { data: creator } = await supabase.from('profiles').select('role').eq('id', thread.created_by).maybeSingle()
+    const base = creator?.role === 'teacher' ? '/teacher/inspections/community' : '/inspector/community'
     pushNotificationsService.sendToProfile(thread.created_by, {
       title: 'New reply in your forum thread',
       body: `New activity on "${thread.title}"`,
-      url: `/inspector/community/${threadId}`,
+      url: `${base}/${threadId}`,
       tag: 'inspection-forum',
     }).catch((err) => console.error('Failed to send forum-reply notification:', err))
   }

@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { resolveLibraryPolicy, normalizeLibraryPolicy } from '../utils/library-policy'
 import { generateInvoiceNumber } from './platform-billing.service'
 import { CreateSchoolDTO, UpdateSchoolDTO, School, SchoolStats } from '../types'
 import bcrypt from 'bcrypt'
@@ -714,14 +715,13 @@ export class SchoolService {
 
   /** The school's library policies, with the defaults the library uses when unset. */
   async getLibrarySettings(schoolId: string): Promise<LibrarySettings> {
-    const settings = await this.getSchoolSettings(schoolId);
-    return { ...LIBRARY_DEFAULTS, ...(settings?.library ?? {}) };
+    return resolveLibraryPolicy(schoolId);
   }
 
   /** Saves only the library policies; every other school setting is left as it is. */
   async updateLibrarySettings(schoolId: string, library: LibrarySettings): Promise<LibrarySettings> {
     const updated = await this.updateSchoolSettings(schoolId, { library });
-    return { ...LIBRARY_DEFAULTS, ...(updated?.library ?? {}) };
+    return normalizeLibraryPolicy(updated?.library);
   }
 
   /**

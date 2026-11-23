@@ -11,8 +11,8 @@ const me = (role: string, gates: Partial<Me['gates']> = {}): Me =>
 
 describe('resolveDestination (release build: staged roles)', () => {
   it('sends unreleased roles to "Coming soon" before any sign-in step', () => {
-    expect(resolveDestination(me('librarian', { force_password_change: true }))).toEqual({ kind: 'coming_soon' })
-    expect(resolveDestination(me('inspector'))).toEqual({ kind: 'coming_soon' })
+    expect(resolveDestination(me('media_officer', { force_password_change: true }))).toEqual({ kind: 'coming_soon' })
+    expect(resolveDestination(me('fina_supervisor'))).toEqual({ kind: 'coming_soon' })
   })
   it('enforces sign-in steps in the web order for released roles', () => {
     expect(resolveDestination(me('super_admin', { force_password_change: true, two_fa: { state: 'setup_required' } } as never))).toEqual({ kind: 'gate', gate: 'force_password_change' })
@@ -23,5 +23,7 @@ describe('resolveDestination (release build: staged roles)', () => {
   it('opens the role home once every step has passed', () => {
     expect(resolveDestination(me('super_admin'))).toEqual({ kind: 'home', href: '/superadmin' })
     expect(resolveDestination(me('parent'))).toEqual({ kind: 'home', href: '/parent' })
+    expect(resolveDestination(me('librarian'))).toEqual({ kind: 'home', href: '/librarian' })
+    expect(resolveDestination(me('inspector'))).toEqual({ kind: 'home', href: '/inspector' })
   })
 })

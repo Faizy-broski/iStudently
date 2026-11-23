@@ -9,6 +9,12 @@ import { libraryService } from '../services/library.service';
  * students/teachers/librarians, and sets profile.campus_id to the actual campus.
  * We must always use campus_id here so loan lookups match what librarians stored.
  */
+/** A librarian works in one campus: any campus_id they send is ignored. Admins/others may pick a campus (family-checked upstream). */
+function requestedCampus(req: AuthRequest): string | undefined {
+  if (req.profile?.role === 'librarian') return undefined;
+  return (req.query.campus_id as string | undefined) || undefined;
+}
+
 function libSchoolId(req: AuthRequest): string | null {
   const p = req.profile;
   if (!p) return null;
@@ -259,7 +265,8 @@ export class LibraryController {
         return res.status(400).json({ error: 'School ID is required' });
       }
 
-      const result = await libraryService.returnBook(loanId, schoolId, collected_amount, return_comment);
+      const collected = collected_amount === undefined || collected_amount === null || collected_amount === '' ? undefined : Number(collected_amount);
+      const result = await libraryService.returnBook(loanId, schoolId, collected, return_comment, return_condition, damage_notes);
       res.json({ success: true, data: result });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });
@@ -277,7 +284,8 @@ export class LibraryController {
       }
 
       // Support both processingFee and processing_fee parameter names
-      const feeToUse = processingFee || processing_fee || 5;
+      const rawFee = processingFee ?? processing_fee;
+      const feeToUse = rawFee === undefined || rawFee === null || rawFee === '' ? 5 : Number(rawFee);
       const result = await libraryService.markBookLost(loanId, schoolId, feeToUse);
       res.json({ success: true, data: result });
     } catch (error: any) {
@@ -369,7 +377,8 @@ export class LibraryController {
     try {
       const schoolId = libSchoolId(req);
       const userRole = req.profile?.role;
-      const { search, status, student_id, campus_id } = req.query;
+      const { search, status, student_id } = req.query;
+      const campus_id = requestedCampus(req);
 
       if (!schoolId) {
         return res.status(400).json({ error: 'School ID is required' });
@@ -379,7 +388,7 @@ export class LibraryController {
         search: search as string,
         status: status as string,
         student_id: student_id as string,
-      }, userRole, campus_id as string | undefined);
+      }, userRole, campus_id);
       res.json({ success: true, data: loans });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
@@ -395,7 +404,7 @@ export class LibraryController {
       // ever stored (students.school_id is always a campus id), so without
       // this override this endpoint could never find anyone for such an
       // admin regardless of query.
-      const schoolId = (req.query.campus_id as string | undefined) || libSchoolId(req);
+      const schoolId = requestedCampus(req) || libSchoolId(req);
       const { q: query } = req.query;
 
       if (!schoolId) {
@@ -451,7 +460,7 @@ export class LibraryController {
     try {
       const schoolId = libSchoolId(req);
       const userRole = req.profile?.role;
-      const campusId = req.query.campus_id as string | undefined;
+      const campusId = requestedCampus(req);
 
       if (!schoolId) {
         return res.status(400).json({ error: 'School ID is required' });

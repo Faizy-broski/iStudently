@@ -27,19 +27,18 @@ export interface InspectorAssignment {
  * Returns every active campus (school_id) this inspector is currently
  * assigned to, regardless of subject/grade-level narrowing.
  *
- * `program` optionally narrows to a specific inspection program —
- * 'general' (the original teacher-evaluation module every existing caller
- * here means) or 'hifzi_compliance' (Ministerial Decree 1205 compliance,
- * Phase 3). Omitted (the default) matches any program, so every pre-existing
- * call site is unaffected by this column's addition.
+ * `program` selects the inspection program — 'general' (the teacher-evaluation
+ * module; the DEFAULT, so a hifzi_compliance-only grant never opens general
+ * visits, teachers, portfolios or the community hub) or 'hifzi_compliance'
+ * (Ministerial Decree 1205 compliance), which its callers pass explicitly.
  */
-export async function listAssignedSchoolIds(inspectorProfileId: string, program?: 'general' | 'hifzi_compliance'): Promise<string[]> {
+export async function listAssignedSchoolIds(inspectorProfileId: string, program: 'general' | 'hifzi_compliance' = 'general'): Promise<string[]> {
   let query = supabase
     .from('inspector_school_assignments')
     .select('school_id')
     .eq('inspector_profile_id', inspectorProfileId)
     .eq('is_active', true)
-  if (program) query = query.eq('program', program)
+  query = query.eq('program', program)
 
   const { data, error } = await query
 
@@ -79,7 +78,7 @@ export async function assertInspectorCanAccessSchool(
   inspectorProfileId: string,
   schoolId: string,
   role?: string,
-  program?: 'general' | 'hifzi_compliance'
+  program: 'general' | 'hifzi_compliance' = 'general'
 ): Promise<boolean> {
   if (role === 'super_admin') return true
 
@@ -89,7 +88,7 @@ export async function assertInspectorCanAccessSchool(
     .eq('inspector_profile_id', inspectorProfileId)
     .eq('school_id', schoolId)
     .eq('is_active', true)
-  if (program) query = query.eq('program', program)
+    .eq('program', program)
 
   const { data, error } = await query.limit(1)
 

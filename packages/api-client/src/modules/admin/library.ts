@@ -102,7 +102,7 @@ export function adminLibraryApi(api: ApiClient) {
       api.post<BookLoan>('/library/loans/issue', body),
     returnBook: (loanId: string, body: { return_condition: string; damage_notes?: string; collected_amount: number; return_comment?: string }) =>
       api.post<BookLoan>(`/library/loans/${id(loanId)}/return`, body),
-    markLost: (loanId: string, body: { replacement_cost: number; processing_fee: number; notes?: string }) =>
+    markLost: (loanId: string, body: { replacement_cost?: number; processing_fee?: number; notes?: string }) =>
       api.post<{ totalCost: number; bookPrice: number; processingFee: number }>(`/library/loans/${id(loanId)}/lost`, body),
     activeLoans: (studentId: string) => api.get<BookLoan[]>(`/library/students/${id(studentId)}/loans/active`),
     overdueLoans: (studentId: string) => api.get<BookLoan[]>(`/library/students/${id(studentId)}/loans/overdue`),

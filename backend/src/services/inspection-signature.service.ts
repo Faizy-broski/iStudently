@@ -90,7 +90,9 @@ export async function signReport(
     throw new Error(`Failed to record signature: ${error.message}`)
   }
 
-  const allSigned = SIGNING_ORDER.every((r) => r === role || existing.some((s) => s.signer_role === r))
+  // Re-read after the insert: the earlier snapshot can be stale if another signature landed meanwhile.
+  const afterInsert = await getSignatures(reportId)
+  const allSigned = SIGNING_ORDER.every((r) => r === role || afterInsert.some((s) => s.signer_role === r))
   let updatedReport = report
 
   if (allSigned) {

@@ -9,7 +9,7 @@ import { useSWRConfig } from 'swr';
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { FormSection, StickyActions } from '@/components/app/layout';
-import { LoadingList } from '@/components/app/states';
+import { InlineError, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -63,6 +63,8 @@ export default function LibraryIncidentForm() {
           <DateField label={`${t('discipline.incidentDate')} *`} value={date} onChange={(v) => v && setDate(v)} />
           {fields.isLoading ? (
             <LoadingList rows={2} />
+          ) : fields.error ? (
+            <InlineError message={fields.error.message} onRetry={() => fields.mutate()} />
           ) : !(fields.data ?? []).length ? (
             <Text className="text-muted-foreground text-sm">{t('teacherPages.disciplineAddReferral.noFieldsConfigured')}</Text>
           ) : (

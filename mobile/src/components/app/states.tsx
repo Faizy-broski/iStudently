@@ -91,3 +91,22 @@ export function ErrorState({ message, onRetry, offline }: { message?: string; on
     />
   );
 }
+
+/** Compact error with retry for a card or section: a failed query inside an otherwise working screen. */
+export function InlineError({ message, onRetry }: { message?: string; onRetry?: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <View className="bg-destructive-soft gap-2 rounded-2xl p-3.5" accessibilityRole="alert">
+      <View className="flex-row items-center gap-2">
+        <Icon as={AlertTriangle} className="size-4 text-destructive" />
+        <Text className="flex-1 text-sm font-medium text-destructive">{message || t('app.error_title')}</Text>
+      </View>
+      {onRetry ? (
+        <Button variant="outline" size="sm" onPress={onRetry}>
+          <Icon as={RefreshCw} className="size-4" />
+          <Text>{t('app.retry')}</Text>
+        </Button>
+      ) : null}
+    </View>
+  );
+}

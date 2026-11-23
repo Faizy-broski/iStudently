@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase'
 import { pushNotificationsService } from './push-notifications.service'
 import { validateCampusAccess } from '../utils/campus-validation'
 import { assertInspectorCanAccessSchool } from '../utils/inspector-access'
+import { assertTeachersAndSubjectsInSchool, assertMaxLength } from '../utils/inspection-scope'
 import { getActiveRubric, hydrateTemplate } from './inspection-rubric.service'
 import type { InspectionEvaluation, EvaluationScore, InspectionEvidence, EvidenceFileType } from '../types/inspection-rubric.types'
 import type { InspectionVisit } from '../types/inspection-visit.types'
@@ -31,7 +32,13 @@ export async function getEvaluationRowOrThrow(id: string): Promise<InspectionEva
 export async function assertCanEdit(evaluation: InspectionEvaluation, caller: CallerContext) {
   if (caller.role === 'super_admin') return
   const visit = await getVisitOrThrow(evaluation.visit_id)
-  if (caller.role === 'inspector' && visit.inspector_profile_id === caller.profileId) return
+  if (caller.role === 'inspector' && visit.inspector_profile_id === caller.profileId) {
+    // Owning the visit is not enough: an inspector whose grant was revoked can no longer edit it.
+    if (!(await assertInspectorCanAccessSchool(caller.profileId, visit.school_id, caller.role))) {
+      throw new Error('Access denied: not assigned to this campus')
+    }
+    return
+  }
   throw new Error('Access denied: not your evaluation')
 }
 
@@ -75,6 +82,9 @@ export async function getOrCreateDraftEvaluation(
   if (caller.role === 'inspector' && visit.inspector_profile_id !== caller.profileId) {
     throw new Error('Access denied: not your visit')
   }
+  if (caller.role === 'inspector' && !(await assertInspectorCanAccessSchool(caller.profileId, visit.school_id, caller.role))) {
+    throw new Error('Access denied: not assigned to this campus')
+  }
 
   const { data: existing, error: findError } = await supabase
     .from('inspection_evaluations')
@@ -85,6 +95,9 @@ export async function getOrCreateDraftEvaluation(
 
   if (findError) throw new Error(`Failed to load evaluation: ${findError.message}`)
   if (existing) return existing as InspectionEvaluation
+
+  // Only teachers of the visited campus can be evaluated (blocks arbitrary profile ids).
+  await assertTeachersAndSubjectsInSchool(visit.school_id, [teacherProfileId])
 
   const rubric = await getActiveRubric(caller)
   if (!rubric) throw new Error('No inspection rubric has been configured yet — contact your administrator')
@@ -200,6 +213,18 @@ export async function getEvaluationForTeacher(teacherProfileId: string, visitId:
 // SCORING
 // ============================================================================
 
+/** A score (or evidence item) may only point at a criterion of the rubric template this evaluation was created from. */
+export async function assertCriterionInEvaluationRubric(evaluation: InspectionEvaluation, criterionId: string) {
+  const { data: categories, error: catError } = await supabase.from('rubric_categories').select('id').eq('template_id', evaluation.rubric_template_id)
+  if (catError) throw new Error(`Failed to load rubric: ${catError.message}`)
+  const categoryIds = (categories || []).map((c) => c.id)
+  const { data, error } = categoryIds.length
+    ? await supabase.from('rubric_criteria').select('id').eq('id', criterionId).in('category_id', categoryIds).limit(1)
+    : { data: [], error: null }
+  if (error) throw new Error(`Failed to verify criterion: ${error.message}`)
+  if (!data || data.length === 0) throw new Error('criterion_id does not belong to this evaluation\'s rubric')
+}
+
 export async function saveScore(
   caller: CallerContext,
   evaluationId: string,
@@ -211,6 +236,8 @@ export async function saveScore(
   await assertCanEdit(evaluation, caller)
   if (evaluation.status !== 'draft') throw new Error(`Cannot edit scores on a "${evaluation.status}" evaluation`)
   if (!Number.isInteger(score) || score < 1 || score > 5) throw new Error('score must be an integer from 1 to 5')
+  assertMaxLength(comment, 2000, 'comment')
+  await assertCriterionInEvaluationRubric(evaluation, criterionId)
 
   const { data, error } = await supabase
     .from('inspection_evaluation_scores')
@@ -339,6 +366,7 @@ export async function addEvidence(caller: CallerContext, evaluationId: string, d
   const evaluation = await getEvaluationRowOrThrow(evaluationId)
   await assertCanEdit(evaluation, caller)
   if (evaluation.status !== 'draft') throw new Error(`Cannot add evidence to a "${evaluation.status}" evaluation`)
+  if (dto.criterion_id) await assertCriterionInEvaluationRubric(evaluation, dto.criterion_id)
 
   const { data, error } = await supabase
     .from('inspection_evidence')

@@ -9,7 +9,7 @@ import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
 import { FormSection, RowPill, type Tone } from '@/components/app/layout';
-import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList, InlineError } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,7 @@ export default function CoachingScreen() {
 
   if (visit.isLoading || evals.isLoading) return <LoadingList rows={4} />;
   const v = visit.data;
+  if (visit.error || evals.error) return <ErrorState message={(visit.error ?? evals.error)?.message} onRetry={() => { visit.mutate(); evals.mutate(); }} />;
   if (!v) return <ErrorState message={k('visit_not_found')} onRetry={() => visit.mutate()} />;
   const notes = detail.data?.notes ?? [];
   const prescriptions = detail.data?.prescriptions ?? [];
@@ -73,6 +74,7 @@ export default function CoachingScreen() {
       <Stack.Screen options={{ title: k('page_title') }} />
       <ScrollView className="bg-background flex-1" contentContainerClassName="gap-4 p-4 pb-10" refreshControl={<RefreshControl refreshing={false} onRefresh={() => detail.mutate()} />}>
         <Text variant="muted" className="text-sm">{`${v.school?.name ?? ''} · ${v.scheduled_date}`}</Text>
+        {detail.error ? <InlineError message={detail.error.message} onRetry={() => detail.mutate()} /> : null}
         {!(evals.data ?? []).length ? (
           <EmptyState icon={GraduationCap} title={k('no_evaluations')} />
         ) : (

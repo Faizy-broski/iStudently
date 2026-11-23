@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase'
 import { pushNotificationsService } from './push-notifications.service'
 import { listAssignedSchoolIds, assertCanAccessSchoolFeed } from '../utils/inspector-access'
+import { assertMaxLength } from '../utils/inspection-scope'
 import type { InspectorBroadcast } from '../types/inspector-community.types'
 
 export interface CallerContext {
@@ -21,6 +22,8 @@ export async function createBroadcast(caller: CallerContext, dto: CreateBroadcas
     throw new Error('Access denied: inspector access required')
   }
   if (!dto.title?.trim() || !dto.body?.trim()) throw new Error('title and body are required')
+  assertMaxLength(dto.title, 200, 'title')
+  assertMaxLength(dto.body, 5000, 'body')
   if (!dto.target_school_ids || dto.target_school_ids.length === 0) {
     throw new Error('target_school_ids must include at least one campus')
   }

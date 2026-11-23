@@ -310,6 +310,7 @@ export async function getMyAssignedSchools(inspectorProfileId: string) {
     .select('school_id, school:schools(id, name, parent_school_id, logo_url)')
     .eq('inspector_profile_id', inspectorProfileId)
     .eq('is_active', true)
+    .eq('program', 'general') // the portal's campus pickers are for general inspections; Hifzi compliance resolves its own schools
 
   if (error) throw new Error(`Failed to load assigned campuses: ${error.message}`)
 

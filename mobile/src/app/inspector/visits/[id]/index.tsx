@@ -64,7 +64,7 @@ export default function InspectionVisitDetail() {
   }
 
   if (res.isLoading) return <LoadingList rows={4} />;
-  if (!v || !id) return <ErrorState message={k('visit_not_found')} onRetry={() => res.mutate()} />;
+  if (!v || !id) return <ErrorState message={res.error ? res.error.message : k('visit_not_found')} onRetry={() => res.mutate()} />;
   const canEdit = v.status === 'scheduled' || v.status === 'confirmed';
   const open = !['cancelled', 'rescheduled'].includes(v.status);
   const current = v.teachers.map((vt) => ({ teacher_profile_id: vt.teacher_profile_id, subject_id: vt.subject_id }));

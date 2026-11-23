@@ -6,7 +6,7 @@ import { ScrollView } from '@/components/app/keyboard';
 
 import { IconTile, RowItem } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList, ErrorState } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { inspector } from '@/lib/api';
@@ -28,6 +28,8 @@ export default function InspectorReports() {
         </Text>
         {res.isLoading ? (
           <LoadingList rows={3} />
+        ) : res.error ? (
+          <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : !list.length ? (
           <EmptyState icon={FileText} title={k('no_reports')} />
         ) : (

@@ -1,5 +1,7 @@
 import { supabase } from '../config/supabase';
 import { getAllCampusIds, isCampus } from '../utils/school-helpers';
+import { resolveLibraryPolicy } from '../utils/library-policy';
+import { campusIdsAllowed } from '../utils/campus-validation';
 import { Book, BookCopy, BookLoan, BookCopyStatus, LoanStatus, LibraryCategory, LibraryDocumentField, BorrowerType } from '../types';
 
 /** A search term made safe for a PostgREST .or() filter: commas, parentheses and wildcard/escape
@@ -9,7 +11,22 @@ function orTerm(value: string): string {
 }
 
 
+/** Columns a client may set on a book; school_id and the copy counters are never taken from the request. */
+const BOOK_FIELDS = ['title', 'author', 'isbn', 'category', 'category_id', 'reference', 'document_type', 'file_url', 'cover_image_url', 'custom_fields', 'publisher', 'publication_year', 'description'] as const
+function pickBookFields(input: any): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const k of BOOK_FIELDS) if (input && input[k] !== undefined) out[k] = input[k]
+  return out
+}
+
 export class LibraryService {
+  /** A category id sent with a book must belong to this library's school. */
+  private async assertCategoryInSchool(categoryId: unknown, schoolId: string) {
+    if (!categoryId) return
+    const { data } = await supabase.from('library_categories').select('id').eq('id', String(categoryId)).eq('school_id', schoolId).maybeSingle()
+    if (!data) throw new Error('Category not found')
+  }
+
   // ==================== BOOK MANAGEMENT ====================
 
   /**
@@ -122,8 +139,9 @@ export class LibraryService {
       publicationYearToInsert = year;
     }
 
+    await this.assertCategoryInSchool((bookData as any).category_id, schoolId);
     const insertPayload = {
-      ...bookData,
+      ...pickBookFields(bookData),
       isbn: isbnToInsert,
       publication_year: publicationYearToInsert,
       school_id: schoolId,
@@ -206,6 +224,9 @@ export class LibraryService {
       }
       bookData.publication_year = year as any;
     }
+
+    bookData = pickBookFields(bookData) as Partial<Book>;
+    await this.assertCategoryInSchool((bookData as any).category_id, schoolId);
 
     try {
       const { data, error } = await supabase
@@ -454,11 +475,17 @@ export class LibraryService {
     // Validation 2: Check if borrower account is active
     const { data: borrower } = await supabase
       .from('profiles')
-      .select('is_active, role')
+      .select('is_active, role, school_id')
       .eq('id', effectiveBorrowerId)
       .single();
 
     if (!borrower) throw new Error('Borrower not found');
+    // The borrower must belong to this library's school family, and match the borrower type.
+    if (!borrower.school_id || !(await campusIdsAllowed(schoolId, [borrower.school_id]))) {
+      throw new Error('Borrower not found');
+    }
+    if (borrowerType === 'student' && borrower.role !== 'student') throw new Error('Borrower is not a student');
+    if (borrowerType === 'user' && ['student', 'parent'].includes(borrower.role)) throw new Error('Borrower must be a staff member');
     if (!borrower.is_active) {
       throw new Error('Borrower account is inactive. Cannot issue books.');
     }
@@ -488,13 +515,8 @@ export class LibraryService {
 
       // Validation 5: Check max books limit
       const activeLoans = await this.getActiveLoans(effectiveBorrowerId, schoolId);
-      const { data: school } = await supabase
-        .from('schools')
-        .select('settings')
-        .eq('id', schoolId)
-        .single();
-
-      const maxBooks = school?.settings?.library?.max_books_per_student || 3;
+      const policy = await resolveLibraryPolicy(schoolId);
+      const maxBooks = policy.max_books_per_student;
       if (activeLoans.length >= maxBooks) {
         throw new Error(`Borrower has reached maximum book limit (${maxBooks} books)`);
       }
@@ -505,15 +527,9 @@ export class LibraryService {
     }
 
     // Calculate due date based on school settings unless overridden
-    const { data: school } = await supabase
-      .from('schools')
-      .select('settings')
-      .eq('id', schoolId)
-      .single();
-
     const dueDate = dueDateOverride ? new Date(dueDateOverride) : new Date();
     if (!dueDateOverride) {
-      const loanDuration = school?.settings?.library?.loan_duration_days || 14;
+      const loanDuration = (await resolveLibraryPolicy(schoolId)).loan_duration_days;
       dueDate.setDate(dueDate.getDate() + loanDuration);
     }
 
@@ -563,8 +579,13 @@ export class LibraryService {
     loanId: string,
     schoolId: string,
     collectedAmount?: number,
-    returnComment?: string
+    returnComment?: string,
+    returnCondition?: string,
+    damageNotes?: string
   ) {
+    if (collectedAmount !== undefined && collectedAmount !== null && (typeof collectedAmount !== 'number' || !Number.isFinite(collectedAmount) || collectedAmount < 0 || collectedAmount > 100000)) {
+      throw new Error('collected_amount must be a number from 0 to 100000');
+    }
     // Get the loan
     const { data: loan } = await supabase
       .from('library_loans')
@@ -578,6 +599,7 @@ export class LibraryService {
       throw new Error('Book has already been returned');
     }
 
+    if (loan.status === 'lost') throw new Error('Book is marked as lost');
     const returnDate = new Date();
     const dueDate = new Date(loan.due_date);
     let overdueFine = 0;
@@ -588,13 +610,7 @@ export class LibraryService {
       daysLate = Math.ceil((returnDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
 
       // Get daily fine rate from school settings
-      const { data: school } = await supabase
-        .from('schools')
-        .select('settings')
-        .eq('id', schoolId)
-        .single();
-
-      const finePerDay = school?.settings?.library?.fine_per_day || 0.5;
+      const finePerDay = (await resolveLibraryPolicy(schoolId)).fine_per_day;
       overdueFine = daysLate * finePerDay;
     }
 
@@ -613,19 +629,22 @@ export class LibraryService {
         status: 'returned',
         fine_amount: totalFineAmount,
         collected_amount: totalCollectedAmount,
-        return_comment: returnComment || null
+        return_comment: [returnComment, returnCondition && returnCondition !== 'good' ? `Condition: ${returnCondition}` : '', damageNotes ? `Damage: ${damageNotes}` : '']
+          .map((x) => (x || '').toString().trim()).filter(Boolean).join(' | ').slice(0, 1000) || null
       })
       .eq('id', loanId)
+      .eq('school_id', schoolId)
       .select()
       .single();
 
     if (loanError) throw loanError;
 
     // Update copy status back to 'available'
-    await supabase
+    const { error: copyError } = await supabase
       .from('library_book_copies')
       .update({ status: 'available' })
       .eq('id', loan.book_copy_id);
+    if (copyError) throw copyError;
 
     // Update book available_copies count
     if (loan.library_book_copies) {
@@ -665,6 +684,9 @@ export class LibraryService {
     schoolId: string,
     processingFee: number = 5
   ) {
+    if (typeof processingFee !== 'number' || !Number.isFinite(processingFee) || processingFee < 0 || processingFee > 100000) {
+      throw new Error('processing_fee must be a number from 0 to 100000');
+    }
     // Get the loan and book details
     const { data: loan } = await supabase
       .from('library_loans')
@@ -677,25 +699,31 @@ export class LibraryService {
     if (loan.status === 'lost') {
       throw new Error('Book is already marked as lost');
     }
+    if (loan.status === 'returned') {
+      throw new Error('Book has already been returned');
+    }
 
     const bookPrice = loan.library_book_copies?.price || 0;
     const totalCost = bookPrice + processingFee;
 
     // Update loan status to 'lost'
-    await supabase
+    const { error: lostError } = await supabase
       .from('library_loans')
       .update({
         status: 'lost',
         fine_amount: totalCost,
         fine_paid: false
       })
-      .eq('id', loanId);
+      .eq('id', loanId)
+      .eq('school_id', schoolId);
+    if (lostError) throw lostError;
 
     // Update copy status to 'lost'
-    await supabase
+    const { error: copyLostError } = await supabase
       .from('library_book_copies')
       .update({ status: 'lost' })
       .eq('id', loan.book_copy_id);
+    if (copyLostError) throw copyLostError;
 
     // Update book counts
     if (loan.library_book_copies) {

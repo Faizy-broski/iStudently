@@ -1,7 +1,7 @@
 import { Router, Response } from 'express'
 import { billingElementsService } from '../services/billing-elements.service'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
-import { requireAdmin, requireStaff } from '../middlewares/role.middleware'
+import { requireAdmin, requireStaffNoLibrarian } from '../middlewares/role.middleware'
 import { supabase } from '../config/supabase'
 import { requireBodyRowsInSchoolFamily } from '../middlewares/row-school-scope.middleware'
 
@@ -54,7 +54,7 @@ router.get('/my', async (req: AuthRequest, res: Response) => {
 // CATEGORIES
 // ============================================================================
 
-router.get('/categories', requireStaff, async (req: AuthRequest, res: Response) => {
+router.get('/categories', requireStaffNoLibrarian, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -118,7 +118,7 @@ router.delete('/categories/:id', requireAdmin, async (req: AuthRequest, res: Res
 // ELEMENTS
 // ============================================================================
 
-router.get('/elements', requireStaff, async (req: AuthRequest, res: Response) => {
+router.get('/elements', requireStaffNoLibrarian, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -132,7 +132,7 @@ router.get('/elements', requireStaff, async (req: AuthRequest, res: Response) =>
   }
 })
 
-router.get('/elements/:id', requireStaff, async (req: AuthRequest, res: Response) => {
+router.get('/elements/:id', requireStaffNoLibrarian, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -204,7 +204,7 @@ router.delete('/elements/:id', requireAdmin, async (req: AuthRequest, res: Respo
 // STUDENT BILLING ELEMENTS
 // ============================================================================
 
-router.get('/student-elements', requireStaff, async (req: AuthRequest, res: Response) => {
+router.get('/student-elements', requireStaffNoLibrarian, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -220,7 +220,7 @@ router.get('/student-elements', requireStaff, async (req: AuthRequest, res: Resp
   }
 })
 
-router.post('/student-elements', requireStaff, ...studentElementRefs, async (req: AuthRequest, res: Response) => {
+router.post('/student-elements', requireStaffNoLibrarian, ...studentElementRefs, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -272,7 +272,7 @@ router.post('/student-elements/mass-assign', requireAdmin, ...studentElementRefs
   }
 })
 
-router.put('/student-elements/:id', requireStaff, bodyRows('billing_elements', 'billing_element_id'), async (req: AuthRequest, res: Response) => {
+router.put('/student-elements/:id', requireStaffNoLibrarian, bodyRows('billing_elements', 'billing_element_id'), async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -302,7 +302,7 @@ router.delete('/student-elements/:id', requireAdmin, async (req: AuthRequest, re
 // TRANSACTIONS
 // ============================================================================
 
-router.post('/transactions', requireStaff, bodyRows('students', 'student_id'), bodyRows('student_billing_elements', 'student_billing_element_id'), async (req: AuthRequest, res: Response) => {
+router.post('/transactions', requireStaffNoLibrarian, bodyRows('students', 'student_id'), bodyRows('student_billing_elements', 'student_billing_element_id'), async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -329,7 +329,7 @@ router.post('/transactions', requireStaff, bodyRows('students', 'student_id'), b
   }
 })
 
-router.get('/transactions', requireStaff, async (req: AuthRequest, res: Response) => {
+router.get('/transactions', requireStaffNoLibrarian, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -362,7 +362,7 @@ router.delete('/transactions/:id', requireAdmin, async (req: AuthRequest, res: R
 // REPORTS
 // ============================================================================
 
-router.get('/reports/category-breakdown', requireStaff, async (req: AuthRequest, res: Response) => {
+router.get('/reports/category-breakdown', requireStaffNoLibrarian, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -386,7 +386,7 @@ router.get('/reports/category-breakdown', requireStaff, async (req: AuthRequest,
 // STUDENTS (for mass assign dropdown)
 // ============================================================================
 
-router.get('/students', requireStaff, async (req: AuthRequest, res: Response) => {
+router.get('/students', requireStaffNoLibrarian, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })

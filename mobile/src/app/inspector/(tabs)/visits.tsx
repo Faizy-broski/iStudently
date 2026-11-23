@@ -9,7 +9,7 @@ import { ScrollView } from '@/components/app/keyboard';
 import { FilterChips } from '@/components/app/filter-chips';
 import { IconTile, RowItem } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, LoadingList, ErrorState } from '@/components/app/states';
 import { StatusChip, type ChipTone } from '@/components/app/status-chip';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -44,6 +44,8 @@ export default function InspectorVisits() {
       <FilterChips value={tab} onChange={setTab} options={(Object.keys(TABS) as (keyof typeof TABS)[]).map((x) => ({ value: x, label: k(`tab_${x}`) }))} />
       {res.isLoading ? (
         <LoadingList rows={4} />
+      ) : res.error ? (
+        <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
       ) : !list.length ? (
         <EmptyState icon={CalendarPlus} title={k('no_visits')} />
       ) : (

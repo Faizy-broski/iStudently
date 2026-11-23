@@ -11,6 +11,7 @@ import {
   assignmentsApi,
   examsApi,
   platformApi,
+  vlabyApi,
   quizApi,
   studentDashboardApi,
   type AccountGate, adminSchoolApi, campusesApi, schoolDashboardApi, twoFaApi, agreementApi, adminStudentsApi, adminAcademicsApi, adminParentsApi, adminCustomFieldsApi, adminEmployeesApi, adminFieldOrdersApi, adminSignupsApi, adminSchoolDataImportApi, exportTemplatesApi, adminParentAgreementApi, adminGroupAssignApi, adminMailApi, adminAnalyticsApi, adminDesignationsApi, adminFeesApi, adminBillingElementsApi, adminAccountingApi, adminSalaryApi, adminGradesApi, adminSchedulingApi, adminQuizApi, adminOnlineClassesApi, adminActivitiesApi, adminAttendanceApi, adminStaffAbsencesApi, adminDisciplineApi, adminEntryExitApi, adminMiqatApi, adminInspectionsApi, adminPerformanceApi, adminTimetableApi, adminPeriodsApi, adminCalendarsApi, adminGeneratorApi, adminPortalApi, adminRolloverApi, adminCalculationsApi, adminTrainingApi, adminWeatherApi, adminServicesApi, adminUserProfilesApi, adminPushApi, adminPublicPagesApi, adminHostelApi, adminLibraryApi, adminTextbooksApi, adminQirtasiApi, adminResourcesApi, adminVaultApi, adminHifziApi, quranApi, finaApi, adminSpeedReadingApi, hadithFortyApi, adminCoursesApi, adminTeacherProgramsApi, jitsiApi, adminHistoricalGradesApi, adminHumanResourcesApi, adminLetterTemplatesApi, portalApi, learningResourcesApi, teacherInspectionsApi, readingLogsApi, inspectorApi, librarianApi, jahbadhGradesApi, jahbadhControlApi, jahbadhOfficialApi, jahbadhAssessmentApi, idCardsApi } from '@studently/api-client'
@@ -113,6 +114,7 @@ export const classDiary = classDiaryApi(api)
 export const quiz = quizApi(api)
 export const media = mediaApi(api)
 export const platform = platformApi(api)
+export const vlaby = vlabyApi(api)
 
 // School admin (campus passed per call as campus_id)
 export const campuses = campusesApi(api)

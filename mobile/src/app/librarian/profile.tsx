@@ -8,6 +8,7 @@ import QRCode from 'react-qr-code';
 import { colors } from '@/lib/colors';
 import { PersonHero } from '@/components/app/layout';
 import { InfoRow, Panel, PanelTitle } from '@/components/app/panel';
+import { InlineError } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
@@ -48,6 +49,7 @@ export default function LibrarianProfile() {
             </View>
           }
         />
+        {staff.error ? <InlineError message={staff.error.message} onRetry={() => staff.mutate()} /> : null}
         {s ? (
           <Panel>
             <InfoRow icon={Hash} label={k('employee_id')} value={s.employee_number || na} />

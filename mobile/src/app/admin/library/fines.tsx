@@ -4,12 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { RefreshControl, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 
-import { LoadingList, EmptyState } from '@/components/app/states';
+import { LoadingList, EmptyState, ErrorState } from '@/components/app/states';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Initials, StatTile } from '@/components/app/layout';
 import { StatusChip } from '@/components/app/status-chip';
 import { Text } from '@/components/ui/text';
+import { useCampus } from '@/features/campus/campus';
 import { useCurrency } from '@/features/admin/use-currency';
 import { adminLibrary } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -18,9 +19,11 @@ import { useApi } from '@/lib/data';
 export default function LibraryFines() {
   const { t, i18n } = useTranslation();
   const { money } = useCurrency();
-  const res = useApi(['admin', 'library-fine-stats'], () => adminLibrary.fineStats());
+  const { campusId } = useCampus();
+  const res = useApi(['admin', 'library-fine-stats', campusId ?? 'school'], () => adminLibrary.fineStats());
   const s = res.data;
   if (res.isLoading) return <LoadingList />;
+  if (res.error && !s) return <ErrorState message={res.error.message} onRetry={() => res.mutate()} />;
 
   const cell = (child: React.ReactNode) => <View className="min-w-[46%] flex-1">{child}</View>;
   return (
