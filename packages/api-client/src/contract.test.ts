@@ -13,6 +13,7 @@ import { platformApi } from './modules/platform'
 import { quizApi } from './modules/quiz'
 import { studentDashboardApi } from './modules/student-dashboard'
 import { twoFaApi } from './modules/two-fa'
+import { vlabyApi } from './modules/vlaby'
 
 // Contract tests: every call a shared module makes must match a route the backend defines,
 // so the app never ships calls to endpoints that don't exist (or that changed method).
@@ -193,3 +194,15 @@ describe('agreement module matches backend/src/routes/user-agreement.routes.ts',
     expect(calls.filter((c) => !routes.has(c))).toEqual([])
   })
 })
+
+describe('vlaby module matches backend/src/routes/vlaby.routes.ts', () => {
+  it('every call has a backend route', async () => {
+    const routes = backendRoutes('vlaby.routes.ts')
+    expect(routes.size).toBeGreaterThan(10)
+    const { api, calls } = recorder('/vlaby')
+    await callAll(vlabyApi(api) as any)
+    expect(calls.length).toBe(7)
+    expect(calls.filter((c) => !routes.has(c))).toEqual([])
+  })
+})
+

@@ -7,7 +7,7 @@ import { Pressable, View } from 'react-native';
 
 import { SearchBar } from '@/components/app/search-bar';
 import { FormSection, Initials } from '@/components/app/layout';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, InlineError, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -61,6 +61,7 @@ export function StudentSelectCard({
         <>
           <SearchBar value={q} onChangeText={setQ} placeholder={k('student_search_placeholder')} />
           {res.isLoading ? <Text className="text-muted-foreground text-sm">{k('searching')}</Text> : null}
+          {res.error ? <InlineError message={res.error.message} onRetry={() => res.mutate()} /> : null}
           {(res.data ?? []).map((s) => (
             <Pressable
               key={s.id}
@@ -77,7 +78,7 @@ export function StudentSelectCard({
               </View>
             </Pressable>
           ))}
-          {term && !res.isLoading && !(res.data ?? []).length ? <Text className="text-muted-foreground text-sm">{k('no_students')}</Text> : null}
+          {term && !res.isLoading && !res.error && !(res.data ?? []).length ? <Text className="text-muted-foreground text-sm">{k('no_students')}</Text> : null}
         </>
       )}
     </FormSection>
@@ -107,6 +108,8 @@ export function ActiveLoansCard({
     <FormSection title={k('active_loans')} icon={BookOpen} className="gap-2">
       {res.isLoading ? (
         <LoadingList rows={2} />
+      ) : res.error ? (
+        <InlineError message={res.error.message} onRetry={() => res.mutate()} />
       ) : !loans.length ? (
         <EmptyState icon={BookOpen} title={k('no_active_loans')} body={studentId ? k('no_books_issued') : undefined} />
       ) : (

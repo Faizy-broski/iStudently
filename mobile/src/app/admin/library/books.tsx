@@ -27,6 +27,7 @@ import { ColorSwatches, isLibraryKey, useLibraryCategories } from '@/features/ad
 import { useRoleBase } from '@/features/portal/role-base';
 import { adminLibrary } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { useCampus } from '@/features/campus/campus';
 import { cn } from '@/lib/utils';
 
 /** Library inventory: categories, search, books with copies/issue/return/lost actions (web: /admin/library/books). */
@@ -37,7 +38,8 @@ export default function LibraryBooks() {
   const confirm = useConfirm();
   const role = useRoleBase();
   const { mutate } = useSWRConfig();
-  const books = useApi(['admin', 'library-books'], () => adminLibrary.books());
+  const { campusId } = useCampus();
+  const books = useApi(['admin', 'library-books', campusId ?? 'school'], () => adminLibrary.books());
   const cats = useLibraryCategories();
   const [category, setCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');

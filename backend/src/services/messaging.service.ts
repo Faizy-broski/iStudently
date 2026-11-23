@@ -63,6 +63,11 @@ export class MessagingService {
   async sendMessage(input: SendMessageInput) {
     const { schoolId, senderProfileId, senderRole, senderStaffId, subject, body, recipientProfileIds, replyToMessageId, attachments } = input
 
+    // Librarians have no messaging in the app or on the web; refuse crafted API requests too.
+    if (senderRole === 'librarian') {
+      throw new MessagingAccessError('Librarians cannot send messages.')
+    }
+
     // Teachers may only message: students in their own classes, school admins,
     // and staff the admin has explicitly approved. Enforced here (not just
     // hidden in the UI) so a crafted API request can't bypass it.
@@ -482,6 +487,10 @@ export class MessagingService {
   ) {
     const term = search?.trim().toLowerCase()
     const isTeacher = role === 'teacher'
+    // A librarian never gets a recipient list (no messaging for this role).
+    if (role === 'librarian') {
+      return { data: [], pagination: { total: 0, page, limit, totalPages: 0 } }
+    }
 
     // Recipient names come from a separate profiles lookup joined in
     // application code (the base tables — students/parents/staff — have no

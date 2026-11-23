@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase'
 import { pushNotificationsService } from './push-notifications.service'
 import { validateCampusAccess } from '../utils/campus-validation'
 import { assertInspectorCanAccessSchool } from '../utils/inspector-access'
+import { assertTeachersAndSubjectsInSchool } from '../utils/inspection-scope'
 import type {
   InspectionVisit,
   CreateVisitDTO,
@@ -41,7 +42,13 @@ async function assertCanViewOrAct(row: InspectionVisit, caller: CallerContext, r
     return
   }
   if (caller.role === 'inspector') {
-    if (row.inspector_profile_id === caller.profileId) return
+    if (row.inspector_profile_id === caller.profileId) {
+      // Acting on an owned visit (check-in, complete, cancel, reschedule, teachers) needs the campus grant to still be active.
+      if (requireOwnerIfInspector && !(await assertInspectorCanAccessSchool(caller.profileId, row.school_id, caller.role))) {
+        throw new Error('Access denied: not assigned to this campus')
+      }
+      return
+    }
     if (requireOwnerIfInspector) throw new Error('Access denied: not your visit')
     const hasAccess = await assertInspectorCanAccessSchool(caller.profileId, row.school_id, caller.role)
     if (!hasAccess) throw new Error('Access denied: not assigned to this campus')
@@ -72,6 +79,16 @@ export async function createVisit(caller: CallerContext, dto: CreateVisitDTO): P
   }
   if (!dto.school_id || !dto.visit_type || !dto.scheduled_date) {
     throw new Error('school_id, visit_type and scheduled_date are required')
+  }
+
+  const today = new Date().toISOString().split('T')[0]
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dto.scheduled_date) || dto.scheduled_date < today) {
+    throw new Error('scheduled_date must be today or a future date (YYYY-MM-DD)')
+  }
+  if (dto.principal_profile_id) {
+    const { data: principal } = await supabase
+      .from('profiles').select('id').eq('id', dto.principal_profile_id).eq('school_id', dto.school_id).in('role', ['admin', 'staff']).maybeSingle()
+    if (!principal) throw new Error('principal_profile_id must be an administrator of the visited campus')
   }
 
   const inspectorProfileId =
@@ -456,6 +473,7 @@ export async function setVisitTeachers(caller: CallerContext, visitId: string, t
   if (!['scheduled', 'confirmed'].includes(visit.status)) {
     throw new Error(`Cannot edit teachers on a visit with status "${visit.status}"`)
   }
+  await assertTeachersAndSubjectsInSchool(visit.school_id, teachers.map((t) => t.teacher_profile_id), teachers.map((t) => t.subject_id))
 
   // Snapshot the current rows before deleting, so a failed re-insert below
   // (delete-then-insert isn't atomic) can be recovered instead of silently

@@ -8,8 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   getVLabyExperiment,
+  VLABY_DEVICE_ID_REQUIRED,
+  VLABY_DEVICE_LIMIT,
+  type VLabyDeviceLimitData,
   type VLabyExperimentDetail,
 } from '@/lib/api/vlaby'
+import VLabyDeviceLimit from './VLabyDeviceLimit'
 
 interface VLabyExperimentViewerProps {
   experimentId: string | number
@@ -27,6 +31,9 @@ export default function VLabyExperimentViewer({
   const [error, setError] = useState<string | null>(null)
   const [noAccount, setNoAccount] = useState(false)
   const [tokenExpired, setTokenExpired] = useState(false)
+  const [deviceLimit, setDeviceLimit] = useState<{ data: VLabyDeviceLimitData | null; message: string | null } | null>(null)
+  const [deviceIdMissing, setDeviceIdMissing] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -36,9 +43,14 @@ export default function VLabyExperimentViewer({
       const res = await getVLabyExperiment(experimentId)
       if (cancelled) return
       setLoading(false)
+      setDeviceLimit(null)
+      setDeviceIdMissing(false)
       if (!res.success) {
         const code = (res as any).code
-        if (code === 'VLABY_TOKEN_REQUIRED') setNoAccount(true)
+        if (code === VLABY_DEVICE_LIMIT) {
+          setDeviceLimit({ data: (res.data as VLabyDeviceLimitData | undefined) ?? null, message: res.error ?? null })
+        } else if (code === VLABY_DEVICE_ID_REQUIRED) setDeviceIdMissing(true)
+        else if (code === 'VLABY_TOKEN_REQUIRED') setNoAccount(true)
         else if (code === 'VLABY_TOKEN_EXPIRED') setTokenExpired(true)
         else setError(res.error || t('failedToLoadExperiment'))
         return
@@ -47,7 +59,13 @@ export default function VLabyExperimentViewer({
     }
     load()
     return () => { cancelled = true }
-  }, [experimentId])
+  }, [experimentId, attempt])
+
+  const retry = useCallback(() => {
+    setLoading(true)
+    setError(null)
+    setAttempt((n) => n + 1)
+  }, [])
 
   // Track fullscreen state changes (e.g. user presses Esc)
   useEffect(() => {
@@ -70,6 +88,35 @@ export default function VLabyExperimentViewer({
       <div className="flex items-center justify-center min-h-[30vh] gap-2 text-gray-500">
         <Loader2 size={20} className="animate-spin" />
         {t('loadingExperiment')}
+      </div>
+    )
+  }
+
+  if (deviceLimit) {
+    return (
+      <VLabyDeviceLimit
+        data={deviceLimit.data}
+        message={deviceLimit.message}
+        onRetry={retry}
+        onBack={() => router.push(backPath)}
+      />
+    )
+  }
+
+  if (deviceIdMissing) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 text-center px-4">
+        <AlertCircle size={40} className="text-amber-400" />
+        <div>
+          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">{t('deviceIdRequired')}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">{t('deviceIdRequiredHint')}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => window.location.reload()}>{t('reloadPage')}</Button>
+          <Button variant="outline" onClick={() => router.push(backPath)}>
+            <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> {t('backToExperiments')}
+          </Button>
+        </div>
       </div>
     )
   }

@@ -2,7 +2,7 @@ import type { PlatformSchool, SchoolAdminCredentials } from '@studently/api-clie
 import * as Clipboard from 'expo-clipboard';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as ScreenCapture from 'expo-screen-capture';
-import { CalendarDays, Copy, Eye, EyeOff, Globe, KeyRound, LayoutGrid, Link2, ListPlus, Mail, MapPin, Pencil, PanelLeft, Phone, ShieldCheck, ShieldOff, UserRound, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, Copy, Eye, EyeOff, Globe, KeyRound, LayoutGrid, Link2, ListPlus, Mail, MapPin, MonitorSmartphone, Pencil, PanelLeft, Phone, ShieldCheck, ShieldOff, UserRound, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, View } from 'react-native';
@@ -286,6 +286,7 @@ export default function SchoolDetail() {
 
         {/* Setup */}
         <Panel>
+          <ActionRow icon={MonitorSmartphone} title={t('app.sd_vlaby_devices')} subtitle={t('app.sd_vlaby_devices_sub')} onPress={() => router.push({ pathname: '/superadmin/school/vlaby-devices', params: { id: school.id, name: school.name } })} />
           <ActionRow icon={Copy} title={t('app.cs_entry')} last onPress={() => router.push({ pathname: '/superadmin/school/copy-settings', params: { id: school.id, name: school.name } })} />
         </Panel>
 

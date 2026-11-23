@@ -3,6 +3,7 @@ import { quranReferenceService } from '../quran/quran-reference.service'
 import { hifziMinistrySyllabusService } from './ministry-syllabus.service'
 import { validateCampusAccess } from '../../utils/campus-validation'
 import { listAssignedSchoolIds } from '../../utils/inspector-access'
+import { getCurrentAcademicYear } from '../academics.service'
 
 // ============================================================================
 // Ministerial Decree 1205 compliance, Phase 3: syllabus-completion %
@@ -151,14 +152,25 @@ class HifziComplianceDashboardService {
   }
 
   /** Cross-school view (ministry inspector) — heatmap rows are schools, across every campus this inspector is assigned to for the hifzi_compliance program. */
-  async getInspectorComplianceDashboard(caller: CallerContext, academicYearId: string): Promise<ComplianceDashboardStats> {
+  async getInspectorComplianceDashboard(caller: CallerContext, academicYearId?: string): Promise<ComplianceDashboardStats> {
     if (caller.role !== 'inspector' && caller.role !== 'super_admin') {
       throw new Error('Access denied: inspector access required')
     }
     const schoolIds = await listAssignedSchoolIds(caller.profileId, 'hifzi_compliance')
     if (schoolIds.length === 0) return { studentsTracked: 0, avgCompletionPercent: null, heatmap: [] }
 
-    const perSchool = await Promise.all(schoolIds.map((schoolId) => this.computeStudentCompletions(schoolId, academicYearId)))
+    // Each campus is measured against ITS OWN current academic year (an inspector spans schools whose years differ);
+    // an explicit academic_year_id is still honoured for every school (older clients).
+    const perSchool = await Promise.all(
+      schoolIds.map(async (schoolId) => {
+        let yearId = academicYearId
+        if (!yearId) {
+          const current = await getCurrentAcademicYear(schoolId)
+          yearId = current.success ? current.data?.id : undefined
+        }
+        return yearId ? this.computeStudentCompletions(schoolId, yearId) : []
+      })
+    )
     const completions = perSchool.flat()
     return this.rollUp(completions, (c) => c.schoolId, (c) => c.schoolName)
   }

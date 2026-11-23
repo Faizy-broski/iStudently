@@ -63,7 +63,7 @@ export function inspectorApi(api: ApiClient) {
   return {
     mySchools: () => api.get<{ id: string; name: string }[]>('/inspectors/me/schools'),
     dashboard: () => api.get<InspectionDashboardStats>('/inspection-analytics/inspector'),
-    hifziCompliance: (academicYearId: string) => api.get<HifziComplianceStats>(`/hifzi/compliance/dashboard${qs({ academic_year_id: academicYearId })}`),
+    hifziCompliance: (academicYearId?: string) => api.get<HifziComplianceStats>(`/hifzi/compliance/dashboard${qs(academicYearId ? { academic_year_id: academicYearId } : {})}`),
 
     myVisits: () => api.get<InspectionVisit[]>('/inspection-visits/mine'),
     createVisit: (body: { school_id: string; visit_type: InspectorVisitType; scheduled_date: string; scheduled_start_time?: string; scheduled_end_time?: string; purpose?: string }) =>

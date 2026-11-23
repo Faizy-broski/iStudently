@@ -10,7 +10,7 @@ import { AuthBackground } from '@/components/app/auth-background';
 import { BrandGradient } from '@/components/app/brand-gradient';
 import { Panel } from '@/components/app/panel';
 import { PersonAvatar } from '@/components/app/person-avatar';
-import { LoadingList } from '@/components/app/states';
+import { InlineError, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { raised } from '@/components/app/tile-grid';
 import { useToast } from '@/components/app/toast';
@@ -30,7 +30,8 @@ const loc = () => (i18n.language === 'ar' ? 'ar' : 'en');
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const hm = (v?: string | null) => (v ? v.slice(0, 5) : '');
 const initials = (a?: string | null, b?: string | null) => `${(a ?? '').charAt(0)}${(b ?? '').charAt(0)}`.toUpperCase() || '?';
-const OPEN = ['scheduled', 'confirmed', 'in_progress', 'rescheduled'];
+// A rescheduled visit is superseded by the new one the reschedule created, so it is never open work.
+const OPEN = ['scheduled', 'confirmed', 'in_progress'];
 
 function Section({ title, action, onAction, children }: { title: string; action?: string; onAction?: () => void; children: React.ReactNode }) {
   return (
@@ -158,6 +159,8 @@ export default function InspectorDashboard() {
             <RoundButton icon={Search} label={t('app.ad_search_modules')} onPress={() => go('/inspector/more')} />
             <RoundButton icon={Bell} label={k('community')} onPress={() => go('/inspector/community')} />
           </View>
+
+          {stats.error || visits.error || reports.error ? <InlineError message={k('load_failed')} onRetry={refresh} /> : null}
 
           {/* Today's / next visit */}
           {focus ? (

@@ -9,6 +9,7 @@ router.use(authenticate)
 
 const allowed = requireRole('super_admin', 'admin', 'teacher', 'student', 'parent')
 const adminOnly = requireRole('super_admin', 'admin')
+const superAdminOnly = requireRole('super_admin')
 
 // Auth
 router.post('/login', allowed, controller.login)
@@ -34,5 +35,16 @@ router.get('/relations/semester/:semesterId/subjects', allowed, controller.getSu
 // Auth-required — needs VLaby Bearer token in x-vlaby-token header
 router.get('/my-experiments', allowed, controller.getUserExperiments)
 router.get('/experiment/:id', allowed, controller.getExperiment)
+
+// Device limit: a user's own devices (the limit itself is set by the super admin)
+router.get('/my-devices', allowed, controller.myDevices)
+router.delete('/my-devices/:id', allowed, controller.releaseMyDevice)
+
+// Device limit: super admin only
+router.get('/device-limit', superAdminOnly, controller.getDeviceLimit)
+router.put('/device-limit', superAdminOnly, controller.setDeviceLimit)
+router.get('/devices', superAdminOnly, controller.listDevices)
+router.delete('/devices/user/:profileId', superAdminOnly, controller.resetDevicesOfUser)
+router.delete('/devices/:id', superAdminOnly, controller.deleteDevice)
 
 export default router

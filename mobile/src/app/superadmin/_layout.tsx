@@ -22,6 +22,7 @@ export default function SuperadminLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="school/[id]" options={{ title: '' }} />
       <Stack.Screen name="school/modules" options={{ title: '' }} />
+      <Stack.Screen name="school/vlaby-devices" options={{ title: '' }} />
       <Stack.Screen name="school/edit" options={{ title: '', presentation: 'modal' }} />
       <Stack.Screen name="school/fields" options={{ title: '' }} />
       <Stack.Screen name="school/field-form" options={{ title: '', presentation: 'modal' }} />

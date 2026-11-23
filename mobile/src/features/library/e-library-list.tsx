@@ -7,7 +7,7 @@ import { Pressable, RefreshControl, View } from 'react-native';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { SearchBar } from '@/components/app/search-bar';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -87,6 +87,8 @@ export function ELibraryList({ readerPath }: { readerPath: '/admin/library/e-lib
         ) : null}
         {books.isLoading ? (
           <LoadingList />
+        ) : books.error ? (
+          <ErrorState message={books.error.message} onRetry={() => books.mutate()} />
         ) : !list.length ? (
           <EmptyState
             icon={BookText}

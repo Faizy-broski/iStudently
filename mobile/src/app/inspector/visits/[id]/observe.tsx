@@ -1,7 +1,7 @@
 import type { TeacherEvaluation } from '@studently/api-client';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Camera, Check, FileAudio, Image as ImageIcon, Mic, Send, TrendingUp, X } from 'lucide-react-native';
+import { Camera, Check, Eye, FileAudio, Image as ImageIcon, Mic, Send, TrendingUp, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView } from '@/components/app/keyboard';
 import { Panel } from '@/components/app/panel';
 import { Picker } from '@/components/app/picker';
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, InlineError, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -44,11 +44,15 @@ export default function ObserveVisit() {
   const [picked, setPicked] = useState<string | null>(null);
   const teacherId = picked ?? teacher ?? (v?.teachers.length === 1 ? v.teachers[0].teacher_profile_id : null);
   const schoolId = v?.school_id ?? null;
+  // Read-only: finds this teacher's existing evaluation for the visit. Creating the draft is an explicit action (start()), never a side effect of loading or revalidating.
   const ev = useApi(id && teacherId ? ['inspector', 'evaluation', id, teacherId] : null, async ([, , vid, tid]) => {
-    const draft = await inspector.draftEvaluation(vid as string, tid as string);
-    if (!draft.success || !draft.data) return draft;
-    return inspector.evaluation(draft.data.id);
+    const list = await inspector.evaluationsForVisit(vid as string);
+    if (!list.success) return { success: false as const, error: list.error, data: undefined };
+    const existing = (list.data ?? []).find((x) => x.teacher.id === tid);
+    if (!existing) return { success: true as const, data: null };
+    return inspector.evaluation(existing.id);
   });
+  const [starting, setStarting] = useState(false);
   const cps = useApi(teacherId && schoolId ? ['inspector', 'teacher-cps', teacherId, schoolId] : null, ([, , tid, s]) => inspector.coursePeriodsForTeacher(tid as string, s as string));
   const [cp, setCp] = useState('');
   const [sample, setSample] = useState<Awaited<ReturnType<typeof inspector.gradeSample>>['data'] | null>(null);
@@ -74,6 +78,15 @@ export default function ObserveVisit() {
     .slice(0, 2)
     .map((p) => p.charAt(0).toUpperCase())
     .join('');
+
+  async function start() {
+    if (!id || !teacherId) return;
+    setStarting(true);
+    const r = await inspector.draftEvaluation(id, teacherId);
+    setStarting(false);
+    if (!r.success) return toast.error(r.error || t('common.error'));
+    ev.mutate();
+  }
 
   async function score(criterionId: string, n: number) {
     if (!evalId) return;
@@ -167,7 +180,7 @@ export default function ObserveVisit() {
     ) : null;
 
   if (visit.isLoading) return <LoadingList rows={4} />;
-  if (!v) return <Text className="text-muted-foreground p-6 text-center">{k('visit_not_found')}</Text>;
+  if (!v) return <ErrorState message={visit.error ? visit.error.message : k('visit_not_found')} onRetry={() => visit.mutate()} />;
   return (
     <>
       <Stack.Screen options={{ title: k('page_title') }} />
@@ -210,7 +223,18 @@ export default function ObserveVisit() {
           />
         ) : null}
         {teacherId && ev.isLoading ? <LoadingList rows={3} /> : null}
-        {teacherId && ev.error ? <Text className="text-destructive text-sm">{ev.error.message || k('err_load_failed')}</Text> : null}
+        {teacherId && ev.error ? <InlineError message={ev.error.message || k('err_load_failed')} onRetry={() => ev.mutate()} /> : null}
+        {teacherId && !ev.isLoading && !ev.error && !e ? (
+          <Card>
+            <CardContent className="gap-3 py-6">
+              <Text className="text-center text-sm">{t('app.in_start_observation_hint')}</Text>
+              <Button onPress={start} disabled={starting}>
+                <Icon as={Eye} className="size-4 text-primary-foreground" />
+                <Text>{starting ? t('common.loading') : t('app.in_start_observation')}</Text>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
         {e ? (
           <>
             {!isDraft ? (
@@ -291,7 +315,7 @@ export default function ObserveVisit() {
                         <Pressable
                           onPress={() => photo(undefined, 'camera')}
                           disabled={!!uploading}
-                          className="border-brand-secondary/60 bg-info-soft/40 size-[76px] items-center justify-center rounded-2xl border-2 border-dashed"
+                          className="border-brand-secondary/60 bg-info-soft/40 size-20 items-center justify-center rounded-2xl border-2 border-dashed"
                           accessibilityRole="button"
                           accessibilityLabel={k('btn_add_photo')}>
                           {uploading === 'general' ? <ActivityIndicator size="small" /> : <Icon as={Camera} className="text-brand dark:text-brand-secondary size-5" />}
@@ -364,7 +388,7 @@ export default function ObserveVisit() {
             <Text className={cn('text-xs font-semibold', missing > 0 ? 'text-warning' : 'text-success')}>{t('app.obs_scored', { done: all.length - missing, total: all.length })}</Text>
           </View>
           <Button size="lg" onPress={submit} disabled={submitting || missing > 0}>
-            <Icon flipRtl as={Send} className="size-4 text-white" />
+            <Icon flipRtl as={Send} className="size-4 text-primary-foreground" />
             <Text>{k('btn_submit_evaluation')}</Text>
           </Button>
         </View>
@@ -388,7 +412,7 @@ function EvidenceChip({ id, name, type, editable, onRemove }: { id: string; name
     <View className="border-border bg-muted/40 flex-row items-center gap-1.5 rounded-full border px-2.5 py-1">
       <Pressable onPress={view} className="flex-row items-center gap-1" accessibilityRole="link">
         {loading ? <ActivityIndicator size="small" /> : <Icon as={type === 'photo' ? Camera : Mic} className="size-3" />}
-        <Text className="max-w-[110px] text-xs" numberOfLines={1}>
+        <Text className="max-w-28 text-xs" numberOfLines={1}>
           {name}
         </Text>
       </Pressable>
@@ -414,7 +438,7 @@ function EvidenceTile({ id, name, type, editable, onRemove }: { id: string; name
     await WebBrowser.openBrowserAsync(r.data.url);
   }
   return (
-    <Pressable onPress={view} className="border-info-soft dark:border-border bg-info-soft/40 size-[76px] items-center justify-center gap-1 rounded-2xl border p-1.5" accessibilityRole="link" accessibilityLabel={name}>
+    <Pressable onPress={view} className="border-info-soft dark:border-border bg-info-soft/40 size-20 items-center justify-center gap-1 rounded-2xl border p-1.5" accessibilityRole="link" accessibilityLabel={name}>
       {loading ? <ActivityIndicator size="small" /> : <Icon as={type === 'photo' ? ImageIcon : Mic} className="text-brand dark:text-brand-secondary size-5" />}
       <Text className="text-2xs" numberOfLines={1}>
         {name}

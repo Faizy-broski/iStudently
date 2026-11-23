@@ -5,7 +5,6 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Loader2, Users, TrendingUp, BookOpen } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getInspectorComplianceDashboard, type HifziComplianceDashboardStats } from '@/lib/api/hifzi'
-import { getCurrentAcademicYear, type AcademicYear } from '@/lib/api/academics'
 import { SyllabusCompletionHeatmap } from '@/components/hifzi/SyllabusCompletionHeatmap'
 
 // Ministerial Decree 1205 compliance, Phase 3 — the ministry-inspector
@@ -18,23 +17,16 @@ export default function InspectorHifziCompliancePage() {
     const locale = useLocale()
     const isAr = locale === 'ar'
 
-    const [academicYear, setAcademicYear] = useState<AcademicYear | null>(null)
     const [stats, setStats] = useState<HifziComplianceDashboardStats | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        getCurrentAcademicYear().then((year) => {
-            setAcademicYear(year)
-            if (!year) {
-                setLoading(false)
-                return
-            }
-            getInspectorComplianceDashboard(year.id).then((res) => {
-                if (res.success && res.data) setStats(res.data)
-                else setError(res.error || t('loadError'))
-                setLoading(false)
-            })
+        // No year is sent: the server measures each assigned campus against its own current academic year.
+        getInspectorComplianceDashboard().then((res) => {
+            if (res.success && res.data) setStats(res.data)
+            else setError(res.error || t('loadError'))
+            setLoading(false)
         })
     }, [t])
 
@@ -47,8 +39,6 @@ export default function InspectorHifziCompliancePage() {
 
             {loading ? (
                 <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : !academicYear ? (
-                <p className="text-sm text-muted-foreground text-center py-8">{t('noAcademicYear')}</p>
             ) : error ? (
                 <p className="text-sm text-red-600 text-center py-8">{error}</p>
             ) : stats && (

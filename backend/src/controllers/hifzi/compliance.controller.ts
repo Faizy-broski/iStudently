@@ -16,7 +16,8 @@ function handleError(res: Response, error: any) {
 // CallerContext and delegates.
 export const getInspectorDashboard = async (req: AuthRequest, res: Response) => {
   try {
-    const academicYearId = req.query.academic_year_id as string
+    // Optional: without it each assigned campus uses its own current academic year.
+    const academicYearId = (req.query.academic_year_id as string | undefined) || undefined
     const data = await hifziComplianceDashboardService.getInspectorComplianceDashboard(
       { profileId: req.profile.id, role: req.profile.role, schoolId: req.profile.school_id },
       academicYearId

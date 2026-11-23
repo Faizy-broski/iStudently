@@ -10,6 +10,20 @@ import { requireOwnStudents, teacherSectionIds } from '../middlewares/own-course
 const NO_SECTION = '00000000-0000-0000-0000-000000000000'
 
 /**
+ * A librarian works in one campus: whatever campus_id they send is replaced by their own, so the
+ * roster and the advanced report can never read a sibling campus. Other roles pass unchanged.
+ */
+export function librarianOwnCampus(req: Request, _res: Response, next: () => void) {
+  const profile = (req as AuthRequest).profile
+  if (profile?.role === 'librarian') {
+    const own = profile.campus_id || profile.school_id
+    if (own) req.query.campus_id = own
+    else delete req.query.campus_id
+  }
+  next()
+}
+
+/**
  * Teachers see only students of sections they teach: the list query is narrowed to those sections,
  * and list / single responses of the other routes are filtered by `section_id` (a single student
  * outside them answers 404). Other roles pass unchanged.
@@ -71,7 +85,7 @@ router.get('/stats', requireRole('admin'), (req, res) =>
  * Get students report with proper joins for advanced reporting
  * Admin, teacher, and librarian can access
  */
-router.get('/report', requireRole('admin', 'teacher', 'librarian'), teacherOwnSections, (req, res) =>
+router.get('/report', requireRole('admin', 'teacher', 'librarian'), librarianOwnCampus, teacherOwnSections, (req, res) =>
   studentController.getStudentsReport(req, res)
 )
 
@@ -124,7 +138,7 @@ router.get('/:id', requireRole('admin', 'teacher', 'counselor', 'student', 'pare
  * Get all students with pagination and search
  * Admin, teacher, librarian, and counselor can access
  */
-router.get('/', requireRole('admin', 'teacher', 'librarian', 'counselor'), teacherOwnSections, (req, res) =>
+router.get('/', requireRole('admin', 'teacher', 'librarian', 'counselor'), librarianOwnCampus, teacherOwnSections, (req, res) =>
   studentController.getStudents(req, res)
 )
 

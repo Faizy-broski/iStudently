@@ -1,3 +1,4 @@
+import { assertMaxLength } from '../utils/inspection-scope'
 import { supabase } from '../config/supabase'
 import { getEvaluationRowOrThrow, assertCanEdit, assertCanView, type CallerContext } from './inspection-evaluation.service'
 import type { InspectionCoachingNote, CoachingNoteType, CoachingNoteStatus } from '../types/inspection-coaching.types'
@@ -31,6 +32,7 @@ export async function addNote(caller: CallerContext, evaluationId: string, dto: 
     throw new Error('Access denied: inspector access required')
   }
   if (!dto.content?.trim()) throw new Error('content is required')
+  assertMaxLength(dto.content, 5000, 'content')
   if (!['strength', 'area_for_growth', 'action_item'].includes(dto.note_type)) {
     throw new Error('Invalid note_type')
   }

@@ -10,8 +10,10 @@ import { useSWRConfig } from 'swr';
 
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField } from '@/components/app/date-field';
+import { BottomBar } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
 import { SearchBar } from '@/components/app/search-bar';
+import { InlineError } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
@@ -19,6 +21,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { locale } from '@/i18n';
 import { isLibraryKey } from '@/features/admin/library';
+import { useCampus } from '@/features/campus/campus';
 import { StudentSelectCard } from '@/features/library/librarian';
 import { adminLibrary } from '@/lib/api';
 import { useApi } from '@/lib/data';
@@ -44,9 +47,12 @@ export default function LibrarianIssue() {
   const [copy, setCopy] = useState<BookCopy | null>(null);
   const [due, setDue] = useState(() => inDays(14));
   const [busy, setBusy] = useState(false);
-  const books = useApi(['admin', 'library-books'], () => adminLibrary.books());
+  const { campusId } = useCampus();
+  const books = useApi(['admin', 'library-books', campusId ?? 'school'], () => adminLibrary.books());
   const studentId = student?.id ?? null;
   const elig = useApi(studentId ? ['admin', 'library-eligibility', studentId] : null, ([, , sid]) => adminLibrary.eligibility(sid as string));
+  // A failed or still-running eligibility check must never let an issue through: the borrower is only cleared once the server said so.
+  const cleared = !!studentId && !elig.isLoading && !elig.error && elig.data?.eligible !== false;
   const term = q.trim().toLowerCase();
   const matches = term && !book ? (books.data ?? []).filter((b) => b.available_copies > 0 && (b.title.toLowerCase().includes(term) || (b.author ?? '').toLowerCase().includes(term))) : [];
 
@@ -70,6 +76,7 @@ export default function LibrarianIssue() {
 
   async function issue() {
     if (!student || !copy) return toast.error(k('select_both'));
+    if (!cleared) return toast.error(elig.data?.message || k('eligibility_failed'));
     setBusy(true);
     const r = await adminLibrary.issue({ copyId: copy.id, student_id: student.id, due_date: new Date(due).toISOString() });
     setBusy(false);
@@ -100,6 +107,13 @@ export default function LibrarianIssue() {
               ) : null
             }
           />
+          {student && elig.error ? <InlineError message={k('eligibility_failed')} onRetry={() => elig.mutate()} /> : null}
+          {student && !elig.error && elig.data?.eligible === false ? (
+            <View className="bg-warning-soft flex-row items-center gap-2 rounded-xl p-2.5">
+              <Icon as={AlertCircle} className="text-warning size-4" />
+              <Text className="text-warning flex-1 text-xs">{elig.data.message || k('not_eligible')}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* 2 · Book copy */}
@@ -138,6 +152,7 @@ export default function LibrarianIssue() {
                 placeholder={k('book_search_placeholder')}
               />
             )}
+            {books.error ? <InlineError message={books.error.message} onRetry={() => books.mutate()} /> : null}
             {matches.map((b) => (
               <Pressable
                 key={b.id}
@@ -230,12 +245,12 @@ export default function LibrarianIssue() {
           </View>
         ) : null}
       </ScrollView>
-      <View className="bg-background absolute inset-x-0 bottom-0 px-4 pb-6 pt-3">
-        <Button size="lg" onPress={issue} disabled={!student || !copy || busy}>
+      <BottomBar className="bg-background absolute inset-x-0 bottom-0 px-4 pt-3">
+        <Button size="lg" onPress={issue} disabled={!student || !copy || busy || !cleared}>
           <Icon as={BookOpen} className="size-4 text-white" />
           <Text>{busy ? k('issuing') : k('issue_book')}</Text>
         </Button>
-      </View>
+      </BottomBar>
     </>
   );
 }

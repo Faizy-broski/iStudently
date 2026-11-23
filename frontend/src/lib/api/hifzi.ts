@@ -390,9 +390,9 @@ export interface HifziMilestone {
   unitNumber: number
 }
 /** Cross-school view for a ministry inspector — no campus_id (an inspector isn't pinned to one school). */
-export async function getInspectorComplianceDashboard(academicYearId: string) {
-  const qs = new URLSearchParams({ academic_year_id: academicYearId })
-  return apiRequest<HifziComplianceDashboardStats>(`/hifzi/compliance/dashboard?${qs}`)
+export async function getInspectorComplianceDashboard(academicYearId?: string) {
+  const qs = new URLSearchParams(academicYearId ? { academic_year_id: academicYearId } : {})
+  return apiRequest<HifziComplianceDashboardStats>(`/hifzi/compliance/dashboard${qs.toString() ? `?${qs}` : ''}`)
 }
 /** Single-school view for an admin. */
 export async function getSchoolComplianceDashboard(schoolId: string, academicYearId: string, campusId?: string | null) {
