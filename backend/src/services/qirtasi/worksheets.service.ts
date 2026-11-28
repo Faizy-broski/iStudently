@@ -56,15 +56,32 @@ interface AssetInput {
   asset_role: string;
 }
 
-function buildCode(gradeCode: string, subjectCode: string, termKey: string | null, unitCode: string | null, lessonCode: string | null, seq: number): string {
-  // QRT-LY-<grade>-<subject>-<term>-<unit>-<lesson>-EX<seq> — see spec §6.5.
-  // "LY" is hardcoded: this is explicitly a Libyan-market product per the spec.
+const CODE_ATTEMPTS = 10;
+
+// QRT-LY-<grade>-<subject>-<term>-<unit>-<lesson> — see spec §6.5.
+// "LY" is hardcoded: this is explicitly a Libyan-market product per the spec.
+function buildPrefix(gradeCode: string, subjectCode: string, termKey: string | null, unitCode: string | null, lessonCode: string | null): string {
   const parts = ['QRT', 'LY', gradeCode, subjectCode];
   if (termKey) parts.push(termKey);
   if (unitCode) parts.push(unitCode);
   if (lessonCode) parts.push(lessonCode);
-  parts.push(`EX${String(seq).padStart(2, '0')}`);
   return parts.join('-');
+}
+
+function buildCode(prefix: string, seq: number): string {
+  return `${prefix}-EX${String(seq).padStart(2, '0')}`;
+}
+
+/** Postgres unique violation on the worksheet code (any other duplicate is a real error). */
+function isCodeConflict(error: { code?: string; message?: string; details?: string }): boolean {
+  return error.code === '23505' && /code/i.test(`${error.message ?? ''} ${error.details ?? ''}`);
+}
+
+export class WorksheetCodeConflictError extends Error {
+  constructor(prefix: string) {
+    super(`Could not reserve a worksheet code for ${prefix}. Please try again.`);
+    this.name = 'WorksheetCodeConflictError';
+  }
 }
 
 class QirtasiWorksheetsService {
@@ -142,13 +159,28 @@ class QirtasiWorksheetsService {
     return { ...worksheet, assets: assets ?? [], facet_values: facetValues ?? [] };
   }
 
-  private async nextSequenceForLesson(lessonId: string | null): Promise<number> {
-    if (!lessonId) return 1;
-    const { count } = await supabase
-      .from('qirtasi_worksheets')
-      .select('*', { count: 'exact', head: true })
-      .eq('lesson_id', lessonId);
-    return (count ?? 0) + 1;
+  /**
+   * Highest EX number already used for this code prefix (across all schools: codes are unique
+   * platform-wide), or 0. Numbers are compared as numbers (EX100 follows EX99).
+   */
+  private async highestSequence(prefix: string): Promise<number> {
+    const pattern = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-EX(\\d+)$`);
+    const page = 1000;
+    let highest = 0;
+    for (let from = 0; ; from += page) {
+      const { data, error } = await supabase
+        .from('qirtasi_worksheets')
+        .select('code')
+        .like('code', `${prefix}-EX%`)
+        .order('code')
+        .range(from, from + page - 1);
+      if (error) throw error;
+      for (const row of data ?? []) {
+        const match = pattern.exec((row as { code: string }).code);
+        if (match) highest = Math.max(highest, Number(match[1]));
+      }
+      if ((data ?? []).length < page) return highest;
+    }
   }
 
   async createWorksheet(
@@ -176,31 +208,38 @@ class QirtasiWorksheetsService {
     const unit = input.unit_id ? (await supabase.from('qirtasi_units').select('code').eq('id', input.unit_id).single()).data : null;
     const lesson = input.lesson_id ? (await supabase.from('qirtasi_lessons').select('code').eq('id', input.lesson_id).single()).data : null;
 
-    const seq = await this.nextSequenceForLesson(input.lesson_id ?? null);
-    const code = buildCode(grade?.code ?? 'XX', subject?.code ?? 'XX', term?.key ?? null, unit?.code ?? null, lesson?.code ?? null, seq);
+    const prefix = buildPrefix(grade?.code ?? 'XX', subject?.code ?? 'XX', term?.key ?? null, unit?.code ?? null, lesson?.code ?? null);
 
-    const { data: worksheet, error } = await supabase
-      .from('qirtasi_worksheets')
-      .insert({
-        code,
-        title_ar: input.title_ar,
-        title_en: input.title_en ?? null,
-        description: input.description ?? null,
-        worksheet_type: input.worksheet_type,
-        owner_id: ownerId,
-        school_id: schoolId,
-        grade_id: input.grade_id,
-        subject_id: input.subject_id,
-        track_id: input.track_id ?? null,
-        term_id: input.term_id ?? null,
-        unit_id: input.unit_id ?? null,
-        lesson_id: input.lesson_id ?? null,
-        visibility_scope: input.visibility_scope ?? 'school',
-        status: 'published', // no moderation queue UI yet — see the plan's deferred list
-      })
-      .select()
-      .single();
-    if (error) throw error;
+    // Next free number for this prefix. Two uploads can pick the same one at the same moment: the
+    // unique constraint refuses the second, which then takes the next number.
+    let worksheet: any = null;
+    for (let attempt = 0; attempt < CODE_ATTEMPTS && !worksheet; attempt++) {
+      const code = buildCode(prefix, (await this.highestSequence(prefix)) + 1 + attempt);
+      const { data, error } = await supabase
+        .from('qirtasi_worksheets')
+        .insert({
+          code,
+          title_ar: input.title_ar,
+          title_en: input.title_en ?? null,
+          description: input.description ?? null,
+          worksheet_type: input.worksheet_type,
+          owner_id: ownerId,
+          school_id: schoolId,
+          grade_id: input.grade_id,
+          subject_id: input.subject_id,
+          track_id: input.track_id ?? null,
+          term_id: input.term_id ?? null,
+          unit_id: input.unit_id ?? null,
+          lesson_id: input.lesson_id ?? null,
+          visibility_scope: input.visibility_scope ?? 'school',
+          status: 'published', // no moderation queue UI yet — see the plan's deferred list
+        })
+        .select()
+        .single();
+      if (!error) worksheet = data;
+      else if (!isCodeConflict(error)) throw error;
+    }
+    if (!worksheet) throw new WorksheetCodeConflictError(prefix);
 
     const { data: version, error: versionErr } = await supabase
       .from('qirtasi_worksheet_versions')

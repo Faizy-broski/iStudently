@@ -47,6 +47,8 @@ export default function StudentLayout() {
             <Stack.Screen name="resources/physics-labs/index" options={{ title: '' }} />
             <Stack.Screen name="resources/physics-labs/[id]" options={{ title: '' }} />
             <Stack.Screen name="tools/[tool]" options={{ title: '' }} />
+            <Stack.Screen name="jahbadh-lab/index" options={{ title: '' }} />
+            <Stack.Screen name="jahbadh-lab/[code]" options={{ title: '' }} />
             <Stack.Screen name="hostel" options={{ title: '' }} />
             <Stack.Screen name="library" options={{ title: '' }} />
             <Stack.Screen name="e-library/index" options={{ title: '' }} />

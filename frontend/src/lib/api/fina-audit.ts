@@ -56,7 +56,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<Api
 
 export function searchAuditLog(filters: AuditSearchFilters) {
   const params = new URLSearchParams()
-  if (filters.schoolId) params.set('school_id', filters.schoolId)
+  if (filters.schoolId) params.set('filter_school_id', filters.schoolId)
   if (filters.from) params.set('from', filters.from)
   if (filters.to) params.set('to', filters.to)
   if (filters.action) params.set('action', filters.action)

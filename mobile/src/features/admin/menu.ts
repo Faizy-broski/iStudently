@@ -6,6 +6,7 @@ import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
 import { adminResources, adminSchool } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { appPlugins } from '@/features/portal/web-only-plugins';
 
 /**
  * Web admin pages that have a native screen. Everything else in the menu opens the
@@ -376,6 +377,7 @@ export const NATIVE_ROUTES: Record<string, Href> = {
   '/admin/students/id-card': '/admin/tools/student-id-card',
   '/admin/students/certificate-enrollment': '/admin/tools/certificate-enrollment',
   '/admin/resources/jperiod': '/admin/tools/jperiod',
+  '/admin/resources/jahbadh-lab': '/admin/jahbadh-lab',
   '/admin/resources/arabic-fluency': '/admin/tools/arabic-fluency',
   '/admin/resources/calculators-arena': '/admin/tools/calculators-arena',
   '/admin/resources/human-atlas': '/admin/tools/human-atlas',
@@ -420,13 +422,15 @@ export function useAdminMenu() {
     if (role !== 'admin' && role !== 'staff') return [];
     const s = settings.data;
     // Plugins can differ per campus (the web reads them from the campus's settings row).
-    const plugins = s?.active_plugins
-      ? Object.entries(s.active_plugins)
-          .filter(([, on]) => on)
-          .map(([id]) => id)
-      : me.status === 'ready'
-        ? me.me.plugins
-        : [];
+    const plugins = appPlugins(
+      s?.active_plugins
+        ? Object.entries(s.active_plugins)
+            .filter(([, on]) => on)
+            .map(([id]) => id)
+        : me.status === 'ready'
+          ? me.me.plugins
+          : [],
+    );
     const menu = filterAdminMenu({
       role,
       plugins,

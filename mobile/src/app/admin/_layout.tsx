@@ -316,6 +316,8 @@ export default function AdminLayout() {
             <Stack.Screen name="qirtasi/worksheet-form" options={{ title: '' }} />
             <Stack.Screen name="qirtasi/curriculum" options={{ title: '' }} />
             <Stack.Screen name="tools/[tool]" options={{ title: '' }} />
+            <Stack.Screen name="jahbadh-lab/index" options={{ title: '' }} />
+            <Stack.Screen name="jahbadh-lab/[code]" options={{ title: '' }} />
             <Stack.Screen name="resources/links" options={{ title: '' }} />
             <Stack.Screen name="resources/dashboards/index" options={{ title: '' }} />
             <Stack.Screen name="resources/dashboards/[id]" options={{ title: '' }} />

@@ -8,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, BarChart3, Calendar, Users, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react'
+import { Loader2, BarChart3, Calendar, Users, AlertCircle, CheckCircle } from 'lucide-react'
 import useSWR from 'swr'
 import * as teachersApi from '@/lib/api/teachers'
 import { getAttendanceSummary, type AttendanceSummaryRow } from '@/lib/api/attendance'
 import { type TeacherSubjectAssignment } from '@/lib/api/teachers'
+import { SectionReports } from '@/components/teacher/SectionReports'
 
 const fetcher = async () => teachersApi.getTeacherAssignments()
 
@@ -262,39 +263,17 @@ export default function ReportsPage() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Performance & Assignment Reports */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="p-5 opacity-70">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-green-100">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">{t('performanceReport')}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {t('performanceReportComingSoon')}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-5 opacity-70">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-purple-100">
-                    <BarChart3 className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">{t('assignmentReport')}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {t('assignmentReportComingSoon')}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </div>
           </div>
         )
       )}
+
+      <SectionReports
+        teacherId={profile?.staff_id ?? undefined}
+        sectionId={selectedSection}
+        from={dateRange.from}
+        to={dateRange.to}
+        sectionName={selectedAssignment?.section?.name}
+      />
     </div>
   )
 }

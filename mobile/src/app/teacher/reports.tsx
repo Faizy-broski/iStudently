@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { AlertCircle, BarChart3, Calendar, CheckCircle, TrendingUp, Users } from 'lucide-react-native';
+import { AlertCircle, BarChart3, Calendar, CheckCircle, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -7,7 +7,7 @@ import { View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { DateField, todayYmd } from '@/components/app/date-field';
 import { Picker } from '@/components/app/picker';
-import { FormSection, IconTile, Initials, RowItem, Section, StatTile, StatTiles } from '@/components/app/layout';
+import { FormSection, Initials, RowItem, Section, StatTile, StatTiles } from '@/components/app/layout';
 import { Panel } from '@/components/app/panel';
 import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { StatusChip } from '@/components/app/status-chip';
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
+import { SectionReports } from '@/features/teacher/section-reports';
 import { adminAttendance, teacher } from '@/lib/api';
 import { useApi } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ export default function TeacherReports() {
   const k = (key: string, o?: Record<string, unknown>) => t(`teacherPages.reports.${key}`, o);
   const { me } = useSession();
   const schoolId = me.status === 'ready' ? (me.me.profile.school_id ?? null) : null;
+  const staffId = me.status === 'ready' ? (me.me.profile.staff_id ?? null) : null;
   const { campusId } = useCampus();
   const assigned = useApi(['teacher', 'my-subjects'], () => teacher.mySubjects());
   const [section, setSection] = useState('');
@@ -118,10 +120,7 @@ export default function TeacherReports() {
             </>
           )
         ) : null}
-        <Panel>
-          <RowItem leading={<IconTile icon={TrendingUp} tone="success" size={40} />} title={k('performanceReport')} meta={k('performanceReportComingSoon')} />
-          <RowItem leading={<IconTile icon={BarChart3} tone="warning" size={40} />} title={k('assignmentReport')} meta={k('assignmentReportComingSoon')} last />
-        </Panel>
+        <SectionReports teacherId={staffId} sectionId={section} from={from} to={to} sectionName={sectionName} />
       </ScrollView>
     </>
   );

@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 import { supabase } from '../../config/supabase';
 import { matchesFileSignature } from '../../utils/file-signature';
-import { qirtasiWorksheetsService, QIRTASI_WORKSHEET_BUCKET, QirtasiWorksheet } from '../../services/qirtasi/worksheets.service';
+import { WorksheetCodeConflictError, qirtasiWorksheetsService, QIRTASI_WORKSHEET_BUCKET, QirtasiWorksheet } from '../../services/qirtasi/worksheets.service';
 import { createQirtasiWorksheetSchema, updateQirtasiWorksheetSchema } from '../../types/index';
 import { campusIdsAllowed, schoolRootId } from '../../utils/campus-validation';
 import { qirtasiCurriculumService, CurriculumScopeError } from '../../services/qirtasi/curriculum.service';
@@ -89,6 +89,13 @@ function validateFile(file: Express.Multer.File): ValidationResult {
 
 const ROLE_BY_FIELD: Record<string, string> = { file: 'primary', thumbnail: 'thumbnail', answerKey: 'answer_key' };
 
+// A plain function, not a method: the router passes the handlers unbound, so `this` is undefined
+// inside them (calling a method from an error path crashed and left the request hanging until 504).
+async function cleanupPaths(paths: string[]) {
+  if (paths.length === 0) return;
+  await supabase.storage.from(QIRTASI_WORKSHEET_BUCKET).remove(paths).catch(() => {});
+}
+
 export class QirtasiWorksheetsController {
   async listWorksheets(req: AuthRequest, res: Response) {
     try {
@@ -166,13 +173,13 @@ export class QirtasiWorksheetsController {
         if (!file) continue;
         const check = validateFile(file);
         if (check.ok === false) {
-          await this.cleanupPaths(uploadedPaths);
+          await cleanupPaths(uploadedPaths);
           return res.status(check.status).json({ success: false, error: `${field}: ${check.error}` });
         }
         const path = `${schoolId}/${worksheetId}/${ROLE_BY_FIELD[field]}-${randomUUID()}.${check.ext}`;
         const { error } = await supabase.storage.from(QIRTASI_WORKSHEET_BUCKET).upload(path, file.buffer, { contentType: file.mimetype, upsert: false });
         if (error) {
-          await this.cleanupPaths(uploadedPaths);
+          await cleanupPaths(uploadedPaths);
           return res.status(500).json({ success: false, error: `Storage upload failed (${field}): ${error.message}` });
         }
         uploadedPaths.push(path);
@@ -183,18 +190,15 @@ export class QirtasiWorksheetsController {
         const data = await qirtasiWorksheetsService.createWorksheet(dto, schoolId, req.profile?.id || null, assets);
         return res.status(201).json({ success: true, data });
       } catch (dbError: any) {
-        await this.cleanupPaths(uploadedPaths);
+        console.error('Qirtasi createWorksheet failed:', dbError);
+        await cleanupPaths(uploadedPaths);
+        if (dbError instanceof WorksheetCodeConflictError) return res.status(409).json({ success: false, error: dbError.message });
         return res.status(500).json({ success: false, error: dbError.message });
       }
     } catch (error: any) {
-      await this.cleanupPaths(uploadedPaths);
+      await cleanupPaths(uploadedPaths);
       res.status(500).json({ success: false, error: error.message });
     }
-  }
-
-  private async cleanupPaths(paths: string[]) {
-    if (paths.length === 0) return;
-    await supabase.storage.from(QIRTASI_WORKSHEET_BUCKET).remove(paths).catch(() => {});
   }
 
   async updateWorksheet(req: AuthRequest, res: Response) {
@@ -224,7 +228,7 @@ export class QirtasiWorksheetsController {
         return res.status(403).json({ success: false, error: 'Only the owner, an admin, or a librarian can delete this worksheet' });
       }
       const paths = await qirtasiWorksheetsService.deleteWorksheet(req.params.id);
-      await this.cleanupPaths(paths);
+      await cleanupPaths(paths);
       res.json({ success: true, data: { success: true } });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });

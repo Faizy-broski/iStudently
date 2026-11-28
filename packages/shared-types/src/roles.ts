@@ -38,7 +38,7 @@ export const WEB_DASHBOARD_BY_ROLE: Partial<Record<UserRole, string>> = {
 }
 
 /** Route group in the mobile app (mobile/app/(group)) a role lands in after sign-in. */
-export type MobileRoleGroup = 'student' | 'parent' | 'teacher' | 'librarian' | 'inspector' | 'scanner' | 'admin' | 'superadmin'
+export type MobileRoleGroup = 'student' | 'parent' | 'teacher' | 'librarian' | 'inspector' | 'media-officer' | 'fina-supervisor' | 'scanner' | 'admin' | 'superadmin'
 
 export const MOBILE_GROUP_BY_ROLE: Record<UserRole, MobileRoleGroup | null> = {
   student: 'student',
@@ -54,10 +54,11 @@ export const MOBILE_GROUP_BY_ROLE: Record<UserRole, MobileRoleGroup | null> = {
   inspector: 'inspector',
   // All 11 super-admin pages natively; no school impersonation in the app (2026-10-06).
   super_admin: 'superadmin',
+  // Al-Fina' roles: their web pages natively (2026-11-27).
+  media_officer: 'media-officer',
+  fina_supervisor: 'fina-supervisor',
   // Web-only roles: the app shows a "use the website" message.
   counselor: null,
-  media_officer: null,
-  fina_supervisor: null,
   financial_admin: null,
 }
 

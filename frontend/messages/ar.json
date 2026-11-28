@@ -872,7 +872,8 @@
     "jahbadh_monthly_cards": "الصحيفة الشهرية",
     "jahbadh_marking_sheets": "كشف رصد المعلم",
     "jahbadh_infographics": "إنفوجرافيك جهبذ",
-    "jahbadh_quiz_grading": "التصحيح الآلي"
+    "jahbadh_quiz_grading": "التصحيح الآلي",
+    "jahbadh_lab": "معمل جهبذ"
   },
   "dashboard": {
     "welcome_back": "مرحباً بعودتك، {name}!",
@@ -1662,13 +1663,13 @@
         "select_campus": "يرجى اختيار فرع لعرض المستفيدين.",
         "found_count": "تم العثور على {count} مستفيد.",
         "export_payments": "تصدير المدفوعات",
-        "export_coming_soon": "ميزة التصدير ستتوفر قريبًا",
         "col_name": "الاسم",
         "col_email": "البريد الإلكتروني",
         "col_phone": "رقم الهاتف",
         "col_bank": "البنك",
         "col_payments": "المدفوعات",
-        "add_payee": "إضافة مستفيد"
+        "add_payee": "إضافة مستفيد",
+        "export_empty": "لا توجد بيانات للتصدير"
       },
       "daily_transactions": {
         "title": "المعاملات اليومية",
@@ -7776,8 +7777,6 @@
       "customFieldsTitle": "حقول مخصصة",
       "customFieldsDesc": "تعريف حقول إضافية للموظفين (مثل رقم الرخصة، وقت المناوبة).",
       "customFieldsManager": "مدير الحقول المخصصة",
-      "toBeImplemented": "سيتم التطبيق لاحقاً. سيستخدم نفس نظام الحقول المخصصة للطلاب.",
-      "comingSoon": "قريبًا",
       "errors": {
         "enterDesignationName": "يرجى إدخال اسم المسمى",
         "designationExists": "المسمى موجود بالفعل",
@@ -7792,7 +7791,9 @@
         "designationAdded": "تمت إضافة المسمى بنجاح",
         "designationRemoved": "تمت إزالة المسمى",
         "defaultsAdded": "تمت إضافة المسميات الافتراضية"
-      }
+      },
+      "customFieldsHint": "تُدار الحقول الإضافية للموظفين من صفحة الحقول المخصصة.",
+      "openCustomFields": "فتح الحقول المخصصة"
     },
     "contact": "التواصل",
     "contract": "العقد",
@@ -9384,7 +9385,9 @@
       "marking_period_groups_name": "مجموعات فترات التقييم",
       "marking_period_groups_desc": "تتيح لك تحديد مجموعات إضافية من فترات التقييم بتواريخ خاصة بكل منها — مفيدة عندما تستخدم بعض المراحل الدراسية عددًا مختلفًا من الفصول الدراسية/الأرباع عن غيرها. مجموعة \"الافتراضي\" هي فترات التقييم الموجودة مسبقًا ولا يمكن حذفها. قم بتعيين مجموعة لكل مرحلة دراسية من صفحة المراحل الدراسية.",
       "jahbadh_grades_name": "درجات جهبذ",
-      "jahbadh_grades_desc": "توزيع الدرجات الرسمي الليبي (منشور 2024-2025، الصفوف 1–12 بالشعب): رصد الدرجات والنتائج والدور الثاني والشهادات والتحليلات وكنترول الامتحانات ومؤقت الامتحانات."
+      "jahbadh_grades_desc": "توزيع الدرجات الرسمي الليبي (منشور 2024-2025، الصفوف 1–12 بالشعب): رصد الدرجات والنتائج والدور الثاني والشهادات والتحليلات وكنترول الامتحانات ومؤقت الامتحانات.",
+      "jahbadh_lab_name": "معمل جهبذ",
+      "jahbadh_lab_desc": "معمل علوم افتراضي يضم نحو 1800 تجربة تفاعلية ونموذجاً ثلاثي الأبعاد ومحاكاة في الفيزياء والكيمياء والأحياء وعلوم الأرض، بالعربية والإنجليزية والفرنسية. تصفّح حسب المادة والمرحلة الدراسية، وابحث، واحفظ تجاربك المفضّلة. مكتفٍ بذاته ولا يتطلب تسجيل الدخول."
     }
   },
   "studentPortal": {
@@ -11081,7 +11084,6 @@
       "unknownSection": "شعبة غير معروفة",
       "primary": "أساسي",
       "unknownGrade": "صف غير معروف",
-      "featureComingSoon": "هذه الميزة قادمة قريبًا",
       "lessonPlan": "خطة الدرس",
       "students": "الطلاب"
     },
@@ -11668,9 +11670,32 @@
       "atRisk": "معرّض للخطر",
       "critical": "حرج",
       "performanceReport": "تقرير الأداء",
-      "performanceReportComingSoon": "تقرير الدرجات الأكاديمية ونتائج الامتحانات قريباً.",
       "assignmentReport": "تقرير الواجبات",
-      "assignmentReportComingSoon": "تقرير تسليم وإنجاز الواجبات قريباً."
+      "performanceReportDesc": "نتائج امتحاناتك لهذا الفصل خلال الفترة المحددة.",
+      "assignmentReportDesc": "تسليم واجباتك المستحقة خلال الفترة المحددة.",
+      "generate": "إنشاء التقرير",
+      "exportCsv": "تصدير CSV",
+      "noExamsInPeriod": "لا توجد امتحانات في الفترة المحددة",
+      "noAssignmentsInPeriod": "لا توجد واجبات في الفترة المحددة",
+      "exam": "الامتحان",
+      "subject": "المادة",
+      "date": "التاريخ",
+      "maxMarks": "الدرجة العظمى",
+      "resultsEntered": "النتائج المدخلة",
+      "average": "المتوسط",
+      "passRate": "نسبة النجاح",
+      "examsTaken": "عدد الامتحانات",
+      "absences": "مرات الغياب",
+      "assignment": "الواجب",
+      "dueDate": "تاريخ التسليم",
+      "submitted": "المسلَّمة",
+      "pending": "قيد الانتظار",
+      "graded": "المصححة",
+      "completion": "نسبة الإنجاز",
+      "averageScore": "متوسط الدرجة",
+      "loadFailed": "تعذر تحميل التقرير",
+      "retry": "إعادة المحاولة",
+      "listTruncated": "يعرض أحدث {count} واجباً فقط."
     },
     "resourcesEmbedded": {
       "failedToLoadResources": "فشل تحميل الموارد",
@@ -12217,7 +12242,6 @@
       "savePreferences": "حفظ التفضيلات",
       "changePassword": "تغيير كلمة المرور",
       "updateYourAccountPassword": "تحديث كلمة مرور حسابك",
-      "passwordChangeComingSoon": "ميزة تغيير كلمة المرور قادمة قريباً",
       "accountInformation": "معلومات الحساب",
       "userId": "رقم المستخدم:",
       "role": "الدور:",
@@ -12233,7 +12257,14 @@
       "profileUpdatedSuccessfully": "تم تحديث الملف الشخصي بنجاح",
       "failedToUpdateProfile": "فشل تحديث الملف الشخصي",
       "notificationSettingsUpdated": "تم تحديث إعدادات الإشعارات",
-      "failedToUpdateSettings": "فشل تحديث الإعدادات"
+      "failedToUpdateSettings": "فشل تحديث الإعدادات",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "passwordHint": "8 أحرف على الأقل",
+      "passwordTooShort": "يجب ألا تقل كلمة المرور عن 8 أحرف",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين",
+      "passwordChanged": "تم تغيير كلمة المرور",
+      "passwordChangeFailed": "تعذر تغيير كلمة المرور"
     },
     "accountingPrintStatements": {
       "school": "المدرسة",
@@ -16171,5 +16202,41 @@
     "deviceRemoved": "تمت إزالة الجهاز",
     "removeFailed": "تعذرت إزالة الجهاز",
     "notMigrated": "لم يتم إعداد أجهزة المختبرات الافتراضية بعد: شغّل ترحيل قاعدة البيانات الخاص بأجهزة VLaby أولًا ثم حاول مرة أخرى."
+  },
+  "jahbadhLab": {
+    "title": "معمل جهبذ",
+    "subtitle": "{count} تجربة تفاعلية ونموذج ثلاثي الأبعاد ومحاكاة",
+    "language": "اللغة",
+    "searchPlaceholder": "ابحث عن تجربة أو رمز…",
+    "clearSearch": "مسح البحث",
+    "all": "الكل",
+    "favourites": "المفضّلة",
+    "myFavourites": "تجاربي المفضّلة",
+    "recent": "فتحتها مؤخراً",
+    "clearRecent": "مسح القائمة",
+    "stage": "المرحلة الدراسية:",
+    "allStages": "كل المراحل",
+    "rangePrimary": "1–6",
+    "rangeMiddle": "7–9",
+    "rangeSecondary": "10–12",
+    "resultsCount": "{count, plural, =0 {لا توجد تجارب} =1 {تجربة واحدة} two {تجربتان} few {# تجارب} many {# تجربة} other {# تجربة}}",
+    "resetFilters": "مسح عوامل التصفية",
+    "noResults": "لا توجد تجارب مطابقة. جرّب كلمة أخرى أو امسح عوامل التصفية.",
+    "emptyFavourites": "لم تُضف أي تجربة إلى المفضّلة بعد. اضغط النجمة على أي تجربة لتجدها هنا.",
+    "showMore": "عرض المزيد (بقي {count})",
+    "addFavourite": "أضف إلى المفضّلة",
+    "removeFavourite": "إزالة من المفضّلة",
+    "back": "رجوع",
+    "backToCatalog": "العودة إلى كل التجارب",
+    "experimentNotFound": "لم يتم العثور على هذه التجربة.",
+    "fullscreen": "ملء الشاشة",
+    "exitFullscreen": "إنهاء ملء الشاشة",
+    "openInNewTab": "فتح في تبويب جديد",
+    "loadingExperiment": "جارٍ تحميل التجربة…",
+    "notInstalledTitle": "ملفات المعمل غير مثبّتة على هذا الخادم",
+    "notInstalledBody": "معمل جهبذ غير متاح هنا بعد. يُرجى التواصل مع مسؤول المدرسة.",
+    "notInstalledAdminHint": "للمسؤولين: انسخ مجلد المعمل إلى الخادم (يُقدَّم على المسار /lab/) وأنشئ الملف catalog.json. الخطوات في docs/jahbadh/lab-hosting.md.",
+    "loadError": "تعذّر تحميل التجارب. تحقق من اتصالك وحاول مرة أخرى.",
+    "retry": "إعادة المحاولة"
   }
 }

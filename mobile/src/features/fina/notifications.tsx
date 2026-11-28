@@ -4,7 +4,7 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { ScrollView } from '@/components/app/keyboard';
 import { useSWRConfig } from 'swr';
 
-import { EmptyState, LoadingList } from '@/components/app/states';
+import { EmptyState, ErrorState, LoadingList } from '@/components/app/states';
 import { useToast } from '@/components/app/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,6 +44,8 @@ export function FinaNotificationsScreen() {
         ) : null}
         {res.isLoading ? (
           <LoadingList rows={4} />
+        ) : res.error && !list.length ? (
+          <ErrorState message={res.error.message} onRetry={() => res.mutate()} />
         ) : !list.length ? (
           <EmptyState icon={Bell} title={f('empty')} />
         ) : (

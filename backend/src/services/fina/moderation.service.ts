@@ -49,6 +49,14 @@ async function loadPostRow(postId: string) {
   return data
 }
 
+/** Moderation actions take a post id from the client: it must be a post of the caller's own school
+ * (the queues are already scoped that way; the actions must be too). */
+async function loadSchoolPost(caller: CallerContext, postId: string) {
+  const post = await loadPostRow(postId)
+  if (post.school_id !== caller.schoolId) throw new Error('Access denied: post belongs to a different school')
+  return post
+}
+
 async function loadOwnedPost(caller: CallerContext, postId: string) {
   if (caller.role === 'super_admin') throw new Error('Access denied') // spec §12: SYSADMIN has zero content access
   const post = await loadPostRow(postId)
@@ -240,6 +248,7 @@ export async function submitPost(caller: CallerContext, postId: string) {
 
 export async function reviewPost(caller: CallerContext, postId: string, decision: 'approve' | 'reject', reason?: string) {
   if (!REVIEWER_ROLES.includes(caller.role)) throw new Error('Access denied: media officer access required')
+  await loadSchoolPost(caller, postId)
 
   if (decision === 'approve') {
     const { data, error } = await supabase
@@ -275,7 +284,7 @@ export async function reviewPost(caller: CallerContext, postId: string, decision
 
 export async function approvePost(caller: CallerContext, postId: string) {
   if (!PRINCIPAL_ROLES.includes(caller.role)) throw new Error('Access denied: principal access required')
-  const post = await loadPostRow(postId)
+  const post = await loadSchoolPost(caller, postId)
   if (post.state !== 'pending_approval') throw new Error('Post is not awaiting approval')
 
   await assertPublishable(postId) // the hard stop, re-checked right here — never trusted from submission time alone
@@ -296,6 +305,7 @@ export async function approvePost(caller: CallerContext, postId: string) {
 export async function rejectApproval(caller: CallerContext, postId: string, reason: string) {
   if (!PRINCIPAL_ROLES.includes(caller.role)) throw new Error('Access denied: principal access required')
   if (!reason) throw new Error('A rejection reason is required')
+  await loadSchoolPost(caller, postId)
 
   const { data, error } = await supabase
     .from('fina_posts')
@@ -311,6 +321,7 @@ export async function rejectApproval(caller: CallerContext, postId: string, reas
 
 export async function acknowledgePostHocReview(caller: CallerContext, postId: string) {
   if (!REVIEWER_ROLES.includes(caller.role) && !PRINCIPAL_ROLES.includes(caller.role)) throw new Error('Access denied')
+  await loadSchoolPost(caller, postId)
   const { data, error } = await supabase
     .from('fina_posts')
     .update({ needs_post_hoc_review: false, reviewed_by: caller.profileId, reviewed_at: new Date().toISOString() })
@@ -325,6 +336,7 @@ export async function acknowledgePostHocReview(caller: CallerContext, postId: st
 
 export async function pinPost(caller: CallerContext, postId: string, pinned: boolean) {
   if (!PRINCIPAL_ROLES.includes(caller.role)) throw new Error('Access denied: principal access required')
+  await loadSchoolPost(caller, postId)
   const { data, error } = await supabase
     .from('fina_posts')
     .update({ is_pinned: pinned })

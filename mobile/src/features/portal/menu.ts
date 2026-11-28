@@ -6,6 +6,7 @@ import { useSession } from '@/features/auth/session';
 import { useCampus } from '@/features/campus/campus';
 import { portal } from '@/lib/api';
 import { useApi } from '@/lib/data';
+import { appPlugins } from '@/features/portal/web-only-plugins';
 
 export type PortalRole = Extract<MenuRole, 'student' | 'parent' | 'teacher' | 'librarian'>;
 
@@ -61,6 +62,7 @@ export const PORTAL_ROUTES: Record<PortalRole, Record<string, Href>> = {
     '/student/resources/hadith-forty': '/student/resources/hadith-forty',
     '/student/resources/physics-labs': '/student/resources/physics-labs',
     '/student/resources/jperiod': '/student/tools/jperiod',
+    '/student/resources/jahbadh-lab': '/student/jahbadh-lab',
     '/student/resources/zperiod': '/student/tools/zperiod',
     '/student/resources/arabic-fluency': '/student/tools/arabic-fluency',
     '/student/resources/calculators-arena': '/student/tools/calculators-arena',
@@ -98,6 +100,7 @@ export const PORTAL_ROUTES: Record<PortalRole, Record<string, Href>> = {
   parent: {
     '/parent/dashboard': '/parent',
     '/parent/resources/jperiod': '/parent/tools/jperiod',
+    '/parent/resources/jahbadh-lab': '/parent/jahbadh-lab',
     '/parent/resources/zperiod': '/parent/tools/zperiod',
     '/parent/resources/arabic-fluency': '/parent/tools/arabic-fluency',
     '/parent/resources/calculators-arena': '/parent/tools/calculators-arena',
@@ -171,6 +174,7 @@ export const PORTAL_ROUTES: Record<PortalRole, Record<string, Href>> = {
   teacher: {
     '/teacher/dashboard': '/teacher',
     '/teacher/resources/jperiod': '/teacher/tools/jperiod',
+    '/teacher/resources/jahbadh-lab': '/teacher/jahbadh-lab',
     '/teacher/resources/zperiod': '/teacher/tools/zperiod',
     '/teacher/resources/arabic-fluency': '/teacher/tools/arabic-fluency',
     '/teacher/resources/calculators-arena': '/teacher/tools/calculators-arena',
@@ -376,13 +380,15 @@ export function usePortalPlugins(): string[] {
   const active = settings.data?.active_plugins;
   return useMemo(
     () =>
-      active
-        ? Object.entries(active)
-            .filter(([, on]) => on)
-            .map(([id]) => id)
-        : me.status === 'ready'
-          ? me.me.plugins
-          : [],
+      appPlugins(
+        active
+          ? Object.entries(active)
+              .filter(([, on]) => on)
+              .map(([id]) => id)
+          : me.status === 'ready'
+            ? me.me.plugins
+            : [],
+      ),
     [active, me],
   );
 }

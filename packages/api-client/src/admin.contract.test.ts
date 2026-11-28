@@ -151,6 +151,7 @@ const ROUTERS: Record<string, string> = {
   'fina/notifications': 'fina/notification.routes.ts',
   'fina/audit': 'fina/audit.routes.ts',
   'fina/reports': 'fina/report.routes.ts',
+  'fina/supervisor': 'fina/supervisor.routes.ts',
   public: 'public-pages.routes.ts',
   students: 'student.routes.ts',
   academics: 'academics.routes.ts',
