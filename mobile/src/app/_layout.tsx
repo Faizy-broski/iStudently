@@ -111,6 +111,12 @@ function AppStack({ session }: { session: ReturnType<typeof useSession>['session
           <Stack.Protected guard={home === 'inspector'}>
             <Stack.Screen name="inspector" />
           </Stack.Protected>
+          <Stack.Protected guard={home === 'media-officer'}>
+            <Stack.Screen name="media-officer" />
+          </Stack.Protected>
+          <Stack.Protected guard={home === 'fina-supervisor'}>
+            <Stack.Screen name="fina-supervisor" />
+          </Stack.Protected>
           <Stack.Protected guard={home === 'admin'}>
             <Stack.Screen name="admin" />
           </Stack.Protected>

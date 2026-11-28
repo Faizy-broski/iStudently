@@ -137,6 +137,8 @@ export default function TeacherLayout() {
             <Stack.Screen name="scheduling/print-schedules" options={{ title: '' }} />
             <Stack.Screen name="scheduling/print-class-pictures" options={{ title: '' }} />
             <Stack.Screen name="tools/[tool]" options={{ title: '' }} />
+            <Stack.Screen name="jahbadh-lab/index" options={{ title: '' }} />
+            <Stack.Screen name="jahbadh-lab/[code]" options={{ title: '' }} />
             <Stack.Screen name="web" options={{ title: '' }} />
           </Stack>
           <TourAssistant onOpen={(href, title) => openPortalPage('teacher', { href, title })} />

@@ -80,6 +80,8 @@ export default function ParentLayout() {
               <Stack.Screen name="resources/embedded/index" options={{ title: '' }} />
               <Stack.Screen name="resources/embedded/[id]" options={{ title: '' }} />
               <Stack.Screen name="tools/[tool]" options={{ title: '' }} />
+              <Stack.Screen name="jahbadh-lab/index" options={{ title: '' }} />
+              <Stack.Screen name="jahbadh-lab/[code]" options={{ title: '' }} />
               <Stack.Screen name="web" options={{ title: '' }} />
               <Stack.Screen name="fina/wall" options={{ title: '' }} />
               <Stack.Screen name="fina/groups" options={{ title: '' }} />

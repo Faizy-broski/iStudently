@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, BookOpen, Users, Clock, FileText, Link as LinkIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 import useSWR from 'swr'
 import * as teachersApi from '@/lib/api/teachers'
 import { TeacherSubjectAssignment } from '@/types'
@@ -127,13 +128,17 @@ export default function SubjectsPage() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4 mr-2" />
-                      {t('syllabus')}
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/teacher/lesson-plan-read">
+                        <FileText className="h-4 w-4 mr-2" />
+                        {t('syllabus')}
+                      </Link>
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <LinkIcon className="h-4 w-4 mr-2" />
-                      {t('resources')}
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/teacher/resources">
+                        <LinkIcon className="h-4 w-4 mr-2" />
+                        {t('resources')}
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -169,23 +174,17 @@ export default function SubjectsPage() {
                           {assignment.section?.grade_level?.name || t('unknownGrade')}
                         </p>
                         <div className="pt-2 flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => toast.info(t('featureComingSoon'))}
-                          >
-                            <FileText className="h-3 w-3 mr-1" />
-                            {t('lessonPlan')}
+                          <Button variant="outline" size="sm" className="flex-1" asChild>
+                            <Link href="/teacher/lesson-plans">
+                              <FileText className="h-3 w-3 mr-1" />
+                              {t('lessonPlan')}
+                            </Link>
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => toast.info(t('featureComingSoon'))}
-                          >
-                            <Users className="h-3 w-3 mr-1" />
-                            {t('students')}
+                          <Button variant="outline" size="sm" className="flex-1" asChild>
+                            <Link href="/teacher/students">
+                              <Users className="h-3 w-3 mr-1" />
+                              {t('students')}
+                            </Link>
                           </Button>
                         </div>
                       </div>

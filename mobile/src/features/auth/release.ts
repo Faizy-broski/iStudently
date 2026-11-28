@@ -5,7 +5,7 @@ import type { UserRole } from '@studently/shared-types'
  * their screens stay in the code and come back by adding the role here.
  * Dev builds can open every role with EXPO_PUBLIC_ALL_ROLES=1 (ignored in release builds).
  */
-const RELEASED_ROLES: readonly UserRole[] = ['super_admin', 'admin', 'staff', 'student', 'teacher', 'parent', 'librarian', 'inspector']
+const RELEASED_ROLES: readonly UserRole[] = ['super_admin', 'admin', 'staff', 'student', 'teacher', 'parent', 'librarian', 'inspector', 'media_officer', 'fina_supervisor', 'counselor', 'financial_admin']
 
 const allRolesInDev = __DEV__ && process.env.EXPO_PUBLIC_ALL_ROLES === '1'
 

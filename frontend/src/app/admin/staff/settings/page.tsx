@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -330,8 +331,10 @@ export default function StaffSettingsPage() {
                             <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400 border-2 border-dashed dark:border-gray-700 rounded-lg">
                                 <Info className="h-8 w-8 mb-2 text-gray-400" />
                                 <p className="font-medium">{t('settings.customFieldsManager')}</p>
-                                <p className="text-sm">{t('settings.toBeImplemented')}</p>
-                                <Button variant="outline" className="mt-4" disabled>{t('settings.comingSoon')}</Button>
+                                <p className="text-sm">{t('settings.customFieldsHint')}</p>
+                                <Button variant="outline" className="mt-4" asChild>
+                                    <Link href="/admin/staff/custom-fields">{t('settings.openCustomFields')}</Link>
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>

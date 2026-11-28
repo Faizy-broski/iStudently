@@ -1,5 +1,5 @@
 import type { StaffDesignation } from '@studently/api-client';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { Pencil, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,6 +53,10 @@ export default function StaffSettings() {
       <View className="bg-background flex-1">
         <View className="gap-3 px-4 pt-3 pb-2">
           <Text variant="muted">{s('manageDesignationsDesc')}</Text>
+          {/* The web's "Custom Fields Template" tab: staff fields are managed on the custom fields page. */}
+          <Button variant="outline" onPress={() => router.push({ pathname: '/admin/fields', params: { entity: 'staff' } })}>
+            <Text>{s('openCustomFields')}</Text>
+          </Button>
           <View className="flex-row gap-2">
             <Input className="flex-1" value={name} onChangeText={setName} placeholder={s('designationPlaceholder')} />
             <Button onPress={() => (name.trim() ? add.run() : toast.error(t('app.v_required')))} disabled={add.running}>

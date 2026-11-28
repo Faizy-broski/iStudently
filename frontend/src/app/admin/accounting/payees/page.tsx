@@ -13,6 +13,7 @@ import Link from 'next/link'
 import * as accountingApi from '@/lib/api/accounting'
 import type { Payee } from '@/lib/api/accounting'
 import { useTranslations } from 'next-intl'
+import { downloadCsv } from '@/lib/utils/csv'
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export default function PayeesPage() {
@@ -43,7 +44,16 @@ export default function PayeesPage() {
     }, [payees, searchQuery])
 
     const handleExportPayments = () => {
-        toast.info(t('export_coming_soon'))
+        if (!filteredPayees.length) {
+            toast.info(t('export_empty'))
+            return
+        }
+        downloadCsv(
+            `payees_${new Date().toISOString().slice(0, 10)}.csv`,
+            [t('col_name'), t('col_email'), t('col_phone'), t('col_bank'), t('col_payments')],
+            // Plain numbers so the totals can be summed in Excel.
+            filteredPayees.map(p => [p.name, p.email, p.phone, p.bank, Number(p.total_payments || 0)]),
+        )
     }
 
     if (campusLoading) {

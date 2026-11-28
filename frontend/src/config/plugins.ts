@@ -671,6 +671,55 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     ],
   },
 
+  // ── Jahbadh Lab معمل جهبذ ─────────────────────────────────────────────────
+  // ~1,800 self-contained experiments (physics, chemistry, biology, Earth & space, 3D models,
+  // simulations, how-things-work) in Arabic / English / French. The files are static and live on the
+  // server (docs/jahbadh/lab-hosting.md), not in the repo; the catalog is /lab/catalog.json.
+  // Pages: /{role}/resources/jahbadh-lab (+ /[code]). No backend and no progress tracking (yet).
+  {
+    id: 'jahbadh_lab',
+    name: 'Jahbadh Lab',
+    description:
+      'Virtual science lab with about 1,800 interactive experiments, 3D models and simulations for physics, chemistry, biology and Earth science, in Arabic, English and French. Browse by subject and school stage, search, and keep favourites. Self-contained, no login required.',
+    icon: FlaskConical,
+    category: 'Resources',
+    settingsHref: '/admin/resources/jahbadh-lab',
+    sidebarInjections: [
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'jahbadh_lab', href: '/admin/resources/jahbadh-lab', icon: FlaskConical }
+        ],
+        roles: ['admin'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'jahbadh_lab', href: '/teacher/resources/jahbadh-lab', icon: FlaskConical }
+        ],
+        roles: ['teacher'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'jahbadh_lab', href: '/student/resources/jahbadh-lab', icon: FlaskConical }
+        ],
+        roles: ['student'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'jahbadh_lab', href: '/parent/resources/jahbadh-lab', icon: FlaskConical }
+        ],
+        roles: ['parent'],
+      },
+    ],
+  },
+
   // ── J Periodic Table ──────────────────────────────────────────────────────
   {
     id: 'periodic_table',

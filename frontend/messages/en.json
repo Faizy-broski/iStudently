@@ -872,7 +872,8 @@
     "jahbadh_monthly_cards": "Monthly report card",
     "jahbadh_marking_sheets": "Teacher's marking sheet",
     "jahbadh_infographics": "Infographics",
-    "jahbadh_quiz_grading": "Quiz auto-grading"
+    "jahbadh_quiz_grading": "Quiz auto-grading",
+    "jahbadh_lab": "Jahbadh Lab"
   },
   "dashboard": {
     "welcome_back": "Welcome back, {name}!",
@@ -1662,13 +1663,13 @@
         "select_campus": "Please select a campus to view payees.",
         "found_count": "{count} payee(s) found.",
         "export_payments": "Export Payments",
-        "export_coming_soon": "Export feature coming soon",
         "col_name": "Name",
         "col_email": "Email",
         "col_phone": "Phone",
         "col_bank": "Bank",
         "col_payments": "Payments",
-        "add_payee": "Add Payee"
+        "add_payee": "Add Payee",
+        "export_empty": "There are no payees to export"
       },
       "daily_transactions": {
         "title": "Daily Transactions",
@@ -7776,8 +7777,6 @@
       "customFieldsTitle": "Custom Fields",
       "customFieldsDesc": "Define additional fields to capture for staff members (e.g., License Number, Shift Time).",
       "customFieldsManager": "Custom Fields Manager",
-      "toBeImplemented": "To be implemented. Will use the same system as Student Custom Fields.",
-      "comingSoon": "Coming Soon",
       "errors": {
         "enterDesignationName": "Please enter a designation name",
         "designationExists": "Designation already exists",
@@ -7792,7 +7791,9 @@
         "designationAdded": "Designation added successfully",
         "designationRemoved": "Designation removed",
         "defaultsAdded": "Default designations added"
-      }
+      },
+      "customFieldsHint": "Extra staff fields are managed on the Custom Fields page.",
+      "openCustomFields": "Open custom fields"
     },
     "contact": "Contact",
     "contract": "Contract",
@@ -9384,7 +9385,9 @@
       "marking_period_groups_name": "Marking Period Groups",
       "marking_period_groups_desc": "Lets you define additional groups of marking periods with their own dates — useful when some Grade Levels use a different number of semesters/quarters than others. The \"Default\" group is the marking periods that already existed and cannot be deleted. Assign a group to each Grade Level from the Grade Levels page.",
       "jahbadh_grades_name": "Jahbadh Grades",
-      "jahbadh_grades_desc": "Libyan official grade distribution (2024-2025 memo, grades 1–12 with tracks): mark entry, results, second round, report cards, analytics, exam control and the exam room timer."
+      "jahbadh_grades_desc": "Libyan official grade distribution (2024-2025 memo, grades 1–12 with tracks): mark entry, results, second round, report cards, analytics, exam control and the exam room timer.",
+      "jahbadh_lab_name": "Jahbadh Lab",
+      "jahbadh_lab_desc": "Virtual science lab with about 1,800 interactive experiments, 3D models and simulations for physics, chemistry, biology and Earth science, in Arabic, English and French. Browse by subject and school stage, search, and keep favourites. Self-contained, no login required."
     }
   },
   "studentPortal": {
@@ -11081,7 +11084,6 @@
       "unknownSection": "Unknown Section",
       "primary": "Primary",
       "unknownGrade": "Unknown Grade",
-      "featureComingSoon": "Feature coming soon",
       "lessonPlan": "Lesson Plan",
       "students": "Students"
     },
@@ -11668,9 +11670,32 @@
       "atRisk": "At Risk",
       "critical": "Critical",
       "performanceReport": "Performance Report",
-      "performanceReportComingSoon": "Academic grades and exam results report coming soon.",
       "assignmentReport": "Assignment Report",
-      "assignmentReportComingSoon": "Assignment submission and completion report coming soon."
+      "performanceReportDesc": "Your exam results for this section in the selected period.",
+      "assignmentReportDesc": "Submissions for your assignments due in the selected period.",
+      "generate": "Generate",
+      "exportCsv": "Export CSV",
+      "noExamsInPeriod": "No exams in the selected period",
+      "noAssignmentsInPeriod": "No assignments due in the selected period",
+      "exam": "Exam",
+      "subject": "Subject",
+      "date": "Date",
+      "maxMarks": "Max marks",
+      "resultsEntered": "Results entered",
+      "average": "Average",
+      "passRate": "Pass rate",
+      "examsTaken": "Exams taken",
+      "absences": "Absences",
+      "assignment": "Assignment",
+      "dueDate": "Due date",
+      "submitted": "Submitted",
+      "pending": "Pending",
+      "graded": "Graded",
+      "completion": "Completion",
+      "averageScore": "Average score",
+      "loadFailed": "Could not load the report",
+      "retry": "Try again",
+      "listTruncated": "Only the latest {count} assignments are included."
     },
     "resourcesEmbedded": {
       "failedToLoadResources": "Failed to load resources",
@@ -12217,7 +12242,6 @@
       "savePreferences": "Save Preferences",
       "changePassword": "Change Password",
       "updateYourAccountPassword": "Update your account password",
-      "passwordChangeComingSoon": "Password change feature coming soon",
       "accountInformation": "Account Information",
       "userId": "User ID:",
       "role": "Role:",
@@ -12233,7 +12257,14 @@
       "profileUpdatedSuccessfully": "Profile updated successfully",
       "failedToUpdateProfile": "Failed to update profile",
       "notificationSettingsUpdated": "Notification settings updated",
-      "failedToUpdateSettings": "Failed to update settings"
+      "failedToUpdateSettings": "Failed to update settings",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "passwordHint": "At least 8 characters",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "passwordChanged": "Password changed successfully",
+      "passwordChangeFailed": "Failed to change password"
     },
     "accountingPrintStatements": {
       "school": "School",
@@ -16171,5 +16202,41 @@
     "deviceRemoved": "Device removed",
     "removeFailed": "Could not remove the device(s)",
     "notMigrated": "Virtual Labs devices aren't set up yet: run the VLaby devices migration on the database first, then try again."
+  },
+  "jahbadhLab": {
+    "title": "Jahbadh Lab",
+    "subtitle": "{count} interactive experiments, 3D models and simulations",
+    "language": "Language",
+    "searchPlaceholder": "Search an experiment or code…",
+    "clearSearch": "Clear search",
+    "all": "All",
+    "favourites": "Favourites",
+    "myFavourites": "My favourite experiments",
+    "recent": "Recently opened",
+    "clearRecent": "Clear list",
+    "stage": "School stage:",
+    "allStages": "All stages",
+    "rangePrimary": "1–6",
+    "rangeMiddle": "7–9",
+    "rangeSecondary": "10–12",
+    "resultsCount": "{count, plural, =0 {No experiments} =1 {1 experiment} other {# experiments}}",
+    "resetFilters": "Clear filters",
+    "noResults": "No matching experiments. Try another word or clear the filters.",
+    "emptyFavourites": "No favourites yet. Tap the star on any experiment to find it here.",
+    "showMore": "Show more ({count} left)",
+    "addFavourite": "Add to favourites",
+    "removeFavourite": "Remove from favourites",
+    "back": "Back",
+    "backToCatalog": "Back to all experiments",
+    "experimentNotFound": "This experiment was not found.",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "openInNewTab": "Open in new tab",
+    "loadingExperiment": "Loading the experiment…",
+    "notInstalledTitle": "The lab files are not installed on this server",
+    "notInstalledBody": "Jahbadh Lab is not available here yet. Please ask your school administrator.",
+    "notInstalledAdminHint": "Administrators: copy the lab folder to the server (served at /lab/) and generate catalog.json. Steps are in docs/jahbadh/lab-hosting.md.",
+    "loadError": "The experiments could not be loaded. Check your connection and try again.",
+    "retry": "Try again"
   }
 }

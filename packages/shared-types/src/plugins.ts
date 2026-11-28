@@ -47,6 +47,7 @@ export const PLUGINS: PluginInfo[] = [
   { id: 'embedded_resources', category: 'Resources', settingsHref: '/admin/resources/embedded' },
   { id: 'vlaby', category: 'Resources', settingsHref: '/admin/resources/virtual-labs' },
   { id: 'periodic_table', category: 'Resources', settingsHref: '/admin/resources/jperiod' },
+  { id: 'jahbadh_lab', category: 'Resources', settingsHref: '/admin/resources/jahbadh-lab' },
   { id: 'arabic_fluency', category: 'Resources', settingsHref: '/admin/resources/arabic-fluency' },
   { id: 'physics_virtual_labs', category: 'Resources', settingsHref: '/admin/resources/physics-virtual-labs' },
   { id: 'chemistry_virtual_labs', category: 'Resources', settingsHref: '/admin/resources/chemistry-virtual-labs' },

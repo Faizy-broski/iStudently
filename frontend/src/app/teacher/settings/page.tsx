@@ -20,6 +20,8 @@ export default function SettingsPage() {
   const t = useTranslations('teacherPages.settings')
   const { profile, user } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirm: '' })
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -47,6 +49,29 @@ export default function SettingsPage() {
       setPhotoUrl((profile as any).profile_photo_url || profile.avatar_url || null)
     }
   }, [profile])
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (passwordForm.newPassword.length < 8) {
+      toast.error(t('passwordTooShort'))
+      return
+    }
+    if (passwordForm.newPassword !== passwordForm.confirm) {
+      toast.error(t('passwordMismatch'))
+      return
+    }
+    setChangingPassword(true)
+    try {
+      const result = await changePassword(passwordForm.newPassword)
+      if (!result.success) throw new Error(result.error)
+      toast.success(t('passwordChanged'))
+      setPasswordForm({ newPassword: '', confirm: '' })
+    } catch (error) {
+      toast.error((error instanceof Error && error.message) || t('passwordChangeFailed'))
+    } finally {
+      setChangingPassword(false)
+    }
+  }
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -341,12 +366,33 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => toast.info(t('passwordChangeComingSoon'))}
-        >
-          {t('changePassword')}
-        </Button>
+        <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+          <div>
+            <label htmlFor="new-password" className="text-sm font-medium mb-2 block">{t('newPassword')}</label>
+            <Input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              value={passwordForm.newPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              placeholder={t('passwordHint')}
+            />
+          </div>
+          <div>
+            <label htmlFor="confirm-password" className="text-sm font-medium mb-2 block">{t('confirmPassword')}</label>
+            <Input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={passwordForm.confirm}
+              onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+            />
+          </div>
+          <Button type="submit" variant="outline" disabled={changingPassword || !passwordForm.newPassword}>
+            {changingPassword && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {t('changePassword')}
+          </Button>
+        </form>
       </Card>
 
       {/* Account Info */}

@@ -9,7 +9,7 @@ export type Destination =
   | { kind: 'gate'; gate: GateKind }
   | { kind: 'web_only' }
   | { kind: 'coming_soon' }
-  | { kind: 'home'; href: '/student' | '/parent' | '/teacher' | '/librarian' | '/inspector' | '/scanner' | '/admin' | '/superadmin' }
+  | { kind: 'home'; href: '/student' | '/parent' | '/teacher' | '/librarian' | '/inspector' | '/media-officer' | '/fina-supervisor' | '/scanner' | '/admin' | '/superadmin' }
 
 /**
  * Where a signed-in user goes, in the same order the web enforces:

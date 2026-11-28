@@ -1362,6 +1362,11 @@
         "plugin": "vlaby"
       },
       {
+        "title": "jahbadh_lab",
+        "href": "/admin/resources/jahbadh-lab",
+        "plugin": "jahbadh_lab"
+      },
+      {
         "title": "human_atlas",
         "href": "/admin/resources/human-atlas",
         "plugin": "human_atlas"

@@ -438,25 +438,6 @@ export default function SuperAdminSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Coming Soon Features */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Coming Soon</CardTitle>
-          <CardDescription>
-            Additional super admin features are under development
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
-            <li>Platform analytics and monitoring</li>
-            <li>System-wide announcement management</li>
-            <li>Advanced security settings</li>
-            <li>Backup and restore options</li>
-            <li>API usage monitoring</li>
-          </ul>
-        </CardContent>
-      </Card>
-
       {/* Account & Logo Information */}
       <Card>
         <CardHeader>

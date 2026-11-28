@@ -1197,6 +1197,10 @@
           "href": "/admin/resources/embedded"
         },
         {
+          "title": "jahbadh_lab",
+          "href": "/admin/resources/jahbadh-lab"
+        },
+        {
           "title": "human_atlas",
           "href": "/admin/resources/human-atlas"
         }
@@ -2717,6 +2721,10 @@
           "href": "/admin/resources/embedded"
         },
         {
+          "title": "jahbadh_lab",
+          "href": "/admin/resources/jahbadh-lab"
+        },
+        {
           "title": "human_atlas",
           "href": "/admin/resources/human-atlas"
         }
@@ -3449,6 +3457,10 @@
           "href": "/teacher/resources/embedded"
         },
         {
+          "title": "jahbadh_lab",
+          "href": "/teacher/resources/jahbadh-lab"
+        },
+        {
           "title": "human_atlas",
           "href": "/teacher/resources/human-atlas"
         }
@@ -4025,6 +4037,10 @@
           "href": "/student/resources/embedded"
         },
         {
+          "title": "jahbadh_lab",
+          "href": "/student/resources/jahbadh-lab"
+        },
+        {
           "title": "chemistry_virtual_labs",
           "href": "/student/resources/chemistry-virtual-labs"
         },
@@ -4453,6 +4469,10 @@
         {
           "title": "embedded_resources",
           "href": "/parent/resources/embedded"
+        },
+        {
+          "title": "jahbadh_lab",
+          "href": "/parent/resources/jahbadh-lab"
         },
         {
           "title": "human_atlas",

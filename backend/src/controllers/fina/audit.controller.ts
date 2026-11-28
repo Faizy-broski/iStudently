@@ -6,7 +6,9 @@ import { callerFromFinaRequest as callerFrom } from '../../utils/fina-caller'
 export const search = async (req: AuthRequest, res: Response) => {
   try {
     const data = await service.searchAuditLog(await callerFrom(req), {
-      schoolId: req.query.school_id as string | undefined,
+      // `filter_school_id`: a municipal supervisor filters by schools outside their own school tree,
+      // which `authenticate` refuses under the name `school_id`; the service checks the scope.
+      schoolId: (req.query.filter_school_id || req.query.school_id) as string | undefined,
       from: req.query.from as string | undefined,
       to: req.query.to as string | undefined,
       action: req.query.action as string | undefined,

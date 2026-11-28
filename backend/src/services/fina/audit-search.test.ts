@@ -99,3 +99,22 @@ describe('audit-search.service — searchAuditLog role scoping', () => {
     await expect(searchAuditLog(caller, {})).rejects.toThrow('Access denied')
   })
 })
+
+describe('audit-search.service — what a supervisor receives', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  const row = { id: 'r1', seq: 1, school_id: SCHOOL_A, actor_id: 'p', actor_role: 'teacher', action: 'post.deleted', subject_type: 'post', subject_id: 'x', meta: { reason: 'text' }, occurred_at: '2026-01-01' }
+
+  it('strips ids and meta for a fina_supervisor, keeps them for a school admin', async () => {
+    ;(listMunicipalitySchoolIds as jest.Mock).mockResolvedValue([SCHOOL_A])
+    ;(supabase.from as unknown as jest.Mock).mockImplementation(() => makeQueryBuilder({ data: [row], error: null }))
+
+    const [forSupervisor] = await searchAuditLog({ profileId: 's', role: 'fina_supervisor', schoolId: SCHOOL_B }, {})
+    expect(forSupervisor).not.toHaveProperty('meta')
+    expect(forSupervisor).not.toHaveProperty('actor_id')
+    expect(forSupervisor).not.toHaveProperty('subject_id')
+
+    const [forAdmin] = await searchAuditLog({ profileId: 'a', role: 'admin', schoolId: SCHOOL_A }, {})
+    expect(forAdmin).toHaveProperty('meta')
+  })
+})

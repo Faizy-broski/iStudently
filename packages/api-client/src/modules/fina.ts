@@ -204,6 +204,24 @@ export interface FinaAuditRow {
   occurred_at: string
 }
 
+export interface FinaSupervisorSchool {
+  id: string
+  name: string
+  consentCoverage: number
+  blockedThisWeek: number
+  isActive: boolean
+  alert: 'low_coverage' | 'blocked_attempts' | 'inactive' | null
+}
+
+export interface FinaSupervisorOverview {
+  schoolsActive: number
+  schoolsTotal: number
+  postsThisMonth: number
+  consentCoverage: number
+  openAlerts: number
+  schools: FinaSupervisorSchool[]
+}
+
 export interface FinaReport {
   id: string
   school_id: string
@@ -227,6 +245,10 @@ export function finaApi(api: ApiClient) {
     deletePost: (postId: string, campusId?: string) => api.del<null>(`/fina/posts/${id(postId)}${c(campusId)}`),
     /** The author's own posts in every state (web: /teacher/fina/my-posts). */
     myPosts: (campusId?: string) => api.get<FinaPost[]>(`/fina/posts/mine${c(campusId)}`),
+    /** Media officer's queue: posts waiting for first review. */
+    reviewQueue: (campusId?: string) => api.get<FinaPost[]>(`/fina/posts/review-queue${c(campusId)}`),
+    reviewPost: (postId: string, decision: 'approve' | 'reject', reason?: string, campusId?: string) =>
+      api.post<FinaPost>(`/fina/posts/${id(postId)}/review${c(campusId)}`, { decision, reason }),
     approvalQueue: (campusId?: string) => api.get<FinaPost[]>(`/fina/posts/approval-queue${c(campusId)}`),
     approvePost: (postId: string, campusId?: string) => api.post<FinaPost>(`/fina/posts/${id(postId)}/approve${c(campusId)}`),
     rejectApproval: (postId: string, reason: string, campusId?: string) => api.post<FinaPost>(`/fina/posts/${id(postId)}/reject-approval${c(campusId)}`, { reason }),
@@ -302,8 +324,11 @@ export function finaApi(api: ApiClient) {
     markAllRead: (campusId?: string) => api.post<unknown>(`/fina/notifications/read-all${c(campusId)}`),
 
     // Audit / reports (admin, fina_supervisor)
-    audit: (campusId?: string, f: { from?: string; to?: string; action?: string; limit?: number } = {}) =>
-      api.get<FinaAuditRow[]>(`/fina/audit${qs({ from: f.from, to: f.to, action: f.action, limit: f.limit, campus_id: campusId })}`),
+    /** `schoolId` is the supervisor's school filter (sent as filter_school_id: their schools can be outside their own school tree). */
+    audit: (campusId?: string, f: { from?: string; to?: string; action?: string; limit?: number; schoolId?: string } = {}) =>
+      api.get<FinaAuditRow[]>(`/fina/audit${qs({ from: f.from, to: f.to, action: f.action, limit: f.limit, filter_school_id: f.schoolId, campus_id: campusId })}`),
+    /** fina_supervisor: aggregate numbers per school of their municipality (never content). */
+    supervisorOverview: () => api.get<FinaSupervisorOverview>('/fina/supervisor/overview'),
     reports: (campusId?: string) => api.get<FinaReport[]>(`/fina/reports${c(campusId)}`),
     generateReport: (campusId?: string, period?: string) => api.post<FinaReport>(`/fina/reports/generate${c(campusId)}`, { period }),
     reportDownload: (reportId: string, campusId?: string) => api.get<{ url: string }>(`/fina/reports/${id(reportId)}/download${c(campusId)}`),

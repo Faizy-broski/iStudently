@@ -52,5 +52,10 @@ export async function searchAuditLog(caller: CallerContext, filters: AuditSearch
 
   const { data, error } = await query
   if (error) throw new Error(`Failed to search audit log: ${error.message}`)
+  // A supervisor "sees numbers, never content" (spec §12): no actor or subject ids, and no free-form
+  // meta (it can carry rejection reasons and record ids).
+  if (caller.role === 'fina_supervisor') {
+    return (data || []).map((r: any) => ({ id: r.id, seq: r.seq, school_id: r.school_id, actor_role: r.actor_role, action: r.action, subject_type: r.subject_type, occurred_at: r.occurred_at }))
+  }
   return data || []
 }
